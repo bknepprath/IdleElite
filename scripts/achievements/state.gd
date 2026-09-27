@@ -484,6 +484,19 @@ static func normalized_seen_ids(value: Variant) -> Dictionary:
 	return seen_ids
 
 
+static func completed_ids(milestones: Array) -> Dictionary:
+	var completed := {}
+	for raw_achievement in milestones:
+		if typeof(raw_achievement) != TYPE_DICTIONARY:
+			continue
+		var achievement := raw_achievement as Dictionary
+		var id := str(achievement.get("id", ""))
+		if id.is_empty() or not is_completed_public(achievement):
+			continue
+		completed[id] = true
+	return completed
+
+
 static func completed_public_ids_fast(host: Node) -> Dictionary:
 	var completed := {}
 	var total_level := SkillState.global_level(host.skills)
@@ -707,6 +720,24 @@ static func activity_tier_time_reduction(host: Node, skill_id: String, action: D
 
 static func activity_tier_accuracy_bonus(host: Node, skill_id: String, action: Dictionary) -> float:
 	return clampf(tier_support_bonus(host, skill_id, action_tier(host, action), "accuracy"), 0.0, 35.0)
+
+
+static func tier_support_lines(host: Node, skill_id: String, source_tier: int) -> Array:
+	var lines := []
+	for raw_goal in tier_support_goals(host, skill_id, source_tier):
+		var goal := raw_goal as Dictionary
+		if bool(goal.get("completed", false)):
+			lines.append(str(goal.get("reward_text", "")))
+	return lines
+
+
+static func next_tier_support_threshold_line(host: Node, skill_id: String, source_tier: int) -> String:
+	for raw_goal in tier_support_goals(host, skill_id, source_tier):
+		var goal := raw_goal as Dictionary
+		var needed := int(goal.get("possible", 0)) - int(goal.get("earned", 0))
+		if needed > 0:
+			return "%s on %s more Tier %s activities: %s" % [str(goal.get("medal", "Medal")), needed, source_tier, str(goal.get("reward_text", ""))]
+	return "All Tier %s support bonuses active." % source_tier
 
 
 static func _tier_threshold_bonus_text(threshold: Dictionary, target_tier: int) -> String:

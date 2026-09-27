@@ -271,12 +271,7 @@ func render_page() -> void:
 		transfer_row.add_child(import_button)
 		action_stack.add_child(transfer_row)
 	action_stack.add_child(reset)
-	var contact_gap := Control.new()
-	contact_gap.custom_minimum_size.y = 64
-	stack.add_child(contact_gap)
-	stack.move_child(contact_gap, fill_spacer.get_index())
-	stack.add_child(discord)
-	stack.move_child(discord, fill_spacer.get_index())
+	action_stack.add_child(discord)
 	stack.add_child(action_stack)
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, 6)

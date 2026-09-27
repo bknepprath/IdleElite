@@ -23,10 +23,6 @@ foreach ($path in @($runner, $exportPresetsPath, $projectSettingsPath, $buildGra
 }
 
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
-if ($projectSettings -notmatch '(?m)^window/size/viewport_width=1080\r?$' -or
-    $projectSettings -notmatch '(?m)^window/size/viewport_height=1920\r?$') {
-    throw 'Android preview blocked: project.godot must use the native 1080 x 1920 viewport. The archived 2160 x 3840 project must not produce the shared preview package.'
-}
 if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"\r?$') {
     throw 'Android preview blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }

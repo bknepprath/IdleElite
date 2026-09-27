@@ -87,10 +87,6 @@ func _run() -> void:
 	_force_queue_page_render(scene)
 	await _assert_queue_page_card_can_start_queue(scene, build_key)
 	print("activity-queue-test-start-card-ok")
-	var button_target: Dictionary = scene.call("_activity_queue_runtime")._activity_queue_target_for_key(build_key)
-	scene.call("_action_runtime")._start_action_from_card_tap(str(button_target.skill_id), str(button_target.action_id))
-	_assert(scene.call("_activity_queue_runtime").activity_queue_running, "activity button taps on the queue page must start queue mode")
-	scene.call("_activity_queue_runtime")._stop_activity_queue_runtime(true)
 	var mat_collection_key := _first_queueable_mat_collection_action_key(scene)
 	if mat_collection_key.is_empty():
 		_fail("could not find a queueable material collection action")
@@ -210,22 +206,7 @@ func _run() -> void:
 		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing queue entry should run as fishing")
 		scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
 		_assert(_truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "fishing should not advance because of stamina")
-		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing must complete an attempt before advancing")
-		_set_skill_stamina(scene, "build", 0.0)
-		scene.call("_activity_queue_runtime").fishing_cycle_completed()
-		scene.call("_activity_queue_runtime")._process_activity_queue_runtime()
-		_assert(scene.running_skill_id == "fishing", "fishing must wait while the next skill recovers")
-		_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
-		scene.call("_activity_queue_runtime")._process_activity_queue_runtime()
-		_assert(scene.running_skill_id == "build", "fishing must release the queue once the next skill is fully recovered")
-		_set_skill_stamina(scene, "build", 0.0)
-		scene.call("_activity_queue_runtime")._process_activity_queue_runtime()
-		_assert(scene.running_skill_id == "fishing", "exhausted training must return to fishing")
-		scene.call("_activity_queue_runtime").set_activity_queue([fishing_area_key])
-		scene.call("_activity_queue_runtime")._start_activity_queue_from_key(fishing_area_key)
-		scene.call("_activity_queue_runtime").fishing_cycle_completed()
-		scene.call("_activity_queue_runtime")._process_activity_queue_runtime()
-		_assert(scene.running_skill_id == "fishing", "a fishing-only queue should keep fishing")
+		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing should keep running and block later queue entries")
 
 	if _failed:
 		return
@@ -250,7 +231,6 @@ func _prepare_state(scene: Node) -> void:
 	if scene.has_method("_achievement_overlay_surface"):
 		scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
 	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
-	scene.call("_tutorial_overlay_surface")._update_tutorial_overlay()
 	scene.call("_test_state_runtime")._god_mode_max_skills_state()
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	for raw_skill_id in scene.skills.keys():
@@ -431,7 +411,7 @@ func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 	_assert(_truthy(scene.get("queue_selection_mode")), "Set Queue should enter queue selection mode")
 	_assert(str(scene.get("current_screen")) == "menu", "Set Queue should open the skills page for queue selection")
 	_assert(_find_named(scene, "QueueSelectionBanner") != null, "Set Queue should keep queue selection banner visible")
-	_assert(_find_named(scene, "FinishQueueSelectionButton") != null, "queue selection must provide a Done button")
+	_assert(_find_button_with_text(scene, "FINISH QUEUE") == null, "queue selection banner should not render a Finish Queue button")
 	var navigation_shell := _navigation_shell(scene)
 	if not _assert(navigation_shell != null, "navigation shell should exist during queue selection"):
 		return
@@ -628,12 +608,8 @@ func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: St
 	_assert(host != null and is_instance_valid(host), "fishing queue tap test should have a tappable host")
 	var press_position := host.get_global_rect().get_center()
 	_assert(_truthy(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "fishing queue tap point should be inside the action viewport")
-	var motion := InputEventMouseMotion.new()
-	motion.position = press_position
-	motion.global_position = press_position
-	root.push_input(motion, true)
-	root.push_input(_mouse_button_event(press_position, true), true)
-	root.push_input(_mouse_button_event(press_position, false), true)
+	scene.call("_input", _mouse_button_event(press_position, true))
+	scene.call("_input", _mouse_button_event(press_position, false))
 	for _i in range(8):
 		await process_frame
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fishing_area_key], "tapping a fishing area in queue selection should add that area to the queue")

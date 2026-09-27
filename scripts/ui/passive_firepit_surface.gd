@@ -621,7 +621,6 @@ class PassiveLogPileSprite:
 
 
 var host
-var firepit_stop_hold_completed := false
 var firepit_stop_hold_active = false
 var firepit_stop_hold_armed = false
 var firepit_stop_hold_unloading = false
@@ -915,6 +914,9 @@ func _passive_button_hit_at_position(event_position: Vector2) -> Dictionary:
 			var upgrade_hit := _passive_source_hit_dict(upgrade_buttons.get(stat_type, null), event_position, "upgrade", module_id, stat_type)
 			if not upgrade_hit.is_empty():
 				return upgrade_hit
+		var firepit_hit := _passive_source_hit_dict(card.get("toggle", null), event_position, "firepit", module_id)
+		if not firepit_hit.is_empty():
+			return firepit_hit
 		var loot: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("loot", null))
 		if loot != null and loot.has_meta("passive_log_collect_hotspot_id"):
 			var hotspot: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(loot.get_meta("passive_log_collect_hotspot_id", 0))))
@@ -1014,7 +1016,6 @@ func _clear_passive_button_press() -> void:
 
 
 func _on_firepit_button_down(module_id := "", button: Button = null) -> void:
-	firepit_stop_hold_completed = false
 	if module_id.is_empty():
 		module_id = PassiveModulesRuntime.WOODCUTTING_FIREPIT_MODULE_ID
 	var passive_runtime = host._passive_modules_runtime()
@@ -1065,7 +1066,6 @@ func _process_firepit_stop_hold(delta: float) -> void:
 		if unload >= 1.0:
 			host._action_stop_hold().hide_ring()
 			_clear_firepit_stop_hold_state()
-			firepit_stop_hold_completed = true
 			host._passive_modules_runtime().extinguish_firepit(host._unix_now())
 		return
 	if not firepit_stop_hold_armed:
@@ -1635,7 +1635,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 	bg_underlay.offset_bottom = -passive_face_bottom_trim
 	bg_underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg_underlay.z_index = 149
-	var underlay_style = host._surface_style(Color("#8d5f3a"), int(host.ACTION_CARD_FACE_RADIUS), 0, false)
+	var underlay_style = host._surface_style(Color("#8d5f3a"), 33, 0, false)
 	underlay_style.border_width_left = 0
 	underlay_style.border_width_right = 0
 	underlay_style.border_width_top = 0
@@ -1645,7 +1645,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 
 	var bg = RoundedTextureRect.new()
 	bg.texture = host.visual_texture_cache._texture_or_visual_fallback(WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE)
-	bg.radius = host.ACTION_CARD_FACE_RADIUS
+	bg.radius = 33.0
 	bg.art_height = firepit_card_height
 	bg.feather_height = 0.0
 	bg.mask_inset = 0.0
@@ -1660,9 +1660,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 	pop_card.add_child(bg)
 
 	var wash = Panel.new()
-	var wash_style := ActivityCardStyles.shade(0.30)
-	wash_style.set_corner_radius_all(int(host.ACTION_CARD_FACE_RADIUS))
-	wash.add_theme_stylebox_override("panel", wash_style)
+	wash.add_theme_stylebox_override("panel", ActivityCardStyles.cached_shade(0.30))
 	wash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	wash.offset_bottom = -passive_face_bottom_trim
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1738,25 +1736,27 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 
 func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	var status_panel = Control.new()
-	status_panel.custom_minimum_size = Vector2(310, 235)
-	status_panel.position = Vector2(585.0, 70)
+	# Status copy stays at the 52 px phone-readable floor, so its three-line
+	# bonus needs more vertical room than the literal half-scale 4K box.
+	status_panel.custom_minimum_size = Vector2(340, 270)
+	status_panel.position = Vector2(590.0, 52)
 	status_panel.size = status_panel.custom_minimum_size
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.z_index = 242
 	pop_card.add_child(status_panel)
 
-	var status_label = host._label("", 44, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	var status_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_label.position = Vector2(0, 0)
-	status_label.size = Vector2(310, 56)
+	status_label.size = Vector2(335, 62)
 	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	status_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	status_label.add_theme_constant_override("outline_size", 7)
+	status_label.add_theme_constant_override("outline_size", 10)
 	status_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(status_label)
-	var buff_label = host._label("", 40, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
-	buff_label.position = Vector2(0, 64)
-	buff_label.size = Vector2(310, 112)
+	var buff_label = host._label("", 52, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
+	buff_label.position = Vector2(0, 65)
+	buff_label.size = Vector2(335, 130)
 	buff_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	buff_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	buff_label.add_theme_constant_override("outline_size", 7)
@@ -1764,9 +1764,9 @@ func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	buff_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(buff_label)
-	var timer_label = host._label("", 44, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	timer_label.position = Vector2(0, 188)
-	timer_label.size = Vector2(310, 56)
+	var timer_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	timer_label.position = Vector2(0, 205)
+	timer_label.size = Vector2(335, 62)
 	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	timer_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	timer_label.add_theme_constant_override("outline_size", 7)
@@ -1789,30 +1789,15 @@ func _firepit_toggle_button(pop_card: Control, module_id: String, art_root: Cont
 	host.button_press_runtime.attach_button_depress_animation(toggle_button, 0.94)
 	host.button_press_runtime.attach_default_button_sfx(toggle_button)
 	if interactive:
-		_connect_firepit_toggle_button(toggle_button, module_id)
+		toggle_button.gui_input.connect(_on_passive_module_button_input.bind("firepit", module_id, "", null, toggle_button))
+		toggle_button.button_down.connect(_on_firepit_button_down.bind(module_id, toggle_button))
+		toggle_button.button_up.connect(_on_firepit_button_up.bind(module_id))
+		toggle_button.pressed.connect(_on_firepit_toggle_pressed.bind(module_id))
 	pop_card.add_child(toggle_button)
 	return toggle_button
 
 
-func _connect_firepit_toggle_button(button: Button, module_id: String) -> void:
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	var down := _on_firepit_button_down.bind(module_id, button)
-	var up := _on_firepit_button_up.bind(module_id)
-	var pressed := _on_firepit_toggle_pressed.bind(module_id)
-	if not button.button_down.is_connected(down):
-		button.button_down.connect(down)
-	if not button.button_up.is_connected(up):
-		button.button_up.connect(up)
-	if not button.pressed.is_connected(pressed):
-		button.pressed.connect(pressed)
-
-
 func _on_firepit_toggle_pressed(module_id: String) -> void:
-	if firepit_stop_hold_completed:
-		firepit_stop_hold_completed = false
-		return
-	if host._skill_detail_surface()._detail_actions_scroll_suppresses_child_click() or host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
-		return
 	host._passive_modules_runtime().toggle_firepit_pressed(module_id, host._unix_now())
 
 
@@ -1824,18 +1809,23 @@ func _firepit_chrome(pop_card: Control, passive_face_bottom_trim: float) -> Dict
 	inner_shadow.z_index = 153
 	pop_card.add_child(inner_shadow)
 
+	var corner_crop = RoundedCornerCropOverlay.new()
+	corner_crop.radius = 66.0
+	corner_crop.cover_color = host._theme_paper_color()
+	corner_crop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	corner_crop.offset_bottom = -passive_face_bottom_trim
+	corner_crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	corner_crop.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX - 1
+	pop_card.add_child(corner_crop)
+
 	var border = ActivityCardBorder.new()
-	border.radius = host.ACTION_CARD_FACE_RADIUS
 	border.set_anchors_preset(Control.PRESET_FULL_RECT)
 	border.offset_bottom = -passive_face_bottom_trim
 	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 	pop_card.add_child(border)
 	var shade = _passive_card_shade(pop_card, passive_face_bottom_trim)
-	var shade_style := ActivityCardStyles.shade(0.50)
-	shade_style.set_corner_radius_all(int(host.ACTION_CARD_FACE_RADIUS))
-	shade.add_theme_stylebox_override("panel", shade_style)
-	return {"border": border, "shade": shade}
+	return {"corner_crop": corner_crop, "border": border, "shade": shade}
 
 
 func _build_firepit_module_card(skill_id: String, action: Dictionary, content_width: float, interactive: bool) -> Dictionary:
@@ -1854,7 +1844,6 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 	var background_layers = _firepit_background_layers(pop_card, firepit_card_height, passive_face_bottom_trim)
 	var bg = background_layers.get("bg") as RoundedTextureRect
 	var title = _passive_module_title(card_root, pop_card, skill_id, action, "Firepit", 760.0)
-	title.add_theme_font_size_override("font_size", 52)
 	var info_controls = _passive_info_controls(
 		pop_card,
 		module_id,
@@ -1862,7 +1851,7 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 		Vector2(37, 119),
 		Vector2(760, 400),
 		Vector2(730, 380),
-		Vector2(245, 29),
+		Vector2(180, 29),
 		interactive
 	)
 	var art_bundle = _firepit_art_bundle(pop_card, content_width, passive_face_bottom_trim)
@@ -1877,6 +1866,7 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 	var timer_label = status_controls.get("timer") as Label
 	var toggle_button = _firepit_toggle_button(pop_card, module_id, art_root, interactive)
 	var chrome = _firepit_chrome(pop_card, passive_face_bottom_trim)
+	var corner_crop = chrome.get("corner_crop") as RoundedCornerCropOverlay
 	var border = chrome.get("border") as ActivityCardBorder
 	var shade = chrome.get("shade") as Panel
 	var lock_overlay = host._skill_detail_surface()._activity_lock_overlay(pop_card, int(action.get("unlock", PassiveModulesRuntime.WOODCUTTING_FIREPIT_UNLOCK_LEVEL)), skill_id, host._skill_detail_surface()._lock_requirements_for_overlay(skill_id, action))
@@ -1891,6 +1881,7 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 		"pop": pop_card,
 		"bg": bg,
 		"active_dim": active_dim,
+		"corner_crop": corner_crop,
 		"shade": shade,
 		"title": title,
 		"info_button": info_controls.get("button"),
@@ -2718,12 +2709,6 @@ func _finish_firepit_dependency_visuals(module_id: int, connector_id: int, show_
 
 
 func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, instant := false) -> void:
-	# The running gatherer's output already shows this balance on the skill page.
-	if show_dependency and host.current_screen == "skill" and host.selected_skill_id == "woodcutting":
-		var gathering: Dictionary = host.action_cards.get(host._action_key(host.running_skill_id, host.running_action_id), {})
-		var collection := gathering.get("mat_collection", {}) as Dictionary
-		if bool(collection.get("visible", false)) and (collection.get("modules", {}) as Dictionary).has("scrapwood"):
-			show_dependency = false
 	var firepit_entry_root = card.get("firepit_entry_root") as Control
 	var card_root = card.get("root") as Control
 	var scrapwood_module = card.get("scrapwood_module") as Control

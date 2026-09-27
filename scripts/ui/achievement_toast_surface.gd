@@ -137,10 +137,10 @@ func _achievement_toast_queue_blocked() -> bool:
 	return host._achievement_overlay_surface().offline_summary_visible()
 
 func _drain_achievement_toast_queue() -> void:
-	while is_instance_valid(host) and host.is_inside_tree():
-		while is_instance_valid(host) and host.is_inside_tree() and _achievement_toast_queue_blocked():
+	while host.is_inside_tree():
+		while host.is_inside_tree() and _achievement_toast_queue_blocked():
 			await host.get_tree().process_frame
-		if not is_instance_valid(host) or not host.is_inside_tree():
+		if not host.is_inside_tree():
 			break
 		_prune_achievement_toasts()
 		if not achievement_toasts.is_empty():

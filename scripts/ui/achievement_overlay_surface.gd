@@ -13,12 +13,15 @@ const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
-const OFFLINE_SUMMARY_MODAL_WIDTH := 960.0
-const OFFLINE_SUMMARY_BASE_HEIGHT := 900.0
-const OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT := 76.0
-const OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT := 100.0
+const OFFLINE_SUMMARY_MODAL_WIDTH := 840.0
+const OFFLINE_SUMMARY_BASE_HEIGHT := 540.0
+const OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT := 42.0
+const OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT := 72.0
 const OFFLINE_SUMMARY_MAX_HIGHLIGHTS := 4
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
+const OFFLINE_SUMMARY_SECTION_HEIGHT := 44.0
+const OFFLINE_SUMMARY_ROW_HEIGHT := 107.0
+const OFFLINE_SUMMARY_ROW_GAP := 14.0
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(880, 1500)
 const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
 const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 1110.0
@@ -426,7 +429,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	header.add_child(title_stack)
 	var title = host._label("Welcome Back", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(title)
-	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 32, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(subtitle)
 	var close_space := Control.new()
 	close_space.custom_minimum_size = Vector2(92, 0)
@@ -441,7 +444,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), host.TOTAL_LEVEL_BARGRAPH_TEXTURE))
 	if not highlights.is_empty():
-		var highlights_label: Label = host._label("Highlights", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
+		var highlights_label: Label = host._label("Highlights", 34, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
 		highlights_label.custom_minimum_size.y = OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT
 		offline_summary_stack.add_child(highlights_label)
 		for highlight in highlights:
@@ -509,11 +512,11 @@ func _offline_summary_highlight_row(highlight: Dictionary) -> Control:
 	row.add_theme_constant_override("separation", 12)
 	card.add_child(row)
 	row.add_child(host.visual_texture_cache._image(str(highlight.get("icon", "")), Vector2(50, 50)))
-	var title_label: Label = host._label(str(highlight.get("title", "")), 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	var title_label: Label = host._label(str(highlight.get("title", "")), 31, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	row.add_child(title_label)
-	var value_label: Label = host._label(str(highlight.get("value", "")), 48, highlight.get("accent", host.COLOR_BLUE) as Color, HORIZONTAL_ALIGNMENT_RIGHT) as Label
+	var value_label: Label = host._label(str(highlight.get("value", "")), 31, highlight.get("accent", host.COLOR_BLUE) as Color, HORIZONTAL_ALIGNMENT_RIGHT) as Label
 	value_label.custom_minimum_size.x = 220
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	row.add_child(value_label)
@@ -521,7 +524,7 @@ func _offline_summary_highlight_row(highlight: Dictionary) -> Control:
 
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 280)
+	card.custom_minimum_size = Vector2(0, 140)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
@@ -537,12 +540,12 @@ func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 5)
 	row.add_child(copy)
-	var eyebrow = host._label(str(active_result.get("skill_name", "Skill")), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var eyebrow = host._label(str(active_result.get("skill_name", "Skill")), 29, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(eyebrow)
-	var action_name_label = host._label(str(active_result.get("action_name", "Activity")), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var action_name_label = host._label(str(active_result.get("action_name", "Activity")), 44, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(action_name_label)
-	var detail = host._label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 28, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(detail)
 	return card
@@ -561,7 +564,7 @@ func _offline_summary_info_style() -> StyleBoxFlat:
 
 func _offline_summary_stat_card(title: String, value: String, accent: Color, icon_path: String) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 210)
+	card.custom_minimum_size = Vector2(0, 145)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_stat_style(accent))
 	var stack := VBoxContainer.new()
@@ -569,10 +572,10 @@ func _offline_summary_stat_card(title: String, value: String, accent: Color, ico
 	stack.add_theme_constant_override("separation", 4)
 	card.add_child(stack)
 	stack.add_child(host.visual_texture_cache._image(icon_path, Vector2(50, 50)))
-	var value_label = host._label(value, 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var value_label = host._label(value, 41, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(value_label)
-	var title_label = host._label(title, 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var title_label = host._label(title, 29, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title_label)
 	return card
@@ -609,6 +612,64 @@ func _offline_summary_medal_stack(old_level: int, new_level: int) -> Control:
 		holder.add_child(medal)
 	return holder
 
+func _offline_summary_progress_content_height(active_result: Dictionary) -> float:
+	var rows := 0
+	var sections := 0
+	var old_skill_level := int(active_result.get("old_skill_level", 1))
+	var new_skill_level := int(active_result.get("new_skill_level", old_skill_level))
+	var old_global_level := int(active_result.get("old_global_level", 1))
+	var new_global_level := int(active_result.get("new_global_level", old_global_level))
+	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
+	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
+	var show_skill_level_row := new_skill_level > old_skill_level
+	var show_global_level_row := new_global_level > old_global_level
+	var show_mastery_row := new_mastery_level > old_mastery_level
+	if show_skill_level_row or show_global_level_row or show_mastery_row:
+		sections += 1
+		if show_skill_level_row:
+			rows += 1
+		if show_global_level_row:
+			rows += 1
+		if show_mastery_row:
+			rows += 1
+	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
+	if not unlocked_actions.is_empty():
+		sections += 1
+		rows += unlocked_actions.size()
+	var item_count := sections + rows
+	if item_count <= 0:
+		return 0.0
+	return (
+		float(sections) * OFFLINE_SUMMARY_SECTION_HEIGHT
+		+ float(rows) * OFFLINE_SUMMARY_ROW_HEIGHT
+		+ float(item_count - 1) * OFFLINE_SUMMARY_ROW_GAP
+	)
+
+func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dictionary) -> void:
+	var old_skill_level := int(active_result.get("old_skill_level", 1))
+	var new_skill_level := int(active_result.get("new_skill_level", old_skill_level))
+	var old_global_level := int(active_result.get("old_global_level", 1))
+	var new_global_level := int(active_result.get("new_global_level", old_global_level))
+	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
+	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
+	var show_skill_level_row := new_skill_level > old_skill_level
+	var show_global_level_row := new_global_level > old_global_level
+	var show_mastery_row := new_mastery_level > old_mastery_level
+	if show_skill_level_row or show_global_level_row or show_mastery_row:
+		list.add_child(_offline_summary_section_label("Levels"))
+	if show_skill_level_row:
+		list.add_child(_offline_summary_row(SkillIconBadge.icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s -> %s" % [old_skill_level, new_skill_level], "Achieved %s" % _offline_level_range_text(old_skill_level, new_skill_level), ThemeStyles.skill_theme_color(str(active_result.get("skill_id", "")), host.COLOR_BLUE)))
+	if show_global_level_row:
+		list.add_child(_offline_summary_row(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
+	if show_mastery_row:
+		list.add_child(_offline_summary_mastery_row(str(active_result.get("action_art", "")), old_mastery_level, new_mastery_level))
+
+	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
+	if not unlocked_actions.is_empty():
+		list.add_child(_offline_summary_section_label("Unlocked"))
+		for unlocked in unlocked_actions:
+			list.add_child(_offline_summary_unlock_card(unlocked as Dictionary, str(active_result.get("skill_id", ""))))
+
 func _offline_summary_achievements(active_result: Dictionary) -> Array:
 	var achievements := active_result.get("achievements", []) as Array
 	var compact := []
@@ -628,12 +689,25 @@ func _offline_summary_achievements(active_result: Dictionary) -> Array:
 			compact.append(achievement)
 	return compact
 
+func _offline_level_range_text(old_level: int, new_level: int) -> String:
+	if new_level <= old_level:
+		return "none"
+	if new_level == old_level + 1:
+		return "Lv %s" % new_level
+	return "Lv %s-%s" % [old_level + 1, new_level]
+
 func _mastery_medals_earned_subtitle(old_level: int, new_level: int) -> String:
 	if new_level <= old_level:
 		return ""
 	if new_level == old_level + 1:
 		return "New %s medal earned." % MasteryState.medal_name(new_level)
 	return "New mastery medals earned."
+
+func _offline_summary_section_label(text: String) -> Label:
+	var label = host._label(text, 34, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.45))
+	label.add_theme_constant_override("outline_size", 5)
+	return label
 
 func _offline_summary_row(icon_path: String, title: String, value: String, subtitle: String, accent: Color) -> Control:
 	var card := PanelContainer.new()

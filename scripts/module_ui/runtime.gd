@@ -19,13 +19,12 @@ const MODULE_PIN_BADGE_CLIP_ORIGIN := Vector2(-110, -165)
 const MODULE_PIN_BADGE_CLIP_SIZE := Vector2(260, 194)
 const MODULE_PIN_BADGE_SETTLED_POSITION := Vector2(99, 64)
 const MODULE_PIN_BADGE_PULL_OUT_POSITION := Vector2(118, 7)
-const MODULE_PIN_ENTRY_Y := MODULE_PIN_BADGE_CLIP_ORIGIN.y + MODULE_PIN_BADGE_CLIP_SIZE.y
-const MODULE_PIN_ENTRY_SEAM_POINTS := [Vector2(26, MODULE_PIN_ENTRY_Y), Vector2(62, MODULE_PIN_ENTRY_Y)]
+const MODULE_PIN_ENTRY_SEAM_POINTS := [Vector2(42, 1), Vector2(96, 1)]
 const MODULE_PIN_ENTRY_SEAM_WIDTH := 4.0
 const MODULE_PIN_CONFIRM_ANIMATION_SECONDS := 0.315
 const MODULE_PIN_UNPIN_ANIMATION_SECONDS := 0.27
 const MODULE_PIN_SOURCE_PRUNE_HOLD_SECONDS := 4.0
-const MODULE_PIN_BADGE_Z_INDEX := 1000
+const MODULE_PIN_BADGE_Z_INDEX := 350
 const MODULE_PIN_CONFIRM_STILL_SECONDS := 0.07
 const MODULE_PIN_CONFIRM_ANTICIPATION_SECONDS := 0.075
 const MODULE_PIN_CONFIRM_TURNAROUND_SECONDS := 0.03
@@ -414,20 +413,15 @@ func sort_detail_entries(entries: Array, skill_id: String, level_sort_value: Cal
 
 func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: float, level_sort_value: Callable, unlock_requirements: Callable) -> Array:
 	if plan.size() > 1:
-		# Resolve visibility-dependent sort values once per entry, not per comparison.
-		var ranked: Array = []
-		for entry in plan:
-			var proxy := _lazy_entry_detail_sort_proxy(entry as Dictionary)
-			ranked.append({"entry": entry, "bucket": _detail_entry_priority_bucket(proxy, skill_id, unlock_requirements), "level": int(level_sort_value.call(proxy, skill_id)), "tie": _detail_entry_tiebreaker(proxy)})
-		ranked.sort_custom(func(left, right):
-			if left.bucket != right.bucket:
-				return left.bucket < right.bucket
-			if left.level != right.level:
-				return left.level > right.level if sort_mode == SORT_LEVEL_REVERSE else left.level < right.level
-			return left.tie > right.tie if sort_mode == SORT_LEVEL_REVERSE else left.tie < right.tie
+		plan.sort_custom(func(left, right):
+			return _detail_entry_sort_less(
+				_lazy_entry_detail_sort_proxy(left as Dictionary),
+				_lazy_entry_detail_sort_proxy(right as Dictionary),
+				skill_id,
+				level_sort_value,
+				unlock_requirements
+			)
 		)
-		for index in range(ranked.size()):
-			plan[index] = ranked[index].entry
 	var y := 0.0
 	for raw_entry in plan:
 		var entry := raw_entry as Dictionary
@@ -437,7 +431,7 @@ func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: flo
 
 func is_collapsed(module_key: String, allow_key: Callable) -> bool:
 	var key := normalize(module_key)
-	return bool(collapsed.get(key, false)) and _allowed(key, allow_key)
+	return _allowed(key, allow_key) and bool(collapsed.get(key, false))
 
 func collapse_key(module_key: String, allow_key: Callable) -> String:
 	var key := normalize(module_key)
@@ -455,7 +449,7 @@ func expand_key(module_key: String) -> String:
 
 func is_pinned(module_key: String, allow_key: Callable) -> bool:
 	var key := normalize(module_key)
-	return pinned_order.has(key) and _allowed(key, allow_key)
+	return _allowed(key, allow_key) and pinned_order.has(key)
 
 func pinned_order_for_save(allow_key: Callable) -> Array:
 	return pinned_order_unlocked_only(normalized_order(pinned_order), allow_key)

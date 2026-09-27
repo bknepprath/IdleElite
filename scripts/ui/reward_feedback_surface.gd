@@ -589,6 +589,7 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 	if card.is_empty():
 		return
 	var art_panel = host._app_lifecycle_runtime().valid_control_ref(card.get("art_panel"))
+	var mastery_bar = host._app_lifecycle_runtime().valid_control_ref(card.get("mastery"))
 	if art_panel == null:
 		host._skill_detail_surface()._discard_action_card_key(key)
 		return
@@ -609,6 +610,7 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 			_float_xp_rewards(host, art_panel, xp_reward_map, _skill_id_from_action_key(key))
 		if fish_reward_amount > 0.0:
 			host._fishing_ui_surface()._float_fish_reward(host, art_panel, fish_reward_amount)
+		_float_mastery_bar(host, mastery_bar, mastery_amount, _card_mastery_progress_percent(card))
 	else:
 		_flash_art_glow(art_panel, Color("#ff4f4f"))
 		art_panel.modulate = Color("#ff8d8d")
@@ -620,13 +622,20 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 		shake.tween_property(art_panel, "rotation_degrees", 3.0, 0.05)
 		shake.tween_property(art_panel, "rotation_degrees", 0.0, 0.06)
 		shake.parallel().tween_property(art_panel, "modulate", Color.WHITE, 0.26)
+		_float_mastery_bar(host, mastery_bar, mastery_amount, _card_mastery_progress_percent(card))
 
 func _play_action_mastery_feedback(key: String, mastery_amount: float) -> void:
 	if mastery_amount <= 0.0:
 		return
 	if not _skill_action_reward_feedback_visible():
 		return
-	_reward_feedback_card_for_key(key)
+	var card = _reward_feedback_card_for_key(key)
+	if card.is_empty():
+		return
+	var mastery_bar = host._app_lifecycle_runtime().valid_control_ref(card.get("mastery"))
+	if mastery_bar == null:
+		return
+	_float_mastery_bar(host, mastery_bar, mastery_amount, _card_mastery_progress_percent(card))
 
 func _reward_feedback_card_for_key(key: String) -> Dictionary:
 	var parts = key.split(":")
@@ -1034,6 +1043,15 @@ func _skill_id_from_action_key(key: String) -> String:
 		return str(parts[0])
 	return host.selected_skill_id
 
+func _float_mastery_bar(_parent: Control, _anchor: Control, _mastery_amount: float, _progress_pct = -1.0) -> void:
+	pass
+
+func _card_mastery_progress_percent(card: Dictionary) -> float:
+	var skill_id = str(card.get("skill_id", ""))
+	var action_id = str(card.get("mastery_action_id", card.get("action_id", "")))
+	if skill_id.is_empty() or action_id.is_empty():
+		return -1.0
+	return MasteryState.progress_pct(host.mastery, host._action_key(skill_id, action_id), host.MASTERY_MAX_LEVEL)
 
 func _float_tired_activity_feedback(action_key: String) -> void:
 	_float_action_card_warning_feedback(action_key, TIRED_ACTIVITY_FLOAT_TEXT, TIRED_ACTIVITY_FLOAT_COLOR)
@@ -1130,7 +1148,6 @@ func _float_action_card_warning_feedback(action_key: String, text: String, color
 		return
 	var reward_size = Vector2(210, 84)
 	var holder = Control.new()
-	holder.name = "ActivityWarningFloat"
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1143,9 +1160,6 @@ func _float_action_card_warning_feedback(action_key: String, text: String, color
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow)
 	var label = host._label(text, 58, color, HORIZONTAL_ALIGNMENT_CENTER)
-	if text == TIRED_ACTIVITY_FLOAT_TEXT:
-		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		label.add_theme_constant_override("outline_size", 12)
 	label.size = reward_size
 	label.add_theme_constant_override("line_spacing", -6)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1301,11 +1315,6 @@ func _float_reward(parent: Control, anchor: Control, text: String, font_size: in
 		label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 		label.add_theme_constant_override("outline_size", maxi(10, int(round(float(font_size) * 0.16))))
 	holder.add_child(label)
-	# Clamp the actual text width, including messages wider than the default box.
-	reward_size = reward_size.max(label.get_combined_minimum_size()).max(shadow.get_combined_minimum_size())
-	holder.size = reward_size
-	label.size = reward_size
-	shadow.size = reward_size
 	var local_pos = anchor.global_position - parent.global_position
 	var anchor_x = anchor.size.x * 0.5 - reward_size.x * 0.5
 	if anchor_x_override >= 0.0:

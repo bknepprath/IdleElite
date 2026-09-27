@@ -278,6 +278,22 @@ func restore_music_flow_state(data: Dictionary) -> void:
 	flow_heat = clampf(float(data.get("flow_heat", flow_heat)), 0.0, 36.0)
 	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
 
+func music_flow_save_state() -> Dictionary:
+	return {
+		"music_start_chance_unlocked": music_start_chance_unlocked,
+		"flow_heat": clampf(flow_heat, 0.0, 36.0),
+		"flow_active_action_seconds": maxf(0.0, flow_active_action_seconds),
+	}
+
+func audio_settings_save_state() -> Dictionary:
+	return {
+		"audio_settings_version": AUDIO_SETTINGS_VERSION,
+		"music_volume": clampf(music_volume, 0.0, 1.0),
+		"sfx_volume": clampf(sfx_volume, 0.0, 1.0),
+		"music_muted": music_muted,
+		"sfx_muted": sfx_muted,
+	}
+
 func _host_running_action_id() -> String:
 	return str(host.get("running_action_id")) if host != null else ""
 

@@ -502,6 +502,14 @@ func _visible_actions_for_skill(skill_id: String) -> Array:
 	return visible_actions
 
 
+func _locked_activity_preview_available() -> bool:
+	for raw_skill_id in host.skills.keys():
+		var skill_id := str(raw_skill_id)
+		if int(host.skills.get(skill_id, {}).get("xp", 0)) >= LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD:
+			return true
+	return false
+
+
 func _first_locked_action_id(skill_id: String) -> String:
 	for action in host.actions_by_skill.get(skill_id, []):
 		var action_data := action as Dictionary

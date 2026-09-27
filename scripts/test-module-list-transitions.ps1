@@ -3261,8 +3261,8 @@ func _assert_thieving_heist_drag_release_cancels(scene: Node, button: Button, he
 func _tap_fishing_method_button(scene: Node, button: Button, skill_id: String, action_id: String, area_key: String, owner_area_id: int) -> void:
 	var local_point := button.get_global_rect().get_center() - button.get_global_rect().position
 	var fishing_ui_surface = scene.call("_fishing_ui_surface")
-	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, true), true)
-	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, false), true)
+	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, true), skill_id, action_id, area_key, owner_area_id, button)
+	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, false), skill_id, action_id, area_key, owner_area_id, button)
 
 
 func _assert_fishing_method_drag_release_cancels(
@@ -3278,21 +3278,20 @@ func _assert_fishing_method_drag_release_cancels(
 	scene.call("_skill_swipe_activity_surface").call("_clear_skill_swipe_button_suppression")
 	var local_point := button.get_global_rect().get_center() - button.get_global_rect().position
 	var fishing_ui_surface = scene.call("_fishing_ui_surface")
-	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, true), true)
+	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, true), skill_id, action_id, area_key, owner_area_id, button)
 	var fishing_drag_event := InputEventMouseMotion.new()
 	fishing_drag_event.position = local_point + Vector2(260.0, 0.0)
 	fishing_drag_event.global_position = button.get_global_rect().position + fishing_drag_event.position
 	fishing_drag_event.relative = Vector2(260.0, 0.0)
-	fishing_drag_event.position = fishing_drag_event.global_position
-	root.push_input(fishing_drag_event, true)
-	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point + Vector2(260.0, 0.0), false), true)
+	fishing_ui_surface.call("_on_fishing_method_button_input", fishing_drag_event, skill_id, action_id, area_key, owner_area_id, button)
+	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point + Vector2(260.0, 0.0), false), skill_id, action_id, area_key, owner_area_id, button)
 	for _i in range(8):
 		await process_frame
 	if str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id:
 		_record("%s drag-release started the fishing action" % context)
 	if bool(button.get_meta("fishing_method_press_active", false)) or bool(button.get_meta("fishing_method_press_dragged", false)):
 		_record("%s drag-release left fishing method press metadata stuck" % context)
-	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, false), true)
+	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, false), skill_id, action_id, area_key, owner_area_id, button)
 	for _i in range(2):
 		await process_frame
 	if bool(button.get_meta("fishing_method_press_active", false)) or bool(button.get_meta("fishing_method_press_dragged", false)):

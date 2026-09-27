@@ -59,6 +59,13 @@ func valid_texture_rect_ref(value) -> TextureRect:
 	return state_object_ref(value) as TextureRect
 
 
+func valid_texture_progress_ref(value) -> TextureProgressBar:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureProgressBar
+
+
 func valid_label_ref(value) -> Label:
 	return state_object_ref(value) as Label
 
@@ -271,6 +278,7 @@ func _prepare_for_shutdown() -> void:
 	_kill_action_card_shutdown_tweens()
 	if host.achievement_overlay_surface != null:
 		host.achievement_overlay_surface.invalidate_home_page()
+	host._skill_swipe_activity_surface()._cancel_preview_prewarm()
 	host._skill_swipe_activity_surface().preview_module_reveal_token += 1
 	host.app_boot_warmup_runtime = null
 	clear_lazy_overlay_registry()
@@ -334,10 +342,6 @@ func _app_lifecycle_uses_focus_resume() -> bool:
 
 
 func _save_for_app_suspend() -> void:
-	# Focus notifications can arrive while Godot is still attaching the scene.
-	# Do not create audio/input children while the parent is locked for setup.
-	if not host.is_node_ready() or not host.startup_initialized or host.shutdown_cleanup_started:
-		return
 	host._clear_page_transient_input_state(true)
 	if is_instance_valid(host.audio_director):
 		host.audio_director._pause_music_for_app_suspend()
@@ -372,9 +376,6 @@ func _write_lifecycle_save_marker(outcome: int) -> void:
 
 
 func _resume_from_app_suspend(offline_from_unix := -1) -> void:
-	if not host.is_node_ready() or not host.startup_initialized:
-		host.app_resume_repair_pending = true
-		return
 	last_process_unix_time = host._unix_now()
 	last_process_monotonic_msec = Time.get_ticks_msec()
 	last_lifecycle_save_monotonic_msec = -1
@@ -383,6 +384,10 @@ func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 	host._crash_report_runtime().write_session_marker("running")
 	host._performance_runtime()._record_battery_governor_activity()
 	host._navigation_shell()._clear_page_switch_input_state(true)
+	if not host.startup_initialized:
+		host.app_resume_repair_pending = true
+		host._audio_director()._restart_music_after_app_resume()
+		return
 	if not _runtime_save_is_safe():
 		host._audio_director()._restart_music_after_app_resume()
 		return

@@ -6,10 +6,14 @@ const TUTORIAL_ARROW_TEXTURE = preload("res://assets/content/ui/tutorial-arrow-c
 const TUTORIAL_ARROW_SIZE := Vector2(130, 210)
 const TUTORIAL_ARROW_SAFE_MARGIN := 12.0
 const TUTORIAL_COPY_FONT_SIZE := 52
+const ACTIVITY_START_HIGHLIGHT_DELAY_SECONDS := 3.0
+const ACTIVITY_START_HIGHLIGHT_FADE_IN_SECONDS := 3.0
 const ACTIVITY_START_HIGHLIGHT_FADE_OUT_SECONDS := 0.42
 const ACTIVITY_START_HIGHLIGHT_GAP := 13.0
 const ACTIVITY_START_HIGHLIGHT_RING_THICKNESS := 9.0
 const ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD := 22.0
+const ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS := 12
+const ACTIVITY_START_HIGHLIGHT_BORDER_COLOR := Color("#ffd84a")
 const ONBOARDING_MASTERY_OVERLAY_TIP_GAP := 23.5
 const ONBOARDING_MASTERY_TIP_ABOVE_CARD_GAP := 56.0
 const ONBOARDING_MEDAL_TIP_LINGER_SECONDS := 3.0
@@ -813,6 +817,35 @@ func remove_onboarding_level_up_tip() -> void:
 	onboarding_level_up_tip_root = null
 
 
+func ensure_onboarding_mastery_tip_note() -> Control:
+	if onboarding_mastery_tip_dismissed:
+		return null
+	_remove_onboarding_stack_mastery_tip_legacy()
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root):
+		return onboarding_mastery_tip_root
+	for node in host.get_tree().get_nodes_in_group("onboarding_mastery_tip_notes"):
+		var existing := node as Control
+		if existing != null and is_instance_valid(existing) and not existing.get_parent() is VBoxContainer:
+			onboarding_mastery_tip_root = existing
+			return existing
+	var starter_card: Dictionary = host._skill_detail_surface()._card_for_action_id(host.TUTORIAL_STARTER_SKILL_ID, host.TUTORIAL_STARTER_ACTION_ID)
+	var card_root := starter_card.get("root") as Control if not starter_card.is_empty() else null
+	var overlay_parent: Control = _activity_start_highlight_overlay_parent()
+	if card_root == null or overlay_parent == null:
+		return null
+	_begin_activity_start_highlight_frame_clip_override()
+	var note := _create_onboarding_overlay_tip(
+		"Gain mastery by completing actions.",
+		"onboarding_mastery_tip_notes",
+		host.BOTTOM_TUTORIAL_TIP_FONT_SIZE
+	)
+	note.modulate.a = 0.0
+	overlay_parent.add_child(note)
+	_position_onboarding_overlay_tip_above_card(note, card_root, ONBOARDING_MASTERY_TIP_ABOVE_CARD_GAP)
+	onboarding_mastery_tip_root = note
+	return note
+
+
 func ensure_onboarding_medal_tip_note() -> Control:
 	if onboarding_medal_tip_shown and onboarding_medal_tip_root == null:
 		return null
@@ -920,6 +953,20 @@ func sync_onboarding_overlay_tips() -> void:
 			sync_onboarding_level_up_tip_position(locked_card)
 	if onboarding_swipe_overlay_tip_root != null and is_instance_valid(onboarding_swipe_overlay_tip_root):
 		_position_onboarding_overlay_tip_near_detail_bottom(onboarding_swipe_overlay_tip_root, 70.0)
+
+
+func _skill_swipe_tip_present() -> bool:
+	if (
+		onboarding_swipe_overlay_tip_root != null
+		and is_instance_valid(onboarding_swipe_overlay_tip_root)
+		and onboarding_swipe_overlay_tip_root.is_inside_tree()
+	):
+		return true
+	for node in host.get_tree().get_nodes_in_group("skill_swipe_tip_notes"):
+		var tip := node as Control
+		if tip != null and is_instance_valid(tip) and tip.is_inside_tree():
+			return true
+	return false
 
 
 func _show_skill_swipe_tip_note_if_needed() -> void:
@@ -1252,6 +1299,77 @@ func sync_onboarding_level_up_tip_position_by_key(_tip_progress: float, card_key
 	sync_onboarding_level_up_tip_position(card)
 
 
+func _activity_start_tutorial_active() -> bool:
+	if host._onboarding_runtime().tutorial_active:
+		return false
+	return (
+		host.current_screen == "skill"
+		and host._onboarding_runtime()._skill_detail_shows_tutorial_tips()
+		and not host._onboarding_runtime().activity_start_tip_seen
+		and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID
+	)
+
+
+func _schedule_activity_start_highlight_if_needed(skill_id: String, action_id: String) -> void:
+	return
+	if skill_id != host.TUTORIAL_STARTER_SKILL_ID or action_id != host.TUTORIAL_STARTER_ACTION_ID:
+		return
+	if not _activity_start_tutorial_active():
+		return
+	if activity_start_highlight_pending or activity_start_highlight_active:
+		return
+	call_deferred("_schedule_activity_start_highlight")
+
+
+func _schedule_activity_start_highlight() -> void:
+	if not _activity_start_tutorial_active():
+		return
+	activity_start_highlight_token += 1
+	activity_start_highlight_pending = true
+	var token := activity_start_highlight_token
+	_run_activity_start_highlight_schedule(token)
+
+
+func _run_activity_start_highlight_schedule(token: int) -> void:
+	await host.get_tree().create_timer(ACTIVITY_START_HIGHLIGHT_DELAY_SECONDS).timeout
+	if token != activity_start_highlight_token:
+		return
+	if not activity_start_highlight_pending or not _activity_start_tutorial_active():
+		activity_start_highlight_pending = false
+		return
+	activity_start_highlight_pending = false
+	_begin_activity_start_highlight_fade_in(token, 0)
+
+
+func _begin_activity_start_highlight_fade_in(token: int, attempt: int) -> void:
+	if token != activity_start_highlight_token or not _activity_start_tutorial_active():
+		return
+	var key: String = host._action_key(host.TUTORIAL_STARTER_SKILL_ID, host.TUTORIAL_STARTER_ACTION_ID)
+	if not host.action_cards.has(key):
+		if attempt >= 90:
+			return
+		await host.get_tree().process_frame
+		_begin_activity_start_highlight_fade_in(token, attempt + 1)
+		return
+	var card := host.action_cards[key] as Dictionary
+	_attach_activity_start_highlight_border(card)
+	activity_start_highlight_active = true
+	activity_start_highlight_card_key = key
+	var border := activity_start_highlight_border
+	if border == null or not is_instance_valid(border):
+		return
+	border.set_glow_alpha(0.0)
+	if activity_start_highlight_fade_tween != null:
+		activity_start_highlight_fade_tween.kill()
+	activity_start_highlight_fade_tween = host.create_tween()
+	activity_start_highlight_fade_tween.tween_method(
+		border.set_glow_alpha,
+		0.0,
+		1.0,
+		ACTIVITY_START_HIGHLIGHT_FADE_IN_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
 func _activity_start_highlight_glow_extent() -> float:
 	return ACTIVITY_START_HIGHLIGHT_GAP + ACTIVITY_START_HIGHLIGHT_RING_THICKNESS + ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD + 8.0
 
@@ -1314,6 +1432,31 @@ func _sync_activity_start_highlight_position() -> void:
 		card_root,
 		overlay_parent
 	)
+
+
+func _attach_activity_start_highlight_border(card: Dictionary) -> void:
+	_remove_activity_start_highlight_border_node()
+	var card_root := card.get("root") as Control
+	if card_root == null or not is_instance_valid(card_root):
+		return
+	var overlay_parent := _activity_start_highlight_overlay_parent()
+	if overlay_parent == null:
+		return
+	_begin_activity_start_highlight_frame_clip_override()
+	var highlight := _StartHighlightRing.new()
+	highlight.name = "ActivityStartHighlightBorder"
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	highlight.z_index = 280
+	highlight.z_as_relative = false
+	highlight.corner_radius = 33.0
+	highlight.gap = ACTIVITY_START_HIGHLIGHT_GAP
+	highlight.ring_thickness = ACTIVITY_START_HIGHLIGHT_RING_THICKNESS
+	highlight.blur_spread = ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD
+	highlight.blur_layers = ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS
+	highlight.set_glow_alpha(0.0)
+	overlay_parent.add_child(highlight)
+	_position_activity_start_highlight_border(highlight, card_root, overlay_parent)
+	activity_start_highlight_border = highlight
 
 
 func _remove_activity_start_highlight_border_node() -> void:
@@ -1428,6 +1571,38 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	return root
 
 
+func _stamina_gauge_tip_label_position() -> Vector2:
+	if (
+		host._skill_detail_surface().detail_regen_circle != null
+		and is_instance_valid(host._skill_detail_surface().detail_regen_circle)
+		and host._skill_detail_surface().detail_header_body != null
+		and is_instance_valid(host._skill_detail_surface().detail_header_body)
+	):
+		var circle_rect: Rect2 = host._skill_detail_surface().detail_regen_circle.get_global_rect()
+		var body_rect: Rect2 = host._skill_detail_surface().detail_header_body.get_global_rect()
+		var label_width: float = host.ONBOARDING_STAMINA_TIP_LABEL_WIDTH
+		var gap := 16.0
+		var local_x := circle_rect.position.x - body_rect.position.x - label_width - gap
+		var local_y := circle_rect.position.y - body_rect.position.y - 52.0
+		return Vector2(local_x, local_y)
+	return Vector2(310, 260)
+
+
+func _add_stamina_cost_tip(parent: Control, fade_in := false) -> void:
+	host.stamina_gauge_tip_root = null
+	if not host._onboarding_runtime()._skill_detail_shows_tutorial_tips():
+		return
+	var root: Control = Control.new()
+	root.custom_minimum_size = Vector2.ZERO
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.visible = false
+	root.z_index = 64
+	root.add_to_group("stamina_cost_tip_notes")
+	parent.add_child(root)
+	host.stamina_gauge_tip_root = root
+	call_deferred("show_blocking_tip", "This is your fight stamina.", "stamina_cost_tip_notes", host._skill_detail_surface().detail_regen_circle)
+
+
 func _fade_tip_control(control: Control, preserve_layout := false, collapse_layout := false) -> void:
 	if control == null or not is_instance_valid(control):
 		return
@@ -1511,6 +1686,20 @@ func _detail_regen_circle_fade_target() -> CanvasItem:
 	return host._skill_detail_surface().detail_regen_circle
 
 
+func _fade_onboarding_header_control(control: CanvasItem, target_alpha: float, duration: float):
+	if control == null or not is_instance_valid(control):
+		return
+	var control_id := control.get_instance_id()
+	var tween: Tween = host.create_tween()
+	tween.tween_method(
+		host._app_lifecycle_runtime().set_canvas_item_alpha_safe.bind(control_id),
+		control.modulate.a,
+		target_alpha,
+		duration
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await host.get_tree().create_timer(maxf(0.0, duration)).timeout
+
+
 func _clear_onboarding_auto_run_message(instant := false) -> void:
 	if onboarding_auto_run_message_root == null or not is_instance_valid(onboarding_auto_run_message_root):
 		onboarding_auto_run_message_root = null
@@ -1532,8 +1721,59 @@ func _wait_for_detail_lazy_stack(token: int, attempt := 0):
 	_wait_for_detail_lazy_stack(token, attempt + 1)
 
 
+func _show_onboarding_auto_run_message(token: int):
+	if token != host._onboarding_runtime().onboarding_header_sequence_token:
+		return
+	_clear_onboarding_auto_run_message(true)
+	await _wait_for_detail_lazy_stack(token)
+	if token != host._onboarding_runtime().onboarding_header_sequence_token:
+		return
+	var stack: VBoxContainer = host._skill_detail_surface()._resolve_detail_lazy_stack()
+	if stack == null:
+		return
+	var content_width: float = host._skill_content_width()
+	var actions_width: float = content_width
+	var note := _bottom_tutorial_tip_note(
+		content_width,
+		"Your action will continue to run automatically.",
+		"onboarding_auto_run_tip_notes"
+	)
+	var entry: Control = host._skill_detail_surface()._detail_eager_add_tutorial_note_after_action(host.TUTORIAL_STARTER_ACTION_ID, note, content_width, actions_width)
+	onboarding_auto_run_message_root = entry if entry != null else note
+	onboarding_auto_run_message_root.modulate = Color(1, 1, 1, 0)
+	await _fade_onboarding_header_control(onboarding_auto_run_message_root, 1.0, host.ACTIVITY_START_TIP_FADE_SECONDS)
+
+
 func _onboarding_fight_action_stats_should_hide() -> bool:
 	return false
+
+
+func _finish_onboarding_regen_intro_fill(circle_id: int, fill_target: float) -> void:
+	var circle = instance_from_id(circle_id)
+	if circle == null or not is_instance_valid(circle):
+		return
+	circle.intro_fill_lock = false
+	circle.target_value = fill_target
+	circle.value_initialized = true
+	circle.set_process(true)
+
+
+func _onboarding_fight_action_stats_targets() -> Array[Control]:
+	var targets: Array[Control] = []
+	for raw_key in host.action_card_keys:
+		var key := str(raw_key)
+		if not host.action_cards.has(key):
+			continue
+		var card: Dictionary = host.action_cards[key]
+		if str(card.get("skill_id", "")) != host.TUTORIAL_STARTER_SKILL_ID:
+			continue
+		var stat_row := _valid_card_control(card, "stat_row")
+		if stat_row != null:
+			targets.append(stat_row)
+		var mastery_bar := _valid_card_control(card, "mastery")
+		if mastery_bar != null and mastery_bar.visible:
+			targets.append(mastery_bar)
+	return targets
 
 
 func _valid_card_control(card: Dictionary, key: String) -> Control:
@@ -1595,3 +1835,59 @@ func _apply_onboarding_fight_action_stats_visibility_all() -> void:
 		if runtime.onboarding_fight_action_stats_revealed:
 			mastery_alpha = 1.0
 		onboarding_mastery_tip_root.modulate = Color(1, 1, 1, mastery_alpha)
+
+
+func _fade_onboarding_fight_action_stats_in(token: int):
+	var runtime = host._onboarding_runtime()
+	if runtime.onboarding_fight_action_stats_revealed or runtime.onboarding_fight_action_stats_fade_running:
+		return
+	var mastery_tip: Control = ensure_onboarding_mastery_tip_note()
+	var targets := _onboarding_fight_action_stats_targets()
+	if targets.is_empty() and mastery_tip == null:
+		runtime.onboarding_fight_action_stats_revealed = true
+		host.save_game()
+		return
+	for target in targets:
+		if target != null and is_instance_valid(target):
+			target.modulate.a = 0.0
+	for raw_key in host.action_card_keys:
+		var key := str(raw_key)
+		if host.action_cards.has(key):
+			var card: Dictionary = host.action_cards[key]
+			if str(card.get("skill_id", "")) == host.TUTORIAL_STARTER_SKILL_ID:
+				host._skill_detail_surface()._sync_action_stat_box_input_enabled(card, false)
+	if mastery_tip != null and is_instance_valid(mastery_tip):
+		mastery_tip.modulate.a = 0.0
+		sync_onboarding_mastery_tip_position()
+	runtime.onboarding_fight_action_stats_fade_running = true
+	var tween: Tween = host.create_tween()
+	tween.set_parallel(true)
+	for target in targets:
+		if target == null or not is_instance_valid(target):
+			continue
+		tween.tween_method(
+			host._app_lifecycle_runtime().set_canvas_item_alpha_safe.bind(target.get_instance_id()),
+			target.modulate.a,
+			1.0,
+			host.ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS
+		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if mastery_tip != null and is_instance_valid(mastery_tip):
+		tween.tween_method(
+			host._app_lifecycle_runtime().set_canvas_item_alpha_safe.bind(mastery_tip.get_instance_id()),
+			mastery_tip.modulate.a,
+			1.0,
+			host.ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS
+		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await host.get_tree().create_timer(host.ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS).timeout
+	runtime.onboarding_fight_action_stats_fade_running = false
+	if token != runtime.onboarding_header_sequence_token:
+		return
+	runtime.onboarding_fight_action_stats_revealed = true
+	for raw_key in host.action_card_keys:
+		var key := str(raw_key)
+		if host.action_cards.has(key):
+			var card: Dictionary = host.action_cards[key]
+			if str(card.get("skill_id", "")) == host.TUTORIAL_STARTER_SKILL_ID:
+				host._skill_detail_surface()._sync_action_stat_box_input_enabled(card, true)
+	host.save_game()
+	runtime.call_deferred("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", host.TUTORIAL_STARTER_SKILL_ID)

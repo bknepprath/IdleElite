@@ -325,7 +325,6 @@ var enemy_art_faces_right := false
 var combat_base_reward_xp := 0
 var combat_par_reward_xp := 0
 var combat_reward_xp := 0
-var kill_xp_fraction := 0.0
 var combat_kill_reward_share := 0.0
 var planned_kill_count := 0
 var kill_count_awarded := 0
@@ -421,8 +420,7 @@ func setup_fighting_level(level: int) -> void:
 	_refresh_combat_reward_xp()
 	var new_max_hp := _hero_max_hp()
 	if hero_ko_timer <= 0.0 and old_max_hp > 0.0:
-		# A UI/stat refresh must not revive a defeated hero before the KO step.
-		hero_hp = clampf(hero_hp / old_max_hp * new_max_hp, 0.0, new_max_hp)
+		hero_hp = clampf(hero_hp / old_max_hp * new_max_hp, 1.0, new_max_hp)
 
 
 func setup_blue_guy_health(current_hp: int, maximum_hp: int, regen_fraction: float) -> void:
@@ -435,7 +433,6 @@ func setup_blue_guy_health(current_hp: int, maximum_hp: int, regen_fraction: flo
 func setup_action(action: Dictionary) -> void:
 	runtime_assets_loaded = false
 	stage_title = str(action.get("name", stage_title))
-	set_meta("combat_action_id", str(action.get("id", "")))
 	enemy_unlock_level = maxi(1, int(action.get("unlock", HERO_STAT_BASELINE_LEVEL)))
 	if title_label != null:
 		title_label.text = stage_title
@@ -530,12 +527,10 @@ func _planned_kill_count_for_reward() -> int:
 
 func _xp_reward_for_kill() -> int:
 	kill_count_awarded += 1
-	if planned_kill_count <= 0 or kill_count_awarded > planned_kill_count:
+	if planned_kill_count <= 0:
 		return 0
-	# Small rewards retain fractional credit through knockouts and round restarts.
-	kill_xp_fraction += float(kill_xp_budget()) / float(planned_kill_count)
-	var payout := maxi(0, int(floor(kill_xp_fraction + 0.000001)))
-	kill_xp_fraction = maxf(0.0, kill_xp_fraction - payout)
+	var target := mini(kill_xp_budget(), int(floor(float(kill_xp_budget()) * float(kill_count_awarded) / float(planned_kill_count))))
+	var payout := maxi(0, target - kill_xp_already_awarded)
 	kill_xp_already_awarded += payout
 	return payout
 
@@ -595,10 +590,6 @@ func _apply_enemy_art_path(idle_art_path: String) -> void:
 
 
 func _apply_enemy_preview_art_path(idle_art_path: String) -> void:
-	if enemy_id == "chicken-swarm":
-		cover_clean_chicken = load_png_texture(CHICKEN_COVER_CLEAN_PATH)
-		idle_chicken = cover_clean_chicken
-		return
 	if idle_art_path.is_empty():
 		return
 	var idle_res := _asset_to_res_path(idle_art_path)
@@ -868,8 +859,6 @@ func set_active_fight(active_fight: bool) -> void:
 	if active == active_fight:
 		return
 	active = active_fight
-	# The selected skill page may be disabled while this fight keeps running.
-	process_mode = Node.PROCESS_MODE_PAUSABLE if active else Node.PROCESS_MODE_INHERIT
 	if active:
 		_seed_fight()
 	else:
@@ -2494,6 +2483,7 @@ func _apply_enemy_contact_damage(chicken: Dictionary) -> void:
 	hero_hurt_cooldown = 0.0 if enemy_id == "guys" else 0.42
 	if enemy_id == "werewolves":
 		_queue_effect("wolf-claw-tear", hero_pos, chicken.get("roll_dir", Vector2.ZERO) as Vector2)
+	_add_float("CRIT! -%d" % int(round(damage)) if enemy_id == "werewolves" else "-%d" % int(round(damage)), _norm_to_stage(hero_pos) + Vector2(26.0, -74.0) * _stage_scale(), DANGER)
 
 
 func _apply_vampire_bite(chicken: Dictionary) -> void:
@@ -2744,6 +2734,8 @@ func _start_hero_attack() -> bool:
 					_add_float("+%d XP" % xp_reward, _norm_to_stage(chicken_pos) + Vector2(10.0, -72.0) * _stage_scale(), REWARD_GREEN)
 				if not end_wave_active:
 					_maybe_spawn_food_drop(chicken_pos)
+			elif enemy_id != "chicken-swarm":
+				_add_float("-%d" % int(hero_damage), _norm_to_stage(chicken_pos) + Vector2(0.0, -92.0 if use_uppercut else -74.0) * _stage_scale(), DANGER, 0.82 if use_uppercut else 0.72)
 			chickens[i] = chicken
 			if hp <= 0.0 and end_wave_active:
 				_try_complete_end_wave()
@@ -3273,8 +3265,6 @@ func _draw() -> void:
 	var shake_offset := _module_shake_offset(s)
 	draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 	_draw_arena(s)
-	if active:
-		_draw_diamond_title(s)
 	_draw_wave_indicator(s)
 	if active or arena_shape != "diamond":
 		_draw_smoke_puffs(s)
@@ -3294,19 +3284,7 @@ func _draw() -> void:
 		_draw_punishment_overlay(s)
 	if cover_open_amount < 0.995:
 		_draw_inactive_cover(s)
-	if not active:
-		_draw_diamond_title(s)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-
-func _draw_diamond_title(s: float) -> void:
-	if arena_shape != "diamond":
-		return
-	var points := _diamond_arena_points()
-	var edge := points[1] - points[0]
-	var outward := edge.normalized().rotated(-PI * 0.5)
-	var title_center := points[0].lerp(points[1], 0.60) + outward * 58.0 * s
-	_draw_centered_fit_text_rotated(stage_title.trim_prefix("Fight "), title_center, edge.length() * 0.72, 60, WHITE, 14, INK, edge.angle(), 1.0)
 
 
 func _draw_arena(s: float) -> void:
@@ -3397,10 +3375,31 @@ func _draw_diamond_prism_faces(front: PackedVector2Array, back: PackedVector2Arr
 		draw_colored_polygon(PackedVector2Array([front[i], front[next], back[next], back[i]]), depth_color)
 
 
+func _draw_diamond_depth_caps(front: PackedVector2Array, offset: Vector2, s: float) -> void:
+	var bottom := _diamond_extreme_y_point(front, true) + offset
+	_draw_ellipse(bottom, Vector2(26.0, 15.0) * s, _arena_depth_color_for_enemy(enemy_id))
+
+
+func _draw_diamond_visible_back_outline(front: PackedVector2Array, back: PackedVector2Array, offset: Vector2, s: float) -> void:
+	for i in range(front.size()):
+		var next := (i + 1) % front.size()
+		var normal := _diamond_edge_outward_normal(front[i], front[next])
+		if normal.dot(offset) > 0.15:
+			draw_line(back[i], back[next], INK, 8.0 * s, true)
+
+
 func _draw_diamond_front_and_depth_outline(front: PackedVector2Array, s: float) -> void:
 	var closed := PackedVector2Array(front)
 	closed.append(front[0])
 	draw_polyline(closed, INK, 8.0 * s, true)
+
+
+func _draw_diamond_bottom_back_outline(front: PackedVector2Array, offset: Vector2, s: float) -> void:
+	for i in range(front.size()):
+		var next := (i + 1) % front.size()
+		if not _diamond_depth_edge_visible(front[i], front[next], offset):
+			continue
+		draw_line(front[i] + offset, front[next] + offset, INK, 8.0 * s, true)
 
 
 func _draw_diamond_visible_depth_outline(back: PackedVector2Array, s: float) -> void:
@@ -3415,6 +3414,21 @@ func _draw_diamond_visible_depth_outline(back: PackedVector2Array, s: float) -> 
 			draw_line(back[i], back[next], INK, 8.0 * s, true)
 
 
+func _diamond_lower_depth_path(points: PackedVector2Array, cutoff_y: float) -> PackedVector2Array:
+	var path := PackedVector2Array()
+	for i in range(points.size()):
+		var current := points[i]
+		var next := points[(i + 1) % points.size()]
+		if current.y >= cutoff_y:
+			path.append(current)
+		if (current.y < cutoff_y and next.y >= cutoff_y) or (current.y >= cutoff_y and next.y < cutoff_y):
+			var t := (cutoff_y - current.y) / (next.y - current.y)
+			path.append(current.lerp(next, t))
+	if path.size() > 1 and path[0].x > path[path.size() - 1].x:
+		path.reverse()
+	return path
+
+
 func _draw_diamond_depth_corner_connectors(front: PackedVector2Array, offset: Vector2, s: float) -> void:
 	for i in range(front.size()):
 		var next := (i + 1) % front.size()
@@ -3427,6 +3441,33 @@ func _draw_diamond_depth_corner_connectors(front: PackedVector2Array, offset: Ve
 
 func _diamond_depth_offset(_s: float) -> Vector2:
 	return ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET * 2.0
+
+
+func _diamond_extreme_x_point(points: PackedVector2Array, right_side: bool) -> Vector2:
+	var best := points[0]
+	for point in points:
+		if (right_side and point.x > best.x) or (not right_side and point.x < best.x):
+			best = point
+	return best
+
+
+func _diamond_extreme_y_point(points: PackedVector2Array, bottom_side: bool) -> Vector2:
+	var best := points[0]
+	for point in points:
+		if (bottom_side and point.y > best.y) or (not bottom_side and point.y < best.y):
+			best = point
+	return best
+
+
+func _diamond_extreme_depth_connector_point(points: PackedVector2Array, positive: bool) -> Vector2:
+	var best := points[0]
+	var best_score := best.x - best.y
+	for point in points:
+		var score := point.x - point.y
+		if (positive and score > best_score) or (not positive and score < best_score):
+			best = point
+			best_score = score
+	return best
 
 
 func _rounded_diamond_points(points: PackedVector2Array, corner_radius: float, segments: int) -> PackedVector2Array:
@@ -3450,6 +3491,15 @@ func _rounded_diamond_points(points: PackedVector2Array, corner_radius: float, s
 	return rounded
 
 
+func _draw_diamond_depth_outlines(front: PackedVector2Array, back: PackedVector2Array, visible_edges: Array[bool], travel: Vector2, s: float) -> void:
+	var width := 8.0 * s
+	for i in range(front.size()):
+		if not bool(visible_edges[i]):
+			continue
+		var next := (i + 1) % front.size()
+		draw_line(back[i], back[next], INK, width, true)
+
+
 func _diamond_edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 	var edge := p1 - p0
 	if edge.length_squared() <= 0.001:
@@ -3460,6 +3510,12 @@ func _diamond_edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 func _diamond_depth_edge_visible(p0: Vector2, p1: Vector2, travel: Vector2) -> bool:
 	var normal := _diamond_edge_outward_normal(p0, p1)
 	return normal.dot(travel) > 0.15
+
+
+func _diamond_side_face_visible(normal: Vector2, travel: Vector2) -> bool:
+	if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
+		return false
+	return normal.x > 0.08 or normal.y > 0.56
 
 
 func _diamond_half_width_at_y(y: float, points: PackedVector2Array) -> float:
@@ -3530,7 +3586,7 @@ func _draw_wave_indicator(s: float) -> void:
 	var arena := _arena_rect(s)
 	var progress := clampf(displayed_wave_progress, 0.0, 1.0)
 	var fill_color := _wave_indicator_color(progress)
-	var label := "Cleared" if area_clear_restart_timer > 0.0 else ("Final wave" if end_wave_active else "Wave %d time" % (wave_index + 1))
+	var label := "Cleared" if area_clear_restart_timer > 0.0 else ("End Wave" if end_wave_active else "Wave %d" % (wave_index + 1))
 	if arena_shape == "diamond":
 		_draw_diamond_wave_indicator(progress, fill_color, label, s)
 		return
@@ -3575,7 +3631,7 @@ func _draw_diamond_wave_indicator(progress: float, fill_color: Color, label: Str
 
 
 func _draw_player_stat_hud(s: float) -> void:
-	if not active:
+	if not active or hero_ko_timer > 0.0:
 		return
 	if arena_shape == "diamond" and diamond_stats_tucked:
 		return
@@ -3586,8 +3642,8 @@ func _draw_player_stat_hud(s: float) -> void:
 	var text_size := int(clampf(arena.size.y * (0.188 if arena_shape == "diamond" else 0.148), 34.0, 57.0))
 	var values := [
 		"HP %d" % int(round(hero_hp)),
-		"SPD %.2f/s" % (1.0 / maxf(0.01, _hero_attack_interval())),
-		"DMG %s" % _hero_attack_damage_range_text()
+		"DMG %s" % _hero_attack_damage_range_text(),
+		"SPD %.2f/s" % (1.0 / maxf(0.01, _hero_attack_interval()))
 	] if arena_shape == "diamond" else [
 		"DMG %s" % _hero_attack_damage_range_text(),
 		"SPD %.2f/s" % (1.0 / maxf(0.01, _hero_attack_interval())),
@@ -3599,11 +3655,6 @@ func _draw_player_stat_hud(s: float) -> void:
 	var bottom_pad := 34.0 * s if arena_shape == "diamond" else clampf(arena.size.y * 0.108, 26.0, 36.0)
 	var top_y := stats_plate.end.y - bottom_pad - row_gap * 2.0 if arena_shape == "diamond" else arena.end.y - bottom_pad - row_gap * 2.0
 	var text_stroke := int(maxf(10.0, 14.0 * s))
-	if arena_shape == "diamond":
-		text_size = 32
-		text_stroke = 6
-		row_gap = float(text_size) + 3.0
-		top_y = stats_plate.end.y - 22.0 * s - font.get_descent(text_size) - row_gap * 2.0
 	for i in range(3):
 		var y := top_y + row_gap * float(i)
 		_draw_left_text(font, values[i], Vector2(left_x, y), text_size, WHITE, text_stroke, INK)
@@ -4153,18 +4204,6 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 	_draw_ellipse(shadow_center, shadow_radii, Color(0, 0, 0, 0.17 * alpha))
 	var transform_thrash := sin(elapsed_seconds * 35.0 + id_phase) * 0.055 if vampire_giant and float(chicken.get("transform_timer", 0.0)) > 0.0 else 0.0
 	var sprite_rotation := -hit_flash * 0.10 + death_rotation + knock_rotation + transform_thrash
-	var visible_bounds := Rect2()
-	if arena_shape == "diamond":
-		# Position the rotated visible bounds inside the module; never rescale frames.
-		var content := _texture_content_rect(texture, target_size)
-		var transform := Transform2D(sprite_rotation, Vector2.ZERO)
-		if face_right != enemy_art_faces_right:
-			transform.x = -transform.x
-		var bounds := transform * content
-		visible_bounds = bounds
-		var arena_bounds := _arena_rect(s).grow(-18.0 * s)
-		center.x = clampf(center.x, arena_bounds.position.x - bounds.position.x, arena_bounds.end.x - bounds.end.x)
-		center.y = clampf(center.y, arena_bounds.position.y - bounds.position.y, arena_bounds.end.y - bounds.end.y)
 	var shield_up := enemy_id == "goblins" and bool(chicken.get("shield_up", false))
 	if shield_up:
 		_draw_goblin_shield(chicken, center, s, scale, face_right, alpha)
@@ -4178,12 +4217,7 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 	if not dead and hp < max_hp - 0.01:
 		var health_width := 64.0 * s if arena_shape == "diamond" else 78.0 * s * scale
 		var head_side := (1.0 if face_right else -1.0) if enemy_id == "dragons" else 0.0
-		var health_center := _enemy_health_bar_center(center, sprite_size, sprite_rotation, s, head_side)
-		if arena_shape == "diamond":
-			health_center = center + Vector2(visible_bounds.get_center().x + visible_bounds.size.x * 0.30 * head_side, visible_bounds.position.y - 12.0 * s)
-			health_center.x = clampf(health_center.x, health_width * 0.5 + 8.0 * s, size.x - health_width * 0.5 - 8.0 * s)
-			health_center.y = maxf(18.0 * s, health_center.y)
-		_draw_local_health(health_center, health_width, hp / max_hp, DANGER, s)
+		_draw_local_health(_enemy_health_bar_center(center, sprite_size, sprite_rotation, s, head_side), health_width, hp / max_hp, DANGER, s)
 
 
 func _enemy_death_bounce_pose(dead_timer: float, face_right: bool, bounce_scale := 1.0, bounce_direction := Vector2.RIGHT) -> Vector2:
@@ -4212,7 +4246,7 @@ func _texture_content_rect(texture: Texture2D, target_size: Vector2) -> Rect2:
 	if texture_used_rect_cache.has(texture):
 		used_rect = texture_used_rect_cache[texture] as Rect2i
 	else:
-		var image := _texture_uncompressed_image(texture)
+		var image := texture.get_image()
 		if image != null and image.is_compressed() and image.decompress() != OK:
 			image = null
 		used_rect = image.get_used_rect() if image != null else Rect2i(Vector2i.ZERO, Vector2i(source_size))
@@ -4220,22 +4254,6 @@ func _texture_content_rect(texture: Texture2D, target_size: Vector2) -> Rect2:
 	var fit_scale := minf(target_size.x / source_size.x, target_size.y / source_size.y)
 	var draw_size := source_size * fit_scale
 	return Rect2(Vector2(used_rect.position) * fit_scale - draw_size * 0.5, Vector2(used_rect.size) * fit_scale)
-
-
-func _texture_uncompressed_image(texture: Texture2D) -> Image:
-	# AtlasTexture.get_image() attempts to blit before callers can decompress it.
-	if texture is AtlasTexture:
-		var atlas_texture := texture as AtlasTexture
-		var source := _texture_uncompressed_image(atlas_texture.atlas)
-		if source == null:
-			return null
-		return source.get_region(Rect2i(atlas_texture.region))
-	if texture == null:
-		return null
-	var image := texture.get_image()
-	if image != null and image.is_compressed() and image.decompress() != OK:
-		return null
-	return image
 
 
 func _enemy_transient_sprite_scale(scale_amount: float) -> float:
@@ -4409,43 +4427,17 @@ func _draw_diamond_inactive_cover(s: float) -> void:
 	if cover_chicken == null:
 		return
 	var badge_alpha := clampf(1.0 - t * 1.8, 0.0, 1.0)
-	_draw_enemy_portrait(cover_chicken, closed_points, badge_alpha)
-	draw_polyline(closed_points, INK, 8.0 * s, true)
-
-
-func _draw_enemy_portrait(texture: Texture2D, mask: PackedVector2Array, alpha: float) -> void:
-	# Authored framing of the static cover art, independent of animation-frame bounds.
-	var framing := {
-		"chicken-swarm": Vector3(0.55, 0.65, 1.30),
-		"goblins": Vector3(0.48, 0.30, 0.82),
-		"rouses": Vector3(0.59, 0.60, 1.45),
-		"guys": Vector3(0.51, 0.27, 0.70),
-		"werewolves": Vector3(0.60, 0.35, 1.00),
-		"cave-trolls": Vector3(0.52, 0.47, 1.30),
-		"giants": Vector3(0.54, 0.28, 1.00),
-		"vampires": Vector3(0.50, 0.27, 1.00),
-		"dragons": Vector3(0.70, 0.53, 1.10),
-	}.get(enemy_id, Vector3(0.5, 0.35, 1.35)) as Vector3
-	var draw_size := texture.get_size() * (size.x * framing.z / texture.get_width())
-	var target := Rect2(size * Vector2(0.5, 0.49) - Vector2(framing.x, framing.y) * draw_size, draw_size)
-	var quad := PackedVector2Array([target.position, Vector2(target.end.x, target.position.y), target.end, Vector2(target.position.x, target.end.y)])
-	var source_texture := texture
-	var source_rect := Rect2(Vector2.ZERO, texture.get_size())
-	if texture is AtlasTexture:
-		source_texture = (texture as AtlasTexture).atlas
-		source_rect = (texture as AtlasTexture).region
-	for polygon in Geometry2D.intersect_polygons(mask, quad):
-		var uvs := PackedVector2Array()
-		for point in polygon:
-			uvs.append((source_rect.position + (point - target.position) / target.size * source_rect.size) / source_texture.get_size())
-		draw_polygon(polygon, PackedColorArray([Color(1, 1, 1, alpha)]), uvs, source_texture)
+	var badge_center := size * 0.5 + Vector2(0.0, 5.0) * s
+	var chicken_size := Vector2(size.x * 0.30, size.y * 0.28)
+	_draw_ellipse(badge_center + Vector2(0, chicken_size.y * 0.35), Vector2(chicken_size.x * 0.34, chicken_size.y * 0.10), Color(0, 0, 0, 0.22 * badge_alpha))
+	_draw_character_texture(cover_chicken, badge_center, chicken_size, sin(elapsed_seconds * 0.8) * 0.010, badge_alpha, false, false)
 
 
 func _layout_title_label(s: float) -> void:
 	var top_rect := _cover_top_rect(s)
 	title_label.position = top_rect.position + Vector2(30.0, 12.0) * s
 	title_label.size = Vector2(maxf(0.0, top_rect.size.x - 60.0 * s), maxf(60.0, 108.0 * s))
-	title_label.visible = arena_shape != "diamond" and cover_open_amount < 0.995
+	title_label.visible = cover_open_amount < 0.995
 	title_label.modulate.a = clampf(1.0 - _ease_garage_door(cover_open_amount) * 1.8, 0.0, 1.0)
 
 
@@ -4726,16 +4718,16 @@ func _draw_diamond_texture_cover(texture: Texture2D, rect: Rect2, points: Packed
 func _draw_punishment_overlay(s: float) -> void:
 	var arena := _arena_rect(s)
 	var screen_alpha := _ko_screen_alpha()
-	var message_center := Vector2(arena.get_center().x, arena.position.y + arena.size.y * 0.28)
+	var message_center := Vector2(arena.get_center().x, arena.position.y + arena.size.y * 0.20)
 	var wiggle := sin(elapsed_seconds * 2.0) * 0.035
 	var pop := 1.0 + sin(elapsed_seconds * 2.0 + 0.7) * 0.018
 	_draw_centered_fit_text_rotated(
 		"KNOCKED OUT",
 		message_center,
 		arena.size.x * 0.58,
-		60,
+		72,
 		_fade_color(Color("#fff8db"), screen_alpha),
-		12,
+		18,
 		_fade_color(INK, screen_alpha),
 		wiggle,
 		pop
@@ -4743,13 +4735,12 @@ func _draw_punishment_overlay(s: float) -> void:
 	var fill_pct := 1.0 - clampf(hero_ko_timer / HERO_KO_DURATION, 0.0, 1.0)
 	var meter_size := Vector2(arena.size.x * 0.42, 32.0 * s)
 	var meter_radius := meter_size.y * 0.5
-	var meter := Rect2(Vector2(arena.get_center().x - meter_size.x * 0.5, arena.position.y + arena.size.y * 0.38), meter_size)
+	var meter := Rect2(Vector2(arena.get_center().x - meter_size.x * 0.5, arena.position.y + arena.size.y * 0.29), meter_size)
 	draw_round_rect(Rect2(meter.position + Vector2(0.0, 5.0) * s, meter.size), meter_radius, Color(0, 0, 0, 0.30 * screen_alpha))
 	draw_round_rect(meter, meter_radius, _fade_color(Color("#351814"), screen_alpha))
 	var fill_rect := Rect2(meter.position, Vector2(meter.size.x * fill_pct, meter.size.y))
 	draw_round_rect(fill_rect, meter_radius, _fade_color(Color("#20d47a"), screen_alpha))
 	draw_round_outline(meter, meter_radius, _fade_color(INK, screen_alpha), maxf(4.0, 6.0 * s))
-	_draw_centered_text("Restart in %ds" % int(ceil(hero_ko_timer)), Vector2(arena.get_center().x, meter.end.y + 36.0 * s), 52, _fade_color(WHITE, screen_alpha), 8, _fade_color(INK, screen_alpha))
 
 
 func _ko_banner_rect(s: float) -> Rect2:
@@ -4947,25 +4938,15 @@ func _hero_attack_damage_range_text() -> String:
 
 
 func _hero_attack_interval() -> float:
-	return maxf(0.34, HERO_BASE_ATTACK_INTERVAL / pow(HERO_LEVEL_MULT, maxf(0.0, _hero_combat_level() - enemy_unlock_level)))
-
-
-func _hero_combat_level() -> float:
-	# Keep the unlock challenge, but reach useful combat strength after five levels.
-	var anchor := mini(99, enemy_unlock_level + 5)
-	var anchor_strength := maxf(float(anchor), lerpf(float(enemy_unlock_level), 99.0, 0.65))
-	if fighting_level <= anchor:
-		return lerpf(float(enemy_unlock_level), anchor_strength, clampf(float(fighting_level - enemy_unlock_level) / maxi(1, anchor - enemy_unlock_level), 0.0, 1.0))
-	return lerpf(anchor_strength, 99.0, clampf(float(fighting_level - anchor) / maxi(1, 99 - anchor), 0.0, 1.0))
+	return maxf(0.34, HERO_BASE_ATTACK_INTERVAL / pow(HERO_LEVEL_MULT, maxi(0, fighting_level - enemy_unlock_level)))
 
 
 func _hero_level_multiplier() -> float:
-	var combat_level := _hero_combat_level()
-	var multiplier := pow(HERO_LEVEL_MULT, maxf(0.0, combat_level - HERO_STAT_BASELINE_LEVEL))
+	var multiplier := pow(HERO_LEVEL_MULT, maxf(0.0, float(fighting_level - HERO_STAT_BASELINE_LEVEL)))
 	if enemy_id == "guys":
-		multiplier *= pow(GUYS_LEVEL_ADVANTAGE_MULT, maxf(0.0, combat_level - GUYS_UNLOCK_LEVEL))
+		multiplier *= pow(GUYS_LEVEL_ADVANTAGE_MULT, maxf(0.0, float(fighting_level - GUYS_UNLOCK_LEVEL)))
 	if enemy_id == "giants":
-		multiplier *= pow(GIANTS_LEVEL_ADVANTAGE_MULT, maxf(0.0, combat_level - enemy_unlock_level))
+		multiplier *= pow(GIANTS_LEVEL_ADVANTAGE_MULT, maxf(0.0, float(fighting_level - enemy_unlock_level)))
 	return multiplier
 
 

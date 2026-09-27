@@ -340,6 +340,15 @@ func _draw_texture_fit(texture: Texture2D, rect: Rect2) -> void:
 	draw_texture_rect(texture, Rect2(rect.get_center() - fitted * 0.5, fitted), false)
 
 
+func _draw_texture_cover(texture: Texture2D, rect: Rect2) -> void:
+	var texture_size := texture.get_size()
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+		return
+	var scale := maxf(rect.size.x / texture_size.x, rect.size.y / texture_size.y)
+	var fitted := texture_size * scale
+	draw_texture_rect(texture, Rect2(rect.get_center() - fitted * 0.5, fitted), false)
+
+
 func _draw_rounded_texture_cover(texture: Texture2D, rect: Rect2, radius: float) -> void:
 	var texture_size := texture.get_size()
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
