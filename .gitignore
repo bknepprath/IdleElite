@@ -48,3 +48,6 @@ tmp/
 /.codex-*.png.import
 .playwright-cli/
 .claude/settings.local.json
+
+# Godot generates import metadata for anything under docs/; it is never exported.
+docs/**/*.import
