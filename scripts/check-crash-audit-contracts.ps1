@@ -142,6 +142,7 @@ Assert-True ($assetPackGradleText -match 'com\.android\.asset-pack') "The instal
 Assert-True ($assetPackGradleText -match 'deliveryType\s*=\s*"install-time"') "The Android asset pack must use install-time delivery."
 Assert-True ($releaseBuildText -match 'window/stretch/mode=\"viewport\"') "The Android release builder must guard the viewport stretch mode."
 Assert-True ($releaseBuildText -match 'Android release blocked:') "The Android release builder must fail clearly when the viewport guard is violated."
+Assert-True ($safeRunnerText -match 'idle-elite-godot-user-') "Headless Godot runs must use isolated temporary user data so tests never touch the real desktop save."
 Assert-True ($releaseBuildText -match 'check-firebase-migration-readiness\.ps1') "The Android release builder must require fresh external Firebase migration evidence."
 
 $directGodotLaunches = New-Object System.Collections.Generic.List[string]
