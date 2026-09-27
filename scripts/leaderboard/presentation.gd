@@ -1,24 +1,18 @@
 class_name LeaderboardPresentation
-
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
-
 const ICON := "res://assets/content/ui/leaderboard-podium-icon.png"
 const BOTTOM_SCROLL_PAD := 360
 const BASE_FRAME_WIDTH := 1080
 const PLAYER_OVERLAY_HEIGHT := 410
-
 var host
-
 class OrganicLeaderboardBorder extends Control:
 	var border_color := Color("#77c9ff")
 	var paper_color := Color("#f8f1e5")
-
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
 			queue_redraw()
-
 	func _draw() -> void:
 		if size.x <= 220.0 or size.y <= 320.0:
 			return
@@ -29,7 +23,6 @@ class OrganicLeaderboardBorder extends Control:
 		if not paper_edge.is_empty():
 			paper_edge.append(paper_edge[0])
 			draw_polyline(paper_edge, paper_color, 43.0, true)
-
 	func _inner_paper_shape() -> PackedVector2Array:
 		var points := []
 		var left_top_side := Vector2(52.0, 260.0)
@@ -52,13 +45,11 @@ class OrganicLeaderboardBorder extends Control:
 		_append_leaderboard_curve(points, left_bottom, Vector2(56.0, size.y * 0.86), Vector2(36.0, size.y * 0.64), left_mid, 128)
 		_append_leaderboard_curve(points, left_mid, Vector2(59.0, size.y * 0.36), Vector2(39.0, size.y * 0.30), left_top_side, 128)
 		return PackedVector2Array(points)
-
 	func _append_leaderboard_curve(points: Array, p0: Vector2, c1: Vector2, c2: Vector2, p3: Vector2, steps: int) -> void:
 		for i in range(1, steps + 1):
 			var t := float(i) / float(steps)
 			var inv := 1.0 - t
 			points.append(inv * inv * inv * p0 + 3.0 * inv * inv * t * c1 + 3.0 * inv * t * t * c2 + t * t * t * p3)
-
 static func dropdown(color: Color, pressed := false, ink_color := Color.BLACK) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color.darkened(0.06 if pressed else 0.0)
@@ -73,8 +64,6 @@ static func dropdown(color: Color, pressed := false, ink_color := Color.BLACK) -
 	style.shadow_size = 5 if not pressed else 4
 	style.shadow_offset = Vector2(0, 4 if not pressed else 2)
 	return style
-
-
 static func player_card(color: Color, pressed := false, ink_color := Color.BLACK) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color.darkened(0.06 if pressed else 0.0)
@@ -89,8 +78,6 @@ static func player_card(color: Color, pressed := false, ink_color := Color.BLACK
 	style.shadow_size = 6 if not pressed else 5
 	style.shadow_offset = Vector2(0, 5 if not pressed else 2)
 	return style
-
-
 static func rank_badge() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0)
@@ -101,12 +88,8 @@ static func rank_badge() -> StyleBoxFlat:
 	style.content_margin_top = 0
 	style.content_margin_bottom = 0
 	return style
-
-
 func _init(host_ref = null) -> void:
 	host = host_ref
-
-
 func _show_leaderboard() -> void:
 	if not host._navigation_shell()._top_level_nav_allowed("leaderboard"):
 		return
@@ -200,19 +183,14 @@ func _leaderboard_page_frame(rows: Array) -> Control:
 func _leaderboard_frame_width() -> float:
 	return maxf(BASE_FRAME_WIDTH, host._current_canvas_size().x)
 
-
 func _leaderboard_page_frame_height(row_count: int) -> float:
 	var content_height = 520.0 + float(row_count) * 130.0 + float(BOTTOM_SCROLL_PAD) + PLAYER_OVERLAY_HEIGHT + 64.0
 	return maxf(content_height, host._current_canvas_size().y)
 
-
 func _leaderboard_player_overlay() -> Control:
 	var overlay := Control.new()
 	var content_width = host._skill_content_width()
-	overlay.anchor_left = 0.5
-	overlay.anchor_right = 0.5
-	overlay.anchor_top = 1.0
-	overlay.anchor_bottom = 1.0
+	overlay.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	overlay.offset_left = -content_width * 0.5
 	overlay.offset_right = content_width * 0.5
 	overlay.offset_top = -float(PLAYER_OVERLAY_HEIGHT)
@@ -227,7 +205,6 @@ func _leaderboard_player_overlay() -> Control:
 	card.offset_bottom = -12
 	overlay.add_child(card)
 	return overlay
-
 
 func _leaderboard_category_dropdown() -> OptionButton:
 	var dropdown := OptionButton.new()
@@ -261,7 +238,6 @@ func _leaderboard_category_dropdown() -> OptionButton:
 	dropdown.item_selected.connect(_leaderboard_category_selected)
 	return dropdown
 
-
 func _leaderboard_category_selected(index: int) -> void:
 	var category_id: String = host.leaderboard_state.select_category_index(index)
 	if category_id.is_empty():
@@ -269,15 +245,13 @@ func _leaderboard_category_selected(index: int) -> void:
 	host._online_runtime().fetch_leaderboard_category(category_id)
 	_refresh_if_visible()
 
-
 func _refresh_if_visible() -> void:
-	if host.current_screen != "leaderboard" or host.skills_content == null:
+	if host.current_screen != "leaderboard" or host.skills_content == null or not is_instance_valid(host.skills_content):
 		return
 	host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
 	host._clear(host.skills_content)
 	_render_leaderboard_page()
 	host._navigation_shell()._update_page_visibility()
-
 
 func _leaderboard_player_card() -> Control:
 	var leaderboard_state = host.leaderboard_state
@@ -418,7 +392,6 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 	badge.add_child(label)
 	return badge
 
-
 func _leaderboard_empty_state() -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(0, 210)
@@ -451,7 +424,6 @@ func _leaderboard_empty_state() -> Control:
 	stack.add_child(detail)
 	return card
 
-
 static func format_score(
 	valid_category_id: String,
 	score: int,
@@ -474,18 +446,16 @@ static func format_score(
 		return "Lv %s  |  %s XP" % [level, GameFormatting.compact_number(float(score), 4)]
 	return "%s XP" % GameFormatting.compact_number(float(score), 4)
 
-
 static func player_rank_text(score: int, rows: Array, top_count: int) -> String:
 	if score <= 0:
 		return "unranked"
 	var rank := 1
 	for row in rows:
-		if int((row as Dictionary).get("score", 0)) > score:
+		if typeof(row) == TYPE_DICTIONARY and int((row as Dictionary).get("score", 0)) > score:
 			rank += 1
 	if rank > top_count:
 		return "#%s+" % top_count
 	return "#%s" % rank
-
 
 static func submit_status_title(
 	god_mode_save_tainted: bool,
@@ -506,9 +476,7 @@ static func submit_status_title(
 		return "Scores ready"
 	if submit_in_flight:
 		return "Updating..."
-	if last_submit_unix <= 0:
-		return "Scores ready"
-	if submit_ready:
+	if last_submit_unix <= 0 or submit_ready:
 		return "Scores ready"
 	return "Scores saved"
 

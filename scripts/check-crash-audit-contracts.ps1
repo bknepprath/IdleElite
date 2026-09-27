@@ -21,7 +21,8 @@ function Convert-ToProjectRelativePath {
 
     $rootPath = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/")
     $fullPath = (Resolve-Path -LiteralPath $Path).Path
-    Assert-True ($fullPath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) "Path is outside project root: $Path"
+    $withinRoot = $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or $fullPath.StartsWith("$rootPath\", [System.StringComparison]::OrdinalIgnoreCase)
+    Assert-True $withinRoot "Path is outside project root: $Path"
     $fullPath.Substring($rootPath.Length).TrimStart("\", "/").Replace("\", "/")
 }
 
@@ -168,9 +169,6 @@ $sceneFiles = @(
 )
 foreach ($sceneFile in $sceneFiles) {
     $text = Get-Content -LiteralPath (Join-Path $projectRoot $sceneFile) -Raw
-    if ($null -eq $text) {
-        $text = ""
-    }
     foreach ($match in [regex]::Matches($text, '\bpath="(?<path>res://[^"]+)"')) {
         Assert-ResourcePathExists $match.Groups["path"].Value $sceneFile
     }
@@ -188,9 +186,7 @@ $jsonFiles = @(
 )
 foreach ($jsonFile in $jsonFiles) {
     $raw = Get-Content -LiteralPath (Join-Path $projectRoot $jsonFile) -Raw
-    if ($null -eq $raw) {
-        $raw = ""
-    }
+    Assert-True (-not [string]::IsNullOrWhiteSpace($raw)) "$jsonFile must contain JSON."
     try {
         $null = $raw | ConvertFrom-Json
     } catch {

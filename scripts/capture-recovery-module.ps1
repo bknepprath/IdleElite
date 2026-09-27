@@ -4,7 +4,6 @@ param(
     [int]$WindowWidth = 1080,
     [int]$WindowHeight = 1920
 )
-
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -13,15 +12,12 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $captureDir = Join-Path $projectRoot ".codex-tmp\recovery-modules"
 $capturePath = Join-Path $captureDir "recovery-wrap-hands-desktop-${WindowWidth}x${WindowHeight}.png"
 $scriptPath = Join-Path $captureDir "capture_recovery_module.gd"
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
 Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue
-
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousCapturePath = $env:IDLE_ELITE_RECOVERY_CAPTURE_PATH
 $beforeProcesses = @(Get-HeadlessGodotProcesses | Select-Object -ExpandProperty ProcessId)
-
 try {
     $env:GODOT_RUN_TIMEOUT_SECONDS = "180"
     $env:IDLE_ELITE_RECOVERY_CAPTURE_PATH = $capturePath
@@ -97,6 +93,9 @@ func _run() -> void:
 	var image := texture.get_image()
 	if image == null or image.is_empty():
 		_fail("capture image empty")
+		return
+	if image.get_width() != capture_size.x or image.get_height() != capture_size.y:
+		_fail("capture image size mismatch: %sx%s" % [image.get_width(), image.get_height()])
 		return
 	var capture_path := OS.get_environment("IDLE_ELITE_RECOVERY_CAPTURE_PATH")
 	var result := image.save_png(capture_path)

@@ -13,7 +13,7 @@ function Assert-True {
 
 function Get-HeadlessGodotProcesses {
     $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
+    @($processes | Where-Object { $_.CommandLine -match '(^|\s)--headless(?:\s|$)' })
 }
 
 function Assert-NoHeadlessGodotProcesses {

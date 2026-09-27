@@ -46,6 +46,10 @@ func _run() -> void:
 	root.size = window_size
 	DisplayServer.window_set_size(window_size)
 	var packed := load("res://scenes/main.tscn") as PackedScene
+	if packed == null:
+		push_error("mission-ceremony-capture-failed: main scene did not load")
+		quit(1)
+		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
@@ -83,7 +87,20 @@ func _run() -> void:
 	for _frame in range(16):
 		await process_frame
 	await RenderingServer.frame_post_draw
-	var image := root.get_texture().get_image()
+	var texture := root.get_texture()
+	if texture == null:
+		push_error("mission-ceremony-capture-failed: capture texture missing")
+		quit(1)
+		return
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		push_error("mission-ceremony-capture-failed: capture image empty")
+		quit(1)
+		return
+	if image.get_width() != capture_size.x or image.get_height() != capture_size.y:
+		push_error("mission-ceremony-capture-failed: capture image size mismatch: %sx%s" % [image.get_width(), image.get_height()])
+		quit(1)
+		return
 	var capture_path := OS.get_environment("IDLE_ELITE_MISSION_CEREMONY_CAPTURE_PATH")
 	var result := image.save_png(capture_path)
 	print("mission-ceremony-capture path=%s result=%s size=%sx%s display=%s" % [capture_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])

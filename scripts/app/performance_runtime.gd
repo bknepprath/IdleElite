@@ -16,27 +16,21 @@ var battery_governor_low_processor_applied := false
 var ui_static_refresh_elapsed := 0.0
 var performance_monitor: Node
 
-
 func _init(host_ref) -> void:
 	host = host_ref
-
 
 func _screen_capped_frame_rate(frame_cap: int) -> int:
 	var refresh_rate := int(DisplayServer.screen_get_refresh_rate())
 	return mini(refresh_rate, frame_cap) if refresh_rate > 0 else frame_cap
 
-
 func _mobile_battery_governor_enabled() -> bool:
 	return OS.get_environment(BATTERY_GOVERNOR_FORCE_ENV) == "1" or OS.get_name() in ["Android", "iOS"]
-
 
 func _mobile_active_frame_rate() -> int:
 	return _screen_capped_frame_rate(MOBILE_TARGET_FRAME_RATE)
 
-
 func _mobile_idle_frame_rate() -> int:
 	return mini(_mobile_active_frame_rate(), MOBILE_IDLE_FRAME_RATE)
-
 
 func _apply_performance_cap(frame_rate: int, low_processor_mode: bool) -> void:
 	if battery_governor_applied_fps != frame_rate or Engine.max_fps != frame_rate:
@@ -49,12 +43,10 @@ func _apply_performance_cap(frame_rate: int, low_processor_mode: bool) -> void:
 	if OS.low_processor_usage_mode_sleep_usec != sleep_usec:
 		OS.low_processor_usage_mode_sleep_usec = sleep_usec
 
-
 func _record_battery_governor_activity() -> void:
 	battery_governor_last_activity_msec = Time.get_ticks_msec()
 	if _mobile_battery_governor_enabled():
 		_apply_performance_cap(_mobile_active_frame_rate(), false)
-
 
 func _input_event_wakes_battery_governor(event: InputEvent) -> bool:
 	if event is InputEventMouseButton:
@@ -77,7 +69,6 @@ func _input_event_wakes_battery_governor(event: InputEvent) -> bool:
 			or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
 		)
 	return false
-
 
 func _battery_governor_visual_work_active() -> bool:
 	if host._boot_warmup_runtime().active or host.boot_detail_render_in_progress or host._navigation_shell().screen_render_in_progress:
@@ -106,7 +97,6 @@ func _battery_governor_visual_work_active() -> bool:
 	if host._skill_detail_surface()._detail_jump_arrows_need_processing():
 		return true
 	return _skill_detail_has_fishing_camera_returning()
-
 
 func _skill_detail_needs_high_frequency_ui_update() -> bool:
 	var temporary_events = host._temporary_event_runtime()
@@ -155,7 +145,6 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 		return true
 	return false
 
-
 func _skill_detail_has_fishing_camera_returning() -> bool:
 	if host.current_screen != "skill" and host.current_screen != "pinned":
 		return false
@@ -171,7 +160,6 @@ func _skill_detail_has_fishing_camera_returning() -> bool:
 		):
 			return true
 	return false
-
 
 func _consume_ui_static_refresh(delta: float, instant: bool) -> bool:
 	if instant or delta <= 0.0:
@@ -189,7 +177,6 @@ func _consume_ui_static_refresh(delta: float, instant: bool) -> bool:
 	ui_static_refresh_elapsed = 0.0
 	return true
 
-
 func _process_battery_governor() -> void:
 	if not _mobile_battery_governor_enabled():
 		return
@@ -200,7 +187,6 @@ func _process_battery_governor() -> void:
 	var idle := now_msec - battery_governor_last_activity_msec >= idle_after_msec
 	_apply_performance_cap(_mobile_idle_frame_rate() if idle else _mobile_active_frame_rate(), idle)
 
-
 func _configure_performance_mode() -> void:
 	battery_governor_last_activity_msec = Time.get_ticks_msec()
 	if _mobile_battery_governor_enabled():
@@ -209,18 +195,14 @@ func _configure_performance_mode() -> void:
 		_apply_performance_cap(_screen_capped_frame_rate(DESKTOP_TARGET_FRAME_RATE), false)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ADAPTIVE)
 
-
 func _performance_overlay_enabled_on_boot() -> bool:
 	return OS.is_debug_build() and OS.get_environment("IDLE_ELITE_PERF_OVERLAY") == "1"
-
 
 func _performance_overlay_active() -> bool:
 	return performance_monitor != null and is_instance_valid(performance_monitor) and performance_monitor.has_method("is_overlay_visible") and bool(performance_monitor.call("is_overlay_visible"))
 
-
 func _performance_overlay_toggle_text() -> String:
 	return "Performance Overlay: %s" % ("ON" if _performance_overlay_active() else "OFF")
-
 
 func _ensure_performance_monitor() -> Node:
 	if performance_monitor != null and is_instance_valid(performance_monitor):
@@ -229,7 +211,6 @@ func _ensure_performance_monitor() -> Node:
 	host.add_child(performance_monitor)
 	return performance_monitor
 
-
 func _set_performance_overlay_enabled(enabled: bool) -> void:
 	var monitor := _ensure_performance_monitor()
 	if monitor == null or not monitor.has_method("set_overlay_visible"):
@@ -237,10 +218,8 @@ func _set_performance_overlay_enabled(enabled: bool) -> void:
 	monitor.call("set_overlay_visible", enabled)
 	host._settings_surface()._refresh_god_mode_controls()
 
-
 func clear_monitor_reference() -> void:
 	performance_monitor = null
-
 
 ## Debug performance report node owned by PerformanceRuntime.
 class _PerfMonitor extends Node:
@@ -261,16 +240,13 @@ class _PerfMonitor extends Node:
 	var _overlay_panel: PanelContainer
 	var _overlay_label: Label
 
-
 	func _ready() -> void:
 		_print_system_report()
 		if OS.is_debug_build() and OS.get_environment("IDLE_ELITE_PERF_OVERLAY") == "1":
 			set_overlay_visible(true)
 
-
 	func _process(delta: float) -> void:
 		record_frame(delta)
-
 
 	func record_frame(delta: float) -> void:
 		_deltas.append(delta)
@@ -293,7 +269,6 @@ class _PerfMonitor extends Node:
 			_overlay_elapsed = 0.0
 			_sync_overlay()
 
-
 	func set_overlay_visible(enabled: bool) -> void:
 		overlay_enabled = enabled
 		if overlay_enabled:
@@ -302,23 +277,18 @@ class _PerfMonitor extends Node:
 		if _overlay_layer != null and is_instance_valid(_overlay_layer):
 			_overlay_layer.visible = overlay_enabled
 
-
 	func is_overlay_visible() -> bool:
 		return overlay_enabled and _overlay_layer != null and is_instance_valid(_overlay_layer) and _overlay_layer.visible
 
-
 	func has_overlay() -> bool:
 		return _overlay_layer != null and is_instance_valid(_overlay_layer) and _overlay_label != null and is_instance_valid(_overlay_label)
-
 
 	func current_report() -> Dictionary:
 		_last_report = _build_frame_report()
 		return _last_report.duplicate()
 
-
 	func report_text() -> String:
 		return "\n".join(report_lines())
-
 
 	func report_lines() -> Array[String]:
 		var report := current_report()
@@ -338,7 +308,6 @@ class _PerfMonitor extends Node:
 			"VSync %s  OS %s" % [str(report.get("vsync", "UNKNOWN")), str(report.get("os", "unknown"))]
 		]
 
-
 	func _print_system_report() -> void:
 		var refresh := DisplayServer.screen_get_refresh_rate()
 		var vsync := DisplayServer.window_get_vsync_mode()
@@ -353,7 +322,6 @@ class _PerfMonitor extends Node:
 		print("  Physics Hz:    ", Engine.physics_ticks_per_second)
 		print("  Render method: ", ProjectSettings.get_setting("rendering/renderer/rendering_method", "unknown"))
 		print("=============================")
-
 
 	func _print_frame_report() -> void:
 		var report := current_report()
@@ -371,7 +339,6 @@ class _PerfMonitor extends Node:
 		print("  Objects:       ", int(report.get("objects", 0)))
 		print("  Nodes:         ", int(report.get("nodes", 0)))
 		print("===================================")
-
 
 	func _build_frame_report() -> Dictionary:
 		if _deltas.is_empty():
@@ -428,7 +395,6 @@ class _PerfMonitor extends Node:
 			"os": OS.get_name()
 		}
 
-
 	func _ensure_overlay() -> void:
 		if has_overlay():
 			return
@@ -460,13 +426,11 @@ class _PerfMonitor extends Node:
 		_overlay_label.add_theme_constant_override("shadow_offset_y", 1)
 		margin.add_child(_overlay_label)
 
-
 	func _sync_overlay() -> void:
 		if not overlay_enabled:
 			return
 		_ensure_overlay()
 		_overlay_label.text = report_text()
-
 
 	func _overlay_style() -> StyleBoxFlat:
 		var style := StyleBoxFlat.new()
@@ -481,7 +445,6 @@ class _PerfMonitor extends Node:
 		style.corner_radius_bottom_left = 9
 		style.corner_radius_bottom_right = 9
 		return style
-
 
 	func _vsync_name(mode: int) -> String:
 		match mode:

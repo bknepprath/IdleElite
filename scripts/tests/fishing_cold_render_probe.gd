@@ -20,9 +20,17 @@ func _run() -> void:
 		quit(1)
 		return
 	var main := packed.instantiate()
+	if main == null:
+		_write_json({"status": "failed", "error": "main scene did not instantiate"})
+		quit(1)
+		return
 	root.add_child(main)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	await _wait_for_startup(main)
+	if not await _wait_for_startup(main):
+		_write_json({"status": "failed", "error": "main scene startup timed out"})
+		main.queue_free()
+		quit(1)
+		return
 	_force_level_99_fishing_state(main)
 	var render_started_usec := Time.get_ticks_usec()
 	var render_result = main.call("_navigation_shell").call("_render_screen", false, -1, false)
@@ -69,12 +77,13 @@ func _run() -> void:
 	quit(0)
 
 
-func _wait_for_startup(main: Node) -> void:
+func _wait_for_startup(main: Node) -> bool:
 	for _i in range(720):
 		if bool(main.get("startup_initialized")) and not bool(main.get("boot_detail_render_in_progress")):
 			await process_frame
-			return
+			return true
 		await process_frame
+	return false
 
 
 func _force_level_99_fishing_state(main: Node) -> void:

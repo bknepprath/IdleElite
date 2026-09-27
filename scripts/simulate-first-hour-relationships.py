@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATABASE_PATH = PROJECT_ROOT / "docs" / "activity-database.json"
 SKILL_ORDER = ("fight", "build", "woodcutting", "fishing", "thieving")
@@ -54,17 +53,16 @@ COMBO_CANDIDATES = {
     },
 }
 
-
 @dataclass(frozen=True)
 class Scenario:
     name: str
-    candidate_relationships: bool
-    firepit_target: str
-    firepit_rate_per_minute: float
-    pond_bonus: float
-    pond_refill: float
-    milestone_berries: bool
-    fish_bridge: bool
+    candidate_relationships: bool = True
+    firepit_target: str = "non_woodcutting"
+    firepit_rate_per_minute: float = 1.0
+    pond_bonus: float = 0.05
+    pond_refill: float = 5.0
+    milestone_berries: bool = True
+    fish_bridge: bool = True
     berry_policy: str = "use"
     protect_pond_fish: bool = True
     early_recovery_target: str = "authored"
@@ -78,229 +76,31 @@ class Scenario:
 
 
 SCENARIOS = {
-    "guided-current": Scenario(
-        "guided-current", False, "woodcutting", 2.0, 0.01, 0.0, False, False
-    ),
-    "candidate-pond-1": Scenario(
-        "candidate-pond-1", True, "non_woodcutting", 1.0, 0.01, 0.0, True, True
-    ),
-    "candidate-pond-5": Scenario(
-        "candidate-pond-5", True, "non_woodcutting", 1.0, 0.05, 0.0, True, True
-    ),
-    "candidate-pond-5-refill": Scenario(
-        "candidate-pond-5-refill", True, "non_woodcutting", 1.0, 0.05, 5.0, True, True
-    ),
-    "candidate-hoard": Scenario(
-        "candidate-hoard", True, "non_woodcutting", 1.0, 0.05, 5.0, True, True, "hoard"
-    ),
-    "candidate-no-fish-bridge": Scenario(
-        "candidate-no-fish-bridge", True, "non_woodcutting", 1.0, 0.05, 5.0, True, False
-    ),
-    "candidate-unprotected-fish": Scenario(
-        "candidate-unprotected-fish", True, "non_woodcutting", 1.0, 0.05, 5.0, True, True, "use", False
-    ),
-    "candidate-lowest-recovery": Scenario(
-        "candidate-lowest-recovery",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        False,
-        early_recovery_target="lowest",
-    ),
-    "candidate-berry-hammer": Scenario(
-        "candidate-berry-hammer",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        first_berry_target="hammer",
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-berry-shallows": Scenario(
-        "candidate-berry-shallows",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        first_berry_target="shallows",
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-fish-2-stamina": Scenario(
-        "candidate-fish-2-stamina",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        fish_stamina=2.0,
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-firepit-current": Scenario(
-        "candidate-firepit-current",
-        True,
-        "woodcutting",
-        2.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-firepit-all": Scenario(
-        "candidate-firepit-all",
-        True,
-        "all",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-pond-3-refill": Scenario(
-        "candidate-pond-3-refill", True, "non_woodcutting", 1.0, 0.05, 3.0, True, True
-    ),
-    "candidate-pond-10-refill": Scenario(
-        "candidate-pond-10-refill", True, "non_woodcutting", 1.0, 0.05, 10.0, True, True
-    ),
-    "candidate-current-combos": Scenario(
-        "candidate-current-combos", False, "non_woodcutting", 1.0, 0.05, 5.0, True, True
-    ),
-    "candidate-one-berry": Scenario(
-        "candidate-one-berry",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        milestone_berry_limit=1,
-        pond_bonus_mode="relationship_floor",
-        use_candidate_combos=False,
-    ),
-    "candidate-two-berries": Scenario(
-        "candidate-two-berries",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        milestone_berry_limit=2,
-        pond_bonus_mode="relationship_floor",
-        use_candidate_combos=False,
-    ),
-    "candidate-pond-rush": Scenario(
-        "candidate-pond-rush",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.05,
-        5.0,
-        True,
-        True,
-        route_policy="pond_rush",
-    ),
-    "candidate-linked-pond": Scenario(
-        "candidate-linked-pond",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        pond_bonus_mode="relationship_floor",
-    ),
-    "candidate-linked-pond-rush": Scenario(
-        "candidate-linked-pond-rush",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        route_policy="pond_rush",
-        pond_bonus_mode="relationship_floor",
-    ),
-    "candidate-use-gated-third": Scenario(
-        "candidate-use-gated-third",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-use-gated-third-hoard": Scenario(
-        "candidate-use-gated-third-hoard",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        berry_policy="hoard",
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-use-gated-third-rush": Scenario(
-        "candidate-use-gated-third-rush",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        True,
-        route_policy="pond_rush",
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
-    "candidate-use-gated-third-no-fish": Scenario(
-        "candidate-use-gated-third-no-fish",
-        True,
-        "non_woodcutting",
-        1.0,
-        0.01,
-        5.0,
-        True,
-        False,
-        pond_bonus_mode="relationship_floor",
-        pond_berry_use_requirement=2,
-        use_candidate_combos=False,
-    ),
+    "guided-current": Scenario("guided-current", candidate_relationships=False, firepit_target="woodcutting", firepit_rate_per_minute=2.0, pond_bonus=0.01, pond_refill=0.0, milestone_berries=False, fish_bridge=False),
+    "candidate-pond-1": Scenario("candidate-pond-1", pond_bonus=0.01, pond_refill=0.0),
+    "candidate-pond-5": Scenario("candidate-pond-5", pond_refill=0.0),
+    "candidate-pond-5-refill": Scenario("candidate-pond-5-refill"),
+    "candidate-hoard": Scenario("candidate-hoard", berry_policy="hoard"),
+    "candidate-no-fish-bridge": Scenario("candidate-no-fish-bridge", fish_bridge=False),
+    "candidate-unprotected-fish": Scenario("candidate-unprotected-fish", protect_pond_fish=False),
+    "candidate-lowest-recovery": Scenario("candidate-lowest-recovery", fish_bridge=False, early_recovery_target="lowest"),
+    "candidate-berry-hammer": Scenario("candidate-berry-hammer", first_berry_target="hammer", pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-berry-shallows": Scenario("candidate-berry-shallows", first_berry_target="shallows", pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-fish-2-stamina": Scenario("candidate-fish-2-stamina", fish_stamina=2.0, pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-firepit-current": Scenario("candidate-firepit-current", firepit_target="woodcutting", firepit_rate_per_minute=2.0, pond_bonus=0.01, pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-firepit-all": Scenario("candidate-firepit-all", firepit_target="all", pond_bonus=0.01, pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-pond-3-refill": Scenario("candidate-pond-3-refill", pond_refill=3.0),
+    "candidate-pond-10-refill": Scenario("candidate-pond-10-refill", pond_refill=10.0),
+    "candidate-current-combos": Scenario("candidate-current-combos", candidate_relationships=False),
+    "candidate-one-berry": Scenario("candidate-one-berry", milestone_berry_limit=1, pond_bonus_mode="relationship_floor", use_candidate_combos=False),
+    "candidate-two-berries": Scenario("candidate-two-berries", milestone_berry_limit=2, pond_bonus_mode="relationship_floor", use_candidate_combos=False),
+    "candidate-pond-rush": Scenario("candidate-pond-rush", route_policy="pond_rush"),
+    "candidate-linked-pond": Scenario("candidate-linked-pond", pond_bonus=0.01, pond_bonus_mode="relationship_floor"),
+    "candidate-linked-pond-rush": Scenario("candidate-linked-pond-rush", pond_bonus=0.01, route_policy="pond_rush", pond_bonus_mode="relationship_floor"),
+    "candidate-use-gated-third": Scenario("candidate-use-gated-third", pond_bonus=0.01, pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-use-gated-third-hoard": Scenario("candidate-use-gated-third-hoard", pond_bonus=0.01, berry_policy="hoard", pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-use-gated-third-rush": Scenario("candidate-use-gated-third-rush", pond_bonus=0.01, route_policy="pond_rush", pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
+    "candidate-use-gated-third-no-fish": Scenario("candidate-use-gated-third-no-fish", pond_bonus=0.01, fish_bridge=False, pond_bonus_mode="relationship_floor", pond_berry_use_requirement=2, use_candidate_combos=False),
 }
 
 
@@ -311,12 +111,10 @@ class SkillState:
     stamina: float = 30.0
     completions: int = 0
 
-
 @dataclass(frozen=True)
 class Choice:
     task: str
     key: str
-
 
 @dataclass
 class RunResult:
@@ -352,7 +150,6 @@ class RunResult:
     pond_bonus_at_completion: float
     pond_bonus_at_end: float
     events: list[tuple[float, str, str]] = field(default_factory=list)
-
 
 def load_database() -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     if not DATABASE_PATH.exists():
@@ -432,12 +229,10 @@ class FirstHourSimulation:
         self.skills = {skill_id: SkillState(stamina=BASE_MAX_STAMINA) for skill_id in ALL_SKILLS}
         self.materials = {"scrapwood": 0.0, "honey": 0.0, "berries": 0.0}
         self.fish = 0.0
-        self.fish_eaten = 0
+        self.fish_eaten = self.recovery_uses = self.relationships_at_pond = 0
         self.fish_eaten_at_pond: int | None = None
-        self.recovery_uses = 0
         self.recovery_stamina = 0.0
         self.levels_at_pond: dict[str, int] = {}
-        self.relationships_at_pond = 0
         self.pond_bonus_at_completion = 0.0
         self.fish_spend_cap = fish_spend_cap
         self.mastery_contract = mastery_contract
@@ -446,21 +241,15 @@ class FirstHourSimulation:
         self.built_modules: set[str] = set()
         self.claimed_berry_milestones: set[str] = set()
         self.deferred_berry_milestones: set[str] = set()
-        self.berry_inventory = 0
-        self.pending_berries = 0
-        self.prepared_target = ""
-        self.prepared_funding = ""
-        self.berry_uses = 0
+        self.berry_inventory = self.pending_berries = self.berry_uses = 0
+        self.prepared_target = self.prepared_funding = ""
         self.progress: dict[str, float] = {}
         self.active: Choice | None = None
-        self.last_task = ""
-        self.last_action_key = ""
-        self.last_skill = ""
+        self.last_task = self.last_action_key = self.last_skill = ""
         self.events: list[tuple[float, str, str]] = []
         self.switch_times: list[float] = []
-        self.attempts = 0
+        self.attempts = self.streak_count = 0
         self.streak_key = ""
-        self.streak_count = 0
         self.mastery_xp: dict[str, int] = {}
         self.bronze_actions: set[str] = set()
         self.global_bronze = False
@@ -475,9 +264,7 @@ class FirstHourSimulation:
         self.pond_refill_total = 0.0
         self.pond_refill_skill_count = 0
         self.honey_seconds = 0.0
-        self.dead_total = 0.0
-        self.dead_current = 0.0
-        self.dead_longest = 0.0
+        self.dead_total = self.dead_current = self.dead_longest = 0.0
         self.tired_training_total = 0.0
         self.times: dict[str, float | None] = {
             "promise": None,
@@ -667,9 +454,7 @@ class FirstHourSimulation:
                     state = self.skills[skill]
                     state.stamina = min(self.max_stamina(skill), state.stamina + self.scenario.pond_refill)
                 self.pond_refill_total = sum(self.skills[skill].stamina - before[skill] for skill in ALL_SKILLS)
-                self.pond_refill_skill_count = sum(
-                    self.skills[skill].stamina > before[skill] + 1e-9 for skill in ALL_SKILLS
-                )
+                self.pond_refill_skill_count = sum(self.skills[skill].stamina > before[skill] + 1e-9 for skill in ALL_SKILLS)
             self.event(
                 "pond",
                 f"Pond restored: +{self.pond_bonus_at_completion * 100:.0f}% all-skill regeneration; "
@@ -755,21 +540,16 @@ class FirstHourSimulation:
 
     def berry_eligible(self, key: str) -> bool:
         action = self.action(key)
-        if str(action.get("kind", "")) == "passive_item_collect":
-            return False
-        if action.get("build") or action.get("recovery") or action.get("boss") or action.get("combat"):
+        if str(action.get("kind", "")) == "passive_item_collect" or action.get("build") or action.get("recovery") or action.get("boss") or action.get("combat"):
             return False
         if any(str(reward.get("id", reward.get("mat", ""))) == "berries" for reward in action.get("mat_rewards") or []):
             return False
         return any(amount > 0 for amount in self.authored_xp_map(key).values())
 
     def prepare_next_berry(self, milestone_id: str) -> None:
-        if self.scenario.berry_policy != "use" or self.prepared_target:
+        if self.scenario.berry_policy != "use" or self.prepared_target or (self.pending_berries <= 0 and self.berry_inventory <= 0):
             return
-        if self.pending_berries <= 0 and self.berry_inventory <= 0:
-            return
-        target = ""
-        reason = ""
+        target = reason = ""
         if milestone_id == "all-skills-level-2":
             target_options = {
                 "latch": ("fight:wrestle-stuck-gate-latch", "first two-skill payoff"),
@@ -890,9 +670,7 @@ class FirstHourSimulation:
         else:
             self.streak_key = key
             self.streak_count = 1
-        streak_multiplier = 1
-        if owner != "fishing" and self.streak_count % 5 == 0:
-            streak_multiplier = 2
+        streak_multiplier = 2 if owner != "fishing" and self.streak_count % 5 == 0 else 1
         authored = self.authored_xp_map(key)
         rewards = {skill: amount * streak_multiplier for skill, amount in authored.items()}
         berry_used = self.consume_prepared_berry(key)
@@ -918,7 +696,6 @@ class FirstHourSimulation:
                 if self.times["first_recovery_use"] is None:
                     self.times["first_recovery_use"] = self.time
                     self.event("recovery", f"first recovery use: {action['name']} restored {restored:.1f} {target} stamina")
-
         for mat_id, amount in self.roll_materials(action, berry_used).items():
             if amount <= 0.0:
                 continue
@@ -926,11 +703,8 @@ class FirstHourSimulation:
             if mat_id == "honey" and self.times["honey"] is None:
                 self.times["honey"] = self.time
                 self.event("relationship", f"Honey acquired from {action['name']}")
-
         if owner == "fishing":
-            fish_reward = 1.0 * (2.0 if berry_used else 1.0)
-            self.fish += fish_reward
-
+            self.fish += 2.0 if berry_used else 1.0
         if len([amount for amount in authored.values() if amount > 0]) >= 2:
             first_combo = self.times["first_combo"] is None
             self.completed_relationship_actions.add(key)
@@ -939,7 +713,6 @@ class FirstHourSimulation:
                 split = " + ".join(f"{amount} {skill} XP" for skill, amount in authored.items())
                 self.event("relationship", f"first two-skill activity completed: {action['name']} ({split})")
                 self.award_berry("first-two-skill-activity")
-
     def action_is_basic(self, key: str) -> bool:
         action = self.action(key)
         if key not in self.unlocked:
@@ -951,7 +724,6 @@ class FirstHourSimulation:
         if len([amount for amount in self.authored_xp_map(key).values() if amount > 0]) >= 2:
             return False
         return True
-
     def best_level_action(self, skill_id: str) -> str:
         candidates = [
             key
@@ -967,7 +739,6 @@ class FirstHourSimulation:
                 int(self.action(key).get("unlock", 1)),
             ),
         )
-
     def best_scrapwood_action(self) -> str:
         candidates: list[tuple[float, str]] = []
         for key in ACTIONS_BY_SKILL["woodcutting"]:
@@ -987,7 +758,6 @@ class FirstHourSimulation:
             if expected > 0.0 and not action.get("recovery"):
                 candidates.append((expected * self.success_chance(key) / self.effective_seconds(key), key))
         return max(candidates)[1] if candidates else self.best_level_action("woodcutting")
-
     def recovery_action(self, skill_id: str) -> str:
         candidates = [
             key
@@ -997,13 +767,11 @@ class FirstHourSimulation:
         if not candidates:
             return ""
         return max(candidates, key=lambda key: float((self.action(key).get("recovery") or {}).get("stamina", 0.0)))
-
     def level_task(self, skill_id: str, level: int) -> tuple[str, str] | None:
         if self.skills[skill_id].level >= level:
             return None
         key = self.best_level_action(skill_id)
         return (f"level:{skill_id}:{level}", key) if key else None
-
     def route_candidates(self) -> list[Choice]:
         candidates: list[Choice] = []
         if self.scenario.route_policy == "pond_rush" and not self.pond_complete:
@@ -1021,7 +789,6 @@ class FirstHourSimulation:
                 if task:
                     candidates.append(Choice(*task))
             return candidates
-
         if self.prepared_target and self.prepared_target in self.unlocked and self.requirements_met(self.action(self.prepared_target)):
             candidates.append(Choice(f"prepared:{self.prepared_target}", self.prepared_target))
 
@@ -1077,22 +844,17 @@ class FirstHourSimulation:
             task = self.level_task(lowest, target)
             if task:
                 candidates.append(Choice(*task))
-        unique: list[Choice] = []
-        seen: set[tuple[str, str]] = set()
-        for choice in candidates:
-            marker = (choice.task, choice.key)
-            if marker not in seen:
-                unique.append(choice)
-                seen.add(marker)
-        return unique
+        return list(dict.fromkeys(candidates))
 
     def affordable(self, choice: Choice) -> bool:
         action = self.action(choice.key)
         return self.skills[str(action["owner"])].stamina + 1e-9 >= self.action_cost(choice.key)
 
     def feed_surplus_fish_for(self, choice: Choice) -> bool:
-        if not self.scenario.fish_bridge or self.affordable(choice):
+        if not self.scenario.fish_bridge:
             return self.affordable(choice)
+        if self.affordable(choice):
+            return True
         owner = str(self.action(choice.key)["owner"])
         if owner == "fishing":
             return True
@@ -1190,14 +952,11 @@ class FirstHourSimulation:
 
         self.try_system_actions()
         max_switches_30 = 0
+        window_end = 0
         for index, start in enumerate(self.switch_times):
-            count = 0
-            for candidate in self.switch_times[index:]:
-                if candidate - start <= 30.0 + 1e-9:
-                    count += 1
-                else:
-                    break
-            max_switches_30 = max(max_switches_30, count)
+            while window_end < len(self.switch_times) and self.switch_times[window_end] - start <= 30.0 + 1e-9:
+                window_end += 1
+            max_switches_30 = max(max_switches_30, window_end - index)
         pond_time = self.times["pond"] if self.times["pond"] is not None else self.duration
         return RunResult(
             scenario=self.scenario.name,
@@ -1266,21 +1025,9 @@ def print_summary(scenario: Scenario, results: list[RunResult]) -> None:
         for result in results
         if result.fish_eaten_at_pond is not None
     ]
-    skills_two_at_pond = [
-        float(sum(1 for level in result.levels_at_pond.values() if level >= 2))
-        for result in results
-        if result.levels_at_pond
-    ]
-    relationships_at_pond = [
-        float(result.relationships_at_pond)
-        for result in results
-        if result.levels_at_pond
-    ]
-    pond_bonus_at_completion = [
-        result.pond_bonus_at_completion * 100.0
-        for result in results
-        if result.levels_at_pond
-    ]
+    skills_two_at_pond = [float(sum(level >= 2 for level in result.levels_at_pond.values())) for result in results if result.levels_at_pond]
+    relationships_at_pond = [float(result.relationships_at_pond) for result in results if result.levels_at_pond]
+    pond_bonus_at_completion = [result.pond_bonus_at_completion * 100.0 for result in results if result.levels_at_pond]
     pond_bonus_at_end = [result.pond_bonus_at_end * 100.0 for result in results]
     print(scenario.name)
     print(f"  runs: {len(results)}")
@@ -1358,14 +1105,10 @@ def print_summary(scenario: Scenario, results: list[RunResult]) -> None:
         f"Firepit starts {representative.firepit_starts}; fence built {representative.fence_built}; "
         f"Pond refill {representative.pond_refill_total:.1f} across {representative.pond_refill_skill_count} gauges"
     )
-
-
 def print_trace(result: RunResult) -> None:
     print(f"  trace for seed {result.seed}")
     for seconds, category, message in result.events:
         print(f"    {clock(seconds)}  {category:<12} {message}")
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scenario", choices=("all", *SCENARIOS.keys()), default="all")
@@ -1387,8 +1130,6 @@ def parse_args() -> argparse.Namespace:
         help="Use current one-point runtime mastery or the activity-database success formula.",
     )
     return parser.parse_args()
-
-
 def result_signature(result: RunResult) -> tuple[Any, ...]:
     return (
         result.times,
@@ -1410,8 +1151,6 @@ def result_signature(result: RunResult) -> tuple[Any, ...]:
         result.pond_bonus_at_end,
         result.events,
     )
-
-
 def main() -> int:
     args = parse_args()
     if args.runs < 1:
@@ -1444,26 +1183,12 @@ def main() -> int:
         )
     print()
     for scenario in selected:
-        results = [
-            FirstHourSimulation(
-                scenario,
-                args.seed + index,
-                args.duration,
-                args.step,
-                args.fish_spend_cap,
-                args.mastery_contract,
-            ).run()
-            for index in range(args.runs)
-        ]
+        def run_once(seed: int) -> RunResult:
+            return FirstHourSimulation(scenario, seed, args.duration, args.step, args.fish_spend_cap, args.mastery_contract).run()
+
+        results = [run_once(args.seed + index) for index in range(args.runs)]
         if args.check_determinism:
-            repeat = FirstHourSimulation(
-                scenario,
-                args.seed,
-                args.duration,
-                args.step,
-                args.fish_spend_cap,
-                args.mastery_contract,
-            ).run()
+            repeat = run_once(args.seed)
             if result_signature(results[0]) != result_signature(repeat):
                 raise AssertionError(f"Non-deterministic result for {scenario.name} seed {args.seed}")
         for result in results:

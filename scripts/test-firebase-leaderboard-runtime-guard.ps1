@@ -1,24 +1,16 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
-$testDir = Join-Path $projectRoot ".codex-tmp\firebase-runtime-guard"
+$testDir = Join-Path $projectRoot (".codex-tmp\firebase-runtime-guard-{0}" -f [guid]::NewGuid().ToString("N"))
 $testScript = Join-Path $testDir "leaderboard_runtime_guard_test.gd"
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
-if (Test-Path -LiteralPath $testDir) {
-    Remove-Item -LiteralPath $testDir -Recurse -Force
-}
+$baselineHeadlessProcessIds = @(Get-HeadlessGodotProcesses | ForEach-Object ProcessId)
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
 try {
     @'
 extends SceneTree
-
 const LeaderboardState = preload("res://scripts/leaderboard/state.gd")
-
 var failures: Array[String] = []
 
 func _init() -> void:
@@ -132,11 +124,9 @@ func _expect_leaderboard_requests_idle(game: Node, context: String) -> void:
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
     & $runner --headless --path $projectRoot --script $testScript
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    if ($LASTEXITCODE -ne 0) { throw "Firebase runtime guard failed with exit code $LASTEXITCODE." }
 
-    $headless = @(Get-HeadlessGodotProcesses)
+    $headless = @(Get-HeadlessGodotProcesses | Where-Object { $baselineHeadlessProcessIds -notcontains $_.ProcessId })
     if ($headless.Count -gt 0) {
         $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after the runtime guard test."

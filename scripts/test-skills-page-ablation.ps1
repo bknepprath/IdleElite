@@ -51,6 +51,7 @@ $baseMain = Get-Content -LiteralPath $mainPath -Raw
 @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 72
 const FRAME_P99_BUDGET_US := 4000
@@ -207,7 +208,7 @@ func _start_first_available_action(scene: Node, skill_id: String) -> String:
 		if _truthy(convergence_runtime.call("_is_convergence_action", action)):
 			continue
 		var stamina := scene.get("stamina") as Dictionary
-		stamina[skill_id] = float(scene.call("_max_stamina", skill_id))
+		stamina[skill_id] = float(SkillState.host_max_stamina(skill_id, scene))
 		scene.set("stamina", stamina)
 		if _truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
 			return action_id

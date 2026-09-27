@@ -44,25 +44,24 @@ if ($patchedBuildGradle -eq $originalBuildGradle) {
     throw "Could not patch the Android preview applicationId."
 }
 
-$env:ANDROID_HOME = $androidSdk
-$env:ANDROID_SDK_ROOT = $androidSdk
-$env:JAVA_HOME = $javaHome
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
-$env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
-$outputDir = Split-Path -Parent $output
-$buildUserDataDir = Join-Path $outputDir "preview-build-user-data"
-New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
-New-Item -ItemType Directory -Force -Path $buildUserDataDir | Out-Null
-$env:IDLE_ELITE_TEST_USER_DATA_DIR = $buildUserDataDir
-foreach ($artifactPath in @($output, $stdoutLogPath, $stderrLogPath)) {
-    if (Test-Path -LiteralPath $artifactPath) {
-        Remove-Item -LiteralPath $artifactPath -Force
-    }
-}
-
 $pushedLocation = $false
 try {
+    $env:ANDROID_HOME = $androidSdk
+    $env:ANDROID_SDK_ROOT = $androidSdk
+    $env:JAVA_HOME = $javaHome
+    $env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
+    $outputDir = Split-Path -Parent $output
+    $buildUserDataDir = Join-Path $outputDir "preview-build-user-data"
+    New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $buildUserDataDir | Out-Null
+    $env:IDLE_ELITE_TEST_USER_DATA_DIR = $buildUserDataDir
+    foreach ($artifactPath in @($output, $stdoutLogPath, $stderrLogPath)) {
+        if (Test-Path -LiteralPath $artifactPath) {
+            Remove-Item -LiteralPath $artifactPath -Force
+        }
+    }
     Set-Content -LiteralPath $exportPresetsPath -Value $patchedExportPresets -NoNewline
     Set-Content -LiteralPath $buildGradlePath -Value $patchedBuildGradle -NoNewline
     Push-Location $projectRoot

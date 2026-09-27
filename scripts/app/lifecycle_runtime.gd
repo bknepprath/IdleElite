@@ -36,66 +36,39 @@ func state_object_ref(value) -> Object:
 
 
 func valid_control_ref(value) -> Control:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as Control
+	return state_object_ref(value) as Control
 
 
 func valid_texture_button_ref(value) -> TextureButton:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureButton
+	return state_object_ref(value) as TextureButton
 
 
 func valid_node_ref(value) -> Node:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as Node
+	return state_object_ref(value) as Node
 
 
 func valid_canvas_item_ref(value) -> CanvasItem:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as CanvasItem
+	return state_object_ref(value) as CanvasItem
 
 
 func valid_texture_rect_ref(value) -> TextureRect:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureRect
+	return state_object_ref(value) as TextureRect
 
 
 func valid_texture_progress_ref(value) -> TextureProgressBar:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureProgressBar
+	return state_object_ref(value) as TextureProgressBar
 
 
 func valid_label_ref(value) -> Label:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as Label
+	return state_object_ref(value) as Label
 
 
 func valid_base_button_ref(value) -> BaseButton:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as BaseButton
+	return state_object_ref(value) as BaseButton
 
 
 func valid_button_ref(value) -> Button:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as Button
+	return state_object_ref(value) as Button
 
 
 func meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
@@ -181,17 +154,11 @@ func set_base_button_disabled_if_changed(button: BaseButton, should_disable: boo
 
 
 func set_canvas_item_alpha_safe(alpha: float, canvas_item_id: int) -> void:
-	var canvas_item := valid_canvas_item_ref(instance_from_id(canvas_item_id))
-	if canvas_item == null or canvas_item.is_queued_for_deletion():
-		return
-	set_canvas_item_alpha_if_changed(canvas_item, alpha)
+	set_canvas_item_alpha_if_changed(valid_canvas_item_ref(instance_from_id(canvas_item_id)), alpha)
 
 
 func set_control_minimum_height_safe(height: float, control_id: int) -> void:
-	var control := valid_control_ref(instance_from_id(control_id))
-	if control == null or control.is_queued_for_deletion():
-		return
-	set_control_minimum_height(control, height)
+	set_control_minimum_height(valid_control_ref(instance_from_id(control_id)), height)
 
 
 func set_control_minimum_height(control: Control, height: float) -> void:
@@ -536,9 +503,7 @@ func _kill_meta_tween(node: Node, meta_name: String) -> void:
 
 
 func _hide_control_bound(control_id: int) -> void:
-	var control: Control = valid_control_ref(instance_from_id(control_id))
-	if control != null:
-		set_canvas_item_visible_if_changed(control, false)
+	set_canvas_item_visible_if_changed(valid_control_ref(instance_from_id(control_id)), false)
 
 
 func _kill_tween_value(tween) -> void:

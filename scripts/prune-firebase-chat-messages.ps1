@@ -25,20 +25,15 @@ if ([string]::IsNullOrWhiteSpace($raw) -or $raw.Trim() -eq "null") {
 }
 
 $messages = $raw | ConvertFrom-Json
-$rows = @()
-$messages.PSObject.Properties | ForEach-Object {
+$rows = @($messages.PSObject.Properties | ForEach-Object {
     $id = [string]$_.Name
     Assert-True ($id -match '^[A-Za-z0-9_-]{8,64}$') "Unexpected message id '$id'."
     $value = $_.Value
-    $createdAt = 0L
-    if ($null -ne $value.created_at) {
-        $createdAt = [int64]$value.created_at
-    }
-    $rows += [pscustomobject]@{
+    [pscustomobject]@{
         id = $id
-        created_at = $createdAt
+        created_at = if ($null -eq $value.created_at) { 0L } else { [int64]$value.created_at }
     }
-}
+})
 
 $ordered = @($rows | Sort-Object created_at, id)
 if ($ordered.Count -le $safeKeep) {

@@ -42,6 +42,7 @@ function Get-JsonProp {
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd"
 Assert-True (Test-Path -LiteralPath $profileChatOverlaySurfacePath) "Missing scripts\ui\profile_chat_overlay_surface.gd"
 Assert-True (Test-Path -LiteralPath $saveRuntimePath) "Missing scripts\save_state\save_runtime.gd"
+Assert-True (Test-Path -LiteralPath $chatStatePath) "Missing scripts\online\chat_state.gd"
 Assert-True (Test-Path -LiteralPath $onlineRuntimePath) "Missing scripts\online\online_runtime.gd"
 Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\leaderboard\profile.gd"
 Assert-True (Test-Path -LiteralPath $leaderboardStatePath) "Missing scripts\leaderboard\state.gd"
@@ -76,8 +77,8 @@ $transportRuntimeCompat = $transportRuntimeCompat -replace '\b(allow_recent_refr
 $main = "$saveRuntime`n$transportRuntimeCompat`n$transportRuntime`n$profileChatOverlaySurface`n$main"
 $leaderboardPolicy = "$leaderboardState`n$main"
 $firebaseRuntime = $onlineRuntime
-$rules = Get-Content -LiteralPath $rulesPath -Raw | ConvertFrom-Json
 $rulesRaw = Get-Content -LiteralPath $rulesPath -Raw
+$rules = $rulesRaw | ConvertFrom-Json
 $setupGuide = Get-Content -LiteralPath $setupGuidePath -Raw
 $gitignore = Get-Content -LiteralPath $gitignorePath -Raw
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
@@ -99,19 +100,19 @@ $expectedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill
 foreach ($categoryKey in $expectedCategoryKeys) {
     Assert-True ($categoryKey -match '^[a-z0-9_-]+$') "Generated leaderboard category key '$categoryKey' is unsafe for Firebase paths."
 }
-$leaderboardFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh :?= false\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_finalize_fetch_rows)')
+$leaderboardFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh :?= false\) -> void:.*?(?=\r?\n(?:\r?\n)?func _leaderboard_finalize_fetch_rows)')
 Assert-True ($leaderboardFetchFunctionMatch.Success) "Could not locate leaderboard fetch owner method."
 $leaderboardFetchFunction = $leaderboardFetchFunctionMatch.Value
-$leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_store_fetch_rows)')
+$leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n(?:\r?\n)?func _leaderboard_store_fetch_rows)')
 Assert-True ($leaderboardFinalizeFetchFunctionMatch.Success) "Could not locate _leaderboard_finalize_fetch_rows()."
 $leaderboardFinalizeFetchFunction = $leaderboardFinalizeFetchFunctionMatch.Value
-$leaderboardWriteReadyFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_write_ready\(\) -> bool:.*?(?=\r?\n\r?\nfunc _leaderboard_category_key)')
+$leaderboardWriteReadyFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_write_ready\(\) -> bool:.*?(?=\r?\n(?:\r?\n)?func _leaderboard_category_key)')
 Assert-True ($leaderboardWriteReadyFunctionMatch.Success) "Could not locate _leaderboard_write_ready()."
 $leaderboardWriteReadyFunction = $leaderboardWriteReadyFunctionMatch.Value
-$leaderboardSubmitFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_submit_scores\(\) -> void:.*?(?=\r?\n\r?\nfunc _process_leaderboard_sync)')
+$leaderboardSubmitFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_submit_scores\(\) -> void:.*?(?=\r?\n(?:\r?\n)?func _process_leaderboard_sync)')
 Assert-True ($leaderboardSubmitFunctionMatch.Success) "Could not locate leaderboard submit owner method."
 $leaderboardSubmitFunction = $leaderboardSubmitFunctionMatch.Value
-$chatStreamConnectFunctionMatch = [regex]::Match($transportRuntime, '(?s)func _chat_stream_connect\(force_reconnect :?= false\) -> void:.*?(?=\r?\n\r?\nfunc _start_chat_stream_poll_timer)')
+$chatStreamConnectFunctionMatch = [regex]::Match($transportRuntime, '(?s)func _chat_stream_connect\(force_reconnect :?= false\) -> void:.*?(?=\r?\n(?:\r?\n)?func _start_chat_stream_poll_timer)')
 Assert-True ($chatStreamConnectFunctionMatch.Success) "Could not locate _chat_stream_connect()."
 $chatStreamConnectFunction = $chatStreamConnectFunctionMatch.Value
 
@@ -154,7 +155,6 @@ Assert-True ($leaderboardState -match 'const SUBMIT_INTERVAL_SECONDS := 15 \* 60
 Assert-True ($leaderboardState -match 'const TOP_COUNT := 50') "Leaderboard top count must stay capped at 50."
 Assert-True ($leaderboardPresentation -match 'const BASE_FRAME_WIDTH := 1080') "Leaderboard base frame width must stay equivalent to BASE_CANVAS.x."
 Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must be owned by LeaderboardState."
-Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must detect pending category score improvements in LeaderboardState."
 Assert-True ($leaderboardState -match 'return LeaderboardProfile\.profile_claim_valid\(host, host\.PROFILE_GUEST_NAME_PREFIX, host\.PROFILE_DISPLAY_NAME_MAX_CHARS, host\.PROFILE_NAME_KEY_MAX_CHARS\) and \(has_pending_category_score\(\) or repair_publish_due\(\)\) and next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, pending category score or one-time repair, and the 15-minute submit gate."
 Assert-True ($transportRuntime -match 'func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh = false\)') "Visible-category reads must default to honoring the 15-minute cache."
 Assert-True ($leaderboardFetchFunction -match '(?s)ensure_leaderboard_http\(\).*?if not _leaderboard_firebase_enabled\(\):') "Public leaderboard reads must build HTTP request nodes directly before checking config."
@@ -170,10 +170,7 @@ Assert-True ($transportRuntime -match 'leaderboard_state\.fetch_retry_unix_by_ca
 Assert-True ($transportRuntimeCompat -match 'var last_failed_fetch := int\(leaderboard_state\.fetch_retry_unix_by_category\.get\(valid_id, 0\)\)') "Leaderboard reads must honor persisted failure retry gates."
 Assert-True ($onlineRuntime -match 'Trying again in %s\." % \[message, GameFormatting\.duration\(float\(LEADERBOARD_FETCH_INTERVAL_SECONDS\)\)\]') "Leaderboard read failures must cool down for the visible-category fetch interval."
 Assert-True ($saveRuntime -match '"leaderboard_fetch_retry_unix_by_category": leaderboard_state\.fetch_retry_unix_by_category_for_save\(\)') "Leaderboard failure read cooldowns must be saved across relaunches through LeaderboardState."
-Assert-True ($leaderboardState -match 'func restore_fetch_retry_unix_by_category_from_save\(loaded_retry_unix: Variant\) -> void:') "Leaderboard failure retry restore must be owned by LeaderboardState."
-Assert-True ($leaderboardState -match 'restore_fetch_retry_unix_by_category_from_save\(data\.get\("leaderboard_fetch_retry_unix_by_category", \{\}\)\)') "Leaderboard failure read cooldowns must be loaded across relaunches."
-Assert-True ($leaderboardState -match 'func normalized_fetch_retry_unix_by_category\(loaded_retry_unix: Variant\) -> Dictionary:') "Leaderboard failure retry normalization must be owned by LeaderboardState."
-Assert-True ($leaderboardState -match 'func normalized_fetch_retry_unix_by_category\(loaded_retry_unix: Variant\) -> Dictionary:') "Leaderboard failure read cooldown persistence must normalize category keys without dropping the retry gate in LeaderboardState."
+Assert-True ($leaderboardState -match '(?s)func restore_fetch_retry_unix_by_category_from_save\(loaded_retry_unix: Variant\) -> void:.*?SaveStateNormalizers\.normalized_leaderboard_category_values\(loaded_retry_unix, Callable\(self, "valid_category_id"\)\)') "LeaderboardState must restore and normalize persisted read cooldowns."
 Assert-True ($leaderboardPolicy -match 'Successful rows are not saved, so successful fetch timestamps intentionally reset on launch\.') "Successful fetch timestamps must reset on launch because row data is not persisted."
 Assert-True ($main -notmatch '"leaderboard_fetch_unix_by_category": leaderboard_fetch_unix_by_category') "Successful fetch timestamps must not be saved without saved row data."
 Assert-True ($transportRuntime -match 'if current_screen == "leaderboard":\s*\r?\n\s*_leaderboard_fetch_category\(leaderboard_state\.category_id\)') "Reads must only be requested for the visible leaderboard screen/category."
@@ -374,9 +371,8 @@ Assert-True ([regex]::Matches($liveReadSmoke, 'leaderboards/v1/scores').Count -e
 Assert-True ($liveReadSmoke -match '\$databaseReadCount \+= 1') "Live Firebase smoke helper must count its database read."
 Assert-True ($liveReadSmoke -match 'firebase-live-db-read-count-ok count=\$databaseReadCount') "Live Firebase smoke helper must report the database read count."
 Assert-True ($liveReadSmoke -match 'orderBy=%22score%22&limitToLast=1') "Live Firebase smoke helper must use the same encoded score query shape as the game."
-Assert-True ($liveReadSmoke -match 'limitToLast=1') "Live Firebase smoke helper must limit live reads to one row."
 Assert-True ($liveReadSmoke -match 'docs\\activity-database\.json') "Live Firebase smoke helper must derive its category allowlist from the activity database."
-Assert-True ($liveReadSmoke -match '\$categoryKey = \$Category\.Trim\(\)\.Replace\(":", "__"\)') "Live Firebase smoke helper must normalize game category ids to Firebase path keys."
+Assert-True ($liveReadSmoke -match '\$categoryKey = \(\[string\]\$Category\)\.Trim\(\)\.Replace\(":", "__"\)') "Live Firebase smoke helper must normalize game category ids to Firebase path keys."
 Assert-True ($liveReadSmoke -notmatch 'identitytoolkit|securetoken|accounts:signUp|auth=') "Live Firebase smoke helper must verify public reads without Firebase Auth."
 Assert-True ($liveReadSmoke -match 'firebase-live-public-read-ok') "Live Firebase smoke helper must report that the read path is public."
 Assert-True ($liveReadSmoke -match 'firebasedatabase\\\.app') "Live Firebase smoke helper must accept regional Realtime Database URLs."

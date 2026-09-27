@@ -120,14 +120,10 @@ static func outgoing_message_payload(
 	if not name_key.is_empty():
 		payload["name_key"] = name_key
 	return payload
-
-
 static func remote_message_payload(local_payload: Dictionary, server_timestamp: Variant) -> Dictionary:
 	var remote_payload := local_payload.duplicate(true)
 	remote_payload["created_at"] = server_timestamp
 	return remote_payload
-
-
 static func firebase_write_updates(message_id: String, sender_id: String, remote_payload: Dictionary, server_timestamp: Variant, submitted_at_unix: int) -> Dictionary:
 	return {
 		"messages/%s" % message_id: remote_payload,

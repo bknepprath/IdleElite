@@ -413,7 +413,7 @@ func _set_skill_strip_page_virtual_pos(skill_id: String, virtual_x: float, _alph
 		_restore_skill_strip_wrap_page()
 	var refs := skill_strip_refs.get(skill_id, {}) as Dictionary
 	var page := refs.get("page") as Control
-	if page == null or not is_instance_valid(page):
+	if page == null or not is_instance_valid(page) or page.is_queued_for_deletion():
 		return
 	var content_width := _skill_content_width()
 	page.offset_left = virtual_x
@@ -427,7 +427,7 @@ func _restore_skill_strip_wrap_page() -> void:
 	skill_strip_wrap_relocated_id = ""
 	var refs := skill_strip_refs.get(sid, {}) as Dictionary
 	var page := refs.get("page") as Control
-	if page == null or not is_instance_valid(page):
+	if page == null or not is_instance_valid(page) or page.is_queued_for_deletion():
 		return
 	var page_idx := skill_strip_ids.find(sid)
 	if page_idx < 0:
@@ -671,6 +671,7 @@ func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
 			skill_swipe_tracking = false
 			skill_swipe_touch_index = -1
 			skill_swipe_horizontal = false
+			_clear_skill_swipe_button_suppression()
 			return
 	skill_swipe_last = pointer_position
 	var delta := pointer_position - skill_swipe_start
@@ -5795,7 +5796,7 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 
 
 func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, content_width: float) -> Dictionary:
-	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_blue_guy_chicken_brawl_stage(action)
+	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var uses_recovery_card := RecoveryModules.has_recovery(action)
 	var uses_flat_normal_card := not uses_recovery_card
 	var card_depth_offset := ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET if uses_recovery_card else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
