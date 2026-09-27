@@ -600,5 +600,9 @@ func _reward_text(achievement: Dictionary) -> String:
 		return "Unlocked"
 	if reward_text.begins_with("Reward:"):
 		reward_text = reward_text.substr("Reward:".length()).strip_edges()
-	return reward_text.replace("max stamina", "Max Stamina")
+	reward_text = reward_text.replace("max stamina", "Max Stamina")
+	# After an explanation line, a bare "+1% crit chance" reads like part of it.
+	if not str(achievement.get("toast_detail", "")).strip_edges().is_empty():
+		return "Reward: %s" % reward_text
+	return reward_text
 

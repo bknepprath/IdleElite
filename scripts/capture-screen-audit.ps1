@@ -90,7 +90,7 @@ func _show(scene: Node, screen: String) -> void:
 	if screen.begins_with("skill:"):
 		scene.set("selected_skill_id", screen.substr(6))
 		scene.set("current_screen", "skill")
-	elif screen in ["chat", "profile", "achievements"]:
+	elif screen in ["chat", "profile", "achievements", "crit-toast"]:
 		scene.set("current_screen", "menu")
 	else:
 		scene.set("current_screen", screen)
@@ -103,6 +103,12 @@ func _show(scene: Node, screen: String) -> void:
 			scene.call("_profile_chat_overlay_surface").call("open_profile_overlay")
 		"achievements":
 			scene.call("_achievement_overlay_surface").call("_open_achievements_overlay")
+		"crit-toast":
+			var AchievementState = load("res://scripts/achievements/state.gd")
+			for milestone in AchievementState.milestones(scene, false):
+				if str((milestone as Dictionary).get("id", "")) == "activity-crit":
+					scene.call("_achievement_toast_surface").call("show_unlocked", milestone)
+					await _settle(40)
 
 
 func _hide_overlays(scene: Node) -> void:
