@@ -644,7 +644,6 @@ func _build_ui_shell() -> void:
 	host.skills_page.offset_bottom = -BOTTOM_NAV_HEIGHT
 	host.skills_page.clip_contents = true
 	host.add_child(host.skills_page)
-	host._skill_swipe_activity_surface()._ensure_skill_swipe_paper_fade_overlay()
 
 
 func _update_page_visibility() -> void:
@@ -1709,9 +1708,6 @@ func _reset_page_control_refs() -> void:
 	host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = 0.0
 	host._skill_swipe_activity_surface().skill_swipe_gap_render_offset_x = 0.0
 	host._skill_swipe_activity_surface().skill_swipe_animating = false
-	host._skill_swipe_activity_surface().skill_strip_ids.clear()
-	host._skill_swipe_activity_surface().skill_strip_index = 0
-	host._skill_swipe_activity_surface().skill_strip_refs.clear()
 	host._skill_swipe_activity_surface()._adjacent_pages().reset()
 	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 	host._hub_surface()._clear_hub_page_control_refs()

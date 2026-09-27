@@ -8524,7 +8524,6 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	detail_lazy_plan = new_plan
 	detail_rendered_action_ids = new_signature
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
-	host._skill_swipe_activity_surface()._sync_current_skill_strip_detail_refs()
 	if not layout_snapshot.is_empty():
 		call_deferred("_play_detail_module_layout_transition", layout_snapshot)
 	return true
@@ -8624,7 +8623,6 @@ func _try_refresh_detail_module_order_in_place() -> bool:
 	detail_rendered_action_ids = new_signature
 	_detail_lazy_reorder_existing_hosts_for_plan(stack, detail_lazy_plan, "")
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
-	host._skill_swipe_activity_surface()._sync_current_skill_strip_detail_refs()
 	call_deferred("_play_detail_module_layout_transition", layout_snapshot)
 	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
 	return true

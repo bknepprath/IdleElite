@@ -137,8 +137,6 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 		return true
 	if host._skill_detail_surface()._detail_jump_arrows_need_processing():
 		return true
-	if host._skill_swipe_activity_surface()._skill_swipe_previews_need_frame_updates():
-		return true
 	if _skill_detail_has_fishing_camera_returning():
 		return true
 	if absf(host._skill_detail_surface().detail_shelf_shadow_alpha - host._skill_detail_surface()._skill_detail_shadow_target_alpha()) > 0.01:

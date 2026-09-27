@@ -846,8 +846,6 @@ func _fishing_detail_scroll_frame_can_skip_ui_update() -> bool:
 		return false
 	if host._performance_runtime()._skill_detail_has_fishing_camera_returning():
 		return false
-	if host._skill_swipe_activity_surface()._skill_swipe_previews_need_frame_updates():
-		return false
 	return true
 
 
