@@ -66,7 +66,11 @@ if (Test-Path -LiteralPath $apks) {
     --aapt2=$aapt2
 Assert-CommandSucceeded "bundletool build-apks"
 
-& $java -jar $bundletool install-apks --apks=$apks --adb=$adb
+# bundletool prints progress to stderr; under "Stop" Windows PowerShell 5.1 would
+# abort on it before the install finishes. Judge success by the exit code instead.
+$ErrorActionPreference = "Continue"
+& $java -jar $bundletool install-apks --apks=$apks --adb=$adb 2>&1 | Out-Host
+$ErrorActionPreference = "Stop"
 Assert-CommandSucceeded "bundletool install-apks"
 
 & $adb shell monkey -p $packageName -c android.intent.category.LAUNCHER 1 | Out-Host
