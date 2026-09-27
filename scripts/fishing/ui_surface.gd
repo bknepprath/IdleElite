@@ -166,7 +166,7 @@ func _load_fishing_debug_env_flags() -> void:
 	fishing_ablation_flags.clear()
 	fishing_ablation_label = OS.get_environment("IDLE_ELITE_FISHING_ABLATION").strip_edges()
 	fishing_input_trace_requested = OS.get_environment("IDLE_ELITE_TRACE_FISHING_INPUT") == "1"
-	if fishing_ablation_label.is_empty() and (OS.get_name() == "Web" or OS.has_feature("web")):
+	if fishing_ablation_label.is_empty() and OS.is_debug_build() and (OS.get_name() == "Web" or OS.has_feature("web")):
 		var search_text := str(JavaScriptBridge.eval("window.location.search", true))
 		for raw_parameter in search_text.trim_prefix("?").split("&", false):
 			var parameter := str(raw_parameter)
@@ -445,7 +445,9 @@ func _web_fishing_perf_probe_mounted_count() -> int:
 			mounted_count += 1
 	return mounted_count
 func _web_fishing_perf_probe_requested() -> bool:
-	if OS.get_name() != "Web" and not OS.has_feature("web"):
+	# The probe maxes every skill, so a URL parameter must never reach it in the
+	# public release export. Use a debug web export for perf runs.
+	if not OS.is_debug_build() or (OS.get_name() != "Web" and not OS.has_feature("web")):
 		return false
 	var search_text := str(JavaScriptBridge.eval("window.location.search", true))
 	return search_text.find("codex_fishing_perf") >= 0

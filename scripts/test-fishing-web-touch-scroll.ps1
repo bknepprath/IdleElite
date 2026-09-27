@@ -1,3 +1,4 @@
+# Requires a *debug* web export: the codex_fishing_perf probe is disabled in release builds.
 param(
     [int]$Port = 8123,
     [double]$MaxFrameMs = 50.0,
