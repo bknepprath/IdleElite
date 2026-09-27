@@ -32,6 +32,7 @@ func _run() -> void:
 	_check_semantic_and_future_rejection()
 	_check_quarantine_preserves_originals()
 	_check_fail_closed_boot_selection()
+	_check_blocked_boot_can_archive_and_start_fresh()
 	_check_recovery_candidate_snapshotted()
 	_check_identity_regression_and_candidate_selection()
 	_check_boot_grafts_identity_without_rolling_back_gameplay()
@@ -263,6 +264,24 @@ func _check_verified_backup_rotation() -> void:
 	_expect(_revision_at(backup_3) == 1, "Third backup should contain the first revision.")
 	for path in [primary, backup_1, backup_2, backup_3]:
 		_expect(str(SaveRuntime.load_dictionary_result(path).get("error", "")).is_empty(), "%s must be a verified save." % path)
+	# Once every tier is filled, rapid autosaves only replace the primary. Older
+	# tiers wait for their minimum age so one bad write window cannot reach them.
+	for revision in range(5, 8):
+		_expect(
+			SaveRuntime.write_payload_atomically(_payload(revision, revision * 100), primary, temp, backup_1, backup_2, backup_3),
+			"Atomic write %s should succeed." % revision
+		)
+	_expect(_revision_at(primary) == 7, "Primary should contain the newest revision.")
+	_expect(_revision_at(backup_1) == 3, "A young first backup must not be rewritten by rapid autosaves.")
+	_expect(_revision_at(backup_2) == 2, "A young second backup must not be rewritten by rapid autosaves.")
+	_expect(_revision_at(backup_3) == 1, "A young third backup must not be rewritten by rapid autosaves.")
+	_expect(not FileAccess.file_exists(temp), "The staged temp file must be renamed into place.")
+	# With zero minimum ages every save rotates the whole chain.
+	_expect(
+		SaveRuntime.write_payload_atomically(_payload(8, 800), primary, temp, backup_1, backup_2, backup_3, [0, 0, 0]),
+		"Atomic write with immediate rotation should succeed."
+	)
+	_expect(_revision_at(primary) == 8 and _revision_at(backup_1) == 7 and _revision_at(backup_2) == 3 and _revision_at(backup_3) == 2, "Expired tiers should each shift down by one.")
 	for path in paths:
 		_remove(path)
 
@@ -335,6 +354,35 @@ func _check_fail_closed_boot_selection() -> void:
 	runtime.pending_save_restore_data = {}
 	runtime.host.save_restore_complete = true
 	_expect(not runtime.boot_recovery_blocks_reveal(), "A completed restore may reveal normal play.")
+	_cleanup_global_save_family()
+
+
+func _check_blocked_boot_can_archive_and_start_fresh() -> void:
+	_cleanup_global_save_family()
+	SaveRuntime.write_text(SaveRuntime.SAVE_PATH, "{broken")
+	SaveRuntime.write_text(SaveRuntime.SAVE_BACKUP_PATH, "{also broken")
+	var runtime := SaveRuntime.new(SaveHostStub.new())
+	var boot_result := runtime.call("_boot_save_dictionary") as Dictionary
+	runtime.save_writes_blocked = true
+	runtime.save_writes_blocked_reason = str(boot_result.get("error", ""))
+	_expect(runtime.boot_recovery_can_start_fresh(), "A blocked boot with unreadable saves must offer a way to start fresh.")
+	_expect(runtime.support_save_export_text().contains("{broken"), "The support export must include the raw unreadable primary.")
+	_expect(runtime.archive_local_saves_for_fresh_start(), "Archiving the save family should succeed.")
+	_expect(not FileAccess.file_exists(SaveRuntime.SAVE_PATH) and not FileAccess.file_exists(SaveRuntime.SAVE_BACKUP_PATH), "Archived saves must no longer be picked up by boot.")
+	var archived_primary := false
+	for dir_name in DirAccess.get_directories_at("user://"):
+		if not str(dir_name).begins_with("save-archive-"):
+			continue
+		var archived_path := "user://%s/idle_elite_save.json" % dir_name
+		if FileAccess.file_exists(archived_path) and SaveRuntime.read_text(archived_path) == "{broken":
+			archived_primary = true
+		for file_name in DirAccess.get_files_at("user://%s" % dir_name):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path("user://%s/%s" % [dir_name, file_name]))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://%s" % dir_name))
+	_expect(archived_primary, "The unreadable primary must be preserved byte-for-byte in the archive.")
+	runtime.save_writes_blocked_reason = "a newer app version is required"
+	SaveRuntime.write_text(SaveRuntime.SAVE_PATH, "{}")
+	_expect(not runtime.boot_recovery_can_start_fresh(), "A save from a newer app version must not offer a fresh start.")
 	_cleanup_global_save_family()
 
 

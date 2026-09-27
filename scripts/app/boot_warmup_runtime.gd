@@ -408,6 +408,39 @@ func _show_save_recovery_state() -> void:
 	if splash != null and is_instance_valid(splash) and splash.has_method("stop"):
 		splash.call("stop")
 	_set_progress(host._save_runtime().boot_recovery_status_text(), 1.0)
+	_add_save_recovery_actions()
+
+
+func _add_save_recovery_actions() -> void:
+	if footer == null or not is_instance_valid(footer) or not host._save_runtime().boot_recovery_can_start_fresh():
+		return
+	footer.mouse_filter = Control.MOUSE_FILTER_STOP
+	footer.offset_top = -800
+	footer.add_theme_constant_override("separation", 24)
+	var copy_button: Button = host._menu_button("Copy Save Data")
+	copy_button.custom_minimum_size = Vector2(620, 110)
+	copy_button.pressed.connect(func():
+		DisplayServer.clipboard_set(host._save_runtime().support_save_export_text())
+		copy_button.text = "Copied for Support"
+	)
+	footer.add_child(copy_button)
+	var fresh_button: Button = host._menu_button("Start New Game")
+	fresh_button.custom_minimum_size = Vector2(620, 110)
+	fresh_button.pressed.connect(_on_save_recovery_start_fresh_pressed.bind(fresh_button))
+	footer.add_child(fresh_button)
+
+
+func _on_save_recovery_start_fresh_pressed(button: Button) -> void:
+	# The first tap only arms the reset; old files are archived, never deleted.
+	if not bool(button.get_meta("confirm_armed", false)):
+		button.set_meta("confirm_armed", true)
+		button.text = "Tap Again: Old Save Is Archived"
+		return
+	button.disabled = true
+	if not host._save_runtime().archive_local_saves_for_fresh_start():
+		button.text = "Could Not Archive Save"
+		return
+	host.get_tree().reload_current_scene()
 
 
 func validate_state(priority_skill_ids: Array = []) -> void:

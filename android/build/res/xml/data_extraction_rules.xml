@@ -7,12 +7,14 @@
         <include domain="file" path="idle_elite_save.backup-2.json" />
         <include domain="file" path="idle_elite_save.backup-3.json" />
         <include domain="file" path="idle_elite_save.recovery.json" />
+        <include domain="file" path="idle_elite_save.journal.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.tmp.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-2.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-3.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.recovery.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.journal.json" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="idle_elite_save.json" />
@@ -21,11 +23,13 @@
         <include domain="file" path="idle_elite_save.backup-2.json" />
         <include domain="file" path="idle_elite_save.backup-3.json" />
         <include domain="file" path="idle_elite_save.recovery.json" />
+        <include domain="file" path="idle_elite_save.journal.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.tmp.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-2.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-3.json" />
         <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.recovery.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.journal.json" />
     </device-transfer>
 </data-extraction-rules>
