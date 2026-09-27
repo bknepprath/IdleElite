@@ -36,12 +36,31 @@ func _run() -> void:
 	for i in range(1, 7):
 		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
 		await _wait_frames(1)
+	var release_x := float(scene.call("_skill_swipe_activity_surface").get("skill_swipe_drag_offset_x"))
 	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(260, 1500))
+	var previous_x := release_x
 	for frame in range(60):
 		await _wait_frames(1)
 		var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 		if cover == null:
-			continue
+			# Adjacent pages: the frame itself carries the neighbour in. It must
+			# keep moving left after release and land on the neighbour page.
+			var frame_x := float(scene.call("_skill_swipe_activity_surface").get("skill_swipe_drag_offset_x"))
+			if str(scene.get("selected_skill_id")) == "build":
+				if frame_x > previous_x + 1.0:
+					_fail("frame snapped back after release: x=%.2f previous=%.2f frame=%s" % [frame_x, previous_x, str(frame)])
+					return
+				previous_x = frame_x
+				continue
+			if absf(frame_x) > 1.0 and not bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
+				_fail("landed page not at rest: x=%.2f frame=%s" % [frame_x, str(frame)])
+				return
+			if release_x > -1.0 or previous_x > release_x + 1.0:
+				_fail("adjacent swipe did not travel left: release=%.2f last=%.2f" % [release_x, previous_x])
+				return
+			print("skill-swipe-release-no-snapback-ok adjacent=true release_x=%.2f last_x=%.2f landed=%s frame=%s" % [release_x, previous_x, str(scene.get("selected_skill_id")), str(frame)])
+			quit(0)
+			return
 		var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
 		var holder := _valid_control(instance_from_id(holder_id))
 		if holder == null:
