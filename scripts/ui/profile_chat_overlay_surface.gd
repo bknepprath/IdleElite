@@ -1398,6 +1398,7 @@ func _on_chat_send_button_gui_input(event: InputEvent, button: Button) -> void:
 
 func open_profile_overlay() -> void:
 	host._online_runtime().ensure_leaderboard_http()
+	host._online_runtime().prepare_profile_recovery_on_open()
 	_ensure_profile_overlay()
 	if profile_overlay == null:
 		return
@@ -1410,10 +1411,13 @@ func _on_profile_overlay_gui_input(event: InputEvent) -> void:
 		_save_profile_and_close()
 
 func _on_profile_name_submitted(_submitted_text: String) -> void:
+	if host._online_runtime().leaderboard_legacy_username_recovery_required:
+		_recover_approved_legacy_username()
+		return
 	_save_profile_and_close()
 
 func _sync_pending_profile_name_edit() -> void:
-	if host.leaderboard_profile.profile_claimed or profile_name_edit == null or not is_instance_valid(profile_name_edit):
+	if host.leaderboard_profile.profile_claimed or host._online_runtime().leaderboard_name_transfer_required or host._online_runtime().leaderboard_legacy_username_recovery_required or host._online_runtime().legacy_authless_google_transition_required() or host._online_runtime().deleted_auth_google_transition_required() or host._online_runtime().profile_recovery_blocks_username_edit() or profile_name_edit == null or not is_instance_valid(profile_name_edit):
 		return
 	host.leaderboard_profile.display_name = LeaderboardProfile.sanitize_display_name(profile_name_edit.text, host.PROFILE_DISPLAY_NAME_MAX_CHARS)
 	host.leaderboard_profile.name_key = ""
@@ -1426,7 +1430,7 @@ func _toggle_profile_avatar_picker() -> void:
 	_rebuild_profile_overlay()
 
 func _save_profile_and_close() -> void:
-	if not host.leaderboard_profile.profile_claimed and profile_name_edit != null and is_instance_valid(profile_name_edit):
+	if not host.leaderboard_profile.profile_claimed and not host._online_runtime().leaderboard_name_transfer_required and not host._online_runtime().leaderboard_legacy_username_recovery_required and not host._online_runtime().legacy_authless_google_transition_required() and not host._online_runtime().deleted_auth_google_transition_required() and not host._online_runtime().profile_recovery_blocks_username_edit() and profile_name_edit != null and is_instance_valid(profile_name_edit):
 		host.leaderboard_profile.display_name = LeaderboardProfile.sanitize_display_name(profile_name_edit.text, host.PROFILE_DISPLAY_NAME_MAX_CHARS)
 		host.leaderboard_profile.name_key = ""
 		host.leaderboard_profile.name_claim_verified = false
@@ -1454,7 +1458,7 @@ func _select_profile_avatar(index: int) -> void:
 		host._navigation_shell()._render_screen()
 
 func _create_leaderboard_account() -> void:
-	if host.leaderboard_profile.profile_claimed or host._online_runtime().leaderboard_name_claim_in_flight:
+	if host.leaderboard_profile.profile_claimed or host._online_runtime().leaderboard_name_transfer_required or host._online_runtime().leaderboard_legacy_username_recovery_required or host._online_runtime().legacy_authless_google_transition_required() or host._online_runtime().deleted_auth_google_transition_required() or host._online_runtime().leaderboard_name_claim_in_flight or host._online_runtime().profile_recovery_blocks_username_edit():
 		return
 	var chosen_name: String = host.leaderboard_profile.display_name
 	if profile_name_edit != null and is_instance_valid(profile_name_edit):
@@ -1464,6 +1468,20 @@ func _create_leaderboard_account() -> void:
 		_focus_profile_name_edit()
 		return
 	host._online_runtime()._claim_leaderboard_name(chosen_name)
+
+
+func _recover_approved_legacy_username() -> void:
+	if not host._online_runtime().leaderboard_legacy_username_recovery_required or profile_name_edit == null or not is_instance_valid(profile_name_edit):
+		return
+	host._online_runtime().complete_legacy_username_recovery(profile_name_edit.text)
+
+
+func _copy_account_recovery_code(recovery_code: String) -> void:
+	if recovery_code.is_empty():
+		return
+	DisplayServer.clipboard_set(recovery_code)
+	_set_profile_status_text("Recovery code copied.")
+
 
 func _set_profile_status_text(text: String) -> void:
 	if profile_status_label != null and is_instance_valid(profile_status_label):
@@ -1505,8 +1523,16 @@ func _build_profile_overlay() -> void:
 func _rebuild_profile_overlay() -> void:
 	if profile_content_stack == null:
 		return
+	var recovery_layout_active: bool = (
+		host._online_runtime().leaderboard_auth_recovery_required
+		or host._online_runtime().leaderboard_name_transfer_required
+		or host._online_runtime().leaderboard_legacy_username_recovery_required
+		or host._online_runtime().legacy_authless_google_transition_required()
+		or host._online_runtime().deleted_auth_google_transition_required()
+		or host._online_runtime().profile_recovery_blocks_username_edit()
+	)
 	if profile_panel != null:
-		profile_panel.custom_minimum_size = Vector2(770, 1010 if profile_avatar_picker_open else 640)
+		profile_panel.custom_minimum_size = Vector2(770, 1460 if recovery_layout_active else (1010 if profile_avatar_picker_open else 640))
 	for child in profile_content_stack.get_children():
 		child.queue_free()
 	profile_avatar_buttons.clear()
@@ -1531,14 +1557,22 @@ func _rebuild_profile_overlay() -> void:
 	name_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_stack.add_theme_constant_override("separation", 9)
 	identity_row.add_child(name_stack)
+	var protected_google_transition_required: bool = host._online_runtime().legacy_authless_google_transition_required() or host._online_runtime().deleted_auth_google_transition_required()
 	profile_name_edit = LineEdit.new()
-	profile_name_edit.text = host.leaderboard_profile.display_name
+	profile_name_edit.text = host._online_runtime().leaderboard_name_recovery_pending_display if host._online_runtime().leaderboard_legacy_username_recovery_required and not host._online_runtime().leaderboard_name_recovery_pending_display.is_empty() else host.leaderboard_profile.display_name
 	profile_name_edit.placeholder_text = "Username"
 	profile_name_edit.max_length = host.PROFILE_DISPLAY_NAME_MAX_CHARS
-	profile_name_edit.custom_minimum_size = Vector2(0, 75)
+	profile_name_edit.custom_minimum_size = Vector2(0, 105 if recovery_layout_active else 75)
 	profile_name_edit.focus_mode = Control.FOCUS_ALL
-	profile_name_edit.editable = not host.leaderboard_profile.profile_claimed
-	profile_name_edit.add_theme_font_size_override("font_size", 48)
+	var legacy_recovery_entry_ready: bool = host._online_runtime().leaderboard_legacy_username_recovery_required and not host._online_runtime().profile_recovery_blocks_username_edit()
+	profile_name_edit.editable = legacy_recovery_entry_ready or (
+		not host.leaderboard_profile.profile_claimed
+		and not host._online_runtime().leaderboard_name_transfer_required
+		and not host._online_runtime().leaderboard_legacy_username_recovery_required
+		and not protected_google_transition_required
+		and not host._online_runtime().profile_recovery_blocks_username_edit()
+	)
+	profile_name_edit.add_theme_font_size_override("font_size", 52 if recovery_layout_active else 48)
 	if host.app_bold_font != null:
 		profile_name_edit.add_theme_font_override("font", host.app_bold_font)
 	elif host.app_font != null:
@@ -1554,29 +1588,66 @@ func _rebuild_profile_overlay() -> void:
 	name_stack.add_child(profile_name_edit)
 	profile_status_label = host._label(_profile_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	profile_status_label.custom_minimum_size = Vector2(0, 56)
+	profile_status_label.custom_minimum_size = Vector2(0, 120 if recovery_layout_active else 56)
 	name_stack.add_child(profile_status_label)
 	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	cloud_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cloud_status.custom_minimum_size = Vector2(0, 68)
+	cloud_status.add_theme_font_size_override("font_size", host.MIN_MOBILE_HELP_FONT_SIZE)
+	cloud_status.custom_minimum_size = Vector2(0, 140 if recovery_layout_active else 68)
 	name_stack.add_child(cloud_status)
-	if (
-		host._online_runtime().leaderboard_auth_provider != "google"
-		and LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS)
-	):
-		var google_button = host._menu_button("Connect Google")
-		google_button.custom_minimum_size = Vector2(0, 66)
+	if host._online_runtime().leaderboard_auth_provider != "google" or host._online_runtime().leaderboard_auth_recovery_required or host._online_runtime().leaderboard_name_transfer_required:
+		var google_button_text := "Connect Google"
+		if host._online_runtime().leaderboard_name_transfer_required:
+			google_button_text = "Change Google Account"
+		elif host._online_runtime().leaderboard_auth_recovery_required:
+			google_button_text = "Recover with Google"
+		var google_button = host._menu_button(google_button_text)
+		google_button.custom_minimum_size = Vector2(0, 110 if recovery_layout_active else 66)
+		if recovery_layout_active:
+			google_button.add_theme_font_size_override("font_size", 52)
 		google_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		google_button.disabled = host._online_runtime().google_auth_in_flight or host._online_runtime().leaderboard_auth_in_flight
 		if host._online_runtime().google_auth_in_flight or host._online_runtime().leaderboard_auth_in_flight:
 			google_button.text = "Connecting..."
 		google_button.pressed.connect(host._start_google_account_sign_in)
 		name_stack.add_child(google_button)
+	if host._online_runtime().leaderboard_name_transfer_required:
+		var transfer_button = host._menu_button("Complete Username Transfer")
+		transfer_button.custom_minimum_size = Vector2(0, 110)
+		transfer_button.add_theme_font_size_override("font_size", 52)
+		transfer_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		transfer_button.disabled = host._online_runtime().leaderboard_name_recovery_in_flight or host._online_runtime().leaderboard_auth_in_flight
+		if host._online_runtime().leaderboard_name_recovery_in_flight:
+			transfer_button.text = "Checking Approval..."
+		transfer_button.pressed.connect(Callable(host._online_runtime(), "complete_legacy_name_transfer"))
+		name_stack.add_child(transfer_button)
+	elif host._online_runtime().leaderboard_legacy_username_recovery_required:
+		var recovery_button = host._menu_button("Recover Approved Username")
+		recovery_button.custom_minimum_size = Vector2(0, 110)
+		recovery_button.add_theme_font_size_override("font_size", 52)
+		recovery_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		recovery_button.disabled = host._online_runtime().leaderboard_name_recovery_in_flight or host._online_runtime().leaderboard_auth_in_flight or host._online_runtime().profile_recovery_blocks_username_edit()
+		if host._online_runtime().leaderboard_name_recovery_in_flight:
+			recovery_button.text = "Checking Approval..."
+		recovery_button.pressed.connect(_recover_approved_legacy_username)
+		name_stack.add_child(recovery_button)
+	var recovery_code: String = str(host._online_runtime().account_recovery_code())
+	if not recovery_code.is_empty():
+		var recovery_code_label = host._label(recovery_code, host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+		recovery_code_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		recovery_code_label.custom_minimum_size = Vector2(0, 130)
+		name_stack.add_child(recovery_code_label)
+		var copy_recovery_code_button = host._menu_button("Copy Recovery Code")
+		copy_recovery_code_button.custom_minimum_size = Vector2(0, 110)
+		copy_recovery_code_button.add_theme_font_size_override("font_size", 52)
+		copy_recovery_code_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		copy_recovery_code_button.pressed.connect(Callable(self, "_copy_account_recovery_code").bind(recovery_code))
+		name_stack.add_child(copy_recovery_code_button)
 
-	if not host.leaderboard_profile.profile_claimed:
+	if not host.leaderboard_profile.profile_claimed and not host._online_runtime().leaderboard_name_transfer_required and not host._online_runtime().leaderboard_legacy_username_recovery_required and not protected_google_transition_required:
 		var account_button = host._menu_button("Save Username")
 		account_button.custom_minimum_size = Vector2(0, 77)
-		account_button.disabled = host._online_runtime().leaderboard_name_claim_in_flight
+		account_button.disabled = host._online_runtime().leaderboard_name_claim_in_flight or host._online_runtime().profile_recovery_blocks_username_edit()
 		if host._online_runtime().leaderboard_name_claim_in_flight:
 			account_button.text = "Checking..."
 		account_button.pressed.connect(_create_leaderboard_account)
@@ -1686,6 +1757,18 @@ func _profile_avatar_has_colored_background(index: int) -> bool:
 	return LeaderboardProfile.valid_avatar_index(index, PROFILE_AVATAR_COUNT) >= PROFILE_AVATAR_SHEET_CELL_COUNT
 
 func _profile_status_text() -> String:
+	if host._online_runtime().leaderboard_name_transfer_required:
+		return "Username transfer needs support approval."
+	if host._online_runtime().profile_recovery_blocks_username_edit():
+		return "Checking the saved username for this account..."
+	if host._online_runtime().leaderboard_legacy_username_recovery_required:
+		return "Username recovery needs support approval."
+	if host._online_runtime().legacy_authless_google_transition_required():
+		return "Connect Google to recover this legacy profile."
+	if host._online_runtime().deleted_auth_google_transition_required():
+		return "Connect Google to recover this deleted online account."
+	if host._online_runtime().leaderboard_auth_recovery_required:
+		return "Online account recovery is required."
 	if host._online_runtime().leaderboard_name_claim_in_flight:
 		return "Checking username..."
 	if host.leaderboard_profile.profile_claimed:

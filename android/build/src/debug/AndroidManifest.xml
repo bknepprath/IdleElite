@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:label="@string/godot_project_name_string"
-        android:allowBackup="false"
+        android:allowBackup="true"
         android:icon="@mipmap/icon"
         android:isGame="true"
         android:hasFragileUserData="true"

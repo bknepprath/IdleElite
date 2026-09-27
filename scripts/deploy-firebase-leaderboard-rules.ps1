@@ -32,6 +32,11 @@ Assert-True ($null -ne $firebaseCommand) "Firebase CLI was not found. Install it
 Push-Location $projectRoot
 try {
     & firebase deploy --only database --project $cleanProjectId
+    $deployExitCode = $LASTEXITCODE
 } finally {
     Pop-Location
 }
+if ($deployExitCode -ne 0) {
+    throw "Firebase database-rules deploy failed with exit code $deployExitCode."
+}
+Write-Output "firebase-leaderboard-rules-deployed"
