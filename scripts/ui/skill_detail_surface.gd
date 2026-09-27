@@ -6444,6 +6444,11 @@ func _activity_lock_overlay(parent: Control, unlock_level: int, skill_id = "", r
 	overlay.clip_contents = false
 	overlay.visible = false
 	overlay.z_index = 280
+	# Diamond arena cards draw the arena and its locked shade at MODULE_TITLE_OVER_PIN_Z_INDEX + 1/+2,
+	# which buried the chain and padlock; lift the lock above both.
+	var card_root := parent.get_parent()
+	if card_root != null and str(card_root.get_meta("combat_arena_shape", "")) == "diamond":
+		overlay.z_index = host.MODULE_TITLE_OVER_PIN_Z_INDEX + 3
 	parent.add_child(overlay)
 
 	var group = ActivityLockCluster.new()
