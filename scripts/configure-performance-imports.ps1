@@ -39,7 +39,9 @@ function Set-ImportValue {
         [string] $Key,
         [string] $Value
     )
-    $pattern = '(?m)^' + [regex]::Escape($Key) + '=.*$'
+    # [^\r\n]* keeps the CR of CRLF checkouts (core.autocrlf) out of the match;
+    # otherwise every Windows checkout reads as stale.
+    $pattern = '(?m)^' + [regex]::Escape($Key) + '=[^\r\n]*'
     if ($Text -notmatch $pattern) {
         throw "Missing import setting: $Key"
     }

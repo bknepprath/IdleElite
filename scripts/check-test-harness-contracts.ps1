@@ -1,6 +1,14 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+
+# [IO.Path]::GetRelativePath is PowerShell 7 only; this also runs on Windows PowerShell 5.1.
+function Get-ProjectRelativePath {
+    param([Parameter(Mandatory = $true)][string]$FullName)
+    $root = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
+    return $FullName.Substring($root.Length)
+}
+
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
 $parseFailures = @()
@@ -10,7 +18,7 @@ foreach ($script in $powerShellScripts) {
     $errors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors)
     foreach ($parseError in @($errors)) {
-        $relativePath = [IO.Path]::GetRelativePath($projectRoot, $script.FullName)
+        $relativePath = (Get-ProjectRelativePath $script.FullName)
         $parseFailures += "${relativePath}:$($parseError.Extent.StartLineNumber): $($parseError.Message)"
     }
 }
@@ -40,7 +48,7 @@ foreach ($script in $captureScripts) {
     if ($text -notmatch 'save_png') {
         continue
     }
-    $relativePath = [IO.Path]::GetRelativePath($projectRoot, $script.FullName)
+    $relativePath = (Get-ProjectRelativePath $script.FullName)
     foreach ($contract in @(
         @{ Valid = $text -match 'res://scenes/main\.tscn'; Message = "must instantiate res://scenes/main.tscn" },
         @{ Valid = $text -match '--visible-game'; Message = "must run through the bounded visible-game wrapper" },
@@ -58,7 +66,7 @@ foreach ($script in $captureScripts) {
 $standaloneCaptureScripts = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter "*capture*.gd" -File -Recurse)
 foreach ($script in $standaloneCaptureScripts) {
     $text = Get-Content -LiteralPath $script.FullName -Raw
-    $relativePath = [IO.Path]::GetRelativePath($projectRoot, $script.FullName)
+    $relativePath = (Get-ProjectRelativePath $script.FullName)
     if ($text -match 'CONTENT_SCALE_MODE_CANVAS_ITEMS|\bSubViewport\b') {
         $captureFailures += "${relativePath}: standalone capture uses a prohibited isolated-render technique"
     }

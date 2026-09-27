@@ -421,8 +421,10 @@ $generated += "`n"
 if ($Check) {
     Assert-True (Test-Path -LiteralPath $rulesPath) "Missing firebase-realtime-database.rules.json"
     $current = Get-Content -LiteralPath $rulesPath -Raw
-    $normalizedCurrent = $current -replace "`r`n", "`n"
-    $normalizedGenerated = $generated -replace "`r`n", "`n"
+    # Compare parsed JSON: Windows PowerShell 5.1 and PowerShell 7 format
+    # ConvertTo-Json differently, and formatting is not a rules change.
+    $normalizedCurrent = $current | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress
+    $normalizedGenerated = $generated | ConvertFrom-Json | ConvertTo-Json -Depth 32 -Compress
     Assert-True ($normalizedCurrent -eq $normalizedGenerated) "firebase-realtime-database.rules.json is out of date. Run .\scripts\update-firebase-leaderboard-rules.ps1"
     Write-Output "firebase-leaderboard-rules-current"
     exit 0
