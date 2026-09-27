@@ -250,7 +250,7 @@ foreach ($validation in @(
     @("scripts\test-skill-detail-hidden-preview-scroll-gap.ps1", "Skill detail hidden preview scroll-gap", "skill detail hidden preview scroll-gap"),
     @("scripts\test-save-normalization.ps1", "Save normalization", "save normalization"),
     @("scripts\test-save-hardening.ps1", "Save hardening", "save hardening"),
-    @("scripts	est-skill-swipe-fresh-save.ps1", "Fresh-save skill swipe", "fresh-save skill swipe"),
+    @("scripts\test-skill-swipe-fresh-save.ps1", "Fresh-save skill swipe", "fresh-save skill swipe"),
     @("scripts\test-save-lifecycle-guard.ps1", "Save lifecycle guard", "save lifecycle guard"),
     @("scripts\test-online-identity-safety.ps1", "Online identity safety", "online identity safety"),
     @("scripts\test-firebase-profile-backfill.ps1", "Firebase profile backfill", "firebase profile backfill"),
