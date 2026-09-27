@@ -71,7 +71,7 @@ foreach ($importFile in $textureImports) {
     }
     $text = Get-Content -Raw -LiteralPath $importFile.FullName
     $sizeLimit = 0
-    if ($text -match '(?m)^process/size_limit=(\d+)$') {
+    if ($text -match '(?m)^process/size_limit=(\d+)\r?$') {
         $sizeLimit = [int]$Matches[1]
     }
     $scale = 1.0
