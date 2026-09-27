@@ -1112,8 +1112,6 @@ func _append_detail_eager_entry(stack: VBoxContainer, skill_id: String, entry_da
 		_register_action_card(host._action_key(skill_id, action_id), card)
 		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
 		detail_action_card_nodes[action_id] = stack_entry
-	if not host._onboarding_runtime()._onboarding_path_active() and _should_show_lock_click_tip(skill_id, action):
-		_detail_eager_add_to_stack(stack, _detail_stack_entry(host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Tap to unlock", "lock_click_tip_notes"), content_width, actions_width))
 	if _should_show_passive_module_tip(skill_id, action):
 		var passive_card_key: String = host._action_key(skill_id, action_id)
 		var passive_card := host.action_cards.get(passive_card_key, {}) as Dictionary
@@ -1334,8 +1332,6 @@ func _maybe_resume_fishing_detail_idle_warm_mount() -> void:
 func _finish_detail_lazy_settle_warm_mount(skill_id: String, detail_scroll_visual_work: bool) -> void:
 	detail_lazy_settle_warm_mount_skill_id = ""
 	if current_screen == "skill" and selected_skill_id == skill_id:
-		if not (host._fishing_rework_active_for_skill(selected_skill_id) and detail_scroll_visual_work):
-			host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
 		_sync_detail_actions_scroll_limit()
 		if host._fishing_rework_active_for_skill(selected_skill_id):
 			host._fishing_ui_surface()._sync_fishing_detail_render_culling(true)
@@ -2793,7 +2789,6 @@ func _sync_detail_actions_scroll_limit() -> void:
 		return
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
-	host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
 	if boot_detail_scroll_locked:
 		detail_actions_scroll.set_max_scroll_override(0)
 		detail_actions_scroll.set_scroll_enabled_by_content(false)
@@ -2811,8 +2806,6 @@ func _sync_detail_actions_scroll_limit() -> void:
 		real_content_bottom = maxf(real_content_bottom, page_switch_bottom)
 		var page_gap: float = host.THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD if selected_skill_id == "thieving" else host.SKILL_DETAIL_BOTTOM_SCROLL_PAD
 		bottom_gap = maxf(0.0, bottom_gap - NavigationShell.PAGE_SWITCH_MODULE_HEIGHT - float(page_gap) - 12.0)
-	elif int(visible_content.get("count", 0)) <= 1 and _detail_has_hidden_locked_activity_preview():
-		bottom_gap = 0.0
 	var max_scroll_to_content := maxi(0, int(ceil(real_content_bottom + bottom_gap - viewport_height)))
 	detail_actions_scroll.set_max_scroll_override(max_scroll_to_content)
 	detail_actions_scroll.set_scroll_enabled_by_content(true)
@@ -2870,16 +2863,6 @@ func _detail_authoritative_scrollable_module_bottom() -> Dictionary:
 	return {"bottom": 0.0, "count": 0}
 
 
-func _detail_has_hidden_locked_activity_preview() -> bool:
-	if action_cards.is_empty():
-		return false
-	for raw_card in action_cards.values():
-		var card := raw_card as Dictionary
-		if bool(card.get("locked_preview_hidden", false)):
-			return true
-	return false
-
-
 func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 	if detail_lazy_plan.is_empty():
 		return {"bottom": 0.0, "count": 0}
@@ -2894,10 +2877,6 @@ func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 		var lazy_entry := raw_lazy_entry as Dictionary
 		var kind := str(lazy_entry.get("kind", ""))
 		if not _detail_lazy_kind_is_module(kind):
-			continue
-		var action_key: String = host._action_key(selected_skill_id, str(lazy_entry.get("track_id", "")))
-		var action_card := action_cards.get(action_key, {}) as Dictionary
-		if bool(action_card.get("locked_preview_hidden", false)):
 			continue
 		var stack_host: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
 		var host_bottom := -1.0
@@ -2954,7 +2933,7 @@ func _detail_stack_child_is_module_content(control: Control) -> bool:
 		return false
 	if bool(control.get_meta("skill_swipe_preview_placeholder", false)):
 		return false
-	if _detail_control_has_any_group(control, ["activity_start_tip_notes", "skill_swipe_tip_notes", "onboarding_explore_tip_notes", "lock_click_tip_notes"]):
+	if _detail_control_has_any_group(control, ["activity_start_tip_notes", "skill_swipe_tip_notes", "lock_click_tip_notes"]):
 		return false
 	if bool(control.get_meta("detail_stack_entry_wrapper", false)) and not _detail_lazy_slot_has_real_content(control):
 		return false
@@ -3481,15 +3460,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	host._tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
 	host._tutorial_overlay_surface()._apply_onboarding_fight_action_stats_visibility_all()
 	_sync_skill_detail_back_arrow_visibility()
-	if host._onboarding_runtime()._onboarding_auto_run_message_resumable():
-		host._onboarding_runtime().call_deferred("_run_onboarding_auto_run_message_sequence")
-	if host._onboarding_runtime()._onboarding_header_reveal_sequence_resumable():
-		host._onboarding_runtime().call_deferred("_run_onboarding_header_reveal_sequence")
-	elif onboarding_fight_stamina_revealed and not stamina_gauge_tip_seen and host._onboarding_runtime()._onboarding_fight_header_sequence_active():
-		host._onboarding_runtime().call_deferred("_run_onboarding_stamina_tip_sequence")
-	elif host._onboarding_runtime()._onboarding_swipe_tip_sequence_resumable():
-		host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-	elif host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(selected_skill_id):
 		host._onboarding_runtime()._dismiss_skill_detail_tutorial_tips()
 
 	if boot_detail_card_yield or yield_under_cover:
@@ -3558,8 +3529,6 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 			var start_note = host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Click an activity to start doing it.", "activity_start_tip_notes")
 			_detail_eager_add_activity_start_tip_below_content(stack, start_note, content_width, actions_width)
 			_fade_in_activity_start_tip_note(start_note)
-		elif host._onboarding_runtime()._skill_swipe_tip_available():
-			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 	else:
 		if boot_detail_card_yield:
 			var boot_lazy_slots_created = await _render_detail_lazy_card_list_batched(
@@ -6871,17 +6840,13 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 	_set_activity_card_locked_visual(card, (not unlocked) or ceremony_active)
 	var skill_id = str(card.get("skill_id", host.selected_skill_id))
 	var action_id = str(action.get("id", card.get("action_id", "")))
-	var ready_pending = bool(card.get("unlock_ready_pending", false)) or host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id)
+	if not bool(card.get("unlock_ready_pending", false)):
+		# Still called for its side effect of clearing stale readiness on unlocked actions.
+		host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id)
 	var lock_visible = (not unlocked) or ceremony_active
-	var preview_revealing = (
-		not ceremony_active
-		and not ready_pending
-		and lock_visible
-		and bool(card.get("locked_preview_hidden", false))
-	)
 	var overlay = card.get("lock_overlay", {}) as Dictionary
 	if overlay.is_empty():
-		if not lock_visible and not preview_revealing:
+		if not lock_visible:
 			card["lock_overlay_sync_key"] = "%s:%s:%s" % [false, false, int(action.get("unlock", 1))]
 			return
 		overlay = _ensure_activity_lock_overlay(card, int(action.get("unlock", 1)))
@@ -6902,10 +6867,6 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 		rig.call("set_unlock_level", int(action.get("unlock", 1)))
 		rig.call("set_theme_color", ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		card["lock_overlay_sync_key"] = "ceremony:%s" % int(action.get("unlock", 1))
-		return
-	if preview_revealing:
-		_set_activity_lock_overlay_active(overlay, false)
-		card["lock_overlay_sync_key"] = "preview_revealing:%s" % int(action.get("unlock", 1))
 		return
 	var sync_key = "%s:%s:%s:%s" % [
 		lock_visible,
@@ -7087,16 +7048,6 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 	if root == null:
 		return
 	var entry = card.get("entry") as Control
-	if bool(card.get("locked_preview_hidden", false)):
-		host._app_lifecycle_runtime()._kill_card_tween(card, "bonus_tween")
-		card["bonus_expanded"] = false
-		host._app_lifecycle_runtime().set_control_minimum_height(root, 0.0)
-		if entry != null and is_instance_valid(entry):
-			host._app_lifecycle_runtime().set_control_minimum_height(entry, 0.0)
-		root.visible = true
-		root.modulate = Color(1, 1, 1, 0)
-		root.clip_contents = true
-		return
 	if bool(root.get_meta("module_ui_collapsed_squeeze", false)):
 		var collapsed_height = _module_collapsed_squeeze_height()
 		var mat_collection = card.get("mat_collection", {}) as Dictionary
@@ -7936,7 +7887,7 @@ func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
 			return float(host.ACTION_CARD_HEIGHT)
 		"fishing_offer":
 			return host._fishing_ui_surface()._fishing_offer_height(str(lazy_entry.get("offer_id", "")))
-		"lock_tip", "activity_start_tip", "skill_swipe_tip":
+		"activity_start_tip", "skill_swipe_tip":
 			return DETAIL_LAZY_TIP_HEIGHT
 	var uses_diamond_arena: bool = bool(host._fighting_runtime().action_uses_diamond_combat_arena(action))
 	var depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
@@ -8017,7 +7968,7 @@ func _detail_lazy_should_mount_entry(lazy_entry: Dictionary, pinned: Dictionary,
 		return false
 	var kind = str(lazy_entry.get("kind", ""))
 	var initial_force_count = _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id)
-	if kind in ["lock_tip", "activity_start_tip", "skill_swipe_tip"]:
+	if kind in ["activity_start_tip", "skill_swipe_tip"]:
 		return plan_index < initial_force_count or _detail_lazy_entry_in_viewport(lazy_entry)
 	if _detail_lazy_entry_is_pinned(lazy_entry, pinned):
 		return true
@@ -8207,7 +8158,6 @@ func _cancel_boot_detail_completion() -> void:
 
 func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, action: Dictionary, action_id: String) -> void:
 	_ensure_interactive_action_card_button(card, skill_id, action_id)
-	host._activity_unlock_ceremony_surface().prepare_locked_activity_preview_fade(card, skill_id, action)
 	host._activity_unlock_ceremony_surface().sync_locked_preview_presence(card, skill_id, action)
 	if host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id):
 		card["unlock_ready_pending"] = true
@@ -9033,12 +8983,6 @@ func _detail_eager_add_smooth_tutorial_tip(stack: VBoxContainer, note: Control, 
 	return entry
 
 
-func _finish_smooth_tutorial_tip_entry_reveal(entry_id: int) -> void:
-	var entry: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(entry_id))
-	if entry != null:
-		entry.clip_contents = false
-
-
 func _tutorial_note_is_in_stack(note: Control, stack: VBoxContainer) -> bool:
 	if note == null or stack == null or not is_instance_valid(note) or not is_instance_valid(stack):
 		return false
@@ -9057,7 +9001,7 @@ func _tutorial_note_group_has_node_in_stack(group_name: String, stack: VBoxConta
 
 
 func _append_detail_eager_trailing_tips(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
-	if host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active():
+	if host._onboarding_runtime().tutorial_active:
 		return
 	if _activity_start_inline_tip_available(selected_skill_id):
 		if _tutorial_note_group_has_node_in_stack("activity_start_tip_notes", stack):
@@ -9065,8 +9009,6 @@ func _append_detail_eager_trailing_tips(stack: VBoxContainer, content_width: flo
 		var note: Control = host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Click an activity to start doing it.", "activity_start_tip_notes")
 		_detail_eager_add_activity_start_tip_below_content(stack, note, content_width, actions_width)
 		_fade_in_activity_start_tip_note(note)
-	elif host._onboarding_runtime()._skill_swipe_tip_available():
-		host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 
 
 func _activity_start_inline_tip_available(skill_id: String = selected_skill_id) -> bool:
@@ -9085,10 +9027,6 @@ func _fade_in_activity_start_tip_note(note: Control) -> void:
 	if note == null or not is_instance_valid(note):
 		return
 	note.modulate = Color.WHITE
-
-
-func _should_show_lock_click_tip(_skill_id: String, _action: Dictionary) -> bool:
-	return false
 
 
 func _should_show_passive_module_tip(skill_id: String, action: Dictionary) -> bool:
@@ -9155,21 +9093,6 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 			})
 			y += DETAIL_LAZY_TIP_HEIGHT + DETAIL_LAZY_STACK_SEPARATION
 			activity_start_tip_pending = false
-		if lazy_entry["kind"] in ["passive", "action"]:
-			var action = entry_data.get("action", {}) as Dictionary
-			if _should_show_lock_click_tip(skill_id, action):
-				plan.append({
-					"kind": "lock_tip",
-					"entry": {},
-					"track_id": "tip:lock:%s" % str(action.get("id", "")),
-					"y": y,
-					"height": DETAIL_LAZY_TIP_HEIGHT,
-					"mounted": false,
-					"stack_host": null,
-					"placeholder": null,
-					"direct_stack_child": false
-				})
-				y += DETAIL_LAZY_TIP_HEIGHT + DETAIL_LAZY_STACK_SEPARATION
 		if skill_swipe_tip_pending and not skill_swipe_tip_anchor_track_id.is_empty() and track_id == skill_swipe_tip_anchor_track_id:
 			plan.append({
 				"kind": "skill_swipe_tip",
@@ -9465,11 +9388,6 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 				fade_target = offer_root
 				fade_allowed = true
 				mounted_ok = true
-		"lock_tip":
-			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			lazy_entry["placeholder"] = null
-			_detail_lazy_add_child_to_host(stack_host, host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Tap to unlock", "lock_click_tip_notes"), content_width, actions_width)
-			mounted_ok = true
 		"activity_start_tip":
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 			lazy_entry["placeholder"] = null
@@ -10130,8 +10048,6 @@ func _update_skill_detail_shadow(delta: float, instant := false) -> void:
 
 func _build_detail_jump_arrows(parent: Control) -> void:
 	if detail_actions_scroll == null:
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
 		return
 	var scroll_direction_callback := Callable(host, "_on_detail_actions_user_scroll_direction")
 	if not detail_actions_scroll.user_scroll_direction.is_connected(scroll_direction_callback):

@@ -485,8 +485,6 @@ func validate_state_bootstrap() -> void:
 
 func prepare_selected_skill_for_render(boot_fast := false) -> void:
 	validate_state_bootstrap()
-	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_skill_accessible(host.selected_skill_id):
-		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
 	if boot_fast:
 		var prepared_action_ids := {}
 		for entry in host._skill_detail_surface()._visible_detail_entries_for_skill(host.selected_skill_id):

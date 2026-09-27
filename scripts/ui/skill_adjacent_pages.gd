@@ -112,7 +112,7 @@ func enabled() -> bool:
 	if host.skill_defs.size() < 3:
 		return false
 	var onboarding = host._onboarding_runtime()
-	if onboarding.tutorial_active or onboarding._onboarding_path_active():
+	if onboarding.tutorial_active:
 		return false
 	if host.boot_detail_render_in_progress or host.boot_detail_scroll_locked or not host.boot_detail_render_queue.is_empty():
 		return false
@@ -637,7 +637,6 @@ func _settle_page(record: Dictionary) -> bool:
 	record["landing_scroll"] = int(scroll.scroll_vertical)
 	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		host._fishing_ui_surface()._sync_fishing_detail_render_culling(true)
-	host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
 	detail._update_detail_header_gauges(true, true, true, 0.0, true)
 	return moved
 

@@ -83,8 +83,6 @@ func _battery_governor_visual_work_active() -> bool:
 		return true
 	if host._profile_chat_overlay_surface().keyboard_lift_active():
 		return true
-	if host._tutorial_overlay_surface().activity_start_highlight_active or host._tutorial_overlay_surface().activity_start_highlight_pending:
-		return true
 	if host._achievement_toast_surface().transient_work_active():
 		return true
 	if host._navigation_shell()._page_switch_pending_transition_queued() or host.module_ui_animating_collapse_key != "":
@@ -111,9 +109,6 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 				or not temporary_events.event_running_action_id.is_empty()
 			or host._action_stop_hold().active()
 			or not host._skill_detail_surface().action_card_press_key.is_empty()
-			or host._tutorial_overlay_surface().activity_start_highlight_active
-			or host._tutorial_overlay_surface().activity_start_highlight_pending
-			or host._activity_unlock_ceremony_surface().locked_preview_fade_play_pending
 			or host._navigation_shell()._pinned_active_shelf_has_jailed_action()
 			or _skill_detail_has_fishing_camera_returning()
 			or (pinned_scroll != null and is_instance_valid(pinned_scroll) and (pinned_scroll.drag_scrolling or absf(pinned_scroll.velocity) >= 4.0))
@@ -128,10 +123,6 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 	if host._skill_swipe_activity_surface().skill_swipe_tracking or host._skill_swipe_activity_surface().skill_swipe_animating:
 		return true
 	if host._action_stop_hold().active() or not host._skill_detail_surface().action_card_press_key.is_empty():
-		return true
-	if host._tutorial_overlay_surface().activity_start_highlight_active or host._tutorial_overlay_surface().activity_start_highlight_pending:
-		return true
-	if host._activity_unlock_ceremony_surface().locked_preview_fade_play_pending:
 		return true
 	if host._activity_unlock_runtime().has_pending_readiness_for_skill(host.selected_skill_id) or host._activity_unlock_ceremony_surface().ceremony_count > 0:
 		return true

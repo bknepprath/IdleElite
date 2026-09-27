@@ -2847,8 +2847,6 @@ func _finish_profile_reference_update() -> void:
 
 
 func _chat_stream_connect(force_reconnect = false) -> void:
-	if not app._profile_chat_overlay_surface()._global_chat_allowed():
-		return
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
 		return

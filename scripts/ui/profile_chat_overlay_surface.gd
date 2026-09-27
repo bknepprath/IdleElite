@@ -236,15 +236,10 @@ func reset_chat_overlay_refs() -> void:
 	chat_overlay_shell_ready = false
 	chat_profile_button = null
 
-func _global_chat_allowed() -> bool:
-	return not host._onboarding_runtime()._onboarding_path_active()
-
 func _chat_strip_visible_on_current_screen() -> bool:
 	return host.current_screen == "menu" or host.current_screen == "skill" or host.current_screen == "pinned" or host.current_screen == "queue"
 
 func _ensure_chat_strip() -> void:
-	if not _global_chat_allowed():
-		return
 	if chat_strip != null and is_instance_valid(chat_strip):
 		return
 	host._online_runtime().ensure_leaderboard_http()
@@ -934,15 +929,6 @@ func _on_chat_shop_nav_pressed() -> void:
 
 
 func _update_chat_strip(force_visibility := false) -> void:
-	if not _global_chat_allowed():
-		if host._online_runtime().chat_stream_connected or host._online_runtime().chat_stream_connecting or host._online_runtime().chat_stream_request_sent:
-			host._online_runtime()._chat_stream_disconnect(false)
-		if chat_strip != null and is_instance_valid(chat_strip):
-			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(chat_strip, false)
-			chat_strip_last_visible = false
-		if chat_unread_dot != null and is_instance_valid(chat_unread_dot):
-			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(chat_unread_dot, false)
-		return
 	if chat_strip == null or not is_instance_valid(chat_strip):
 		if _chat_strip_visible_on_current_screen() or force_visibility:
 			_ensure_chat_strip()

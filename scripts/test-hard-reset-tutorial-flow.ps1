@@ -479,7 +479,7 @@ func _floating_skip_button_visible(scene: Node) -> bool:
 
 
 func _onboarding_tip_summary(scene: Node) -> String:
-	return "starter_count=%s fight_level=%s fight_xp=%s mastery_tip=%s medal_tip=%s lock_tip=%s stats_revealed=%s stamina_seen=%s header=%s stamina=%s header_running=%s stamina_running=%s stats_running=%s rendered=%s" % [
+	return "starter_count=%s fight_level=%s fight_xp=%s mastery_tip=%s medal_tip=%s lock_tip=%s stats_revealed=%s stamina_seen=%s header=%s stamina=%s rendered=%s" % [
 		str(scene._onboarding_runtime().onboarding_starter_action_completion_count),
 		str(SkillState.host_skill_level(scene, "fight")),
 		str((scene.get("skills") as Dictionary).get("fight", {}).get("xp", "?")),
@@ -490,9 +490,6 @@ func _onboarding_tip_summary(scene: Node) -> String:
 		str(scene._onboarding_runtime().stamina_gauge_tip_seen),
 		str(_fight_header_summary_visible(scene)),
 		str(_fight_stamina_visible(scene)),
-		str(scene._onboarding_runtime().onboarding_header_sequence_running),
-		str(scene._onboarding_runtime().onboarding_stamina_tip_sequence_running),
-		str(scene._onboarding_runtime().onboarding_fight_action_stats_fade_running),
 		str(_rendered_action_ids(scene)),
 	]
 

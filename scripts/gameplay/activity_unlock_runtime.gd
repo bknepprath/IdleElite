@@ -101,8 +101,6 @@ func set_pending_readiness_pages(pages: Dictionary) -> void:
 func _queue_activity_unlock_readiness(trigger_skill_id: String, old_level: int, new_level: int, ready_by_skill: Dictionary) -> void:
 	if ready_by_skill.is_empty() or not host.startup_initialized:
 		return
-	if trigger_skill_id == host.TUTORIAL_STARTER_SKILL_ID and old_level < 2 and new_level >= 2:
-		host._tutorial_overlay_surface().fade_out_onboarding_level_up_tip(host.ACTIVITY_PREVIEW_FADE_IN_SECONDS)
 	ready_by_skill = _auto_unlock_nonvisible_ready_lockpads(ready_by_skill)
 	if ready_by_skill.is_empty():
 		return
@@ -131,12 +129,12 @@ func _queue_activity_unlock_readiness(trigger_skill_id: String, old_level: int, 
 	set_pending_readiness_pages(pages)
 	host._activity_unlock_ceremony_surface().detail_refresh_done = false
 	host._activity_unlock_ceremony_surface().center_scroll_target = -1
-	if host.auto_unlock_lockpads_enabled and not host._onboarding_runtime()._onboarding_path_active():
+	if host.auto_unlock_lockpads_enabled:
 		call_deferred("_auto_unlock_pending_lockpads")
 	if host.current_screen == "skill" and has_pending_readiness_for_skill(host.selected_skill_id):
 		host.call_deferred("_update_ui", 0.0, false)
 func _auto_unlock_nonvisible_ready_lockpads(ready_by_skill: Dictionary) -> Dictionary:
-	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled:
 		return ready_by_skill
 	var visible_ready_by_skill := {}
 	for raw_owner_skill_id in ready_by_skill.keys():
@@ -178,7 +176,7 @@ func _ready_lockpads_for_current_state() -> Dictionary:
 		ready_by_skill[owner_skill_id] = owner_ready_ids
 	return ready_by_skill
 func _auto_unlock_retroactive_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled:
 		return
 	var ready_by_skill := _ready_lockpads_for_current_state()
 	if ready_by_skill.is_empty():
@@ -186,12 +184,12 @@ func _auto_unlock_retroactive_lockpads() -> void:
 	_queue_activity_unlock_readiness("", 0, 0, ready_by_skill)
 	_auto_unlock_pending_lockpads()
 func _run_startup_auto_unlock_lockpads() -> void:
-	if not host.startup_initialized or not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
+	if not host.startup_initialized or not host.auto_unlock_lockpads_enabled:
 		return
 	_auto_unlock_retroactive_lockpads()
 	_auto_unlock_pending_lockpads()
 func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
-	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active() or host.current_screen != "skill" or skill_id != host.selected_skill_id or host._activity_unlock_ceremony_surface().ceremony_count > 0:
+	if not host.auto_unlock_lockpads_enabled or host.current_screen != "skill" or skill_id != host.selected_skill_id or host._activity_unlock_ceremony_surface().ceremony_count > 0:
 		return
 	if host._fishing_rework_active_for_skill(skill_id):
 		if _auto_unlock_visible_fishing_location_lockpad():
@@ -282,7 +280,7 @@ func _fishing_next_visible_auto_unlock_action_id() -> String:
 	return best_action_id
 
 func _auto_unlock_pending_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled:
 		return
 	var pages := pending_readiness_pages()
 	for raw_skill_id in pages.keys():
@@ -366,7 +364,7 @@ func _schedule_auto_unlock_pending_lockpads_after_delay(delay_seconds: float) ->
 	await host.get_tree().create_timer(maxf(0.0, delay_seconds)).timeout
 	_schedule_auto_unlock_pending_lockpads()
 func _schedule_auto_unlock_pending_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled or pending_readiness_pages().is_empty() or host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled or pending_readiness_pages().is_empty():
 		return
 	call_deferred("_auto_unlock_pending_lockpads")
 

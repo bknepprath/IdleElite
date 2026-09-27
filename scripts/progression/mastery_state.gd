@@ -74,16 +74,12 @@ static func action_has_mastery(host, action: Dictionary) -> bool:
 static func reward_for_action(host, skill_id: String, action_id: String, action: Dictionary) -> float:
 	if not action_has_mastery(host, action):
 		return 0.0
-	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
-		return 0.0
 	if is_maxed(host.mastery, host._action_key(skill_id, action_id), host.MASTERY_MAX_LEVEL):
 		return 0.0
 	return xp_reward(action)
 static func add_host_xp(host, skill_id: String, action_id: String, amount: float) -> void:
 	var key: String = host._action_key(skill_id, action_id)
 	if amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
-		return
-	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
 		return
 	_refresh_host_after_level_change(host, add_xp(host.mastery, key, amount, host.MASTERY_MAX_LEVEL))
 static func recalculate_host(host, key: String) -> void:

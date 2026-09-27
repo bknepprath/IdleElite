@@ -734,7 +734,6 @@ func _start_temporary_event_action(skill_id: String, action_id: String, action: 
 	host._material_collection_surface()._sync_visible_mat_collection_for_action(skill_id, action_id, true)
 	host._reward_feedback_surface()._set_result("Event started: %s." % str(action.get("name", "Event")))
 	host._onboarding_runtime()._record_activity_start_for_tips()
-	host._tutorial_overlay_surface().fade_out_onboarding_explore_tip()
 	host._onboarding_runtime()._tutorial_on_action_started()
 	return true
 

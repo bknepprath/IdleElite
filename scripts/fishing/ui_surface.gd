@@ -838,10 +838,6 @@ func _fishing_detail_scroll_frame_can_skip_ui_update() -> bool:
 		return false
 	if host._action_stop_hold().active() or not host._skill_detail_surface().action_card_press_key.is_empty():
 		return false
-	if host._tutorial_overlay_surface().activity_start_highlight_active or host._tutorial_overlay_surface().activity_start_highlight_pending:
-		return false
-	if host._activity_unlock_ceremony_surface().locked_preview_fade_play_pending:
-		return false
 	if host._activity_unlock_runtime().has_pending_readiness_for_skill(host.selected_skill_id) or host._activity_unlock_ceremony_surface().ceremony_count > 0:
 		return false
 	if host._performance_runtime()._skill_detail_has_fishing_camera_returning():
@@ -1665,7 +1661,6 @@ func _render_fishing_area_modules_preview(stack: VBoxContainer, content_width: f
 		if not host._passive_modules_runtime().is_passive_action(action as Dictionary):
 			continue
 		var passive_card = host._passive_firepit_surface()._build_passive_module_card(skill_id, action as Dictionary, content_width, false)
-		host._activity_unlock_ceremony_surface().prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
 		host._activity_unlock_ceremony_surface().sync_locked_preview_presence(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
 		stack.add_child(passive_card["root"] as Control)
 		(state["host.action_cards"] as Array).append(passive_card["card"])
