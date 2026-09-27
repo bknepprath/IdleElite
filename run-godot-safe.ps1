@@ -115,9 +115,38 @@ if (-not $visibleGame -and $godotArgs -notcontains "--headless") {
     $godotArgs = @("--headless") + $godotArgs
 }
 $previousAppData = $env:APPDATA
-if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
-    $testUserDataDir = (New-Item -ItemType Directory -Force -Path $env:IDLE_ELITE_TEST_USER_DATA_DIR).FullName
-    $env:APPDATA = $testUserDataDir
+# Every headless run gets its own user:// so tests and smoke boots can never load
+# or overwrite the developer's real desktop save. Visible game runs keep the real
+# profile unless a test explicitly supplies IDLE_ELITE_TEST_USER_DATA_DIR.
+$removeHeadlessUserData = $false
+$isolatedUserDataActive = -not $visibleGame -or [bool]$env:IDLE_ELITE_TEST_USER_DATA_DIR
+$headlessUserDataDir = ""
+if ($isolatedUserDataActive) {
+    $requestedUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+    if (-not $requestedUserDataDir) {
+        $removeHeadlessUserData = $true
+        $requestedUserDataDir = Join-Path $env:TEMP ("idle-elite-godot-user-{0}" -f ([guid]::NewGuid()))
+    }
+    $headlessUserDataDir = (New-Item -ItemType Directory -Force -Path $requestedUserDataDir).FullName
+    $env:APPDATA = $headlessUserDataDir
+}
+
+function Restore-RunnerUserData {
+    param([int]$ExitCode)
+    if (-not $isolatedUserDataActive) {
+        return
+    }
+    if ($null -eq $previousAppData) {
+        Remove-Item Env:\APPDATA -ErrorAction SilentlyContinue
+    } else {
+        $env:APPDATA = $previousAppData
+    }
+    if ($removeHeadlessUserData -and $ExitCode -eq 0) {
+        $tempRoot = [IO.Path]::GetFullPath($env:TEMP).TrimEnd('') + ''
+        if ($headlessUserDataDir.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            Remove-Item -LiteralPath $headlessUserDataDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function ConvertTo-ProcessArgument {
@@ -143,6 +172,7 @@ try {
         if (-not $mutexHeld) {
             if ((Get-Date) -ge $deadline) {
                 Write-Error "Timed out waiting for the Godot launch gate."
+                Restore-RunnerUserData 75
                 exit 75
             }
             continue
@@ -187,6 +217,7 @@ try {
 
         if ((Get-Date) -ge $deadline) {
             Write-Error "There are already $($running.Count) Godot processes running. No slot opened within $waitSeconds seconds."
+            Restore-RunnerUserData 75
             exit 75
         }
 
@@ -211,6 +242,7 @@ if ($runTimeoutSeconds -gt 0) {
     if (-not $finished) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         Write-Error "Godot did not finish within $runTimeoutSeconds seconds and was stopped."
+        Restore-RunnerUserData 124
         exit 124
     }
 } else {
@@ -331,13 +363,6 @@ if ($unmatchedNewIds.Count -gt 0) {
     }
 }
 
-if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
-    if ($null -eq $previousAppData) {
-        Remove-Item Env:\APPDATA -ErrorAction SilentlyContinue
-    } else {
-        $env:APPDATA = $previousAppData
-    }
-}
-
+Restore-RunnerUserData $exitCode
 Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
 exit $exitCode
