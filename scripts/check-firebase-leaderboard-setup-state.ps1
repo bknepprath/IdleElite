@@ -37,9 +37,7 @@ Assert-True ($databaseUrl -notmatch 'your-project-id|YOUR-PROJECT|your_project')
 Assert-True ($webApiKey.Length -ge 20) "firebase-leaderboard-config.json has an invalid web_api_key."
 Assert-True ($webApiKey -ne "YOUR_FIREBASE_WEB_API_KEY") "firebase-leaderboard-config.json still contains a placeholder web_api_key."
 Assert-True ($webApiKey -notmatch '\s') "firebase-leaderboard-config.json web_api_key must not contain whitespace."
-if (-not [string]::IsNullOrWhiteSpace($googleWebClientId)) {
-    Assert-True ($googleWebClientId -match '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') "firebase-leaderboard-config.json has an invalid google_web_client_id."
-}
+Assert-True ([string]::IsNullOrWhiteSpace($googleWebClientId) -or $googleWebClientId -match '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') "firebase-leaderboard-config.json has an invalid google_web_client_id."
 
 Write-Output "firebase-setup-state-config-ok"
 Write-Output "firebase-setup-next-step=run-read-only-live-smoke"

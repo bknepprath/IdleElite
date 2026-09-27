@@ -49,6 +49,8 @@ if ($devices.Count -eq 0) {
 
 & $buildScript | Out-Host
 
+if (-not (Test-Path -LiteralPath $aab)) { throw "Preview bundle was not produced: $aab" }
+
 if (Test-Path -LiteralPath $apks) {
     Remove-Item -LiteralPath $apks -Force
 }

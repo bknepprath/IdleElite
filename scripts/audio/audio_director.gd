@@ -187,7 +187,7 @@ var chain_audio_scroll_direction := 0
 var chain_audio_scroll_focus_seconds := 0.0
 
 func _focus_chain_scroll(direction: int) -> void:
-	chain_audio_scroll_direction = 1 if direction > 0 else -1
+	chain_audio_scroll_direction = clampi(direction, -1, 1)
 	chain_audio_scroll_focus_seconds = CHAIN_SCROLL_TOWARD_SECONDS
 
 
@@ -251,11 +251,12 @@ func _ensure_path_player(player: AudioStreamPlayer, path: String, make_player: C
 func note_player_input(event: InputEvent) -> void:
 	if audio_unlocked_by_input and audio_unlock_ping_played:
 		return
-	if event is InputEventMouseButton and event.pressed:
-		_unlock_audio_for_gameplay()
-	elif event is InputEventScreenTouch and event.pressed:
-		_unlock_audio_for_gameplay()
-	elif event is InputEventKey and event.pressed and not event.echo:
+	var is_activation_input: bool = (
+		(event is InputEventMouseButton and event.pressed)
+		or (event is InputEventScreenTouch and event.pressed)
+		or (event is InputEventKey and event.pressed and not event.echo)
+	)
+	if is_activation_input:
 		_unlock_audio_for_gameplay()
 
 static func saved_volume(data: Dictionary, key: String, fallback: float) -> float:
@@ -291,8 +292,7 @@ func _host_dict(property_name: String) -> Dictionary:
 	return value as Dictionary if value is Dictionary else {}
 
 func _host_control(property_name: String) -> Control:
-	var value = host.get(property_name) if host != null else null
-	return value as Control
+	return (host.get(property_name) if host != null else null) as Control
 
 func _host_valid_control_ref(value: Variant) -> Control:
 	return host.call("_valid_control_ref", value) as Control if host != null else null
@@ -300,9 +300,9 @@ func _host_valid_control_ref(value: Variant) -> Control:
 func _kill_meta_tween(node: Node, meta_name: String) -> void:
 	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
 		return
-	var tween = node.get_meta(meta_name)
-	if tween is Tween and (tween as Tween).is_valid():
-		(tween as Tween).kill()
+	var tween := node.get_meta(meta_name) as Tween
+	if tween != null and tween.is_valid():
+		tween.kill()
 	node.remove_meta(meta_name)
 func _prepare_audio_buses() -> void:
 	_ensure_audio_buses()
@@ -516,6 +516,7 @@ func _audio_warm_repeated_path_players(players, path: String, count: int, base_v
 func _audio_warm_next(last_yield_msec: int) -> int:
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
+		extended_audio_warming = false
 		return -1
 	return last_yield_msec
 
@@ -720,7 +721,7 @@ func _load_sfx_stream(path: String) -> AudioStream:
 func _play(player: AudioStreamPlayer) -> void:
 	if player == null or not _can_play_audio():
 		return
-	if player == null or not player.is_inside_tree():
+	if not player.is_inside_tree():
 		return
 	player.stop()
 	player.pitch_scale = 1.0
@@ -841,12 +842,7 @@ func _play_completion_pip_sfx(streak_step: int) -> void:
 
 func _play_activity_tap_sfx() -> void:
 	_ensure_click_player()
-	if click_player == null or not click_player.is_inside_tree() or not _can_play_audio():
-		return
-	click_player.stop()
-	click_player.pitch_scale = 1.0
-	click_player.volume_db = ACTIVITY_START_SFX_VOLUME_DB
-	click_player.play()
+	_play_sfx_with_pitch_and_volume(click_player, 1.0, ACTIVITY_START_SFX_VOLUME_DB)
 
 
 func _play_passive_log_land_sfx(index: int) -> void:
@@ -865,32 +861,17 @@ func _play_passive_log_land_sfx(index: int) -> void:
 
 func _play_passive_upgrade_sfx() -> void:
 	passive_upgrade_player = _ensure_path_player(passive_upgrade_player, "res://assets/sfx/click.wav", Callable(self, "_sfx"), -15.0)
-	if passive_upgrade_player == null or not passive_upgrade_player.is_inside_tree() or not _can_play_audio():
-		return
-	passive_upgrade_player.stop()
-	passive_upgrade_player.pitch_scale = 1.28
-	passive_upgrade_player.volume_db = -15.0
-	passive_upgrade_player.play()
+	_play_sfx_with_pitch_and_volume(passive_upgrade_player, 1.28, -15.0)
 
 
 func _play_firepit_toggle_sfx(lit: bool) -> void:
 	passive_upgrade_player = _ensure_path_player(passive_upgrade_player, "res://assets/sfx/click.wav", Callable(self, "_sfx"), -15.0)
-	if passive_upgrade_player == null or not passive_upgrade_player.is_inside_tree() or not _can_play_audio():
-		return
-	passive_upgrade_player.stop()
-	passive_upgrade_player.pitch_scale = 0.82 if lit else 0.68
-	passive_upgrade_player.volume_db = -20.0 if lit else -24.0
-	passive_upgrade_player.play()
+	_play_sfx_with_pitch_and_volume(passive_upgrade_player, 0.82 if lit else 0.68, -20.0 if lit else -24.0)
 
 
 func _play_chicken_death_sfx() -> void:
 	chicken_death_player = _ensure_path_player(chicken_death_player, CHICKEN_DEATH_SFX_PATH, Callable(self, "_sfx"), CHICKEN_DEATH_SFX_VOLUME_DB)
-	if chicken_death_player == null or not chicken_death_player.is_inside_tree() or not _can_play_audio():
-		return
-	chicken_death_player.stop()
-	chicken_death_player.pitch_scale = randf_range(0.96, 1.03)
-	chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
-	chicken_death_player.play()
+	_play_sfx_with_pitch_and_volume(chicken_death_player, randf_range(0.96, 1.03), CHICKEN_DEATH_SFX_VOLUME_DB)
 
 
 func _play_goblin_shield_drop_sfx() -> void:
@@ -904,12 +885,7 @@ func _play_fight_punch_sfx() -> void:
 	if fight_punch_players.is_empty() or not _can_play_audio():
 		return
 	var player := _fight_punch_player_for_hit()
-	if player == null or not player.is_inside_tree():
-		return
-	player.stop()
-	player.pitch_scale = randf_range(FIGHT_PUNCH_SFX_PITCH_MIN, FIGHT_PUNCH_SFX_PITCH_MAX)
-	player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB + randf_range(-FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB, FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB)
-	player.play()
+	_play_sfx_with_pitch_and_volume(player, randf_range(FIGHT_PUNCH_SFX_PITCH_MIN, FIGHT_PUNCH_SFX_PITCH_MAX), FIGHT_PUNCH_SFX_VOLUME_DB + randf_range(-FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB, FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB))
 
 
 func _fight_punch_player_for_hit() -> AudioStreamPlayer:
@@ -933,12 +909,7 @@ func _play_action_opportunity_sfx(success: bool) -> void:
 	else:
 		opportunity_miss_player = _ensure_path_player(opportunity_miss_player, "res://assets/sfx/warm_reject.wav", Callable(self, "_sfx"), ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB)
 	var player := opportunity_success_player if success else opportunity_miss_player
-	if player == null or not player.is_inside_tree() or not _can_play_audio():
-		return
-	player.stop()
-	player.pitch_scale = randf_range(1.12, 1.24) if success else randf_range(0.86, 0.94)
-	player.volume_db = ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB if success else ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB
-	player.play()
+	_play_sfx_with_pitch_and_volume(player, randf_range(1.12, 1.24) if success else randf_range(0.86, 0.94), ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB if success else ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB)
 
 
 func _play_info_chip_upgrade_sfx(sequence_index: int, delay := 0.0) -> void:
@@ -962,22 +933,12 @@ func _play_info_chip_upgrade_sfx(sequence_index: int, delay := 0.0) -> void:
 
 func _play_module_pin_entry_sfx() -> void:
 	module_pin_entry_player = _ensure_path_player(module_pin_entry_player, MODULE_PIN_ENTRY_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_ENTRY_SFX_VOLUME_DB)
-	if module_pin_entry_player == null or not module_pin_entry_player.is_inside_tree() or not _can_play_audio():
-		return
-	module_pin_entry_player.stop()
-	module_pin_entry_player.pitch_scale = 1.0
-	module_pin_entry_player.volume_db = MODULE_PIN_ENTRY_SFX_VOLUME_DB
-	module_pin_entry_player.play()
+	_play_sfx_with_pitch_and_volume(module_pin_entry_player, 1.0, MODULE_PIN_ENTRY_SFX_VOLUME_DB)
 
 
 func _play_module_pin_exit_sfx() -> void:
 	module_pin_exit_player = _ensure_path_player(module_pin_exit_player, MODULE_PIN_EXIT_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_EXIT_SFX_VOLUME_DB)
-	if module_pin_exit_player == null or not module_pin_exit_player.is_inside_tree() or not _can_play_audio():
-		return
-	module_pin_exit_player.stop()
-	module_pin_exit_player.pitch_scale = 1.0
-	module_pin_exit_player.volume_db = MODULE_PIN_EXIT_SFX_VOLUME_DB
-	module_pin_exit_player.play()
+	_play_sfx_with_pitch_and_volume(module_pin_exit_player, 1.0, MODULE_PIN_EXIT_SFX_VOLUME_DB)
 
 
 func _chain_proximity_gain(source: Variant = null) -> float:
@@ -1130,13 +1091,15 @@ func _play_chain_impact_hit(intensity: float, kind: String, index: int, proximit
 func _chain_move_player_for_hit() -> AudioStreamPlayer:
 	var available := []
 	for player in chain_move_players:
-		if player != null and not player.playing:
+		if player != null and is_instance_valid(player) and not player.playing:
 			available.append(player)
 	if not available.is_empty():
 		return available.pick_random() as AudioStreamPlayer
 	var fallback := chain_move_players.pick_random() as AudioStreamPlayer
-	if fallback != null:
+	if fallback != null and is_instance_valid(fallback):
 		fallback.stop()
+	else:
+		return null
 	return fallback
 
 
@@ -1292,7 +1255,7 @@ func _ensure_music_playing() -> void:
 		return
 	var started_count := 0
 	for player in music_players:
-		if player == null or not player.is_inside_tree():
+		if player == null or not is_instance_valid(player) or not player.is_inside_tree():
 			continue
 		player.stream_paused = false
 		player.volume_db = MUSIC_SILENCE_DB
@@ -1472,7 +1435,7 @@ func _apply_music_layer_fades(delta: float) -> void:
 		var fade_ratio := music_quiet_fade_remaining / maxf(0.001, MUSIC_QUIET_BREAK_FADE_SECONDS)
 		for i in range(music_players.size()):
 			var player := music_players[i] as AudioStreamPlayer
-			if player == null:
+			if player == null or not is_instance_valid(player):
 				continue
 			var start_gain := float(music_quiet_fade_start_gains[i]) if i < music_quiet_fade_start_gains.size() else 0.0
 			var next_gain := start_gain * fade_ratio
@@ -1483,7 +1446,7 @@ func _apply_music_layer_fades(delta: float) -> void:
 		return
 	for i in range(music_players.size()):
 		var player := music_players[i] as AudioStreamPlayer
-		if player == null:
+		if player == null or not is_instance_valid(player):
 			continue
 		var current := float(music_layer_gains[i]) if i < music_layer_gains.size() else 0.0
 		var target := float(music_layer_target_gains[i]) if i < music_layer_target_gains.size() else 0.0

@@ -17,21 +17,15 @@
     }
   ];
 
-  function currentKey() {
-    const path = (location.pathname || "").split("/").pop() || "";
-    const view = new URLSearchParams(location.search).get("view");
-    return path + (view ? "?" + view : "");
-  }
-
-  function linkKey(href) {
-    const url = new URL(href, location.href);
+  function pageKey(value) {
+    const url = new URL(value, location.href);
     const path = url.pathname.split("/").pop() || "";
     const view = url.searchParams.get("view");
     return path + (view ? "?" + view : "");
   }
 
   function renderNav(container) {
-    const here = currentKey();
+    const here = pageKey(location.href);
     container.classList.add("docs-nav");
     container.setAttribute("aria-label", "Docs");
     container.replaceChildren();
@@ -62,7 +56,7 @@
           desc.textContent = item.description;
           a.appendChild(desc);
         }
-        if (linkKey(item.href) === here) {
+        if (pageKey(item.href) === here) {
           a.classList.add("is-current");
           a.setAttribute("aria-current", "page");
         }

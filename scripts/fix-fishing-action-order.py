@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""Sort fishing actions and normalize area backgrounds/reward ranges."""
-
 import json
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parents[1]
 JSON_PATH = ROOT / "docs" / "activity-database.json"
-
 data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
 fishing = next(s for s in data["skills"] if s["id"] == "fishing")
 area_bg = {a["id"]: a["background"] for a in fishing.get("areas", [])}
-
 FISH_RANGES = {
     "shallows": (1, 1),
     "rocks": (1, 2),
@@ -36,7 +31,6 @@ FISH_RANGES = {
     "starlight": (2, 5),
     "reflection": (5, 10),
 }
-
 for action in fishing["actions"]:
     area_id = action.get("area")
     if area_id in area_bg:
@@ -45,11 +39,7 @@ for action in fishing["actions"]:
     if action_id in FISH_RANGES:
         fish_min, fish_max = FISH_RANGES[action_id]
         rewards = action.setdefault("rewards", {})
-        rewards["xp"] = action.get("xp", rewards.get("xp", 1))
-        rewards["fish_min"] = fish_min
-        rewards["fish_max"] = fish_max
-
+        rewards.update(xp=action.get("xp", rewards.get("xp", 1)), fish_min=fish_min, fish_max=fish_max)
 fishing["actions"].sort(key=lambda a: (int(a.get("unlock", 0)), int(a.get("tier", 0)), a.get("id", "")))
-
 JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 print(f"Sorted {len(fishing['actions'])} fishing actions, synced backgrounds, and normalized fish rewards.")

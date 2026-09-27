@@ -112,6 +112,7 @@ var physics_active := false
 var pressing_lock := false
 var dragging_lock := false
 var press_position := Vector2.ZERO
+var pointer_position := Vector2.ZERO
 var drag_start_lock_offset := Vector2.ZERO
 var last_chain_sound_msec := 0
 var last_chain_sound_offset := Vector2.ZERO
@@ -164,7 +165,7 @@ func set_theme_color(next_theme_color: Color) -> void:
 	if padlock_tint != null:
 		padlock_tint.modulate = _padlock_tint_modulate()
 	if level_label != null:
-		level_label.set_fill_color(_lock_number_fill_color())
+		level_label.set_fill_color(Color.WHITE)
 
 
 func set_lock_state(next_state: String) -> void:
@@ -302,7 +303,7 @@ func _build(font: Font, fallback_font: Font) -> void:
 	level_label.set_text(str(level))
 	level_label.font_size = 103
 	level_label.outline_size = 12
-	level_label.set_fill_color(_lock_number_fill_color())
+	level_label.set_fill_color(Color.WHITE)
 	if font != null:
 		level_label.font = font
 	elif fallback_font != null:
@@ -335,10 +336,6 @@ func _padlock_tint_modulate() -> Color:
 	var color := theme_color
 	color.a = 0.92
 	return color
-
-
-func _lock_number_fill_color() -> Color:
-	return Color.WHITE
 
 
 func _uses_split_padlock() -> bool:
@@ -520,7 +517,7 @@ func _process(delta: float) -> void:
 	if unlock_drop_active:
 		return
 	if pressing_lock and dragging_lock:
-		var target := _limit_lock_offset(get_local_mouse_position() - press_position + drag_start_lock_offset)
+		var target := _limit_lock_offset(pointer_position - press_position + drag_start_lock_offset)
 		var next_offset := lock_offset.lerp(target, 1.0 - exp(-30.0 * delta))
 		next_offset = _limit_lock_offset(next_offset)
 		lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
@@ -751,6 +748,7 @@ func _chains_settled() -> bool:
 
 func _on_padlock_gui_input(event: InputEvent) -> void:
 	var pointer_position := _event_local_position(event)
+	self.pointer_position = pointer_position
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			pressing_lock = true
@@ -868,6 +866,8 @@ func _padlock_contains_local_point(point: Vector2) -> bool:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
 		return true
 	var fit_scale := minf(padlock.size.x / texture_size.x, padlock.size.y / texture_size.y)
+	if fit_scale <= 0.0:
+		return false
 	var drawn_size := texture_size * fit_scale
 	var drawn_position := (padlock.size - drawn_size) * 0.5
 	var drawn_rect := Rect2(drawn_position, drawn_size)
@@ -1305,5 +1305,4 @@ func _set_padlock_pop_scale(next_scale: float) -> void:
 func _clear_children() -> void:
 	for child in get_children():
 		child.queue_free()
-
 

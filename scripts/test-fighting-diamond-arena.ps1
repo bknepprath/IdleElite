@@ -177,23 +177,17 @@ func _run() -> void:
 		return
 	print("fighting-diamond-arena-ok")
 	quit(0)
-
-
 func _has_diamond_frame(root_control: Control) -> bool:
 	if root_control == null:
 		return false
 	for child in root_control.get_children():
 		if child is Control and child.has_method("_diamond_points") and child.has_method("_rounded_diamond_points"):
-			return true
+		return true
 	return false
-
-
 func _expect(condition: bool, message: String) -> void:
 	if condition:
 		return
 	_fail(message)
-
-
 func _check_runtime_art_sources(stage: Control) -> void:
 	var paths: Array[String] = [
 		"res://assets/content/fight/prototype/chicken-cover-clean.png",
@@ -420,7 +414,6 @@ func _check_diamond_chicken_steering(stage: Control) -> void:
 		var after: float = (chicken.get("pos", samples[i]) as Vector2).distance_to(Vector2(0.5, 0.55))
 		_expect(after < before, "diamond chicken steering should move sample %d toward blue guy" % i)
 
-
 func _check_enemy_hero_exclusion_ring(stage: Control) -> void:
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	for family in ["goblins"]:
@@ -466,13 +459,11 @@ func _check_enemy_hero_exclusion_ring(stage: Control) -> void:
 	_expect((walking_actor.get("render_pos") as Vector2).x < walking_before and not bool(walking_actor.get("face_right")), "Walking Guys should face their rendered travel direction")
 	stage.set("enemy_id", "chicken-swarm")
 
-
 func _check_enemy_health_bar_anchors(stage: Control) -> void:
 	var source: String = stage.get_script().get_source_code()
 	_expect(source.find("if not dead and hp < max_hp - 0.01") >= 0, "enemy health bars should appear only after taking damage")
 	_expect(source.find("_enemy_health_bar_center") >= 0, "damaged enemy health bars should stay anchored above their sprite")
 	_expect(source.find("draw_arc(center + Vector2(0.0, 20.0)") < 0, "Chicken wind-up should use character art instead of a yellow UI arc")
-
 
 func _check_wave_one_spawn_cadence(stage: Control) -> void:
 	var previous_serial := int(stage.get("chicken_serial"))
@@ -491,7 +482,6 @@ func _check_wave_one_spawn_cadence(stage: Control) -> void:
 	stage.set("chicken_serial", previous_serial)
 	stage.call("_seed_fight")
 
-
 func _check_diamond_crit_feedback(scene: Node, card: Dictionary) -> void:
 	var key := str(scene.call("_action_key", "fight", "fight-chickens"))
 	var feedback = scene.call("_reward_feedback_surface")
@@ -501,7 +491,6 @@ func _check_diamond_crit_feedback(scene: Node, card: Dictionary) -> void:
 	_expect(highlight != null and highlight.get_theme_stylebox("panel") is StyleBoxEmpty, "Diamond fight crits should not draw a thick rectangular outline")
 	_expect(not pop.has_meta("activity_crit_art_burst_node"), "Diamond fight crits should not copy hidden card art over the arena")
 	feedback.call("_clear_action_crit_tweens")
-
 
 func _check_shared_lifecycle(stage: Control) -> void:
 	var enemy := {"attack_phase": "", "attack_timer": 0.0, "attack_damage_done": false, "stagger_timer": 0.0, "hit_flash": 0.0}
@@ -558,8 +547,6 @@ func _check_shared_lifecycle(stage: Control) -> void:
 	stage.call("_step_enemy_strike", far_giant, far_giant["pos"], Vector2.RIGHT, 0.01)
 	_expect(not bool(far_giant.get("grabbed_hero", false)), "far giant strike should not grab a dodged hero")
 	_expect(is_equal_approx(float(stage.get("hero_flip_timer")), 0.0), "far giant strike should not start the flip")
-
-
 func _check_enemy_attack_displacement(stage: Control) -> void:
 	var signatures := ["chicken-swarm", "goblins", "rouses", "werewolves", "vampires"]
 	for id in signatures:
@@ -580,8 +567,6 @@ func _check_enemy_attack_displacement(stage: Control) -> void:
 	var miss := {"pos": Vector2(0.50, 0.55), "roll_dir": Vector2.LEFT, "attack_damage_done": false, "damage": 20.0}
 	stage.call("_step_enemy_strike", miss, miss["pos"], Vector2.LEFT, 0.50)
 	_expect(float(stage.get("hero_hp")) == 100.0, "a strike that travels away should miss after the hero dodges")
-
-
 func _check_vampire_identity(stage: Control) -> void:
 	stage.set("enemy_id", "vampires")
 	stage.set("active", true)
@@ -721,7 +706,7 @@ func _check_dragon_cycle(stage: Control) -> void:
 				retreat_start_distance = distance
 			retreat_max_distance = maxf(retreat_max_distance, distance)
 		if kind == "breath" and phase == "windup":
-			saw_breath = distance >= 0.39
+			saw_breath = saw_breath or distance >= 0.39
 			breath_direction = dragon.get("breath_dir", Vector2.ZERO) as Vector2
 		if kind == "breath" and phase == "strike":
 			saw_breath_strike = true
@@ -761,7 +746,6 @@ func _check_dragon_cycle(stage: Control) -> void:
 	stage.call("_apply_enemy_contact_damage", cap_actor)
 	_expect(is_zero_approx(float(stage.get("hero_hp"))), "dragon damage should use its authored value without a health-percentage cap")
 
-
 func _dragon_test_actor(pos: Vector2, kind: String) -> Dictionary:
 	return {
 		"id": 1,
@@ -789,7 +773,6 @@ func _dragon_test_actor(pos: Vector2, kind: String) -> Dictionary:
 		"lunge_dir": Vector2.ZERO
 	}
 
-
 func _check_population_caps(stage: Control) -> void:
 	stage.set("end_wave_active", false)
 	stage.set("wave_index", 4)
@@ -806,7 +789,6 @@ func _check_population_caps(stage: Control) -> void:
 	stage.set("end_wave_active", true)
 	_expect(int(stage.call("_wave_spawn_total_for_wave")) == 5, "final wave should keep explicit entrant total")
 	_expect(int(stage.call("_max_chickens_for_wave")) == 3, "final wave should still enforce its simultaneous cap")
-
 
 func _check_goblin_shield(stage: Control, scene: Node) -> void:
 	var action := scene.call("_action_data", "fight", "fight-goblins") as Dictionary
@@ -872,7 +854,6 @@ func _check_goblin_shield(stage: Control, scene: Node) -> void:
 	stage.call("_seed_fight")
 	stage.call("_spawn_chicken", 0)
 	_expect(not bool((stage.get("chickens") as Array)[-1].get("shield_up", false)), "non-goblin actor should not seed a shield")
-
 	stage.call("setup_action", action)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_uppercut_cd", 0.0)
@@ -897,7 +878,6 @@ func _check_goblin_shield(stage: Control, scene: Node) -> void:
 	_expect(float(uppercut_goblin.get("hp")) == uppercut_hp_before, "first goblin uppercut should leave HP unchanged")
 	_expect(not bool(uppercut_goblin.get("shield_up")), "uppercut should detach the goblin shield")
 	_expect(str(uppercut_goblin.get("attack_phase", "")) == "windup", "blocked uppercut should not stagger the goblin")
-
 	stage.set("hero_uppercut_cd", 999.0)
 	var target := goblin.duplicate()
 	target["pos"] = Vector2(0.62, 0.55)
@@ -921,7 +901,6 @@ func _check_goblin_shield(stage: Control, scene: Node) -> void:
 	_expect(bool(stage.call("_chicken_inside_current_punch", forward_bystander.get("pos"))), "uppercut should retain its forward crowd reach")
 	_expect(not bool(stage.call("_chicken_inside_current_punch", behind_bystander.get("pos"))), "uppercut should never hit behind the hero")
 
-
 func _check_giant_identity(stage: Control, scene: Node) -> void:
 	var action := scene.call("_action_data", "fight", "fight-giants") as Dictionary
 	stage.call("setup_action", action)
@@ -931,8 +910,7 @@ func _check_giant_identity(stage: Control, scene: Node) -> void:
 	stage.set("hero_hp", 100000.0)
 	stage.set("hero_hurt_cooldown", 999.0)
 	(stage.get("chickens") as Array).clear()
-	for label in stage.get("float_labels") as Array:
-		label.visible = false
+	_hide_float_labels(stage)
 	var giant := _giant_test_actor(Vector2(0.62, 0.55))
 	(stage.get("chickens") as Array).append(giant)
 	stage.call("_step_enemy_strike", giant, giant["pos"], Vector2.LEFT, 0.01)
@@ -1020,7 +998,6 @@ func _giant_test_actor(pos: Vector2) -> Dictionary:
 	actor["signature_t"] = 0.70
 	actor["grabbed_hero"] = false
 	return actor
-
 
 func _check_guys_guard(stage: Control, scene: Node) -> void:
 	var action := scene.call("_action_data", "fight", "fight-guys") as Dictionary
@@ -1120,7 +1097,6 @@ func _check_guys_guard(stage: Control, scene: Node) -> void:
 	(stage.get("chickens") as Array).clear()
 	stage.call("_step_fight", 0.10)
 	_expect(float(stage.get("wave_rest_timer")) < 1.0, "Guys wave rest should begin after its crowd is defeated")
-
 	var counter := _guys_test_actor(true)
 	counter["pos"] = Vector2(0.62, 0.55)
 	counter["hp"] = 100.0
@@ -1136,7 +1112,6 @@ func _check_guys_guard(stage: Control, scene: Node) -> void:
 	stage.call("_step_chicken", counter, 0.19)
 	stage.call("_step_chicken", counter, 0.05)
 	_expect(float(stage.get("hero_hp")) < 100.0, "A guarded Guy's counterpunch should damage Blue Guy")
-
 	var max_hp := float(stage.call("_hero_max_hp"))
 	stage.set("hero_hp", max_hp)
 	stage.set("hero_hurt_cooldown", 0.0)
@@ -1152,13 +1127,11 @@ func _check_guys_guard(stage: Control, scene: Node) -> void:
 	stage.call("_apply_enemy_contact_damage", {"damage": 999.0})
 	_expect(is_zero_approx(float(stage.get("hero_hp"))), "Guys crowd hits should use authored damage without a health-percentage cap")
 	_expect(is_zero_approx(float(stage.get("hero_hurt_cooldown"))), "Guys should not share a crowd-wide hit lockout")
-
 	var normal_seed := 4127
 	var unguarded_normal_loss := _guys_hit_loss(stage, false, false, normal_seed)
 	var guarded_normal_loss := _guys_hit_loss(stage, true, false, normal_seed)
 	_expect(unguarded_normal_loss > 0.0 and guarded_normal_loss > 0.0, "normal Guys hits should both deal damage")
 	_expect(absf(guarded_normal_loss - unguarded_normal_loss * 0.72) <= 0.001, "guarded normal Guys damage should be 72%%")
-
 	var uppercut_seed := -1
 	for candidate_seed in range(9000, 9128):
 		seed(candidate_seed)
@@ -1174,7 +1147,6 @@ func _check_guys_guard(stage: Control, scene: Node) -> void:
 	var guarded_uppercut_loss := _guys_hit_loss(stage, true, true, uppercut_seed)
 	_expect(unguarded_uppercut_loss > 0.0 and guarded_uppercut_loss > 0.0, "uppercut Guys hits should both deal damage")
 	_expect(absf(guarded_uppercut_loss - unguarded_uppercut_loss * 0.72) <= 0.001, "guarded uppercut Guys damage should be 72%%")
-
 	var frozen_guard := _guys_test_actor(true)
 	frozen_guard["id"] = 0
 	frozen_guard["pos"] = Vector2(0.80, 0.55)
@@ -1198,14 +1170,11 @@ func _check_guys_guard(stage: Control, scene: Node) -> void:
 	frozen_guard["attack_duration"] = 0.01
 	stage.call("_step_chicken", frozen_guard, 0.05)
 	_expect(str(frozen_guard.get("attack_phase", "")) == "recovery", "guarded Guys protected retry should complete")
-
-
 func _guys_hit_loss(stage: Control, guarding: bool, uppercut: bool, seed_value: int) -> float:
 	seed(seed_value)
 	var actor := _guys_test_actor(guarding)
 	(stage.get("chickens") as Array).clear()
-	for label in stage.get("float_labels") as Array:
-		label.visible = false
+	_hide_float_labels(stage)
 	stage.set("hero_hp", 100000.0)
 	stage.set("hero_hurt_cooldown", 0.0)
 	stage.set("hero_uppercut_cd", 0.0 if uppercut else 999.0)
@@ -1214,8 +1183,6 @@ func _guys_hit_loss(stage: Control, guarding: bool, uppercut: bool, seed_value: 
 	var landed := bool(stage.call("_start_hero_attack"))
 	_expect(landed and (not uppercut or bool(stage.get("hero_attack_is_uppercut"))), "Guys attack should land deterministically")
 	return before - float(actor.get("hp", 0.0))
-
-
 func _check_rouses_werewolves_identity(stage: Control) -> void:
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_hp", 100000.0)
@@ -1398,8 +1365,7 @@ func _check_cave_troll_identity(stage: Control, scene: Node) -> void:
 	stage.call("set_active_fight", true)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	var max_hp := float(stage.call("_hero_max_hp"))
-	for label in stage.get("float_labels") as Array:
-		(label as Label).visible = false
+	_hide_float_labels(stage)
 	stage.set("hero_hp", max_hp)
 	stage.set("hero_hurt_cooldown", 0.0)
 	var early := _cave_troll_test_actor(Vector2(0.62, 0.55), 0.20)
@@ -1407,8 +1373,7 @@ func _check_cave_troll_identity(stage: Control, scene: Node) -> void:
 	_expect(is_equal_approx(float(stage.get("hero_hp")), max_hp), "early Cave Troll strike should not hurt the hero")
 	_expect(not bool(early.get("attack_damage_done", false)) and not bool(early.get("slam_impacted", false)), "early Cave Troll strike should not consume its impact")
 
-	for label in stage.get("float_labels") as Array:
-		(label as Label).visible = false
+	_hide_float_labels(stage)
 	stage.set("hero_hp", max_hp)
 	stage.set("hero_hurt_cooldown", 0.0)
 	var impact := _cave_troll_test_actor(Vector2(0.62, 0.55), 0.68)
@@ -1421,8 +1386,7 @@ func _check_cave_troll_identity(stage: Control, scene: Node) -> void:
 	stage.call("_step_enemy_strike", impact, impact["pos"], Vector2.LEFT, 0.01)
 	_expect(is_equal_approx(float(stage.get("hero_hp")), hp_after_impact), "later Cave Troll strike frames should not damage again")
 
-	for label in stage.get("float_labels") as Array:
-		(label as Label).visible = false
+	_hide_float_labels(stage)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_hp", max_hp)
 	stage.set("hero_hurt_cooldown", 0.0)
@@ -1435,9 +1399,7 @@ func _check_cave_troll_identity(stage: Control, scene: Node) -> void:
 	missed["signature_t"] = 0.92
 	stage.call("_step_enemy_strike", missed, missed["pos"], Vector2.LEFT, 0.01)
 	_expect(is_equal_approx(float(stage.get("hero_hp")), max_hp), "moving into range after a missed Cave Troll impact should stay safe")
-
-	for label in stage.get("float_labels") as Array:
-		(label as Label).visible = false
+	_hide_float_labels(stage)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_hp", max_hp)
 	stage.set("hero_hurt_cooldown", 0.0)
@@ -1453,6 +1415,9 @@ func _check_cave_troll_identity(stage: Control, scene: Node) -> void:
 	stage.call("_step_chicken", interrupted, 0.78)
 	stage.call("_step_chicken", interrupted, 0.17)
 	_expect(bool(interrupted.get("slam_impacted", false)) and bool(interrupted.get("attack_damage_done", false)), "protected Cave Troll retry should reach one late impact")
+func _hide_float_labels(stage: Control) -> void:
+	for label in stage.get("float_labels") as Array:
+		(label as Label).visible = false
 
 
 func _cave_troll_test_actor(pos: Vector2, signature_t: float) -> Dictionary:
@@ -1479,8 +1444,6 @@ func _cave_troll_test_actor(pos: Vector2, signature_t: float) -> Dictionary:
 		"lunge_timer": 0.0,
 		"lunge_dir": Vector2.ZERO
 	}
-
-
 func _visible_float_count(stage: Control, text: String) -> int:
 	var count := 0
 	for raw_label in stage.get("float_labels") as Array:
@@ -1518,8 +1481,6 @@ func _check_center_identity_reachability(stage: Control, scene: Node) -> void:
 				if bool(actor.get("charge_skidded", false)):
 					_expect(str(actor.get("attack_phase", "")) == "recovery" and is_zero_approx(float(actor.get("stagger_timer", 0.0))), "%s should recover without stagger" % str(sample["label"]))
 					break
-
-
 func _identity_test_actor(pos: Vector2, roll_dir: Vector2) -> Dictionary:
 	return {
 		"id": 1,
@@ -1608,6 +1569,9 @@ func _check_reward_contract(scene: Node, stage: Control, fighting_runtime: Objec
 		_expect(is_equal_approx(float(combat.get("kill_reward_share", 0.0)), 0.75), "%s should load kill_reward_share 0.75" % id)
 		stage.call("setup_action", action)
 		var curve := combat.get("population_curve", []) as Array
+		if curve.is_empty():
+			_expect(false, "%s should declare population curve" % id)
+			continue
 		var planned_expected := 0
 		for wave in range(5):
 			planned_expected += maxi(1, int(curve[clampi(wave, 0, curve.size() - 1)]))
@@ -1732,8 +1696,6 @@ func _check_completion_rates(scene: Node) -> void:
 	_expect(max_clears == 36, "level-99 full-cycle completion should be 36/36")
 	_expect(float(unlock_clears) / float(maxi(1, unlock_total)) >= 0.60, "unlock-level full-cycle completion should be at least 60%%")
 	_expect(float(max_clears) / float(maxi(1, max_total)) >= 0.95, "level-99 full-cycle completion should be at least 95%%")
-
-
 func _check_stationary_interrupts(scene: Node) -> void:
 	for action_id in ["fight-guys", "fight-giants", "fight-dragons"]:
 		for level in [43, 60, 98, 99]:
@@ -1793,8 +1755,6 @@ func _check_stationary_interrupts(scene: Node) -> void:
 			_expect(saw_enemy_damage, "%s level-%d committed attack should damage the hero" % [action_id, level])
 			_expect(saw_hit_feedback, "%s level-%d punch should show hit feedback" % [action_id, level])
 			stage.queue_free()
-
-
 func _run_cycle(scene: Node, action_id: String, level: int, seed_value: int) -> bool:
 	seed(seed_value)
 	var action := scene.call("_action_data", "fight", action_id) as Dictionary
@@ -1832,17 +1792,18 @@ func _run_cycle(scene: Node, action_id: String, level: int, seed_value: int) -> 
 			break
 	stage.queue_free()
 	return cleared
-
-
 func _fail(message: String) -> void:
 	test_failed = true
 	push_error(message)
 	print("fighting-diamond-arena-failed: %s" % message)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
-
-    $output = & $runner --path $projectRoot --script "res://.codex-tmp/fighting-diamond-test/fighting_diamond_arena_test.gd" 2>&1
+$output = & $runner --path $projectRoot --script "res://.codex-tmp/fighting-diamond-test/fighting_diamond_arena_test.gd" 2>&1
     $output | Write-Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fighting diamond arena test failed with exit code $LASTEXITCODE."
+    }
     Assert-True (($output | Out-String) -match "fighting-diamond-arena-ok") "Fighting diamond arena test did not report success."
+    Assert-NoUnexpectedGodotErrors $output "fighting diamond arena test"
 }
 finally {
     if ($null -eq $previousTimeout) {

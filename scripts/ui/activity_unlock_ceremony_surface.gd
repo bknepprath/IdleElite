@@ -24,10 +24,8 @@ var locked_preview_reveal_skill_ids = {}
 var locked_preview_fade_play_pending = false
 var locked_preview_played_action_keys = {}
 
-
 func _init(host_node) -> void:
 	host = host_node
-
 
 func cancel_transients_for_navigation() -> void:
 	for raw_card in host.action_cards.values():
@@ -54,12 +52,10 @@ func cancel_transients_for_navigation() -> void:
 	host._skill_detail_surface().detail_unlock_scroll_spacer_heights.clear()
 	clear_visual_scroll_tween()
 
-
 func clear_visual_scroll_tween() -> void:
 	if visual_scroll_tween != null and visual_scroll_tween.is_valid():
 		visual_scroll_tween.kill()
 	visual_scroll_tween = null
-
 
 func set_preview_after_ceremony(action_id: String) -> void:
 	var normalized = str(action_id)
@@ -73,7 +69,6 @@ func set_preview_after_ceremony(action_id: String) -> void:
 	):
 		host._skill_detail_surface()._ensure_detail_lazy_entry_mounted(normalized)
 
-
 func clear_preview_reveal_guards() -> void:
 	preview_staged_action_ids.clear()
 	preview_played_action_ids.clear()
@@ -81,6 +76,20 @@ func clear_preview_reveal_guards() -> void:
 	locked_preview_reveal_skill_ids.clear()
 	locked_preview_fade_play_pending = false
 	locked_preview_played_action_keys.clear()
+
+func queue_locked_preview_reveal_if_needed(_previously_available: bool) -> void:
+	pass
+
+func queue_locked_preview_reveal() -> void:
+	locked_preview_reveal_skill_ids.clear()
+	var first_locked_id = host._onboarding_runtime()._tutorial_current_locked_preview_action_id(host.selected_skill_id) if not host.selected_skill_id.is_empty() else ""
+	var preview_key = host._action_key(host.selected_skill_id, first_locked_id) if not first_locked_id.is_empty() else ""
+	if not preview_key.is_empty() and not bool(locked_preview_played_action_keys.get(preview_key, false)):
+		locked_preview_reveal_skill_ids[host.selected_skill_id] = true
+	locked_preview_reveal_pending = not locked_preview_reveal_skill_ids.is_empty()
+	if locked_preview_reveal_pending:
+		locked_preview_fade_play_pending = true
+		host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 
 
 func prestage_preview_card(action_id: String, delay = 0.12) -> void:
@@ -134,8 +143,9 @@ func apply_pending_readiness() -> void:
 		var action_id = str(raw_action_id)
 		var key = host._action_key(host.selected_skill_id, action_id)
 		var card = {}
-		if host.action_cards.has(key):
-			card = host.action_cards[key] as Dictionary
+		var raw_card = host.action_cards.get(key)
+		if raw_card is Dictionary:
+			card = raw_card
 		elif host._fishing_rework_active_for_skill(host.selected_skill_id):
 			card = host._fishing_ui_surface()._fishing_method_card_for_action(host.selected_skill_id, action_id)
 		if card.is_empty():
@@ -143,7 +153,8 @@ func apply_pending_readiness() -> void:
 		var action = host._action_data(host.selected_skill_id, action_id)
 		if action.is_empty():
 			continue
-		if host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action):
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+		if action_unlocked:
 			host._activity_unlock_runtime().clear_pending_readiness_action(host.selected_skill_id, action_id)
 			host._mark_save_dirty("activity unlock cleanup")
 			continue
@@ -155,9 +166,9 @@ func apply_pending_readiness() -> void:
 		if bool(card.get("locked_preview_hidden", false)):
 			reveal_locked_activity_card_in_place(card, host.selected_skill_id, action)
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, host.selected_skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, host.selected_skill_id, action, action_unlocked)
 		elif not bool(card.get("is_fishing_method", false)):
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, host.selected_skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, host.selected_skill_id, action, action_unlocked)
 		else:
 			card["unlock_ceremony_pending"] = false
 			card["unlock_ready_pending"] = true
@@ -465,7 +476,10 @@ func finish_card_static_state_deferred(card: Dictionary) -> void:
 
 
 func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int, lock_rig_id: int, expand_from_zero: bool, target_height: float, skill_id: String, action_id: String) -> void:
-	var card = host.action_cards.get(card_key, {}) as Dictionary
+	var raw_card = host.action_cards.get(card_key)
+	if not raw_card is Dictionary:
+		return
+	var card = raw_card as Dictionary
 	if card.is_empty():
 		return
 	var callback_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(root_id))
@@ -496,7 +510,10 @@ func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int
 
 func finish_activity_preview_card_after_fade_deferred(card_key: String, skill_id: String, action_id: String, lock_rig_id: int) -> void:
 	await host.get_tree().process_frame
-	var card = host.action_cards.get(card_key, {}) as Dictionary
+	var raw_card = host.action_cards.get(card_key)
+	if not raw_card is Dictionary:
+		return
+	var card = raw_card as Dictionary
 	var action = host._action_data(skill_id, action_id)
 	if card.is_empty() or skill_id.is_empty() or action.is_empty():
 		return
@@ -614,7 +631,7 @@ func prepare_locked_activity_preview_fade(card: Dictionary, skill_id: String, ac
 	card["unlock_next_preview_smooth"] = true
 	var stable_tutorial_fade = _should_use_stable_tutorial_locked_preview_fade(skill_id, action_id)
 	card["stable_preview_fade"] = stable_tutorial_fade
-	stage_preview_enter(card, _should_expand_locked_activity_preview_reveal(skill_id, action_id) and not stable_tutorial_fade)
+	stage_preview_enter(card, false)
 	card["locked_preview_fade_in_pending"] = true
 	card["locked_preview_reveal_skill_id"] = skill_id
 	card["locked_preview_reveal_action_id"] = action_id
@@ -629,16 +646,10 @@ func _should_use_stable_tutorial_locked_preview_fade(skill_id: String, action_id
 	)
 
 
-func _should_expand_locked_activity_preview_reveal(skill_id: String, action_id: String) -> bool:
-	return (
-		host._onboarding_runtime()._onboarding_path_active()
-		and skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and action_id == host.TUTORIAL_LEVEL_TWO_ACTION_ID
-	)
-
-
 func play_pending_locked_activity_preview_reveals() -> void:
 	for raw_card in host.action_cards.values():
+		if not raw_card is Dictionary:
+			continue
 		var card = raw_card as Dictionary
 		_prepare_pending_locked_activity_preview_card(card)
 		play_locked_preview_reveal(card)
@@ -648,6 +659,8 @@ func play_pending_locked_activity_preview_reveals() -> void:
 			continue
 		var preview_cards = state.get("action_cards", []) as Array
 		for raw_card in preview_cards:
+			if not raw_card is Dictionary:
+				continue
 			var card = raw_card as Dictionary
 			_prepare_pending_locked_activity_preview_card(card)
 			play_locked_preview_reveal(card)
@@ -793,11 +806,12 @@ func reveal_locked_activity_card_in_place(card: Dictionary, skill_id: String, ac
 	if pop != null and is_instance_valid(pop):
 		set_preview_pop_vertical_offset(pop, 0.0)
 	if not action.is_empty():
-		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, action_unlocked)
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, action_unlocked)
 		elif not bool(card.get("is_fishing_method", false)) and not bool(card.get("is_fishing_area", false)):
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, action_unlocked)
 
 
 func apply_skill_detail_refresh_in_place(preview_id: String) -> bool:
@@ -814,12 +828,13 @@ func apply_skill_detail_refresh_in_place(preview_id: String) -> bool:
 		var action = card.get("action", {}) as Dictionary
 		if action.is_empty():
 			continue
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, action_unlocked)
 		elif bool(card.get("is_fishing_method", false)) or bool(card.get("is_fishing_area", false)):
 			continue
 		else:
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, action_unlocked)
 	if preview_id.is_empty():
 		return true
 	if play_preview_in_place(preview_id):
@@ -905,9 +920,10 @@ func activity_preview_card_for_action_id(action_id: String, ensure_lazy_mount = 
 	var key = host._action_key(host.selected_skill_id, action_id)
 	if host.action_cards.has(key):
 		var card = host.action_cards[key] as Dictionary
-		var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
-		if card != null and root != null:
-			return card
+		if card != null:
+			var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
+			if root != null:
+				return card
 		host._skill_detail_surface()._discard_action_card_key(key)
 	if host.selected_skill_id == "fishing":
 		var area_card = host._fishing_ui_surface()._fishing_area_card_for_action(host.selected_skill_id, action_id)

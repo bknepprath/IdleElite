@@ -28,13 +28,10 @@ if ($env:GODOT_SLOT_WAIT_SECONDS) {
 }
 
 $candidatePaths = @(
+    $env:GODOT_BIN,
     "C:\Users\bknep\Documents\New project 4\.codex-godot-r471\godot.exe"
 )
-if ($env:GODOT_BIN) {
-    $candidatePaths += $env:GODOT_BIN
-}
-
-$godotPath = $candidatePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+$godotPath = $candidatePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Select-Object -First 1
 if (-not $godotPath) {
     throw "Godot was not found. Set GODOT_BIN to the Godot executable path."
 }
@@ -139,7 +136,6 @@ $mutex = New-Object System.Threading.Mutex($false, "Global\IdleEliteGodotLaunchG
 $deadline = (Get-Date).AddSeconds($waitSeconds)
 $process = $null
 $mutexHeld = $false
-$beforeSnapshot = Get-GodotProcessSnapshot
 
 try {
     while ($true) {
@@ -152,7 +148,8 @@ try {
             continue
         }
 
-        $running = @(Get-Process godot* -ErrorAction SilentlyContinue)
+        $beforeSnapshot = Get-GodotProcessSnapshot
+        $running = $beforeSnapshot.Processes
         if ($running.Count -lt $maxGodots) {
             $argumentList = ($godotArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
             $previousErrorMode = [GodotRunner.NativeErrorMode]::GetErrorMode()
@@ -248,13 +245,19 @@ foreach ($processId in $remainingLaunchedIds) {
         continue
     }
 
-    $cpuBefore = $remainingProcess.CPU
-    Start-Sleep -Milliseconds 500
-    $remainingProcess.Refresh()
-    $cpuAfter = $remainingProcess.CPU
+    $cpuBefore = $null
+    $cpuAfter = $null
+    try {
+        $cpuBefore = $remainingProcess.CPU
+        Start-Sleep -Milliseconds 500
+        $remainingProcess.Refresh()
+        $cpuAfter = $remainingProcess.CPU
+    } catch {
+        # The process may exit or deny access between cleanup checks.
+    }
     $cpuDelta = if ($null -ne $cpuBefore -and $null -ne $cpuAfter) { $cpuAfter - $cpuBefore } else { 0 }
 
-    if ($cpuDelta -lt 0.05) {
+    if ($null -ne $cpuBefore -and $null -ne $cpuAfter -and $cpuDelta -lt 0.05) {
         Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
         [Console]::Error.WriteLine("Terminated idle Godot process left behind by this command: PID $processId")
     } else {
@@ -277,8 +280,16 @@ foreach ($processId in $newUnattributedIds) {
     $commandLine = if ($null -ne $detail) { [string]$detail.CommandLine } else { "" }
     $executablePath = if ($null -ne $detail) { [string]$detail.ExecutablePath } else { "" }
     $matchesInvocation = -not $visibleGame -and -not [string]::IsNullOrWhiteSpace($commandLine)
-    if ($matchesInvocation -and -not [string]::IsNullOrWhiteSpace($executablePath)) {
-        $matchesInvocation = [IO.Path]::GetFullPath($executablePath) -eq [IO.Path]::GetFullPath($godotPath)
+    if ($matchesInvocation) {
+        if ([string]::IsNullOrWhiteSpace($executablePath)) {
+            $matchesInvocation = $false
+        } else {
+            try {
+                $matchesInvocation = [IO.Path]::GetFullPath($executablePath) -eq [IO.Path]::GetFullPath($godotPath)
+            } catch {
+                $matchesInvocation = $false
+            }
+        }
     }
     if ($matchesInvocation) {
         foreach ($argument in $godotArgs) {
@@ -302,9 +313,10 @@ if ($unmatchedNewIds.Count -gt 0) {
     $unattributedStillRunning = @($unmatchedNewIds)
     for ($attempt = 1; $attempt -le 50 -and $unattributedStillRunning.Count -gt 0; $attempt++) {
         Start-Sleep -Milliseconds 100
+        $currentGodotSnapshot = Get-GodotProcessSnapshot
         $unattributedStillRunning = @(
             $unattributedStillRunning |
-                Where-Object { $null -ne (Get-Process -Id $_ -ErrorAction SilentlyContinue) }
+                Where-Object { $currentGodotSnapshot.Details.ContainsKey([int]$_) }
         )
     }
     if ($unattributedStillRunning.Count -gt 0) {

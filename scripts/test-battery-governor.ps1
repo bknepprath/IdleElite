@@ -1,51 +1,38 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
-
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\battery-governor"
 $testScript = Join-Path $testDir "battery_governor_test.gd"
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
 try {
     @'
 extends SceneTree
-
 const PerformanceRuntime := preload("res://scripts/app/performance_runtime.gd")
-
 class FakeHost:
 	extends Node
 
 	class FakeHubSurface:
 		var hub_drag_module_id := ""
 		var hub_hotspot_hold_module_id := ""
-
 	class FakeBootWarmupRuntime:
 		var active := false
-
 	class FakeActionStopHold:
 		var hold_active := false
-
 		func active() -> bool:
 			return hold_active
 
 	class FakeProfileChatOverlaySurface:
 		var keyboard_active := false
-
 		func keyboard_lift_active() -> bool:
 			return keyboard_active
-
 	class FakeTutorialOverlaySurface:
 		var activity_start_highlight_active := false
 		var activity_start_highlight_pending := false
-
 	class FakeAchievementToastSurface:
 		func transient_work_active() -> bool:
 			return false
@@ -53,21 +40,16 @@ class FakeHost:
 	class FakeNavigationShell:
 		var pin_transition_blocker: Control = null
 		var screen_render_in_progress := false
-
 		func _page_switch_pending_transition_queued() -> bool:
 			return false
-
 		func _pinned_active_shelf_has_jailed_action() -> bool:
 			return false
-
 	class FakeSkillDetailSurface:
 		var detail_scroll_visual_work_this_frame := false
 		var detail_lazy_mounted_this_frame := false
 		var action_card_press_key := ""
-
-		func _detail_jump_arrows_need_processing() -> bool:
+	func _detail_jump_arrows_need_processing() -> bool:
 			return false
-
 	var boot_detail_render_in_progress := false
 	var module_ui_animating_collapse_key := ""
 	var current_screen := ""

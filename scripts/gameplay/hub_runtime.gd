@@ -30,7 +30,6 @@ const HUB_MODULE_DEFS := {
 		"cell_count": 5,
 		"position": Vector2(280, 830),
 		"size": Vector2(280, 280),
-		"visual_size": Vector2(280, 280),
 		"visual_anchor": Vector2(0, 97),
 		"cell_bottom_offsets": [Vector2(-1, 192), Vector2(0, 176), Vector2(0, 182), Vector2(-1, 186), Vector2(-1.5, 201)],
 		"bubble_offset": Vector2(260, -380),
@@ -70,7 +69,6 @@ const HUB_MODULE_DEFS := {
 		"cell_count": 5,
 		"position": Vector2(260, 1175),
 		"size": Vector2(280, 280),
-		"visual_size": Vector2(280, 280),
 		"visual_anchor": Vector2(0, 97),
 		"cell_bottom_offsets": [Vector2(1, 176), Vector2(0, 179), Vector2(1, 185), Vector2(-0.5, 195), Vector2(-0.5, 202)],
 		"bubble_offset": Vector2(260, -380),
@@ -78,7 +76,7 @@ const HUB_MODULE_DEFS := {
 		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
 		"costs": [35, 250, 70, 190],
 		"unlock_levels": [10, 24, 45, 62],
-		"bonus": "Prepares boosted task missions for a later update."
+		"bonus": "Reduces mission stamina, time, and cooldown while increasing XP."
 	}
 }
 const HUB_MODULE_ORDER := ["barn", "garden", "pond", "mission"]
@@ -215,7 +213,7 @@ func sync_missions() -> bool:
 
 func normalized_mission(mission: Dictionary) -> Dictionary:
 	var skill_id := str(mission.get("skill_id", ""))
-	var action_id := str(mission.get("action_id", ""))
+	var action_id := ModuleUiRuntime.canonical_action_id(skill_id, str(mission.get("action_id", "")), host.FISHING_ACTION_ID_ALIASES)
 	var action: Dictionary = host._action_data(skill_id, action_id)
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return {}
@@ -225,7 +223,7 @@ func normalized_mission(mission: Dictionary) -> Dictionary:
 	var remaining := clampi(int(mission.get("remaining", target)), 1, target)
 	return {
 		"skill_id": skill_id,
-		"action_id": ModuleUiRuntime.canonical_action_id(skill_id, action_id, host.FISHING_ACTION_ID_ALIASES),
+		"action_id": action_id,
 		"target": target,
 		"remaining": remaining,
 		"assigned_unix": maxi(0, int(mission.get("assigned_unix", host._unix_now())))
@@ -255,6 +253,8 @@ func roll_mission() -> Dictionary:
 func mission_eligible_actions(existing_keys: Dictionary) -> Array:
 	var choices := []
 	for raw_def in host.skill_defs:
+		if typeof(raw_def) != TYPE_DICTIONARY:
+			continue
 		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
 			continue
@@ -301,22 +301,17 @@ func mission_stamina_reduction() -> float:
 func mission_xp_bonus() -> float:
 	return float(HUB_MISSION_XP_BONUS_BY_LEVEL[mission_level()])
 
-
 func mission_time_reduction() -> float:
 	return float(HUB_MISSION_TIME_REDUCTION_BY_LEVEL[mission_level()])
-
 
 func mission_cooldown_seconds() -> int:
 	return int(HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[mission_level()])
 
-
 func mission_rep_min() -> int:
 	return int(HUB_MISSION_REP_MIN_BY_LEVEL[mission_level()])
 
-
 func mission_rep_max() -> int:
 	return int(HUB_MISSION_REP_MAX_BY_LEVEL[mission_level()])
-
 
 func mission_for_action(skill_id: String, action_id: String) -> Dictionary:
 	var key: String = host._action_key(skill_id, action_id)
@@ -326,10 +321,8 @@ func mission_for_action(skill_id: String, action_id: String) -> Dictionary:
 			return mission
 	return {}
 
-
 func mission_bonus_applies(skill_id: String, action: Dictionary) -> bool:
 	return mission_level() > 0 and not mission_for_action(skill_id, str(action.get("id", ""))).is_empty()
-
 
 func record_mission_action_completion(skill_id: String, action_id: String) -> bool:
 	var key: String = host._action_key(skill_id, action_id)
@@ -348,7 +341,6 @@ func record_mission_action_completion(skill_id: String, action_id: String) -> bo
 		return true
 	return false
 
-
 func next_trophy_def() -> Dictionary:
 	for raw_heist in host.thieving_state.HEIST_DEFS:
 		var heist := raw_heist as Dictionary
@@ -357,11 +349,9 @@ func next_trophy_def() -> Dictionary:
 			return heist
 	return {}
 
-
 func best_trophy_tier() -> int:
 	var trophy_def := best_trophy_def()
 	return 0 if trophy_def.is_empty() else int(trophy_def.get("tier", 0))
-
 
 func best_trophy_def() -> Dictionary:
 	var best_def := {}
@@ -376,11 +366,9 @@ func best_trophy_def() -> Dictionary:
 			best_tier = tier
 	return best_def
 
-
 func trophy_success_bonus() -> float:
 	var tier := clampi(best_trophy_tier(), 0, HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
 	return float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
-
 
 func module_wood_currency_for_level(module_id: String, level: int) -> String:
 	if not HUB_MODULE_DEFS.has(module_id):
@@ -396,7 +384,6 @@ func module_wood_currency_for_level(module_id: String, level: int) -> String:
 		return "softwood"
 	var normalized_currency: String = host.material_runtime.normalize_id(base_currency)
 	return normalized_currency if host.MAT_COLLECTION_DEFS.has(normalized_currency) else "softwood"
-
 
 func can_afford_module(module_id: String) -> bool:
 	if not module_next_level_unlocked(module_id):
@@ -446,12 +433,14 @@ func upgrade_module(module_id: String) -> Dictionary:
 		spent_fish = cost
 	elif module_id == "garden":
 		var fish_cost := int((HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", [])[level])
-		host.material_runtime.spend_amount(wood_currency, float(cost))
+		if not bool(host.material_runtime.spend_amount(wood_currency, float(cost))):
+			return {"blocked": true}
 		host.fishing_runtime.fish_currency = maxf(0.0, host.fishing_runtime.fish_currency - float(fish_cost))
 		spent_logs = cost
 		spent_fish = fish_cost
 	else:
-		host.material_runtime.spend_amount(wood_currency, float(cost))
+		if not bool(host.material_runtime.spend_amount(wood_currency, float(cost))):
+			return {"blocked": true}
 		spent_logs = cost
 	state["building"] = true
 	state["build_started_unix_msec"] = int(round(Time.get_unix_time_from_system() * 1000.0))
@@ -519,10 +508,8 @@ func module_positions_for_save() -> Dictionary:
 			saved[module_id] = {"x": module_position.x, "y": module_position.y}
 	return saved
 
-
 func restore_module_positions(raw_positions: Variant, pre_migration_layout := false) -> void:
 	host._hub_surface().hub_module_positions = normalized_module_positions(raw_positions, pre_migration_layout)
-
 
 func normalized_module_positions(raw_positions: Variant, pre_migration_layout := false) -> Dictionary:
 	var normalized := {}
@@ -534,17 +521,18 @@ func normalized_module_positions(raw_positions: Variant, pre_migration_layout :=
 			continue
 		var fallback: Vector2 = host._hub_surface()._hub_default_module_center(module_id)
 		var raw_position: Variant = (raw_positions as Dictionary).get(raw_module_id)
-		var module_position: Vector2 = fallback
+		var module_position: Vector2
 		if raw_position is Vector2:
 			module_position = raw_position as Vector2
 		elif typeof(raw_position) == TYPE_DICTIONARY:
 			var raw_dict := raw_position as Dictionary
 			module_position = Vector2(float(raw_dict.get("x", fallback.x)), float(raw_dict.get("y", fallback.y)))
+		else:
+			continue
 		if pre_migration_layout:
 			module_position *= 0.5
 		normalized[module_id] = host._hub_surface()._clamp_hub_module_center(module_position)
 	return normalized
-
 
 func validate_module_positions() -> void:
 	var clean := {}
@@ -554,7 +542,6 @@ func validate_module_positions() -> void:
 		if can_store_position(module_id) and raw_position is Vector2:
 			clean[module_id] = host._hub_surface()._clamp_hub_module_center(raw_position as Vector2)
 	host._hub_surface().hub_module_positions = clean
-
 
 func can_store_position(module_id: String) -> bool:
 	return HUB_MODULE_DEFS.has(module_id) or module_id == "trophy"

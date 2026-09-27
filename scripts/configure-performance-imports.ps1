@@ -1,10 +1,7 @@
 param([switch] $Check)
-
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Add-Type -AssemblyName System.Drawing
-
 $runtimeSourceAllowlist = @(
     "assets/content/fight/enemies/cave-trolls/cave-trolls-pound-source.png",
     "assets/content/fight/enemies/giants/giants-states-source.png",
@@ -16,7 +13,6 @@ $explicitlyExcluded = @(
     "assets/content/ui/profile-avatar-blue-guy-spritesheet.png",
     "assets/content/thieving/heists/thieving-trophy-heist-backgrounds-wide.png"
 )
-
 function Normalize-ProjectPath {
     param([string] $Path)
     return $Path.Replace('\', '/')
@@ -24,7 +20,6 @@ function Normalize-ProjectPath {
 
 function Test-RuntimeTextureCandidate {
     param([string] $RelativePath)
-
     $normalized = Normalize-ProjectPath $RelativePath
     if (-not ($normalized.StartsWith("assets/content/") -or $normalized.StartsWith("assets/loading/"))) {
         return $false
@@ -32,10 +27,7 @@ function Test-RuntimeTextureCandidate {
     if ($explicitlyExcluded -contains $normalized) {
         return $false
     }
-    if ($normalized -match '(?i)/(drafts|source|source-originals|walk-debug)/' -or $normalized -match '(?i)-preview\.(png|jpg|jpeg|webp)$' -or $normalized -match '(?i)-master\.(png|jpg|jpeg|webp)$') {
-        return $runtimeSourceAllowlist -contains $normalized
-    }
-    if ($normalized -match '(?i)-source\.(png|jpg|jpeg|webp)$') {
+    if ($normalized -match '(?i)(?:/(drafts|source|source-originals|walk-debug)/|-(preview|master|source)\.(png|jpg|jpeg|webp)$)') {
         return $runtimeSourceAllowlist -contains $normalized
     }
     return $true
@@ -47,7 +39,6 @@ function Set-ImportValue {
         [string] $Key,
         [string] $Value
     )
-
     $pattern = '(?m)^' + [regex]::Escape($Key) + '=.*$'
     if ($Text -notmatch $pattern) {
         throw "Missing import setting: $Key"
@@ -65,7 +56,6 @@ foreach ($importFile in $textureImports) {
     if (-not (Test-RuntimeTextureCandidate $relativeImage)) {
         continue
     }
-
     $imagePath = Join-Path $projectRoot $relativeImage
     if (-not (Test-Path -LiteralPath $imagePath -PathType Leaf)) {
         continue
@@ -77,7 +67,6 @@ foreach ($importFile in $textureImports) {
     } finally {
         $image.Dispose()
     }
-
     $text = Get-Content -Raw -LiteralPath $importFile.FullName
     $sizeLimit = 0
     if ($text -match '(?m)^process/size_limit=(\d+)$') {
@@ -109,7 +98,6 @@ foreach ($importFile in $textureImports) {
         }
     }
 }
-
 $updatedMusicImports = 0
 foreach ($importFile in Get-ChildItem -LiteralPath (Join-Path $projectRoot "assets/music") -File -Filter "*.ogg.import") {
     $text = Get-Content -Raw -LiteralPath $importFile.FullName
@@ -124,7 +112,6 @@ foreach ($importFile in Get-ChildItem -LiteralPath (Join-Path $projectRoot "asse
         }
     }
 }
-
 if ($Check) {
     if ($violations.Count -gt 0) {
         throw "Performance import settings are stale: $($violations -join ', ')"
@@ -132,7 +119,6 @@ if ($Check) {
     Write-Output "performance-import-contracts-ok"
     exit 0
 }
-
 Write-Output "VRAM-compressed texture imports updated: $updatedTextureImports"
 Write-Output "UI/loading mipmap imports disabled: $disabledUiMipmaps"
 Write-Output "Streaming music loop imports updated: $updatedMusicImports"

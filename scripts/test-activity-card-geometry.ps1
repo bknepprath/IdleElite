@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
@@ -71,20 +70,8 @@ func _run() -> void:
 	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
 	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
 
-	for i in range(row_count):
-		var y := rail_rect.position.y + (float(i) + 0.5) * row_height
-		var clip: Vector2 = rail.call("_bottom_round_row_clip", rail_rect, y)
-		var full_left := maxf(clip.x, rail_rect.position.x)
-		var full_right := minf(clip.y, rail_rect.end.x)
-		_expect(full_left >= clip.x - 0.01, "Full rail fill should not bleed left of its rounded row clip.")
-		_expect(full_right <= clip.y + 0.01, "Full rail fill should not bleed right of its rounded row clip.")
-		var marker_left := maxf(clip.x, rail_rect.position.x + rail_rect.size.x * 0.78)
-		var marker_right := minf(clip.y, rail_rect.position.x + rail_rect.size.x * 0.88)
-		_expect(marker_left >= clip.x - 0.01, "Opportunity marker should not bleed left of its rounded row clip.")
-		_expect(marker_right <= clip.y + 0.01, "Opportunity marker should not bleed right of its rounded row clip.")
-
 	rail.set_opportunity_windows([Vector2(0.78, 0.88)], true, true, false)
-	var overlay := rail.get_child(0) as Control
+	var overlay := rail.get_child(0) as Control if rail.get_child_count() > 0 else null
 	_expect(overlay != null, "Activity progress rail should create a separate opportunity-window overlay.")
 	if overlay != null:
 		_expect(overlay.z_index == ActivityProgressRailClass.OPPORTUNITY_WINDOW_OVERLAY_Z, "Opportunity-window overlay should draw above the activity-card face border.")
@@ -250,17 +237,11 @@ func _run() -> void:
 			collapse_zone.free()
 	main_node.free()
 	_finish()
-
-
 func _near(a: float, b: float, epsilon := 0.01) -> bool:
 	return absf(a - b) <= epsilon
-
-
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
-
-
 func _finish() -> void:
 	if failures.is_empty():
 		print("activity-card-geometry-ok")
@@ -270,7 +251,6 @@ func _finish() -> void:
 			push_error(failure)
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
-
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -278,7 +258,6 @@ func _finish() -> void:
     }
     Assert-True (($output -join "`n") -match "activity-card-geometry-ok") "Activity card geometry test did not report success."
     Assert-NoUnexpectedGodotErrors $output "activity card geometry validation"
-
     $newHeadless = @()
     for ($attempt = 1; $attempt -le 30; $attempt++) {
         $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })

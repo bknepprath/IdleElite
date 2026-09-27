@@ -111,40 +111,33 @@ var guaranteed_success_action_completions := 0
 var consecutive_activity_crit_count := 0
 var stat_cache_version := 0
 var action_stat_value_cache := {}
-
-
 func _init(host_ref) -> void:
 	host = host_ref
-
-
 func _on_stamina_gauge_input(event: InputEvent, skill_id: String = "", source: RegenCircle = null) -> void:
 	if host._stamina_gauge_event_hits_auto_eat_toggle(event):
 		_cancel_pending_stamina_gauge_click()
 		host.get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		host.button_press_runtime._suppress_stamina_gauge_parent_button(source)
-		if event.pressed:
-			_begin_stamina_gauge_click_or_hold(skill_id, source)
-		else:
-			_finish_stamina_gauge_click_or_hold(skill_id, source)
-		host.get_viewport().set_input_as_handled()
+	var pressed: bool
+	if event is InputEventMouseButton:
+		if event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		pressed = event.pressed
 	elif event is InputEventScreenTouch:
-		host.button_press_runtime._suppress_stamina_gauge_parent_button(source)
-		if event.pressed:
-			_begin_stamina_gauge_click_or_hold(skill_id, source)
-		else:
-			_finish_stamina_gauge_click_or_hold(skill_id, source)
-		host.get_viewport().set_input_as_handled()
-
-
+		pressed = event.pressed
+	else:
+		return
+	host.button_press_runtime._suppress_stamina_gauge_parent_button(source)
+	if pressed:
+		_begin_stamina_gauge_click_or_hold(skill_id, source)
+	else:
+		_finish_stamina_gauge_click_or_hold(skill_id, source)
+	host.get_viewport().set_input_as_handled()
 func _cancel_pending_stamina_gauge_click() -> void:
 	stamina_gauge_pending_click = false
 	stamina_gauge_pending_skill_id = ""
 	stamina_gauge_pending_hold_seconds = 0.0
 	stamina_gauge_press_source = null
-
-
 func _is_stamina_gauge_release_event(event: InputEvent) -> bool:
 	if not stamina_gauge_press_active and not stamina_gauge_pending_click:
 		return false
@@ -153,8 +146,6 @@ func _is_stamina_gauge_release_event(event: InputEvent) -> bool:
 	if event is InputEventScreenTouch:
 		return not event.pressed
 	return false
-
-
 func _begin_stamina_gauge_click_or_hold(skill_id: String = "", source: RegenCircle = null) -> void:
 	var target_skill_id: String = skill_id if not skill_id.is_empty() else host.selected_skill_id
 	if target_skill_id.is_empty() or not _stamina_gauge_interaction_screen_active():
@@ -164,8 +155,6 @@ func _begin_stamina_gauge_click_or_hold(skill_id: String = "", source: RegenCirc
 	stamina_gauge_pending_skill_id = target_skill_id
 	stamina_gauge_pending_hold_seconds = 0.0
 	stamina_gauge_press_source = source
-
-
 func _stamina_gauge_interaction_screen_active() -> bool:
 	return host.current_screen == "skill" or host.current_screen == "menu" or host.current_screen == "pinned" or host.current_screen == "queue"
 
@@ -181,8 +170,6 @@ func _finish_stamina_gauge_click_or_hold(skill_id: String = "", source: RegenCir
 		_try_eat_fish_for_stamina(target_skill_id if not target_skill_id.is_empty() else skill_id, target_source)
 		return
 	_set_stamina_gauge_pressed(false, skill_id, source)
-
-
 func _set_stamina_gauge_pressed(pressed: bool, skill_id: String = "", source: RegenCircle = null) -> void:
 	if pressed:
 		var boost_skill_id: String = skill_id if not skill_id.is_empty() else host.selected_skill_id
@@ -202,8 +189,6 @@ func _set_stamina_gauge_pressed(pressed: bool, skill_id: String = "", source: Re
 		stamina_gauge_press_source = null
 		host.stamina_gauge_pre_tip_hold_seconds = 0.0
 		stamina_gauge_regen_target_multiplier = 1.0
-
-
 func _cancel_stamina_gauge_boost_for_navigation() -> void:
 	stamina_gauge_pending_click = false
 	stamina_gauge_pending_skill_id = ""
@@ -215,16 +200,12 @@ func _cancel_stamina_gauge_boost_for_navigation() -> void:
 	stamina_gauge_regen_multiplier = 1.0
 	stamina_gauge_regen_target_multiplier = 1.0
 	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
-
-
 func _release_current_stamina_gauge_press_state() -> void:
 	stamina_gauge_pending_click = false
 	stamina_gauge_pending_skill_id = ""
 	stamina_gauge_pending_hold_seconds = 0.0
 	stamina_gauge_press_active = false
 	stamina_gauge_press_source = null
-
-
 func _process_stamina_gauge_regen_boost(delta: float) -> void:
 	if delta <= 0.0:
 		return
@@ -257,16 +238,10 @@ func _process_stamina_gauge_regen_boost(delta: float) -> void:
 		stamina_gauge_regen_multiplier = target
 		if not stamina_gauge_press_active and target <= 1.0:
 			stamina_gauge_boost_skill_id = ""
-
-
 func _stamina_gauge_regen_multiplier_for_skill(skill_id: String) -> float:
 	return stamina_gauge_regen_multiplier if skill_id == stamina_gauge_boost_skill_id else 1.0
-
-
 func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) -> void:
 	_apply_stamina_regen_seconds_except(seconds, allow_gauge_boost, "")
-
-
 func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := false, excluded_skill_id := "") -> void:
 	if seconds <= 0.0:
 		return
@@ -305,20 +280,17 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 		host.stamina_bank[skill_id] = 0.0 if next_stamina >= float(max_stamina) - 0.0001 else fmod(next_bank, host.STAMINA_REGEN_SECONDS)
 		SkillState.host_sync_stamina_bank(skill_id, host)
 
-
 func _honey_can_consume_for_stamina() -> bool:
 	return host.material_runtime.amount("honey") >= 1.0
-
 
 func player_has_stamina_honey() -> bool:
 	return host.honey_stamina_seconds_remaining > 0.0001 or _honey_can_consume_for_stamina()
 
-
 func _try_eat_fish_for_stamina(skill_id: String = "", source: RegenCircle = null) -> void:
 	var target_skill_id: String = skill_id if not skill_id.is_empty() else host.selected_skill_id
-	var target: RegenCircle = host._reward_feedback_surface()._visible_stamina_gauge_for_skill(target_skill_id, source)
 	if target_skill_id.is_empty() or not _stamina_gauge_interaction_screen_active():
 		return
+	var target: RegenCircle = host._reward_feedback_surface()._visible_stamina_gauge_for_skill(target_skill_id, source)
 	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
 	if SkillState.host_stamina_value(target_skill_id, host) >= float(SkillState.max_stamina(host, target_skill_id)) - 0.0001:
 		host._reward_feedback_surface()._float_stamina_full(target)
@@ -337,16 +309,13 @@ func _try_eat_fish_for_stamina(skill_id: String = "", source: RegenCircle = null
 	host._update_ui(0.0, true)
 	host.save_game()
 
-
 func reset_activity_counts() -> void:
 	activity_start_count = 0
 	activity_completion_count = 0
 	guaranteed_success_action_completions = 0
 
-
 func record_activity_start() -> void:
 	activity_start_count += 1
-
 
 func record_activity_completion() -> void:
 	activity_completion_count += 1
@@ -360,22 +329,18 @@ func record_successful_activity_completion(action_key: String) -> int:
 		activity_streak_count = 1
 	return ((activity_streak_count - 1) % ACTIVITY_STREAK_BONUS_STEP) + 1
 
-
 func reset_activity_completion_streak() -> void:
 	activity_streak_action_key = ""
 	activity_streak_count = 0
 
-
 func reset_consecutive_activity_crits() -> void:
 	consecutive_activity_crit_count = 0
-
 
 static func uses_diamond_arena(action: Dictionary) -> bool:
 	var combat: Variant = action.get("combat", {})
 	if typeof(combat) != TYPE_DICTIONARY:
 		return false
 	return str((combat as Dictionary).get("arena_shape", "")).to_lower() == "diamond"
-
 
 func _action_xp_reward_parts_for_display(skill_id: String, action: Dictionary) -> Array:
 	var rewards := _effective_xp_reward_map(action, skill_id)
@@ -396,8 +361,6 @@ func _action_xp_reward_parts_for_display(skill_id: String, action: Dictionary) -
 			"theme_color": ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 		})
 	return parts
-
-
 func _base_xp_reward_parts_for_display(skill_id: String, action: Dictionary) -> Array:
 	var rewards := _base_xp_reward_map(action, skill_id)
 	var parts := []
@@ -417,8 +380,6 @@ func _base_xp_reward_parts_for_display(skill_id: String, action: Dictionary) -> 
 			"theme_color": ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 		})
 	return parts
-
-
 func _xp_reward_result_phrase(reward_map: Dictionary, owner_skill_id := "") -> String:
 	var packed := PackedStringArray()
 	var ordered_skill_ids := _ordered_xp_reward_skill_ids(owner_skill_id, reward_map)
@@ -438,12 +399,8 @@ func _xp_reward_result_phrase(reward_map: Dictionary, owner_skill_id := "") -> S
 	if packed.is_empty():
 		packed.append("+0 XP")
 	return ", ".join(packed)
-
-
 func _xp_reward_result_sentence(reward_map: Dictionary, owner_skill_id: String, action_name: String) -> String:
 	return "%s from %s." % [_xp_reward_result_phrase(reward_map, owner_skill_id), action_name]
-
-
 func _ordered_xp_reward_skill_ids(owner_skill_id: String, rewards: Dictionary) -> Array:
 	var ordered := []
 	if rewards.has(owner_skill_id):
@@ -459,8 +416,6 @@ func _ordered_xp_reward_skill_ids(owner_skill_id: String, rewards: Dictionary) -
 		if not skill_id.is_empty() and not ordered.has(skill_id):
 			ordered.append(skill_id)
 	return ordered
-
-
 func _action_xp_reward_total(parts: Array) -> int:
 	var total := 0
 	for raw_part in parts:
@@ -468,8 +423,6 @@ func _action_xp_reward_total(parts: Array) -> int:
 			continue
 		total += maxi(0, int((raw_part as Dictionary).get("amount", 0)))
 	return maxi(1, total)
-
-
 func _distribute_xp_reward_map_to_total(template: Dictionary, owner_skill_id: String, target_total: int) -> Dictionary:
 	var template_total := _reward_map_total(template)
 	if template_total <= 0:
@@ -479,6 +432,15 @@ func _distribute_xp_reward_map_to_total(template: Dictionary, owner_skill_id: St
 		return empty_template_rewards
 	var rewards := {}
 	var ordered_skill_ids := _ordered_xp_reward_skill_ids(owner_skill_id, template)
+	var positive_reward_count := 0
+	for raw_skill_id in ordered_skill_ids:
+		if int(template.get(str(raw_skill_id), 0)) > 0:
+			positive_reward_count += 1
+	if target_total < positive_reward_count:
+		var capped_rewards := {}
+		var capped_skill := owner_skill_id if template.has(owner_skill_id) else str(ordered_skill_ids[0])
+		capped_rewards[capped_skill] = maxi(1, target_total)
+		return capped_rewards
 	var assigned := 0
 	for raw_skill_id in ordered_skill_ids:
 		var reward_skill_id := str(raw_skill_id)
@@ -497,8 +459,6 @@ func _distribute_xp_reward_map_to_total(template: Dictionary, owner_skill_id: St
 	var remainder_skill := owner_skill_id if rewards.has(owner_skill_id) else str(ordered_skill_ids[0])
 	rewards[remainder_skill] = maxi(1, int(rewards.get(remainder_skill, 0)) + remainder)
 	return rewards
-
-
 func _effective_xp(action: Dictionary, skill_id := "", force_plank_bonus := false) -> int:
 	var cache_key := _action_stat_value_cache_key("xp:%s" % force_plank_bonus, skill_id, action)
 	if action_stat_value_cache.has(cache_key):
@@ -506,7 +466,6 @@ func _effective_xp(action: Dictionary, skill_id := "", force_plank_bonus := fals
 	var value := _effective_xp_reward_amount(action, skill_id, skill_id, maxi(1, int(action.get("xp", 1))), force_plank_bonus)
 	action_stat_value_cache[cache_key] = value
 	return value
-
 
 func _effective_xp_reward_map(action: Dictionary, owner_skill_id := "", force_plank_bonus := false) -> Dictionary:
 	var rewards := {}
@@ -521,7 +480,6 @@ func _effective_xp_reward_map(action: Dictionary, owner_skill_id := "", force_pl
 		rewards[owner_skill_id] = _effective_xp(action, owner_skill_id, force_plank_bonus)
 	return _cap_xp_reward_map_total(action, owner_skill_id, rewards)
 
-
 func _cap_xp_reward_map_total(action: Dictionary, owner_skill_id: String, reward_map: Dictionary) -> Dictionary:
 	var cap: int = _xp_reward_cap_for_action(action)
 	if cap <= 0:
@@ -531,7 +489,6 @@ func _cap_xp_reward_map_total(action: Dictionary, owner_skill_id: String, reward
 		return reward_map
 	return _distribute_xp_reward_map_to_total(reward_map, owner_skill_id, cap)
 
-
 func _xp_reward_cap_for_action(action: Dictionary) -> int:
 	var cap := int(action.get("xp_reward_cap", 0))
 	if cap > 0:
@@ -540,7 +497,6 @@ func _xp_reward_cap_for_action(action: Dictionary) -> int:
 	if typeof(event_meta) == TYPE_DICTIONARY:
 		return maxi(0, int((event_meta as Dictionary).get("xp_reward_cap", 0)))
 	return 0
-
 
 func _completion_xp_reward_map(action: Dictionary, owner_skill_id: String, force_plank_bonus: bool, xp_crit: bool, mega_crit: bool, streak_bonus: bool) -> Dictionary:
 	var rewards := _effective_xp_reward_map(action, owner_skill_id, force_plank_bonus)
@@ -552,12 +508,10 @@ func _completion_xp_reward_map(action: Dictionary, owner_skill_id: String, force
 		rewards[skill_id] = maxi(1, int(rewards.get(raw_skill_id, 0)) * multiplier)
 	return rewards
 
-
 func _fishing_completion_xp_reward_map(action: Dictionary, owner_skill_id: String) -> Dictionary:
 	var rewards := _effective_xp_reward_map(action, owner_skill_id, false)
 	rewards[owner_skill_id] = host.fishing_runtime.flat_xp_reward(host, action, owner_skill_id)
 	return rewards
-
 
 func _apply_xp_reward_map(owner_skill_id: String, reward_map: Dictionary) -> Array:
 	var affected_skill_ids := []
@@ -570,7 +524,6 @@ func _apply_xp_reward_map(owner_skill_id: String, reward_map: Dictionary) -> Arr
 			affected_skill_ids.append(reward_skill_id)
 	return affected_skill_ids
 
-
 func _skill_levels_for_reward_map(owner_skill_id: String, reward_map: Dictionary) -> Dictionary:
 	var levels := {}
 	for reward_skill_id in _ordered_xp_reward_skill_ids(owner_skill_id, reward_map):
@@ -578,13 +531,11 @@ func _skill_levels_for_reward_map(owner_skill_id: String, reward_map: Dictionary
 			levels[reward_skill_id] = SkillState.host_skill_level(host, reward_skill_id)
 	return levels
 
-
 func _reward_map_total(reward_map: Dictionary) -> int:
 	var total := 0
 	for amount in reward_map.values():
 		total += maxi(0, int(amount))
 	return total
-
 
 func _any_reward_skill_leveled_up(affected_skill_ids: Array, old_levels: Dictionary) -> bool:
 	for raw_skill_id in affected_skill_ids:
@@ -595,7 +546,6 @@ func _any_reward_skill_leveled_up(affected_skill_ids: Array, old_levels: Diction
 			return true
 	return false
 
-
 func _completion_xp_multiplier(xp_crit: bool, mega_crit: bool, streak_bonus: bool) -> int:
 	if mega_crit:
 		return 9
@@ -604,8 +554,6 @@ func _completion_xp_multiplier(xp_crit: bool, mega_crit: bool, streak_bonus: boo
 	if streak_bonus:
 		return 2
 	return 1
-
-
 func _base_xp_reward_map(action: Dictionary, owner_skill_id := "") -> Dictionary:
 	var rewards := {}
 	var raw_rewards = action.get("xp_rewards", {})
@@ -621,7 +569,6 @@ func _base_xp_reward_map(action: Dictionary, owner_skill_id := "") -> Dictionary
 		rewards[owner_skill_id] = host._temporary_event_runtime()._temporary_event_scaled_reward_amount(action, maxi(1, int(action.get("xp", 1))))
 	return rewards
 
-
 func _effective_xp_reward_amount(action: Dictionary, owner_skill_id: String, reward_skill_id: String, base_amount: int, force_plank_bonus := false) -> int:
 	var xp_bonus: float = AchievementState.global_reward_bonus(host, "xp_mult", reward_skill_id) + host._ad_bonus_runtime().xp_multiplier()
 	if reward_skill_id == owner_skill_id and (force_plank_bonus or host._passive_modules_runtime().plank_bonus_applies(owner_skill_id)):
@@ -629,7 +576,6 @@ func _effective_xp_reward_amount(action: Dictionary, owner_skill_id: String, rew
 	if reward_skill_id == owner_skill_id and host._hub_runtime().mission_bonus_applies(owner_skill_id, action):
 		xp_bonus += host._hub_runtime().mission_xp_bonus()
 	return maxi(1, int(round(float(maxi(1, base_amount)) * (1.0 + xp_bonus))))
-
 
 func _action_opportunity_frame_work_needed() -> bool:
 	return (
@@ -639,16 +585,8 @@ func _action_opportunity_frame_work_needed() -> bool:
 		or action_opportunity_ruby_transition_elapsed < ACTION_OPPORTUNITY_RUBY_MOVE_SECONDS
 	)
 
-
-func _action_opportunity_windows(skill_id: String, action_id: String) -> Array[Vector2]:
-	return _action_opportunity_pattern_windows(skill_id, action_id)
-
-
 func _action_opportunity_pattern_windows(skill_id: String, action_id: String) -> Array[Vector2]:
-	var windows := _action_opportunity_raw_pattern_windows(skill_id, action_id)
-	windows = _action_opportunity_apply_miss_expansion(windows)
-	return _action_opportunity_apply_speed_forgiveness(skill_id, action_id, windows)
-
+	return _action_opportunity_apply_speed_forgiveness(skill_id, action_id, _action_opportunity_apply_miss_expansion(_action_opportunity_raw_pattern_windows(skill_id, action_id)))
 
 func _action_opportunity_raw_pattern_windows(skill_id: String, action_id: String) -> Array[Vector2]:
 	var medal_level: int = int(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)))
@@ -673,7 +611,6 @@ func _action_opportunity_raw_pattern_windows(skill_id: String, action_id: String
 	if medal_level >= ACTION_OPPORTUNITY_GOLD_MIN_MEDAL_LEVEL:
 		return [_action_opportunity_gold_window()]
 	return [ACTION_OPPORTUNITY_SILVER_WINDOW]
-
 
 func _action_opportunity_apply_speed_forgiveness(skill_id: String, action_id: String, windows: Array[Vector2]) -> Array[Vector2]:
 	if windows.is_empty():
@@ -704,8 +641,6 @@ func _action_opportunity_apply_speed_forgiveness(skill_id: String, action_id: St
 		)
 		adjusted.append(_action_opportunity_resize_window(window, next_width))
 	return adjusted
-
-
 func _action_opportunity_apply_miss_expansion(windows: Array[Vector2]) -> Array[Vector2]:
 	if windows.is_empty() or action_opportunity_miss_expand_per_side <= 0.0001:
 		return windows.duplicate()
@@ -718,8 +653,6 @@ func _action_opportunity_apply_miss_expansion(windows: Array[Vector2]) -> Array[
 		var next_width := clampf(width + action_opportunity_miss_expand_per_side * 2.0, width, 1.0)
 		adjusted.append(_action_opportunity_resize_window(window, next_width))
 	return adjusted
-
-
 func _action_opportunity_effective_cycle_seconds(skill_id: String, action_id: String) -> float:
 	if host.running_skill_id != skill_id or host.running_action_id != action_id:
 		return 0.0
@@ -728,8 +661,6 @@ func _action_opportunity_effective_cycle_seconds(skill_id: String, action_id: St
 		return 0.0
 	var speed_mult := maxf(0.01, maxf(1.0, action_progress_speed_mult_current))
 	return _action_cycle_seconds(skill_id, action) / speed_mult
-
-
 func _action_opportunity_resize_window(window: Vector2, next_width: float) -> Vector2:
 	var width := clampf(next_width, 0.0, 1.0)
 	var current_width := clampf(window.y - window.x, 0.0, 1.0)
@@ -743,8 +674,6 @@ func _action_opportunity_resize_window(window: Vector2, next_width: float) -> Ve
 	if current_width >= 0.999:
 		return Vector2(0.0, 1.0)
 	return Vector2(left, right)
-
-
 func _action_opportunity_sapphire_window() -> Vector2:
 	var width: float = ACTION_OPPORTUNITY_SILVER_WINDOW.y - ACTION_OPPORTUNITY_SILVER_WINDOW.x
 	var start_left: float = 1.0 - width
@@ -752,17 +681,11 @@ func _action_opportunity_sapphire_window() -> Vector2:
 	var slide_t := smoothstep(0.0, 1.0, clampf(action_opportunity_cycle_elapsed / ACTION_OPPORTUNITY_SAPPHIRE_SLIDE_SECONDS, 0.0, 1.0))
 	var left := lerpf(start_left, stop_left, slide_t)
 	return Vector2(left, left + width)
-
-
 func _action_opportunity_emerald_window() -> Vector2:
 	return action_opportunity_emerald_window
-
-
 func _action_opportunity_ruby_window() -> Vector2:
 	var left := clampf(action_opportunity_ruby_left, 0.0, 1.0 - ACTION_OPPORTUNITY_RUBY_WINDOW_WIDTH)
 	return Vector2(left, left + ACTION_OPPORTUNITY_RUBY_WINDOW_WIDTH)
-
-
 func _action_opportunity_emerald_target_window() -> Vector2:
 	var left := clampf(
 		ACTION_OPPORTUNITY_EMERALD_MAX_WINDOW.x + float(action_opportunity_emerald_shrink_steps) * ACTION_OPPORTUNITY_EMERALD_SHRINK_PER_SUCCESS,
@@ -775,8 +698,6 @@ func _action_opportunity_emerald_target_window() -> Vector2:
 		ACTION_OPPORTUNITY_EMERALD_MAX_WINDOW.y
 	)
 	return Vector2(left, right)
-
-
 func _process_action_opportunity_window_animation(delta: float) -> void:
 	if action_opportunity_miss_expand_elapsed < ACTION_OPPORTUNITY_MISS_EXPAND_SECONDS:
 		action_opportunity_miss_expand_elapsed = minf(
@@ -901,7 +822,7 @@ func _action_opportunity_active(skill_id: String, action_id: String, progress :=
 	if action_opportunity_consumed and not _action_opportunity_uses_triple_click(skill_id, action_id):
 		return false
 	var checked_progress: float = host.action_progress if progress < 0.0 else progress
-	for window in _action_opportunity_windows(skill_id, action_id):
+	for window in _action_opportunity_pattern_windows(skill_id, action_id):
 		if checked_progress >= window.x and checked_progress <= window.y:
 			return true
 	return false
@@ -930,14 +851,12 @@ func _action_opportunity_uses_persistent_window(skill_id: String, action_id: Str
 		and medal_level < ACTION_OPPORTUNITY_EMERALD_MIN_MEDAL_LEVEL
 	)
 
-
 func _action_opportunity_uses_shrinking_window(skill_id: String, action_id: String) -> bool:
 	var medal_level: int = int(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)))
 	return (
 		medal_level >= ACTION_OPPORTUNITY_EMERALD_MIN_MEDAL_LEVEL
 		and medal_level < ACTION_OPPORTUNITY_RUBY_MIN_MEDAL_LEVEL
 	)
-
 
 func _action_opportunity_uses_step_window(skill_id: String, action_id: String) -> bool:
 	var medal_level: int = int(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)))
@@ -946,17 +865,13 @@ func _action_opportunity_uses_step_window(skill_id: String, action_id: String) -
 		and medal_level < ACTION_OPPORTUNITY_DIAMOND_MIN_MEDAL_LEVEL
 	)
 
-
 func _action_opportunity_persistent_window_reached_wait_point(skill_id: String, action_id: String) -> bool:
 	if not _action_opportunity_uses_persistent_window(skill_id, action_id):
 		return false
 	return action_opportunity_cycle_elapsed >= ACTION_OPPORTUNITY_SAPPHIRE_SLIDE_SECONDS
 
-
 func _try_action_opportunity_click(skill_id: String, action_id: String, _press_position: Vector2) -> bool:
-	if host.running_skill_id != skill_id or host.running_action_id != action_id:
-		return false
-	if action_opportunity_missed:
+	if host.running_skill_id != skill_id or host.running_action_id != action_id or action_opportunity_missed:
 		return false
 	if action_opportunity_consumed and not _action_opportunity_uses_triple_click(skill_id, action_id):
 		return _action_opportunity_progress_hit_test(skill_id, action_id)
@@ -981,7 +896,7 @@ func _try_action_opportunity_click(skill_id: String, action_id: String, _press_p
 	action_opportunity_persistent_key = ""
 	if _action_opportunity_uses_shrinking_window(skill_id, action_id):
 		_advance_emerald_action_opportunity_window()
-	if _action_opportunity_uses_step_window(skill_id, action_id):
+	elif _action_opportunity_uses_step_window(skill_id, action_id):
 		_advance_ruby_action_opportunity_window()
 	_reset_action_opportunity_miss_expansion(false)
 	host._reward_feedback_surface()._play_action_opportunity_window_feedback(skill_id, action_id, true, feedback_windows)
@@ -994,7 +909,6 @@ func _try_action_opportunity_click(skill_id: String, action_id: String, _press_p
 	host._reward_feedback_surface()._set_result("Opportunity hit: %s sped up. Stamina regen surged." % str(host._action_data(skill_id, action_id).get("name", "Activity")))
 	host._onboarding_runtime()._complete_silver_opportunity_tip_for_action(skill_id, action_id)
 	return true
-
 
 func _try_triple_click_action_opportunity_click(skill_id: String, action_id: String) -> bool:
 	var feedback_windows := _action_opportunity_pattern_windows(skill_id, action_id)
@@ -1015,11 +929,8 @@ func _try_triple_click_action_opportunity_click(skill_id: String, action_id: Str
 	])
 	return true
 
-
 func _miss_action_opportunity_click(skill_id: String, action_id: String, _press_position: Vector2) -> bool:
-	if host.running_skill_id != skill_id or host.running_action_id != action_id:
-		return false
-	if action_opportunity_consumed or action_opportunity_missed:
+	if host.running_skill_id != skill_id or host.running_action_id != action_id or action_opportunity_consumed or action_opportunity_missed:
 		return false
 	var feedback_windows := _action_opportunity_pattern_windows(skill_id, action_id)
 	if feedback_windows.is_empty():
@@ -1041,7 +952,7 @@ func _miss_action_opportunity_click(skill_id: String, action_id: String, _press_
 
 func _action_opportunity_progress_hit_test(skill_id: String, action_id: String) -> bool:
 	var checked_progress: float = clampf(host.action_progress, 0.0, 1.0)
-	for window in _action_opportunity_windows(skill_id, action_id):
+	for window in _action_opportunity_pattern_windows(skill_id, action_id):
 		if checked_progress >= window.x and checked_progress <= window.y:
 			return true
 	var rail: Variant = host._reward_feedback_surface()._visible_action_opportunity_rail(skill_id, action_id)
@@ -1247,7 +1158,6 @@ func _smoothed_action_progress_speed_multiplier(action_key: String, target: floa
 		action_progress_speed_mult_current = clamped_target
 	return action_progress_speed_mult_current
 
-
 func _action_stat_value_cache_key(kind: String, skill_id: String, action: Dictionary) -> String:
 	var active_event = action.get("active_event", {})
 	var event_spawn_level := 0
@@ -1268,7 +1178,6 @@ func _action_stat_value_cache_key(kind: String, skill_id: String, action: Dictio
 		hash(host.fishing_runtime.selected_locations)
 	]
 
-
 func _success_chance(skill_id: String, action: Dictionary) -> float:
 	if host._convergence_runtime()._is_convergence_action(action):
 		return 100.0
@@ -1287,22 +1196,15 @@ func _success_chance(skill_id: String, action: Dictionary) -> float:
 	action_stat_value_cache[cache_key] = value
 	return value
 
-
 func _roll_action_success(skill_id: String, action: Dictionary) -> bool:
-	if _consume_guaranteed_success_action_completion(skill_id, action):
-		return true
-	return randf() * 100.0 <= _success_chance(skill_id, action)
-
+	return _consume_guaranteed_success_action_completion(skill_id, action) or randf() * 100.0 <= _success_chance(skill_id, action)
 
 func _consume_guaranteed_success_action_completion(skill_id: String, action: Dictionary) -> bool:
-	if skill_id.is_empty() or action.is_empty() or host._passive_modules_runtime().is_passive_action(action) or host._convergence_runtime()._is_convergence_action(action):
-		return false
-	if guaranteed_success_action_completions >= GUARANTEED_SUCCESS_ACTION_COMPLETIONS:
+	if skill_id.is_empty() or action.is_empty() or host._passive_modules_runtime().is_passive_action(action) or host._convergence_runtime()._is_convergence_action(action) or guaranteed_success_action_completions >= GUARANTEED_SUCCESS_ACTION_COMPLETIONS:
 		return false
 	guaranteed_success_action_completions += 1
 	host._mark_save_dirty("starter guaranteed success")
 	return true
-
 
 func _reset_action_opportunity_state(clear_boost := true) -> void:
 	action_opportunity_consumed = false
@@ -1323,8 +1225,6 @@ func _reset_action_opportunity_state(clear_boost := true) -> void:
 		action_opportunity_regen_seconds = 0.0
 		action_progress_speed_key = ""
 		action_progress_speed_mult_current = 1.0
-
-
 
 func _process_canceled_action_progress(delta: float) -> void:
 	if host.canceled_action_progress_by_key.is_empty():
@@ -1477,8 +1377,6 @@ func _stop_running_action(skill_id: String, action_id: String) -> bool:
 	host._mark_save_dirty("activity stopped")
 	host.save_game()
 	return true
-
-
 func _action_mat_reward_defs(action: Dictionary) -> Array:
 	var rewards = action.get("mat_rewards", [])
 	var normalized = []
@@ -1500,12 +1398,8 @@ func _action_mat_reward_defs(action: Dictionary) -> Array:
 			var amount_value = float((rewards as Dictionary).get(raw_mat_id, 0.0))
 			normalized.append({"id": mat_id, "min": amount_value, "max": amount_value})
 	return normalized
-
-
 func _action_has_mat_rewards(action: Dictionary) -> bool:
 	return not _action_mat_reward_defs(action).is_empty()
-
-
 func _roll_action_mat_rewards(action: Dictionary) -> Array:
 	var rolled = []
 	for raw_reward in _action_mat_reward_defs(action):
@@ -1524,8 +1418,6 @@ func _roll_action_mat_rewards(action: Dictionary) -> Array:
 			amount = 0.0
 		rolled.append({"id": mat_id, "amount": maxf(0.0, amount)})
 	return rolled
-
-
 func _award_action_mat_rewards(action: Dictionary, multiplier := 1.0) -> Array:
 	var awarded = []
 	for raw_roll in _roll_action_mat_rewards(action):
@@ -1536,8 +1428,6 @@ func _award_action_mat_rewards(action: Dictionary, multiplier := 1.0) -> Array:
 			host.material_runtime.add_amount(mat_id, amount)
 		awarded.append({"id": mat_id, "amount": amount})
 	return awarded
-
-
 func _mat_reward_result_text(awarded_mats: Array) -> String:
 	var parts = []
 	for raw_reward in awarded_mats:
@@ -1552,8 +1442,6 @@ func _mat_reward_result_text(awarded_mats: Array) -> String:
 	if parts.is_empty():
 		return ""
 	return ", ".join(parts)
-
-
 func _process_action(delta: float) -> void:
 	host._fighting_runtime().sync_parked_combat_stage()
 	_process_canceled_action_progress(delta)
@@ -1592,12 +1480,9 @@ func _process_action(delta: float) -> void:
 		return
 	var fishing_rework_attempt = host._fishing_rework_active_for_skill(host.running_skill_id) and not host._is_event_action(action)
 	var cost = _effective_stamina(host.running_skill_id, action)
-	if not fishing_rework_attempt and not host._activity_queue_runtime().activity_queue_running:
-		if _auto_eat_fish_after_spend_delay_due(host.running_skill_id):
-			_auto_eat_fish_for_action(host.running_skill_id, cost, host._skill_detail_surface().detail_regen_circle, false)
-		elif not _auto_eat_fish_after_spend_delay_active(host.running_skill_id):
-			_auto_eat_fish_for_action(host.running_skill_id, cost, host._skill_detail_surface().detail_regen_circle, false)
-	var has_stamina_for_action = true if fishing_rework_attempt else SkillState.host_stamina_value(host.running_skill_id, host) + 0.0001 >= cost
+	if not fishing_rework_attempt and not host._activity_queue_runtime().activity_queue_running and (_auto_eat_fish_after_spend_delay_due(host.running_skill_id) or not _auto_eat_fish_after_spend_delay_active(host.running_skill_id)):
+		_auto_eat_fish_for_action(host.running_skill_id, cost, host._skill_detail_surface().detail_regen_circle, false)
+	var has_stamina_for_action = fishing_rework_attempt or SkillState.host_stamina_value(host.running_skill_id, host) + 0.0001 >= cost
 	if (
 		not has_stamina_for_action
 		and _auto_eat_fish_after_spend_delay_active(host.running_skill_id)
@@ -1653,8 +1538,7 @@ func _process_action(delta: float) -> void:
 	if host._is_event_action(action):
 		host._temporary_event_runtime()._complete_temporary_event_action_attempt(host.running_skill_id, host.running_action_id, action, active_key, cost, bonus_snapshot_before)
 		return
-	var reward_key = active_key
-	var old_mastery_level = MasteryState.level(host.mastery, host._action_key(host.running_skill_id, host.running_action_id))
+	var old_mastery_level = MasteryState.level(host.mastery, active_key)
 	var mastery_reward = MasteryState.reward_for_action(host, host.running_skill_id, host.running_action_id, action)
 	var tiers_unlocked_before = {}
 	for tier in range(1, host.MASTERY_MAX_LEVEL + 1):
@@ -1666,7 +1550,7 @@ func _process_action(delta: float) -> void:
 	var completed_action_id = host.running_action_id
 	host._fishing_ui_surface()._play_fishing_attempt_reveal(host.running_skill_id, host.running_action_id, success)
 	if success:
-		var streak_step = record_successful_activity_completion(reward_key)
+		var streak_step = record_successful_activity_completion(active_key)
 		var streak_bonus = streak_step == ACTIVITY_STREAK_BONUS_STEP
 		var crits_allowed = host._onboarding_runtime()._activity_crits_allowed()
 		var crit_chance = _activity_crit_chance(streak_bonus) if crits_allowed else 0.0
@@ -1730,10 +1614,10 @@ func _process_action(delta: float) -> void:
 		var new_global_buffs = AchievementState.new_global_medal_buff_messages(host, old_mastery_level, new_mastery_level, tiers_unlocked_before)
 		if not new_global_buffs.is_empty():
 			host.last_result += " " + " ".join(new_global_buffs)
-		host._reward_feedback_surface()._play_action_feedback(reward_key, true, xp_reward, mastery_reward, xp_crit, mega_crit, xp_reward_map)
-		host._material_collection_surface()._play_mat_collection_feedback(reward_key, awarded_mats)
+		host._reward_feedback_surface()._play_action_feedback(active_key, true, xp_reward, mastery_reward, xp_crit, mega_crit, xp_reward_map)
+		host._material_collection_surface()._play_mat_collection_feedback(active_key, awarded_mats)
 		if plank_bonus_used:
-			host._passive_firepit_surface()._play_build_log_spend_feedback(reward_key)
+			host._passive_firepit_surface()._play_build_log_spend_feedback(active_key)
 		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit, mega_crit, consecutive_activity_crit_count)
@@ -1757,7 +1641,7 @@ func _process_action(delta: float) -> void:
 		var failure_global_buffs = AchievementState.new_global_medal_buff_messages(host, old_mastery_level, failure_mastery_level, tiers_unlocked_before)
 		if not failure_global_buffs.is_empty():
 			host.last_result += " " + " ".join(failure_global_buffs)
-		host._reward_feedback_surface()._play_action_feedback(reward_key, false, 0, failure_mastery_reward)
+		host._reward_feedback_surface()._play_action_feedback(active_key, false, 0, failure_mastery_reward)
 		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_failure_sfx()
@@ -2010,7 +1894,8 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	while remaining > 0.001:
 		var cycle_seconds = _offline_active_cycle_seconds(skill_id, action, host.action_progress, fishing_rework_attempt)
 		if (
-			cycle_seconds > 0.0
+			host.action_progress <= 0.001
+			and cycle_seconds > 0.0
 			and remaining >= cycle_seconds * float(OFFLINE_ACTIVE_BATCH_MIN_CYCLES)
 		):
 			var batch_cycles = mini(
@@ -2033,7 +1918,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 		var cost = _effective_stamina(skill_id, action)
 		var action_seconds = _action_cycle_seconds(skill_id, action)
 		var progress = clampf(host.action_progress, 0.0, 0.999)
-		var stamina_ready = true if fishing_rework_attempt else SkillState.host_stamina_value(skill_id, host) + 0.0001 >= cost
+		var stamina_ready = fishing_rework_attempt or SkillState.host_stamina_value(skill_id, host) + 0.0001 >= cost
 		var speed_mult = _action_progress_speed_multiplier(skill_id, action, stamina_ready)
 		var seconds_to_complete = maxf(0.001, action_seconds * (1.0 - progress) / speed_mult)
 		var seconds_until_ready = INF
@@ -2085,7 +1970,6 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 		"new_global_level": new_global_level,
 		"old_mastery_level": old_mastery_level,
 		"new_mastery_level": new_mastery_level,
-		"unlocked_actions": _offline_unlocked_actions(skill_id, old_skill_level, new_skill_level),
 		"achievements": AchievementState.newly_completed_fast(host, completed_achievements_before)
 	}
 
@@ -2197,7 +2081,6 @@ func _apply_offline_convergence_action(offline_seconds: float, module_id: String
 		"new_global_level": SkillState.global_level(host.skills),
 		"old_mastery_level": 0,
 		"new_mastery_level": 0,
-		"unlocked_actions": [],
 		"achievements": completed_achievements,
 		"convergence": true
 	}
@@ -2225,9 +2108,10 @@ func _grant_offline_convergence_completion_batch(module_id: String, action: Dict
 
 
 func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
-	if SkillState.host_stamina_value(skill_id, host) + 0.0001 >= cost:
+	var stamina := SkillState.host_stamina_value(skill_id, host)
+	if stamina + 0.0001 >= cost:
 		return 0.0
-	var missing = cost - SkillState.host_stamina_value(skill_id, host)
+	var missing = cost - stamina
 	var regen_bonus = (1.0 + host._hub_surface()._hub_pond_regen_bonus()) * SkillState.honey_stamina_regen_multiplier(player_has_stamina_honey())
 	return maxf(0.0, missing * host.STAMINA_REGEN_SECONDS / regen_bonus)
 
@@ -2297,10 +2181,11 @@ func _grant_offline_fishing_action_completion(skill_id: String, action_id: Strin
 		var direct_fish_currency_amount = FishingState.roll_direct_fish_currency(action) if direct_fish_currency_reward else 0.0
 		var fish_count = 0 if direct_fish_currency_reward else host.fishing_runtime.roll_fish_count(host, action, host.fishing_runtime.equipped_tool_id)
 		var haul_count = fish_count
-		if netting:
-			haul_count = _record_offline_fishing_net_success(fish_count, xp_reward)
-		elif boating:
-			haul_count = _record_offline_fishing_boat_success(fish_count, xp_reward)
+		if netting or boating:
+			var tool_id := "net" if netting else "boat"
+			var threshold := FishingState.FISHING_NET_HAUL_THRESHOLD if netting else FishingState.FISHING_BOAT_HAUL_THRESHOLD
+			var visual_seconds := FishingState.FISHING_NET_HAUL_VISUAL_SECONDS if netting else FishingState.FISHING_BOAT_HAUL_VISUAL_SECONDS
+			haul_count = int(host.fishing_runtime.record_batch_success(tool_id, fish_count, xp_reward, threshold, visual_seconds).get("haul_count", 0))
 		if direct_fish_currency_reward:
 			fish_gained = direct_fish_currency_amount
 			host.fishing_runtime.award_fish_currency(host, fish_gained)
@@ -2331,21 +2216,10 @@ func _grant_offline_fishing_action_completion(skill_id: String, action_id: Strin
 		"fish": fish_gained,
 		"logs_spent": 0
 	}
-
-
-func _record_offline_fishing_net_success(fish_count: int, xp_reward: int) -> int:
-	return int(host.fishing_runtime.record_batch_success("net", fish_count, xp_reward, FishingState.FISHING_NET_HAUL_THRESHOLD, FishingState.FISHING_NET_HAUL_VISUAL_SECONDS).get("haul_count", 0))
-
-
-func _record_offline_fishing_boat_success(fish_count: int, xp_reward: int) -> int:
-	return int(host.fishing_runtime.record_batch_success("boat", fish_count, xp_reward, FishingState.FISHING_BOAT_HAUL_THRESHOLD, FishingState.FISHING_BOAT_HAUL_VISUAL_SECONDS).get("haul_count", 0))
-
-
 func _offline_xp_reward(action: Dictionary, skill_id: String, force_plank_bonus = false) -> int:
 	if _fishing_net_soak_active(skill_id):
 		return maxi(1, int(round(float(FishingState.net_xp_reward(host, action)) * OFFLINE_XP_MULT)))
 	return maxi(1, int(round(float(_effective_xp(action, skill_id, force_plank_bonus)) * OFFLINE_XP_MULT)))
-
 
 func _offline_fishing_xp_reward(action: Dictionary, skill_id: String) -> int:
 	var xp_reward = host.fishing_runtime.flat_xp_reward(host, action, skill_id)
@@ -2353,17 +2227,11 @@ func _offline_fishing_xp_reward(action: Dictionary, skill_id: String) -> int:
 		return 0
 	return maxi(1, int(round(float(xp_reward) * OFFLINE_XP_MULT)))
 
-
 func _offline_mastery_reward(skill_id: String, action_id: String, action: Dictionary) -> float:
 	return maxf(0.0, MasteryState.reward_for_action(host, skill_id, action_id, action) * OFFLINE_XP_MULT)
-
 
 func _offline_fishing_mastery_reward(skill_id: String, action_id: String, net_fill_without_harvest = false) -> float:
 	var mastery_reward = FishingState.mastery_reward(host, skill_id, action_id)
 	if net_fill_without_harvest:
 		mastery_reward *= FishingState.FISHING_NET_FILL_MASTERY_MULT
 	return maxf(0.0, mastery_reward * OFFLINE_XP_MULT)
-
-
-func _offline_unlocked_actions(_skill_id: String, _old_level: int, _new_level: int) -> Array:
-	return []

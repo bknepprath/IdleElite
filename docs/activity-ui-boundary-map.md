@@ -19,7 +19,7 @@ Use this map before editing activity detail pages, action cards, mastery medals,
 | Mastery medals | `MasteryState`: `level`, `progress_pct`, `for_save`; `AchievementPresentation`: `mastery_medal_texture`, `mastery_medal_visual_texture` | Mastery is both UI and save data. Preserve canonical action keys and fallback textures. |
 | Unlocks and lockpads | `ActivityUnlockRuntime`: `_action_has_pending_unlock_readiness`; `ActivityLockRig`: `cropped_padlock_texture`, `cropped_padlock_hit_image`; `main.gd`: `_apply_pending_activity_unlock_readiness` | Runtime owns pending readiness checks; unlock UI touches manual unlock state, pending ceremony state, and auto-unlock behavior. |
 | Offline summary | `AchievementOverlaySurface`: `_maybe_show_offline_summary`, `_offline_summary_activity_card`, `_offline_summary_stat_card`, `_offline_summary_mastery_row`, `_offline_summary_unlock_card`; `main.gd`: `_close_offline_summary_overlay` scene-call wrapper | Owns the away-progress overlay presentation while `main.gd` keeps save/load state, reward math, and direct-call close compatibility. |
-| Offline rewards | `ActionRuntime`: `_apply_offline_active_action`, `_offline_active_cycle_seconds`, `_offline_xp_reward`, `_offline_mastery_reward`, `_offline_unlocked_actions` | Gameplay math lives in `ActionRuntime`; save/offline callers route through `host._action_runtime()`. Do not mix math changes into visual refactors. |
+| Offline rewards | `ActionRuntime`: `_apply_offline_active_action`, `_offline_active_cycle_seconds`, `_offline_xp_reward`, `_offline_mastery_reward` | Gameplay math lives in `ActionRuntime`; save/offline callers route through `host._action_runtime()`. Do not mix math changes into visual refactors. |
 
 ## Working Rules
 

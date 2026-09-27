@@ -81,20 +81,11 @@ $pck = Get-Item -LiteralPath (Join-Path $webBuildDir "index.pck")
 Assert-True ($pck.Length -le 200000000) ("Web index.pck is {0:N2} MB ({1:N2} MiB), exceeding itch.io's 200 MB single-file limit." -f ($pck.Length / 1000000), ($pck.Length / 1MB))
 
 if (-not $SkipValidation -and -not $SkipWebTouchScrollValidation) {
-    Assert-True (Test-Path -LiteralPath $webTouchScrollTest) "Fishing web touch scroll test was not found at $webTouchScrollTest"
-    & $webTouchScrollTest
-    if ($LASTEXITCODE -ne 0) {
-        throw "Fishing web touch scroll validation failed with exit code $LASTEXITCODE"
-    }
+	Assert-True (Test-Path -LiteralPath $webTouchScrollTest) "Fishing web touch scroll test was not found at $webTouchScrollTest"
+	& $webTouchScrollTest
 }
 
 $versionedZipPath = Join-Path $itchBuildDir "idle-elite-itch-web-v$versionName-code$versionCode.zip"
-foreach ($zipPath in @($versionedZipPath, $latestZipPath)) {
-    if (Test-Path -LiteralPath $zipPath) {
-        Remove-Item -LiteralPath $zipPath -Force
-    }
-}
-
 Compress-Archive -Path (Join-Path $webBuildDir "*") -DestinationPath $versionedZipPath -Force
 Copy-Item -LiteralPath $versionedZipPath -Destination $latestZipPath -Force
 

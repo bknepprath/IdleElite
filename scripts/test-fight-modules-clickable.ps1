@@ -8,6 +8,7 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\fight-modules"
 $testScript = Join-Path $testDir "fight_modules_clickable_test.gd"
 
+Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 @'
@@ -106,6 +107,14 @@ func _fail(message: String) -> void:
 	print("fight-modules-clickable-failed: %s" % message)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-$output = & $runner --path $projectRoot --script "res://.codex-tmp/fight-modules/fight_modules_clickable_test.gd" 2>&1
-$output | Write-Output
-Assert-True (($output | Out-String) -match "fight-modules-clickable-ok") "Fight modules clickable test did not report success."
+try {
+    $output = & $runner --path $projectRoot --script "res://.codex-tmp/fight-modules/fight_modules_clickable_test.gd" 2>&1
+    $output | Write-Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fight modules clickable test failed with exit code $LASTEXITCODE."
+    }
+    Assert-True (($output | Out-String) -match "fight-modules-clickable-ok") "Fight modules clickable test did not report success."
+}
+finally {
+    Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+}

@@ -20,6 +20,7 @@ func _init(host_ref = null) -> void:
 
 func start_session() -> void:
 	crash_session_id = _new_crash_session_id()
+	crash_session_heartbeat_elapsed = 0.0
 
 
 func begin_boot_session() -> void:
@@ -37,9 +38,10 @@ func load_pending_crash_report() -> void:
 	if not FileAccess.file_exists(PENDING_CRASH_REPORT_PATH):
 		return
 	var file := FileAccess.open(PENDING_CRASH_REPORT_PATH, FileAccess.READ)
-	if file != null:
-		pending_crash_report_text = file.get_as_text()
-		file = null
+	if file == null:
+		push_warning("Could not read pending crash report.")
+		return
+	pending_crash_report_text = file.get_as_text()
 	delete_pending_crash_report()
 
 
@@ -94,7 +96,7 @@ func crash_session_payload(status: String) -> Dictionary:
 
 
 func _live_session_context() -> Dictionary:
-	if host == null:
+	if not is_instance_valid(host):
 		return {}
 	var save_runtime = host._save_runtime()
 	var online_runtime = host._online_runtime()
@@ -132,9 +134,7 @@ func load_android_diagnostic_events() -> Array:
 		if event.is_empty():
 			continue
 		events.append(event)
-	while events.size() > MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT:
-		events.pop_front()
-	return events
+	return events.slice(maxi(0, events.size() - MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT))
 
 
 func synthesize_unclean_session_crash_report() -> void:
@@ -178,7 +178,7 @@ func _new_crash_session_id() -> String:
 
 
 func _unix_now() -> int:
-	if host != null:
+	if is_instance_valid(host):
 		return host._unix_now()
 	return int(Time.get_unix_time_from_system())
 
@@ -221,8 +221,6 @@ static func clipboard_text(raw_report: String) -> String:
 		lines.append("events:")
 		append_event_summary(lines, events, 8)
 	return "\n".join(lines)
-
-
 static func append_previous_session_summary(lines: Array, previous: Dictionary, events: Array, report_time_unix: int) -> void:
 	lines.append("prev_status: %s startup=%s os=%s" % [
 		str(previous.get("status", "")),
@@ -252,8 +250,6 @@ static func append_previous_session_summary(lines: Array, previous: Dictionary, 
 			previous_lifecycle,
 			"clean lifecycle exit" if lifecycle_clean else "unclean/native-or-OS-kill suspect"
 		])
-
-
 static func append_stack_summary(lines: Array, stack_trace: String) -> void:
 	var stack_lines := []
 	for line in stack_trace.split("\n", false):
@@ -268,14 +264,10 @@ static func append_stack_summary(lines: Array, stack_trace: String) -> void:
 	lines.append("stack:")
 	for stack_line in stack_lines:
 		lines.append("- %s" % stack_line)
-
-
 static func append_event_summary(lines: Array, events: Array, max_count: int) -> void:
 	var start := maxi(0, events.size() - max_count)
 	for i in range(start, events.size()):
 		lines.append("- %s" % compact_android_diagnostic_event(str(events[i])))
-
-
 static func compact_android_diagnostic_event(line: String) -> String:
 	var event := str(line).strip_edges()
 	var timestamp_separator := event.find(" ")
@@ -289,8 +281,6 @@ static func compact_android_diagnostic_event(line: String) -> String:
 			time_text = time_text.substr(0, millis_separator)
 	var event_name := android_diagnostic_event_name(event)
 	return "%s %s" % [time_text, event_name] if not time_text.is_empty() else event_name
-
-
 static func android_metadata_summary(report: Dictionary, events: Array) -> String:
 	if report.has("version_name") or report.has("device"):
 		var parts := []
@@ -309,8 +299,6 @@ static func android_metadata_summary(report: Dictionary, events: Array) -> Strin
 		var device_text := line.substr(device_index + " device=".length()) if device_index >= 0 else ""
 		return "build=%s device=%s" % [build_text, device_text] if not device_text.is_empty() else "build=%s" % build_text
 	return ""
-
-
 static func diagnostic_events(report: Dictionary) -> Array:
 	var events = report.get("android_diagnostic_events", [])
 	if typeof(events) == TYPE_ARRAY and not (events as Array).is_empty():
@@ -319,8 +307,6 @@ static func diagnostic_events(report: Dictionary) -> Array:
 	if typeof(events) == TYPE_ARRAY:
 		return events as Array
 	return []
-
-
 static func android_diagnostic_event_name(line: String) -> String:
 	var event := line.strip_edges()
 	var timestamp_separator := event.find(" ")
@@ -330,8 +316,6 @@ static func android_diagnostic_event_name(line: String) -> String:
 	if metadata_separator >= 0:
 		event = event.substr(0, metadata_separator)
 	return event.strip_edges()
-
-
 static func previous_android_lifecycle_before_launch(events: Array) -> String:
 	var launch_index := -1
 	for i in range(events.size()):
@@ -344,7 +328,5 @@ static func previous_android_lifecycle_before_launch(events: Array) -> String:
 		if event_name in ANDROID_LIFECYCLE_EVENTS:
 			return event_name
 	return ""
-
-
 static func previous_android_lifecycle_was_clean(events: Array) -> bool:
 	return previous_android_lifecycle_before_launch(events) in ANDROID_CLEAN_LIFECYCLE_EVENTS

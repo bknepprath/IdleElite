@@ -35,7 +35,6 @@ class _BootFlexLoadingAnimation:
 	var xp_layer: Control
 	var sprite_base_position := Vector2.ZERO
 	var current_frame := -1
-	var transparent_texture: Texture2D
 
 
 	func _ready() -> void:
@@ -186,12 +185,11 @@ class _BootFlexLoadingAnimation:
 			return
 		var top_height := bubble_text.size.y * 0.30
 		var big_height := bubble_text.size.y * 0.70
-		var small_font := 48
 		var big_font := int(clampf(bubble_text.size.x * 0.136, 61.0, 105.0))
 		if bubble_line_top != null:
 			bubble_line_top.size = Vector2(bubble_text.size.x, top_height)
 			bubble_line_top.position = Vector2.ZERO
-			bubble_line_top.add_theme_font_size_override("font_size", small_font)
+			bubble_line_top.add_theme_font_size_override("font_size", 48)
 		if bubble_line_big != null:
 			bubble_line_big.size = Vector2(bubble_text.size.x, big_height)
 			bubble_line_big.position = Vector2(0.0, top_height - bubble_text.size.y * 0.20)
@@ -302,17 +300,14 @@ class _BootFlexLoadingAnimation:
 
 
 	func _transparent_fallback_texture(fallback_size: Vector2i) -> Texture2D:
-		if transparent_texture != null:
-			return transparent_texture
+		fallback_size = Vector2i(maxi(1, fallback_size.x), maxi(1, fallback_size.y))
 		if _headless_mode():
 			var placeholder := PlaceholderTexture2D.new()
-			placeholder.size = Vector2(maxi(1, fallback_size.x), maxi(1, fallback_size.y))
-			transparent_texture = placeholder
-			return transparent_texture
-		var image := Image.create(maxi(1, fallback_size.x), maxi(1, fallback_size.y), false, Image.FORMAT_RGBA8)
+			placeholder.size = Vector2(fallback_size.x, fallback_size.y)
+			return placeholder
+		var image := Image.create(fallback_size.x, fallback_size.y, false, Image.FORMAT_RGBA8)
 		image.fill(Color(1.0, 1.0, 1.0, 0.0))
-		transparent_texture = ImageTexture.create_from_image(image)
-		return transparent_texture
+		return ImageTexture.create_from_image(image)
 
 
 	func _queue_free_instance_id(instance_id: int) -> void:
@@ -336,8 +331,6 @@ var shade: ColorRect
 var footer: VBoxContainer
 var label: Label
 var progress_bar
-var cancel_requested := false
-var game_revealed := false
 var show_msec := 0
 var hide_requested := false
 var boot_early_services_started := false
@@ -398,10 +391,7 @@ func validate_state(priority_skill_ids: Array = []) -> void:
 			host.stamina[skill_id] = float(SkillState.max_stamina(host, skill_id))
 		if not host.stamina_bank.has(skill_id):
 			host.stamina_bank[skill_id] = 0.0
-		if validate_all or priority_skill_ids.has(skill_id):
-			_validate_skill_actions(skill_id, true)
-		else:
-			_validate_skill_actions(skill_id, false)
+		_validate_skill_actions(skill_id, validate_all or priority_skill_ids.has(skill_id))
 		SkillState.recalculate_level(host, skill_id)
 	if not host.skills.has(host.selected_skill_id):
 		host.selected_skill_id = "fight"
@@ -428,8 +418,6 @@ func validate_state_bootstrap() -> void:
 
 func prepare_selected_skill_for_render(boot_fast := false) -> void:
 	validate_state_bootstrap()
-	if not host.skills.has(host.selected_skill_id):
-		host.selected_skill_id = "fight"
 	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_skill_accessible(host.selected_skill_id):
 		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
 	if boot_fast:
@@ -579,7 +567,6 @@ func build_overlay() -> void:
 
 func show_overlay() -> void:
 	active = true
-	game_revealed = false
 	hide_requested = false
 	show_msec = Time.get_ticks_msec()
 	if overlay == null:
@@ -632,9 +619,8 @@ func _finish_overlay_hide() -> void:
 
 
 func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
-	if path.is_empty() or paths.has(path):
-		return
-	paths.append(path)
+	if not path.is_empty() and not paths.has(path):
+		paths.append(path)
 
 
 func _set_progress(text: String, progress: float) -> void:
@@ -642,12 +628,6 @@ func _set_progress(text: String, progress: float) -> void:
 		label.text = text
 	if progress_bar != null:
 		progress_bar.set_value(clampf(progress, 0.0, 1.0) * 100.0)
-
-
-func _reveal_game_under_boot_splash() -> void:
-	if game_revealed or overlay == null or not is_instance_valid(overlay):
-		return
-	game_revealed = true
 
 
 func _dismiss_boot_splash_for_play() -> void:
@@ -661,9 +641,7 @@ func _dismiss_boot_splash_for_play() -> void:
 
 
 func reset_for_shutdown() -> void:
-	cancel_requested = true
 	active = false
-	game_revealed = false
 	show_msec = 0
 	hide_requested = false
 	layer = null

@@ -1,5 +1,4 @@
 extends Control
-
 const FishingState = preload("res://scripts/fishing/state.gd")
 const FishingUiSurface = preload("res://scripts/fishing/ui_surface.gd")
 const ActivityQueueRuntime = preload("res://scripts/activity_queue/runtime.gd")
@@ -54,7 +53,6 @@ const AchievementOverlaySurface = preload("res://scripts/ui/achievement_overlay_
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
-
 const PAPER_BUTTON_OUTLINE_WIDTH := 4.5
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 12
 const ACTION_CARD_TITLE_OUTLINE_SIZE := 17
@@ -231,7 +229,6 @@ const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
 const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const ACTION_PROGRESS_RAIL_INSET := 0
 const ACTION_PROGRESS_RAIL_HEIGHT := 44
-const PASSIVE_BORDER := 0
 
 const COLOR_INK := Color("#171615")
 const COLOR_PAPER := Color("#f8f1e5")
@@ -327,7 +324,7 @@ const FISHING_ACTION_ID_ALIASES := {
 	"fishing:dredge-wreck-with-magnet": "wreck-drop",
 	"fight:duel-leaning-fence-post": "duel-fence-post",
 	"woodcutting:fell-the-wooden-concept-of-height": "chop-super-tall-tree",
-	"fishing:fly-fish-at-river-bend": "river-rapids",
+	"fishing:fly-fish-at-river-bend": "rapids",
 	"fight:fight-rouses": "fight-r.o.u.s.es",
 	"fight:fight-the-barn-door-at-midnight": "fight-barn-door",
 	"fishing:fish-with-magnetic-hook": "wreck-drop",
@@ -600,11 +597,7 @@ func _skill_swipe_loading_transition_active() -> bool:
 	)
 
 func _process(delta: float) -> void:
-	if not startup_initialized:
-		return
-	if _app_lifecycle_runtime().recover_suspended_process():
-		return
-	if boot_detail_render_in_progress and not boot_lazy_background_mount_allowed:
+	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
 	var trace_process := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
 	var trace_process_threshold_us := 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
@@ -666,11 +659,8 @@ func _process(delta: float) -> void:
 	if trace_process:
 		var now_usec := Time.get_ticks_usec()
 		trace_ui_us = now_usec - trace_last_usec
-		trace_last_usec = now_usec
-	if _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
-	else:
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	if not _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
 		if _skill_detail_surface().detail_actions_scroll_limit_elapsed >= DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS:
 			_skill_detail_surface().detail_actions_scroll_limit_elapsed = 0.0
 			_skill_detail_surface()._sync_detail_actions_scroll_limit()
@@ -704,10 +694,8 @@ func _process(delta: float) -> void:
 				str(action_cards.size()),
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
-
 func _input(event: InputEvent) -> void:
 	_input_routing_shell().input(event)
-
 func _action_stop_hold() -> StopHoldCircle:
 	var layer := get_node_or_null("ActionStopHoldLayer") as CanvasLayer
 	if layer == null:
@@ -724,13 +712,10 @@ func _action_stop_hold() -> StopHoldCircle:
 	else:
 		circle.setup(self)
 	return circle
-
 func _notification(what: int) -> void:
 	_app_lifecycle_runtime().handle_notification(what)
-
 func _exit_tree() -> void:
 	_app_lifecycle_runtime()._prepare_for_shutdown()
-
 func _build_ui_boot_async():
 	var boot_warmup := _boot_warmup_runtime()
 	await boot_warmup._boot_progress_step("Building screen...", 0.34)
@@ -750,7 +735,6 @@ func _build_ui_boot_async():
 	await boot_warmup._boot_progress_step("Mounting skill view...", 0.62)
 	await boot_warmup._boot_progress_step("Preparing first frame...", 0.64)
 	await boot_warmup._boot_progress_step("Almost ready...", 0.66)
-
 func _online_runtime() -> OnlineRuntime:
 	if online_runtime == null or not is_instance_valid(online_runtime):
 		online_runtime = OnlineRuntime.new()
@@ -758,32 +742,26 @@ func _online_runtime() -> OnlineRuntime:
 		online_runtime.setup(self)
 		add_child(online_runtime)
 	return online_runtime
-
 func _build_skills_page() -> void:
 	skills_content = Control.new()
 	skills_content.set_anchors_preset(Control.PRESET_FULL_RECT)
 	skills_content.offset_top = SKILLS_PAGE_TOP_PAD
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
-
 func _skill_content_width() -> float:
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
-
 func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
 	if skill_id.is_empty():
 		skill_id = selected_skill_id
 	return _skill_content_width()
-
 func _skill_column_host_width() -> float:
 	if skills_content != null and is_instance_valid(skills_content) and skills_content.size.x > 1.0:
 		return skills_content.size.x
 	return _current_canvas_size().x
-
 func _add_centered_skill_column(control: Control, drag_x: float = 0.0) -> void:
 	var content_width := _skill_content_width()
 	_skill_swipe_activity_surface()._apply_skill_column_layout(control, content_width, drag_x)
 	skills_content.add_child(control)
-
 func _suppress_detail_auto_scroll_for_first_module() -> bool:
 	if not _skill_detail_surface().onboarding_first_module_center_active():
 		return false
@@ -791,7 +769,6 @@ func _suppress_detail_auto_scroll_for_first_module() -> bool:
 		_skill_detail_surface().detail_actions_scroll.drag_scroll_position = 0.0
 		_skill_detail_surface().detail_actions_scroll.scroll_vertical = 0
 	return true
-
 func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	if current_screen != "skill":
 		return
@@ -807,7 +784,6 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 		_skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 	_skill_detail_surface()._reveal_detail_jump_arrow(direction)
 	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, _skill_detail_surface().DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
-
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
 	var trace_static_refresh := static_refresh and OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
@@ -871,9 +847,7 @@ func _update_ui(delta: float, instant := false) -> void:
 		trace_static_header_us = trace_now - trace_static_last
 		trace_static_last = trace_now
 	var visible_cards_refreshed := _skill_swipe_activity_surface()._refresh_visible_action_cards(delta, instant, static_refresh, skill_frame_refresh, passive_card_progress_refresh)
-	if not visible_cards_refreshed:
-		return
-	if trace_static_refresh:
+	if trace_static_refresh and visible_cards_refreshed:
 		var trace_now := Time.get_ticks_usec()
 		trace_static_cards_us = trace_now - trace_static_last
 		trace_static_last = trace_now
@@ -1001,11 +975,8 @@ func _restore_fishing_state_from_save(data: Dictionary) -> void:
 	)
 
 func _is_event_action(action: Dictionary) -> bool:
-	if str(action.get("kind", "")) == "event_activity":
-		return true
 	var active_event = action.get("active_event", {})
-	return typeof(active_event) == TYPE_DICTIONARY and not (active_event as Dictionary).is_empty()
-
+	return str(action.get("kind", "")) == "event_activity" or (typeof(active_event) == TYPE_DICTIONARY and not (active_event as Dictionary).is_empty())
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	var cached = actions_by_key.get(_action_key(skill_id, action_id), null)
 	if typeof(cached) == TYPE_DICTIONARY:
@@ -1014,36 +985,26 @@ func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	if not active_event.is_empty():
 		return active_event
 	return {}
-
 func _action_key(skill_id: String, action_id: String) -> String:
 	return "%s:%s" % [skill_id, ModuleUiRuntime.canonical_action_id(skill_id, action_id, FISHING_ACTION_ID_ALIASES)]
-
 func _load_font() -> void:
 	var fonts := ThemeStyles.load_app_fonts()
 	app_font = fonts.get("font", null) as Font
 	app_bold_font = fonts.get("bold_font", null) as Font
-
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
 	return ThemeStyles.label(text, font_size, color, align, app_font, app_bold_font, dark_mode_enabled, COLOR_INK, COLOR_DARK_INK, COLOR_MUTED, COLOR_DARK_MUTED, COLOR_LINE, COLOR_DARK_LINE)
-
 func _theme_paper_color() -> Color:
 	return ThemeStyles.paper_color(dark_mode_enabled, COLOR_PAPER, COLOR_DARK_PAPER)
-
 func _theme_surface_color(color: Color) -> Color:
 	return ThemeStyles.surface_color(color, dark_mode_enabled, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
-
 func _theme_outline_color(outline_color: Color, fill_color: Color) -> Color:
 	return ThemeStyles.outline_color(outline_color, fill_color, dark_mode_enabled, COLOR_INK, COLOR_DARK_LINE, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_PANEL_ALT)
-
 func _menu_button(text: String) -> Button:
 	return ThemeStyles.menu_button(text, app_font, app_bold_font, COLOR_INK, COLOR_BLUE, Color("#b9b3a8"), DEFAULT_BUTTON_TEXT_OUTLINE_SIZE, Callable(self, "_paper_button_style"), Callable(button_press_runtime, "attach_button_depress_animation"))
-
 func _paper_button_style(color: Color, radius: int, margin := 36, pressed := false, disabled := false) -> StyleBoxTexture:
 	return PaperButtonStyles.paper_button_style_with_shape(color, radius, margin, pressed, disabled, COLOR_INK, 2.75, paper_button_style_textures, dark_mode_enabled, PAPER_BUTTON_OUTLINE_WIDTH, Callable(self, "_theme_surface_color"), Callable(self, "_theme_outline_color"), Callable(visual_texture_cache, "_can_create_image_textures"), Callable(visual_texture_cache, "_create_image_texture"), Callable(visual_texture_cache, "_visual_fallback_texture"))
-
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
-	return ThemeStyles.surface_style(color, radius, margin, elevated, dark_mode_enabled, PASSIVE_BORDER, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
-
+	return ThemeStyles.surface_style(color, radius, margin, elevated, dark_mode_enabled, 0, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
 func _audio_director() -> AudioDirector:
 	if audio_director == null or not is_instance_valid(audio_director):
 		audio_director = AudioDirector.new()
@@ -1051,27 +1012,22 @@ func _audio_director() -> AudioDirector:
 		audio_director.setup(self)
 		add_child(audio_director)
 	return audio_director
-
 func _passive_modules_runtime() -> PassiveModulesRuntime:
 	if passive_modules_runtime == null:
 		passive_modules_runtime = PassiveModulesRuntime.new(self)
 	return passive_modules_runtime
-
 func _convergence_runtime() -> ConvergenceRuntime:
 	if convergence_runtime == null:
 		convergence_runtime = ConvergenceRuntime.new(self)
 	return convergence_runtime
-
 func _passive_firepit_surface() -> PassiveFirepitSurface:
 	if passive_firepit_surface == null:
 		passive_firepit_surface = PassiveFirepitSurface.new(self)
 	return passive_firepit_surface
-
 func _hub_runtime() -> HubRuntime:
 	if hub_runtime == null:
 		hub_runtime = HubRuntime.new(self)
 	return hub_runtime
-
 func _hub_surface() -> HubSurface:
 	if hub_surface == null:
 		hub_surface = HubSurface.new()
@@ -1079,7 +1035,6 @@ func _hub_surface() -> HubSurface:
 		hub_surface.setup(self)
 		add_child(hub_surface)
 	return hub_surface
-
 func _thieving_surface() -> ThievingSurface:
 	if thieving_surface == null or not is_instance_valid(thieving_surface):
 		thieving_surface = ThievingSurface.new()
@@ -1087,12 +1042,10 @@ func _thieving_surface() -> ThievingSurface:
 		thieving_surface.setup(self)
 		add_child(thieving_surface)
 	return thieving_surface
-
 func _save_runtime() -> SaveRuntime:
 	if save_runtime == null:
 		save_runtime = SaveRuntime.new(self)
 	return save_runtime
-
 func _activity_queue_runtime() -> ActivityQueueRuntime:
 	if activity_queue_runtime == null:
 		activity_queue_runtime = ActivityQueueRuntime.new(self)

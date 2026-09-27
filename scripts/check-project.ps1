@@ -4,33 +4,6 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
-$performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
-$performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
-$runtimeAssetPathTest = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
-$woodcuttingFirepitTest = Join-Path $projectRoot "scripts\test-woodcutting-firepit.ps1"
-$activityDatabaseContractTest = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
-$generatedFileHygieneTest = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
-$uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
-$activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
-$leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
-$crashAuditContractsTest = Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1"
-$performance1080pMigrationContractsTest = Join-Path $projectRoot "scripts\check-1080p-migration-contracts.ps1"
-$performanceResourceContractsTest = Join-Path $projectRoot "scripts\check-performance-resource-contracts.ps1"
-$performanceResourceLifetimeTest = Join-Path $projectRoot "scripts\test-performance-resource-lifetime.ps1"
-$activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
-$homeAchievementMedalClickTest = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
-$actionCardMedalCeremonyCleanupTest = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
-$crashReportRecoveryTest = Join-Path $projectRoot "scripts\test-crash-report-recovery.ps1"
-$tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
-$staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-fail-shake.ps1"
-$skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
-$skillDetailHiddenPreviewScrollGapTest = Join-Path $projectRoot "scripts\test-skill-detail-hidden-preview-scroll-gap.ps1"
-$saveNormalizationTest = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
-$activityQueueTest = Join-Path $projectRoot "scripts\test-activity-queue.ps1"
-$moduleListTransitionsTest = Join-Path $projectRoot "scripts\test-module-list-transitions.ps1"
-$pinnedPinVisualSmokeTest = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
-$pinnedScrollAnchorTest = Join-Path $projectRoot "scripts\test-pinned-scroll-anchor.ps1"
-$pinnedPageInteractionsTest = Join-Path $projectRoot "scripts\test-pinned-page-interactions.ps1"
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $skillsPagePerformanceRepeatTest = Join-Path $projectRoot "scripts\test-skills-page-performance-repeat.ps1"
 
@@ -50,24 +23,23 @@ function Assert-NoUnexpectedGodotErrors {
         $renderedText = $renderedText.Substring($skillsPageStart)
     }
     foreach ($line in ($renderedText -split "\r?\n")) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR):') {
+        if ($line -notmatch '(ERROR|SCRIPT ERROR):') {
             if (
-                $text -match '^\s*At .+\.ps1:\d+ char:\d+' -or
-                $text -match 'OperationStopped' -or
-                $text -match 'did not report success'
+                $line -match '^\s*At .+\.ps1:\d+ char:\d+' -or
+                $line -match 'OperationStopped' -or
+                $line -match 'did not report success'
             ) {
-                throw "Unexpected PowerShell failure during ${Context}: $text"
+                throw "Unexpected PowerShell failure during ${Context}: $line"
             }
             continue
         }
         $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
-            $text -match 'ERROR: Failed to read the root certificate store\.'
+            $line -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $line -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $line -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
+            throw "Unexpected Godot error during ${Context}: $line"
         }
     }
 }
@@ -84,21 +56,20 @@ function Assert-NoCrashLikeGodotErrors {
 
     $renderedText = $Output | Out-String -Width 4096
     foreach ($line in ($renderedText -split "\r?\n")) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
+        if ($line -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownPerformanceFailure = (
-            $text -match '(ERROR|powershell\.exe : ERROR): (idle|scroll|swipe|rapid_swipe)/.+(FPS budget|frame work exceeded)' -or
-            $text -match 'ERROR: Skills page performance test did not report success\.'
+            $line -match '(ERROR|powershell\.exe : ERROR): (idle|scroll|swipe|rapid_swipe)/.+(FPS budget|frame work exceeded)' -or
+            $line -match 'ERROR: Skills page performance test did not report success\.'
         )
         $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
-            $text -match 'ERROR: Failed to read the root certificate store\.'
+            $line -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $line -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $line -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not ($knownPerformanceFailure -or $knownShutdownNoise)) {
-            throw "Crash-like Godot error during ${Context}: $text"
+            throw "Crash-like Godot error during ${Context}: $line"
         }
     }
 }
@@ -162,37 +133,38 @@ function Invoke-SkillsPagePerformanceValidation {
         throw $MissingMessage
     }
 
+    $attemptCount = if ($Strict) { 1 } else { 3 }
     if ($Strict) {
         Write-Host "Strict skills page performance repeat is enabled."
-        $strictResult = Invoke-CapturedPowerShellScript $Path
-        $strictOutput = @($strictResult["output"])
-        $strictExitCode = [int]$strictResult["exit_code"]
-        $strictOutput | Out-Host
-        if ($strictExitCode -ne 0) {
-            exit $strictExitCode
-        }
-        Assert-NoUnexpectedGodotErrors $strictOutput $Context
-        Assert-NoHeadlessGodotProcesses $Context
-        return
     }
-
-    $attemptCount = 3
     $lastFailureOutput = $null
     $lastFailureExitCode = 0
     for ($attempt = 1; $attempt -le $attemptCount; $attempt++) {
-        Write-Host "skills page performance validation attempt $attempt/$attemptCount"
+        if (-not $Strict) {
+            Write-Host "skills page performance validation attempt $attempt/$attemptCount"
+        }
         $result = Invoke-CapturedPowerShellScript $Path
         $output = @($result["output"])
         $exitCode = [int]$result["exit_code"]
+        if ($Strict) {
+            $output | Out-Host
+        }
         Assert-NoHeadlessGodotProcesses "$Context attempt $attempt"
         if ($exitCode -eq 0) {
-            $output | Out-Host
+            if (-not $Strict) {
+                $output | Out-Host
+            }
             Assert-NoUnexpectedGodotErrors $output "$Context attempt $attempt"
-            Write-Host "skills-page-performance-release-ok attempt=$attempt"
+            if (-not $Strict) {
+                Write-Host "skills-page-performance-release-ok attempt=$attempt"
+            }
             $global:LASTEXITCODE = 0
             return
         }
         Assert-NoCrashLikeGodotErrors $output "$Context attempt $attempt failure output"
+        if ($Strict) {
+            exit $exitCode
+        }
         $lastFailureOutput = $output
         $lastFailureExitCode = $exitCode
         Write-Warning "Skills page performance attempt $attempt failed with exit code $exitCode; retrying in non-strict mode."
@@ -232,7 +204,7 @@ $previousSmokeUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 $env:GODOT_RUN_TIMEOUT_SECONDS = "60"
 $env:IDLE_ELITE_TEST_USER_DATA_DIR = $smokeUserDataDir
 try {
-    $smokeOutput = & $runner --headless --path $projectRoot 2>&1
+    $smokeOutput = & $runner --headless --path $projectRoot --quit-after 1 2>&1
 }
 finally {
     if ($null -eq $previousSmokeTimeout) {
@@ -253,238 +225,42 @@ if ($LASTEXITCODE -ne 0) {
 Assert-NoUnexpectedGodotErrors $smokeOutput "project smoke validation"
 Assert-NoHeadlessGodotProcesses "project smoke validation"
 
-if (-not (Test-Path -LiteralPath $performanceTest)) {
-    throw "Performance monitor test was not found at $performanceTest"
+foreach ($validation in @(
+    @("scripts\test-performance-monitor.ps1", "Performance monitor", "performance monitor"),
+    @("scripts\test-performance-regressions.ps1", "Performance regression", "performance regression"),
+    @("scripts\check-runtime-asset-paths.ps1", "Runtime asset path", "runtime asset path"),
+    @("scripts\test-woodcutting-firepit.ps1", "Woodcutting Firepit", "woodcutting firepit"),
+    @("scripts\check-activity-database-contracts.ps1", "Activity database contract", "activity database contract"),
+    @("scripts\check-generated-file-hygiene.ps1", "Generated-file hygiene", "generated-file hygiene"),
+    @("scripts\check-ui-boundary-contracts.ps1", "UI boundary contract", "UI boundary contract"),
+    @("scripts\check-activity-ui-boundary-contracts.ps1", "Activity UI boundary contract", "activity UI boundary contract"),
+    @("scripts\check-leaderboard-cost-safety.ps1", "Leaderboard cost-safety", "leaderboard cost-safety"),
+    @("scripts\check-crash-audit-contracts.ps1", "Crash-audit contracts", "crash-audit contracts"),
+    @("scripts\check-test-harness-contracts.ps1", "Test-harness contracts", "test-harness contracts"),
+    @("scripts\check-1080p-migration-contracts.ps1", "1080p migration contracts", "1080p migration contracts"),
+    @("scripts\check-performance-resource-contracts.ps1", "Performance resource contracts", "performance resource contracts"),
+    @("scripts\test-performance-resource-lifetime.ps1", "Performance resource lifetime", "performance resource lifetime"),
+    @("scripts\test-activity-card-geometry.ps1", "Activity card geometry", "activity card geometry"),
+    @("scripts\test-home-achievement-medal-click.ps1", "Home achievement medal click", "home achievement medal click"),
+    @("scripts\test-action-card-medal-ceremony-cleanup.ps1", "Action card medal ceremony cleanup", "action card medal ceremony cleanup"),
+    @("scripts\test-crash-report-recovery.ps1", "Crash report recovery", "crash report recovery"),
+    @("scripts\test-tutorial-start-scroll.ps1", "Tutorial start scroll", "tutorial start scroll"),
+    @("scripts\test-stamina-gauge-fail-shake.ps1", "Stamina gauge fail-shake", "stamina gauge fail-shake"),
+    @("scripts\test-skill-detail-bottom-scroll-pad.ps1", "Skill detail bottom scroll-pad", "skill detail bottom scroll-pad"),
+    @("scripts\test-skill-detail-hidden-preview-scroll-gap.ps1", "Skill detail hidden preview scroll-gap", "skill detail hidden preview scroll-gap"),
+    @("scripts\test-save-normalization.ps1", "Save normalization", "save normalization"),
+    @("scripts\test-activity-queue.ps1", "Activity queue", "activity queue"),
+    @("scripts\test-module-list-transitions.ps1", "Module list transitions", "module list transitions"),
+    @("scripts\test-pinned-pin-visual-smoke.ps1", "Pinned pin visual smoke", "pinned pin visual smoke"),
+    @("scripts\test-pinned-scroll-anchor.ps1", "Pinned scroll anchor", "pinned scroll anchor"),
+    @("scripts\test-pinned-page-interactions.ps1", "Pinned page interactions", "pinned page interactions")
+)) {
+    $validationPath = Join-Path $projectRoot $validation[0]
+    Invoke-ProjectValidationScript `
+        -Path $validationPath `
+        -MissingMessage "$($validation[1]) test was not found at $validationPath" `
+        -Context "$($validation[2]) validation"
 }
-
-$performanceOutput = & $performanceTest 2>&1
-$performanceOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $performanceOutput "performance monitor validation"
-
-if (-not (Test-Path -LiteralPath $performanceRegressionTest)) {
-    throw "Performance regression test was not found at $performanceRegressionTest"
-}
-
-$performanceRegressionOutput = & $performanceRegressionTest 2>&1
-$performanceRegressionOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $performanceRegressionOutput "performance regression validation"
-
-if (-not (Test-Path -LiteralPath $runtimeAssetPathTest)) {
-    throw "Runtime asset path test was not found at $runtimeAssetPathTest"
-}
-
-$runtimeAssetPathOutput = & $runtimeAssetPathTest 2>&1
-$runtimeAssetPathOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-Invoke-ProjectValidationScript `
-    -Path $woodcuttingFirepitTest `
-    -MissingMessage "Woodcutting Firepit test was not found at $woodcuttingFirepitTest" `
-    -Context "woodcutting firepit validation"
-
-if (-not (Test-Path -LiteralPath $activityDatabaseContractTest)) {
-    throw "Activity database contract test was not found at $activityDatabaseContractTest"
-}
-
-$activityDatabaseContractOutput = & $activityDatabaseContractTest 2>&1
-$activityDatabaseContractOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $generatedFileHygieneTest)) {
-    throw "Generated-file hygiene test was not found at $generatedFileHygieneTest"
-}
-
-$generatedFileHygieneOutput = & $generatedFileHygieneTest 2>&1
-$generatedFileHygieneOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $uiBoundaryContractTest)) {
-    throw "UI boundary contract test was not found at $uiBoundaryContractTest"
-}
-
-$uiBoundaryContractOutput = & $uiBoundaryContractTest 2>&1
-$uiBoundaryContractOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $activityUiBoundaryContractTest)) {
-    throw "Activity UI boundary contract test was not found at $activityUiBoundaryContractTest"
-}
-
-$activityUiBoundaryContractOutput = & $activityUiBoundaryContractTest 2>&1
-$activityUiBoundaryContractOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $leaderboardCostSafetyTest)) {
-    throw "Leaderboard cost-safety test was not found at $leaderboardCostSafetyTest"
-}
-
-$leaderboardCostSafetyOutput = & $leaderboardCostSafetyTest 2>&1
-$leaderboardCostSafetyOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $leaderboardCostSafetyOutput "leaderboard cost-safety validation"
-
-if (-not (Test-Path -LiteralPath $crashAuditContractsTest)) {
-    throw "Crash-audit contracts test was not found at $crashAuditContractsTest"
-}
-
-$crashAuditContractsOutput = & $crashAuditContractsTest 2>&1
-$crashAuditContractsOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $crashAuditContractsOutput "crash-audit contracts validation"
-
-if (-not (Test-Path -LiteralPath $performance1080pMigrationContractsTest)) {
-    throw "1080p migration contracts test was not found at $performance1080pMigrationContractsTest"
-}
-
-$performance1080pMigrationContractsOutput = & $performance1080pMigrationContractsTest -RequireCutover 2>&1
-$performance1080pMigrationContractsOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $performanceResourceContractsTest)) {
-    throw "Performance resource contracts test was not found at $performanceResourceContractsTest"
-}
-$performanceResourceContractsOutput = & $performanceResourceContractsTest 2>&1
-$performanceResourceContractsOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-Invoke-ProjectValidationScript `
-    -Path $performanceResourceLifetimeTest `
-    -MissingMessage "Performance resource lifetime test was not found at $performanceResourceLifetimeTest" `
-    -Context "performance resource lifetime validation"
-
-if (-not (Test-Path -LiteralPath $activityCardGeometryTest)) {
-    throw "Activity card geometry test was not found at $activityCardGeometryTest"
-}
-
-$activityCardGeometryOutput = & $activityCardGeometryTest 2>&1
-$activityCardGeometryOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $activityCardGeometryOutput "activity card geometry validation"
-Assert-NoHeadlessGodotProcesses "activity card geometry validation"
-
-Invoke-ProjectValidationScript `
-    -Path $homeAchievementMedalClickTest `
-    -MissingMessage "Home achievement medal click test was not found at $homeAchievementMedalClickTest" `
-    -Context "home achievement medal click validation"
-
-Invoke-ProjectValidationScript `
-    -Path $actionCardMedalCeremonyCleanupTest `
-    -MissingMessage "Action card medal ceremony cleanup test was not found at $actionCardMedalCeremonyCleanupTest" `
-    -Context "action card medal ceremony cleanup validation"
-
-Invoke-ProjectValidationScript `
-    -Path $crashReportRecoveryTest `
-    -MissingMessage "Crash report recovery test was not found at $crashReportRecoveryTest" `
-    -Context "crash report recovery validation"
-
-if (-not (Test-Path -LiteralPath $tutorialStartScrollTest)) {
-    throw "Tutorial start scroll test was not found at $tutorialStartScrollTest"
-}
-
-$tutorialStartScrollOutput = & $tutorialStartScrollTest 2>&1
-$tutorialStartScrollOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $tutorialStartScrollOutput "tutorial start scroll validation"
-Assert-NoHeadlessGodotProcesses "tutorial start scroll validation"
-
-if (-not (Test-Path -LiteralPath $staminaGaugeFailShakeTest)) {
-    throw "Stamina gauge fail-shake test was not found at $staminaGaugeFailShakeTest"
-}
-
-$staminaGaugeFailShakeOutput = & $staminaGaugeFailShakeTest 2>&1
-$staminaGaugeFailShakeOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $staminaGaugeFailShakeOutput "stamina gauge fail-shake validation"
-Assert-NoHeadlessGodotProcesses "stamina gauge fail-shake validation"
-
-if (-not (Test-Path -LiteralPath $skillDetailBottomScrollPadTest)) {
-    throw "Skill detail bottom scroll pad test was not found at $skillDetailBottomScrollPadTest"
-}
-
-$skillDetailBottomScrollPadOutput = & $skillDetailBottomScrollPadTest 2>&1
-$skillDetailBottomScrollPadOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-if (-not (Test-Path -LiteralPath $skillDetailHiddenPreviewScrollGapTest)) {
-    throw "Skill detail hidden preview scroll-gap test was not found at $skillDetailHiddenPreviewScrollGapTest"
-}
-
-$skillDetailHiddenPreviewScrollGapOutput = & $skillDetailHiddenPreviewScrollGapTest 2>&1
-$skillDetailHiddenPreviewScrollGapOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $skillDetailHiddenPreviewScrollGapOutput "skill detail hidden preview scroll-gap validation"
-Assert-NoHeadlessGodotProcesses "skill detail hidden preview scroll-gap validation"
-
-if (-not (Test-Path -LiteralPath $saveNormalizationTest)) {
-    throw "Save normalization test was not found at $saveNormalizationTest"
-}
-
-$saveNormalizationOutput = & $saveNormalizationTest 2>&1
-$saveNormalizationOutput | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-Assert-NoUnexpectedGodotErrors $saveNormalizationOutput "save normalization validation"
-Assert-NoHeadlessGodotProcesses "save normalization validation"
-
-Invoke-ProjectValidationScript `
-    -Path $activityQueueTest `
-    -MissingMessage "Activity queue test was not found at $activityQueueTest" `
-    -Context "activity queue validation"
-
-Invoke-ProjectValidationScript `
-    -Path $moduleListTransitionsTest `
-    -MissingMessage "Module list transitions test was not found at $moduleListTransitionsTest" `
-    -Context "module list transitions validation"
-
-Invoke-ProjectValidationScript `
-    -Path $pinnedPinVisualSmokeTest `
-    -MissingMessage "Pinned pin visual smoke test was not found at $pinnedPinVisualSmokeTest" `
-    -Context "pinned pin visual smoke validation"
-
-Invoke-ProjectValidationScript `
-    -Path $pinnedScrollAnchorTest `
-    -MissingMessage "Pinned scroll anchor test was not found at $pinnedScrollAnchorTest" `
-    -Context "pinned scroll anchor validation"
-
-Invoke-ProjectValidationScript `
-    -Path $pinnedPageInteractionsTest `
-    -MissingMessage "Pinned page interactions test was not found at $pinnedPageInteractionsTest" `
-    -Context "pinned page interactions validation"
 
 $strictSkillsPerformance = $env:IDLE_ELITE_STRICT_SKILLS_PERF -eq "1"
 $skillsPageValidationTest = $skillsPagePerformanceRepeatTest

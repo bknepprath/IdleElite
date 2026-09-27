@@ -1,5 +1,6 @@
 param(
-    [int] $DurationSeconds = 300,
+	[ValidateRange(1, 86400)]
+	[int] $DurationSeconds = 300,
     [ValidateSet("CurrentTiredTraining", "WaitForStamina")]
     [string] $StaminaMode = "CurrentTiredTraining"
 )
@@ -49,7 +50,7 @@ function Get-LevelForXp {
     param([double] $Xp)
 
     $level = 1
-    while ($level -lt 99 -and $Xp -ge (Get-XpForLevel ($level + 1))) {
+    while ($level -lt $skillXpStretchTargetLevel -and $Xp -ge (Get-XpForLevel ($level + 1))) {
         $level++
     }
     return $level
@@ -199,30 +200,24 @@ function Choose-Action {
             return @{ Skill = $best.Skill; Action = $best.Action }
         }
     }
-
     $fallbackSkill = $skills[0]
     return @{ Skill = $fallbackSkill; Action = Get-BestAction $fallbackSkill $State.Skills[[string]$fallbackSkill.id].Level }
 }
-
 function Invoke-Simulation {
     param([string] $Strategy)
-
     $state = New-SimState
     $choice = Choose-Action $state $Strategy
     Set-ActiveSkill $state ([string]$choice["Skill"].id) $choice["Action"]
     Add-SimEvent $state ("started {0}/{1}" -f $choice["Skill"].id, $choice["Action"].name)
-
     while ($state.Time -lt $DurationSeconds) {
         $delta = 1.0
         foreach ($skill in @($database.skills)) {
             $skillState = $state.Skills[[string]$skill.id]
             $skillState.Stamina = [math]::Min($baseMaxStamina, [double]$skillState.Stamina + ($delta / $regenSeconds))
         }
-
         $activeSkill = @($database.skills) | Where-Object { $_.id -eq $state.ActiveSkillId } | Select-Object -First 1
         $activeState = $state.Skills[$state.ActiveSkillId]
         $activeAction = @($activeSkill.actions) | Where-Object { $_.id -eq $state.ActiveActionId } | Select-Object -First 1
-
         if ($null -eq $activeAction) {
             $choice = Choose-Action $state $Strategy
             Set-ActiveSkill $state ([string]$choice["Skill"].id) $choice["Action"]
@@ -230,7 +225,6 @@ function Invoke-Simulation {
             $activeAction = $choice["Action"]
             $activeState = $state.Skills[[string]$activeSkill.id]
         }
-
         $hasStamina = [double]$activeState.Stamina + 0.0001 -ge [double]$activeAction.stamina
         if (-not $hasStamina -and $StaminaMode -eq "WaitForStamina") {
             $choice = Choose-Action $state $Strategy
@@ -241,23 +235,16 @@ function Invoke-Simulation {
             $state.Time += $delta
             continue
         }
-
-        $speed = 1.0
-        if (-not $hasStamina) {
-            $speed = $lowStaminaSpeedMultiplier
-        }
+        $speed = if ($hasStamina) { 1.0 } else { $lowStaminaSpeedMultiplier }
         $state.ActionProgress += $delta / [double]$activeAction.seconds * $speed
         $state.Time += $delta
-
         if ($state.ActionProgress -lt 1.0) {
             continue
         }
-
         $state.ActionProgress = 0.0
         if ([double]$activeState.Stamina + 0.0001 -ge [double]$activeAction.stamina) {
             $activeState.Stamina = [math]::Max(0.0, [double]$activeState.Stamina - [double]$activeAction.stamina)
         }
-
         $expectedXp = [double]$activeAction.xp * ([double]$activeAction.success / 100.0)
         $oldLevel = [int]$activeState.Level
         $activeState.Xp += $expectedXp
@@ -265,35 +252,28 @@ function Invoke-Simulation {
         $activeState.Completions++
         $state.Completions++
         $activeState.Level = Get-LevelForXp $activeState.Xp
-
         if ([int]$activeState.Level -gt $oldLevel) {
             Add-SimEvent $state ("{0} reached Lv {1}" -f $activeSkill.id, $activeState.Level)
         }
-
         $choice = Choose-Action $state $Strategy
         if ([string]$choice["Skill"].id -ne $state.ActiveSkillId -or [string]$choice["Action"].id -ne $state.ActiveActionId) {
             Set-ActiveSkill $state ([string]$choice["Skill"].id) $choice["Action"]
             Add-SimEvent $state ("switched to {0}/{1}" -f $choice["Skill"].id, $choice["Action"].name)
         }
     }
-
     return $state
 }
-
 $strategies = @("StayFight", "RotateLowStamina", "BalancedTour", "ChaseNewestUnlock")
-
 Write-Output "First five minutes simulator"
 Write-Output "Duration: $DurationSeconds seconds"
 Write-Output "Stamina mode: $StaminaMode"
 Write-Output "Model: expected XP from success chance; crits, streak XP, mastery, ads, and global medal buffs are not modeled yet."
 Write-Output ""
-
 foreach ($strategy in $strategies) {
     $result = Invoke-Simulation $strategy
     $leveledSkills = 0
     $totalLevels = 0
     $skillLines = New-Object System.Collections.Generic.List[string]
-
     foreach ($skill in @($database.skills)) {
         $skillState = $result.Skills[[string]$skill.id]
         if ([int]$skillState.Level -gt 1) {
@@ -302,7 +282,6 @@ foreach ($strategy in $strategies) {
         $totalLevels += [int]$skillState.Level
         $skillLines.Add(("{0} Lv {1} ({2:n1} XP, {3:n1} stamina)" -f $skill.id, $skillState.Level, $skillState.Xp, $skillState.Stamina)) | Out-Null
     }
-
     Write-Output $strategy
     Write-Output ("  completions: {0}; switches: {1}; leveled skills: {2}; global level: {3}" -f $result.Completions, $result.Switches, $leveledSkills, $totalLevels)
     Write-Output ("  skills: {0}" -f ($skillLines -join "; "))

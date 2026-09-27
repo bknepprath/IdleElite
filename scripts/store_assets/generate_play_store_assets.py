@@ -67,16 +67,6 @@ def paste_cover(base: Image.Image, src: Image.Image, box):
     base.alpha_composite(img.crop((x, y, x + target_w, y + target_h)), (x0, y0))
 
 
-def paste_cover(base: Image.Image, src: Image.Image, box):
-    x, y = xy
-    alpha = src.getchannel("A").point(lambda a: int(a * opacity / 255))
-    shadow = Image.new("RGBA", src.size, (0, 0, 0, 0))
-    shadow.putalpha(alpha)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
-    base.alpha_composite(shadow, (x + offset[0], y + offset[1]))
-    base.alpha_composite(src, xy)
-
-
 def draw_fit_center(draw, text, y, max_width, max_size, min_size, fill, bold=True, stroke_fill=None, stroke_width=0):
     size = max_size
     fnt = font(size, bold)
@@ -111,29 +101,6 @@ def background_from(path, top, bottom):
 def draw_centered(draw, text, y, fnt, fill=INK, width=1080):
     bbox = draw.textbbox((0, 0), text, font=fnt)
     draw.text(((width - (bbox[2] - bbox[0])) // 2, y), text, font=fnt, fill=fill)
-
-
-def draw_wrapped(draw, text, xy, fnt, fill, max_width, line_gap=8):
-    x, y = xy
-    words = text.split()
-    lines = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if draw.textlength(candidate, font=fnt) <= max_width:
-            current = candidate
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    for line in lines:
-        draw.text((x, y), line, font=fnt, fill=fill)
-        y += fnt.size + line_gap
-    return y
-
-
 def load_asset(path: str) -> Image.Image:
     return Image.open(ROOT / path).convert("RGBA")
 
@@ -147,18 +114,14 @@ SKILL_ICONS = {
     "gear": load_asset("assets/content/icons/gear.png"),
 }
 HERO = load_asset("assets/content/characters/stick-hero.png")
-
-
 def make_icon():
-    img = draw_character_head_icon(512, rounded_frame=True)
+    img = draw_character_head_icon(512)
     img.save(OUT / "app-icon-512.png")
 
 
-def draw_character_head_icon(size: int, rounded_frame: bool = True) -> Image.Image:
+def draw_character_head_icon(size: int) -> Image.Image:
     head_crop = HERO.crop((238, 78, 786, 626))
     return head_crop.resize((size, size), Image.Resampling.LANCZOS)
-
-
 def phone_ui(w=560, h=995):
     img = Image.new("RGBA", (w, h), PAPER + (255,))
     d = ImageDraw.Draw(img)
@@ -184,7 +147,6 @@ def phone_ui(w=560, h=995):
         d.text((122, y + 45), lvl, font=font(20), fill=(92, 84, 72))
         d.text((w - 172, y + 26), f"{stamina} stam", font=font(20, True), fill=color)
         y += 90
-
     rounded(d, (38, 622, w - 38, 834), 22, PANEL, LINE, 3)
     d.text((64, 646), "Fishing", font=font(31, True), fill=(29, 108, 128))
     d.text((64, 688), "Cast From Dock", font=font(27, True), fill=INK)
@@ -263,19 +225,15 @@ def make_feature_graphic():
     img.convert("RGB").save(OUT / "feature-graphic-1024x500.png", quality=95)
 
 
-def old_ad_files():
-    return [
+def remove_old_ads():
+    for name in (
         "ad-landscape-1200x628.png",
         "ad-landscape-1200x628.png.import",
         "ad-square-1200x1200.png",
         "ad-square-1200x1200.png.import",
         "ad-portrait-1200x1500.png",
         "ad-portrait-1200x1500.png.import",
-    ]
-
-
-def remove_old_ads():
-    for name in old_ad_files():
+    ):
         path = OUT / name
         if path.exists():
             path.unlink()
@@ -322,8 +280,7 @@ def fight_activity_card(action_path, bg_path, title, stats, progress, mastery, s
     rounded(d, (0, 0, size[0] - 1, size[1] - 1), 28, (255, 253, 248, 248), (24, 22, 20), 4)
     bg = load_asset(bg_path).filter(ImageFilter.GaussianBlur(2))
     paste_cover(card, bg, (8, 8, size[0] - 8, size[1] - 8))
-    shade = Image.new("RGBA", size, (255, 253, 248, 184))
-    card.alpha_composite(shade)
+    card.alpha_composite(Image.new("RGBA", size, (255, 253, 248, 184)))
     rounded(d, (0, 0, size[0] - 1, size[1] - 1), 28, None, (24, 22, 20), 4)
 
     rounded(d, (26, 34, 166, 174), 22, PANEL + (245,), (24, 22, 20), 3)
@@ -331,16 +288,12 @@ def fight_activity_card(action_path, bg_path, title, stats, progress, mastery, s
     paste_contain(card, art, (32, 40, 160, 168), 2)
 
     title_font = font(30, True)
-    title_lines = wrap(title, 19)
-    y = 34
-    for line in title_lines[:2]:
-        d.text((190, y), line, font=title_font, fill=INK)
-        y += 36
+    for index, line in enumerate(wrap(title, 19)[:2]):
+        d.text((190, 34 + index * 36), line, font=title_font, fill=INK)
 
-    chip_y = 112
-    chip_w = 70
     for idx, (value, label) in enumerate(stats):
-        draw_stat_chip(d, (190 + idx * (chip_w + 10), chip_y, 190 + idx * (chip_w + 10) + chip_w, chip_y + 62), value, label)
+        x = 190 + idx * 80
+        draw_stat_chip(d, (x, 112, x + 70, 174), value, label)
 
     rounded(d, (190, 190, 476, 206), 8, (222, 214, 198), None)
     rounded(d, (190, 190, 190 + int(286 * mastery), 206), 8, GOLD, None)
@@ -373,33 +326,12 @@ def fight_activity_phone() -> Image.Image:
     d.text((452, 218), "stam", font=font(18, True), fill=(92, 84, 72))
 
     cards = [
-        (
-            "assets/content/fight/animations/push-ups/fight-push-ups-01.png",
-            "assets/content/fight/backgrounds/01-early.png",
-            "Push-Ups",
-            [("+1", "XP"), ("1", "Stam"), ("1.6s", "Time"), ("95%", "Rate")],
-            0.74,
-            0.46,
-            312,
-        ),
-        (
-            "assets/content/fight/actions/05-duel-leaning-fence-post.png",
-            "assets/content/fight/backgrounds/01-early.png",
-            "Duel Leaning Fence Post",
-            [("+9", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("87%", "Rate")],
-            0.35,
-            0.18,
-            584,
-        ),
-        (
-            "assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png",
-            "assets/content/fight/backgrounds/02-rising.png",
-            "Outmuscle Angry Wheelbarrow",
-            [("+11", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("85%", "Rate")],
-            0.0,
-            0.0,
-            856,
-        ),
+        ("assets/content/fight/animations/push-ups/fight-push-ups-01.png", "assets/content/fight/backgrounds/01-early.png",
+         "Push-Ups", [("+1", "XP"), ("1", "Stam"), ("1.6s", "Time"), ("95%", "Rate")], 0.74, 0.46, 312),
+        ("assets/content/fight/actions/05-duel-leaning-fence-post.png", "assets/content/fight/backgrounds/01-early.png",
+         "Duel Leaning Fence Post", [("+9", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("87%", "Rate")], 0.35, 0.18, 584),
+        ("assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png", "assets/content/fight/backgrounds/02-rising.png",
+         "Outmuscle Angry Wheelbarrow", [("+11", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("85%", "Rate")], 0.0, 0.0, 856),
     ]
     for action_path, bg_path, title, stats, progress, mastery, y in cards:
         card = fight_activity_card(action_path, bg_path, title, stats, progress, mastery)
@@ -451,8 +383,7 @@ def make_vertical_offline_progress():
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "PROGRESS WHILE AWAY", "Come back stronger.", BLUE)
 
-    phone = phone_card(0.76).rotate(-5, resample=Image.Resampling.BICUBIC, expand=True)
-    paste_shadow(img, phone, (402, 452), 28, (0, 24), 112)
+    paste_shadow(img, phone_card(0.76).rotate(-5, resample=Image.Resampling.BICUBIC, expand=True), (402, 452), 28, (0, 24), 112)
 
     reward_box = Image.new("RGBA", (430, 430), (0, 0, 0, 0))
     rd = ImageDraw.Draw(reward_box)
@@ -467,8 +398,7 @@ def make_vertical_offline_progress():
         y += 72
     paste_shadow(img, reward_box, (88, 880), 18, (0, 14), 110)
 
-    hero = hero_cutout((318, 500))
-    paste_shadow(img, hero, (84, 1264), 16, (0, 14), 96)
+    paste_shadow(img, hero_cutout((318, 500)), (84, 1264), 16, (0, 14), 96)
     draw_pill(d, (604, 1398, 966, 1470), "CLAIM THE GAINS", GREEN, (255, 255, 255), (24, 22, 20))
     img.convert("RGB").save(OUT / "ad-vertical-02-progress-while-away-1080x1920.png", quality=95)
 
@@ -489,11 +419,9 @@ def make_vertical_small_tasks():
         tile = action_tile(*spec)
         paste_shadow(img, tile, pos, 14, (0, 12), 102)
 
-    phone = phone_card(0.74)
-    paste_shadow(img, phone, (302, 648), 28, (0, 22), 100)
+    paste_shadow(img, phone_card(0.74), (302, 648), 28, (0, 22), 100)
 
-    hero = hero_cutout((340, 520))
-    paste_shadow(img, hero, (368, 1222), 16, (0, 14), 92)
+    paste_shadow(img, hero_cutout((340, 520)), (368, 1222), 16, (0, 14), 92)
     d.text((226, 1586), "One more level is always close.", font=font(43, True), fill=(255, 255, 255), stroke_width=3, stroke_fill=(24, 22, 20))
     img.convert("RGB").save(OUT / "ad-vertical-03-tap-level-repeat-1080x1920.png", quality=95)
 
@@ -510,11 +438,9 @@ def make_vertical_become_elite():
     badge.alpha_composite(icon.resize((330, 330), Image.Resampling.LANCZOS), (40, 40))
     paste_shadow(img, badge, (334, 430), 28, (0, 24), 116)
 
-    phone = phone_card(0.66).rotate(4, resample=Image.Resampling.BICUBIC, expand=True)
-    paste_shadow(img, phone, (426, 900), 24, (0, 20), 100)
+    paste_shadow(img, phone_card(0.66).rotate(4, resample=Image.Resampling.BICUBIC, expand=True), (426, 900), 24, (0, 20), 100)
 
-    hero = hero_cutout((300, 470))
-    paste_shadow(img, hero, (118, 1186), 16, (0, 14), 96)
+    paste_shadow(img, hero_cutout((300, 470)), (118, 1186), 16, (0, 14), 96)
     facts = [("5 skills", RED), ("20+ jobs", BLUE), ("offline gains", GREEN)]
     y = 906
     for text, color in facts:
@@ -536,8 +462,7 @@ def make_vertical_fighting_activity():
     burst.alpha_composite(action, ((352 - action.width) // 2, (352 - action.height) // 2))
     paste_shadow(img, burst, (642, 368), 18, (0, 14), 94)
 
-    phone = fight_activity_phone()
-    paste_shadow(img, phone, (118, 438), 30, (0, 24), 112)
+    paste_shadow(img, fight_activity_phone(), (118, 438), 30, (0, 24), 112)
 
     callout = Image.new("RGBA", (384, 330), (0, 0, 0, 0))
     cd = ImageDraw.Draw(callout)
@@ -552,19 +477,9 @@ def make_vertical_fighting_activity():
         y += 72
     paste_shadow(img, callout, (626, 1038), 18, (0, 12), 98)
 
-    hero = hero_cutout((300, 470))
-    paste_shadow(img, hero, (700, 1358), 16, (0, 14), 96)
+    paste_shadow(img, hero_cutout((300, 470)), (700, 1358), 16, (0, 14), 96)
     draw_pill(d, (348, 1750, 732, 1830), "PLAY NOW", RED, (255, 255, 255), (24, 22, 20))
     img.convert("RGB").save(OUT / "ad-vertical-05-fighting-activity-1080x1920.png", quality=95)
-
-
-def make_ads():
-    remove_old_ads()
-    make_vertical_train_skills()
-    make_vertical_offline_progress()
-    make_vertical_small_tasks()
-    make_vertical_become_elite()
-    make_vertical_fighting_activity()
 
 
 def main():
@@ -580,7 +495,12 @@ def main():
     ]
     for args in screenshots:
         draw_store_screenshot(*args)
-    make_ads()
+    remove_old_ads()
+    make_vertical_train_skills()
+    make_vertical_offline_progress()
+    make_vertical_small_tasks()
+    make_vertical_become_elite()
+    make_vertical_fighting_activity()
 
 
 if __name__ == "__main__":

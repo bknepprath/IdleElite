@@ -3864,7 +3864,7 @@ func _ensure_skill_detail_actions_clip_wrapper(page: Control, actions_scroll: Mo
 func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, _actions_width: float) -> Dictionary:
 	var action_id = str(action.get("id", ""))
 	var is_convergence_card = host._convergence_runtime()._is_convergence_action(action)
-	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_blue_guy_chicken_brawl_stage(action)
+	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var shell = _detail_action_card_shell(skill_id, action, content_width, uses_blue_guy_chicken_brawl_stage)
 	var card_root = shell.get("card_root") as Control
 	var pop_card = shell.get("pop") as Control

@@ -96,17 +96,23 @@ AREAS = [
     },
 ]
 
-data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
-fishing = next(s for s in data["skills"] if s["id"] == "fishing")
+def main() -> None:
+    data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    fishing = next(s for s in data["skills"] if s["id"] == "fishing")
+    backgrounds = {area["id"]: area["background"] for area in AREAS}
 
-for action in fishing["actions"]:
-    aid = action["id"]
-    if aid not in ACTION_AREA:
-        raise SystemExit(f"Missing area mapping for {aid}")
-    action["area"] = ACTION_AREA[aid]
-    action["background"] = next(a["background"] for a in AREAS if a["id"] == action["area"])
+    for action in fishing["actions"]:
+        aid = action["id"]
+        if aid not in ACTION_AREA:
+            raise SystemExit(f"Missing area mapping for {aid}")
+        action["area"] = ACTION_AREA[aid]
+        action["background"] = backgrounds[action["area"]]
 
-fishing["areas"] = AREAS
-JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-print(f"Updated {JSON_PATH} — {len(AREAS)} fishing areas, {len(ACTION_AREA)} actions tagged")
-print("Run: python scripts/fix-fishing-action-order.py && .\\scripts\\check-activity-database-contracts.ps1")
+    fishing["areas"] = AREAS
+    JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"Updated {JSON_PATH} — {len(AREAS)} fishing areas, {len(ACTION_AREA)} actions tagged")
+    print("Run: python scripts/fix-fishing-action-order.py && .\\scripts\\check-activity-database-contracts.ps1")
+
+
+if __name__ == "__main__":
+    main()

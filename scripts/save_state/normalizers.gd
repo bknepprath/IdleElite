@@ -21,7 +21,7 @@ static func normalized_recent_tip_texts(value: Variant, valid_detail_tips: Array
 			continue
 		normalized.erase(tip)
 		normalized.append(tip)
-		while normalized.size() > 3:
+		if normalized.size() > 3:
 			normalized.pop_front()
 	return normalized
 
@@ -101,8 +101,6 @@ static func convergence_module_state(loaded_state: Dictionary) -> Dictionary:
 		"build_started_unix": maxi(0, int(loaded_state.get("build_started_unix", 0))),
 		"completions": maxi(0, int(loaded_state.get("completions", 0)))
 	}
-
-
 static func normalized_hub_modules(loaded_modules: Variant, module_defs: Dictionary, max_level: int) -> Dictionary:
 	var normalized := {}
 	if typeof(loaded_modules) != TYPE_DICTIONARY:
@@ -115,16 +113,12 @@ static func normalized_hub_modules(loaded_modules: Variant, module_defs: Diction
 			continue
 		normalized[module_id] = hub_module_state(loaded_state as Dictionary, max_level)
 	return normalized
-
-
 static func hub_module_state(loaded_state: Dictionary, max_level: int) -> Dictionary:
 	return {
 		"level": clampi(int(loaded_state.get("level", 0)), 0, max_level),
 		"building": bool(loaded_state.get("building", false)),
 		"build_started_unix_msec": maxi(0, int(loaded_state.get("build_started_unix_msec", loaded_state.get("build_started_msec", 0))))
 	}
-
-
 static func normalized_hub_missions(loaded_missions: Variant, normalize_mission: Callable) -> Array:
 	var normalized := []
 	if typeof(loaded_missions) != TYPE_ARRAY:
@@ -136,8 +130,6 @@ static func normalized_hub_missions(loaded_missions: Variant, normalize_mission:
 		if not mission.is_empty():
 			normalized.append(mission)
 	return normalized
-
-
 static func payload_regresses_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
 	if existing_payload.is_empty():
 		return false
@@ -151,12 +143,8 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 	if existing_progress <= 0:
 		return false
 	return progress_evidence_score(next_payload, skill_defs) < existing_progress
-
-
 static func save_reset_generation(data: Dictionary) -> int:
 	return maxi(0, int(data.get("save_reset_generation", 0)))
-
-
 static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 	var loaded_skills = data.get("skills", {})
 	if typeof(loaded_skills) != TYPE_DICTIONARY:
@@ -174,12 +162,8 @@ static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 		var state := skill_state as Dictionary
 		total_xp += maxi(0, int(state.get("xp", 0)))
 	return total_xp
-
-
 static func progress_evidence_score(data: Dictionary, skill_defs: Array) -> int:
 	return total_skill_xp_evidence(data, skill_defs) * 100000 + non_xp_progress_evidence(data)
-
-
 static func non_xp_progress_evidence(data: Dictionary) -> int:
 	var evidence := 0
 	evidence += _positive_number_evidence(data, [
@@ -199,16 +183,12 @@ static func non_xp_progress_evidence(data: Dictionary) -> int:
 	if bool(data.get("onboarding_tutorial_complete", false)):
 		evidence += 1
 	return evidence
-
-
 static func _positive_number_evidence(data: Dictionary, keys: Array) -> int:
 	var evidence := 0
 	for key in keys:
 		if float(data.get(str(key), 0.0)) > 0.0:
 			evidence += 1
 	return evidence
-
-
 static func _dictionary_true_evidence(value: Variant) -> int:
 	if typeof(value) != TYPE_DICTIONARY:
 		return 0
@@ -217,8 +197,6 @@ static func _dictionary_true_evidence(value: Variant) -> int:
 		if bool((value as Dictionary).get(raw_key, false)):
 			evidence += 1
 	return evidence
-
-
 static func _mastery_evidence(value: Variant) -> int:
 	if typeof(value) != TYPE_DICTIONARY:
 		return 0
@@ -274,9 +252,7 @@ static func has_known_skill_progress(data: Dictionary, skill_defs: Array) -> boo
 
 
 static func has_progress_beyond_onboarding(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
-	if has_non_tutorial_skill_progress(data, skill_defs, tutorial_starter_skill_id):
-		return true
-	return manual_activity_unlock_count(data) >= 2
+	return has_non_tutorial_skill_progress(data, skill_defs, tutorial_starter_skill_id) or manual_activity_unlock_count(data) >= 2
 
 
 static func has_non_tutorial_skill_progress(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
@@ -311,19 +287,11 @@ static func manual_activity_unlock_count(data: Dictionary) -> int:
 
 
 static func mark_onboarding_complete(data: Dictionary) -> void:
-	data["onboarding_tutorial_complete"] = true
-	data["onboarding_explore_tip_seen"] = true
-	data["skill_swipe_tip_seen"] = true
-	data["stamina_gauge_tip_seen"] = true
-	data["onboarding_swipe_tip_eligible"] = true
-	data["onboarding_swipe_navigation_unlocked"] = true
+	for key in ["onboarding_tutorial_complete", "onboarding_explore_tip_seen", "skill_swipe_tip_seen", "stamina_gauge_tip_seen", "onboarding_swipe_tip_eligible", "onboarding_swipe_navigation_unlocked", "onboarding_fight_summary_revealed", "onboarding_fight_auto_run_message_shown", "onboarding_fight_stamina_revealed", "onboarding_fight_action_stats_revealed"]:
+		data[key] = true
 	data["tutorial_active"] = false
 	data["tutorial_step"] = 4
 	data["tutorial_gate_latch_only_until_swipe"] = false
-	data["onboarding_fight_summary_revealed"] = true
-	data["onboarding_fight_auto_run_message_shown"] = true
-	data["onboarding_fight_stamina_revealed"] = true
-	data["onboarding_fight_action_stats_revealed"] = true
 	data["onboarding_header_reveal_after_progress"] = false
 
 

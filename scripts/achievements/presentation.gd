@@ -78,16 +78,13 @@ class MedalSparkleStar:
 		var outer := minf(size.x, size.y) * 0.48
 		var inner := outer * 0.34
 		var points := PackedVector2Array()
-		for i in range(8):
-			var radius := outer if i % 2 == 0 else inner
-			var angle := -PI * 0.5 + float(i) * PI * 0.25
-			points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-		draw_polygon(points, PackedColorArray([outline_color]))
 		var inner_points := PackedVector2Array()
 		for i in range(8):
-			var radius := (outer - 1.75) if i % 2 == 0 else maxf(0.5, inner - 1.0)
 			var angle := -PI * 0.5 + float(i) * PI * 0.25
-			inner_points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+			var direction := Vector2(cos(angle), sin(angle))
+			points.append(center + direction * (outer if i % 2 == 0 else inner))
+			inner_points.append(center + direction * ((outer - 1.75) if i % 2 == 0 else maxf(0.5, inner - 1.0)))
+		draw_polygon(points, PackedColorArray([outline_color]))
 		draw_polygon(inner_points, PackedColorArray([fill_color]))
 
 
@@ -125,13 +122,6 @@ static func skill_section() -> StyleBoxFlat:
 	style.content_margin_top = 11
 	style.content_margin_bottom = 15
 	return style
-
-
-static func skill_level_targets() -> Array:
-	var targets := []
-	for level in range(2, 100):
-		targets.append(level)
-	return targets
 
 
 static func same_tier_medal_count(target: int) -> int:
@@ -188,13 +178,12 @@ static func _cropped_texture(texture: Texture2D, index: int) -> Texture2D:
 
 
 static func mastery_medal_visual_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
-	var texture := mastery_medal_texture(level, max_level, texture_loader, visual_fallback)
-	return texture if texture != null else visual_fallback.call() as Texture2D
+	return mastery_medal_texture(level, max_level, texture_loader, visual_fallback)
 
 
 static func mastery_medal_display_scale(level: int) -> float:
 	if WINGED_MEDAL_DISPLAY_SCALES.has(level):
-		return float(WINGED_MEDAL_DISPLAY_SCALES[level])
+		return float(WINGED_MEDAL_DISPLAY_SCALES.get(level))
 	return ELITE_MEDAL_DISPLAY_SCALE if level >= ELITE_MEDAL_FIRST_LEVEL and level <= ELITE_MEDAL_LAST_PLAIN_LEVEL else 1.0
 
 

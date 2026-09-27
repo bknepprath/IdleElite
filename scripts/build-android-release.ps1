@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $androidSdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
@@ -12,7 +11,6 @@ $releaseTemplateAar = Join-Path $projectRoot "android\build\libs\release\godot-l
 $assetPackGradlePath = Join-Path $projectRoot "android\build\assetPackInstallTime\build.gradle"
 $assetPackManifestPath = Join-Path $projectRoot "android\build\assetPackInstallTime\src\main\AndroidManifest.xml"
 $keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
-
 function Set-TextWithRetry {
     param(
         [string] $Path,
@@ -32,7 +30,6 @@ function Set-TextWithRetry {
 
     throw $lastError
 }
-
 if (-not (Test-Path -LiteralPath $runner)) {
     throw "Godot runner was not found at $runner"
 }
@@ -68,7 +65,6 @@ if ($projectSettings -notmatch '(?m)^renderer/rendering_method="gl_compatibility
 if ([string]::IsNullOrWhiteSpace($keystorePassword)) {
     throw "Set IDLE_ELITE_KEYSTORE_PASSWORD before running this script."
 }
-
 $originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
 if ($originalExportPresets -notmatch '(?m)^version/name="([^"]+)"') {
     throw "Could not read Android version name from $exportPresetsPath"
@@ -80,11 +76,9 @@ if ($originalExportPresets -notmatch '(?m)^version/code=(\d+)') {
 $versionCode = $Matches[1]
 $artifactBaseName = "idle-elite-release-v$versionName-code$versionCode"
 $output = Join-Path $projectRoot "builds\android\$artifactBaseName.aab"
-
 $env:ANDROID_HOME = $androidSdk
 $env:ANDROID_SDK_ROOT = $androidSdk
 $env:JAVA_HOME = $javaHome
-
 $outputDir = Split-Path -Parent $output
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 foreach ($logPath in @($stdoutLogPath, $stderrLogPath)) {
@@ -95,7 +89,6 @@ foreach ($logPath in @($stdoutLogPath, $stderrLogPath)) {
 if (Test-Path -LiteralPath $output) {
     Remove-Item -LiteralPath $output -Force
 }
-
 $escapedKeystorePassword = $keystorePassword.Replace("\", "\\").Replace('"', '\"')
 $patchedExportPresets = $originalExportPresets -replace '(?m)^keystore/release_password="[^"\r\n]*"', "keystore/release_password=`"$escapedKeystorePassword`""
 if ($patchedExportPresets -eq $originalExportPresets) {
@@ -110,7 +103,6 @@ $arguments = @(
     "Android Release",
     $output
 )
-
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
 try {
@@ -121,7 +113,6 @@ try {
     Set-TextWithRetry -Path $exportPresetsPath -Value $originalExportPresets
     $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
 }
-
 if ($godotExitCode -ne 0) {
     if ($godotExitCode -eq 124 -and (Test-Path -LiteralPath $output)) {
         Write-Warning "Godot export timed out after producing an AAB. Continuing with the generated artifact."
@@ -129,7 +120,6 @@ if ($godotExitCode -ne 0) {
         throw "Godot export failed with exit code $godotExitCode. See $stdoutLogPath and $stderrLogPath"
     }
 }
-
 if (-not (Test-Path -LiteralPath $output)) {
     throw "Release AAB was not created at $output"
 }

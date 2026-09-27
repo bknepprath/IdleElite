@@ -15,6 +15,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($ViewportWidth -ne 1080 -or $ViewportHeight -ne 1920 -or $WindowWidth -ne 1080 -or $WindowHeight -ne 1920) {
+    throw "Fighting diamond captures require a native 1080x1920 viewport and window."
+}
+
 function Test-CaptureCompleteness {
     param([string]$Path)
 
@@ -134,7 +138,7 @@ $captureDir = Join-Path $projectRoot ".codex-tmp\fighting-diamond-real"
 $captureState = if ($Inactive) { "inactive" } else { "active" }
 $captureSlug = $ActionId -replace '[^a-zA-Z0-9]+', '-'
 $captureNameCue = if ($CaptureCue -eq "close-brawl") { "close-brawl-strike" } elseif ($CaptureCue -eq "directional-breath") { "breath-strike" } else { $CaptureCue }
-$captureSuffix = if ([string]::IsNullOrWhiteSpace($CaptureLabel)) { "" } else { "-$CaptureLabel" }
+$captureSuffix = if ([string]::IsNullOrWhiteSpace($CaptureLabel)) { "" } else { "-" + ($CaptureLabel -replace '[^a-zA-Z0-9_-]+', '-') }
 $capturePath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.png"
 $captureTempPath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.tmp.png"
 $captureLogPath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.natural.log"
@@ -159,7 +163,7 @@ try {
     $env:IDLE_ELITE_FIGHTING_DIAMOND_CAPTURE_LOG_PATH = $captureLogPath
     $statsTuckedLiteral = if ($StatsTucked) { "true" } else { "false" }
     $activeLiteral = if ($Inactive) { "false" } else { "true" }
-    $actionIdLiteral = $ActionId.Replace('"', '')
+    $actionIdLiteral = $ActionId -replace '[^a-zA-Z0-9_-]', ''
     $captureCueLiteral = $CaptureCue.Replace('"', '')
     @"
 extends SceneTree
@@ -378,6 +382,9 @@ func _run() -> void:
 	if image == null or image.is_empty():
 		_fail("capture image empty")
 		return
+	if image.get_width() != window_size.x or image.get_height() != window_size.y:
+		_fail("capture image size mismatch: %sx%s" % [image.get_width(), image.get_height()])
+		return
 	var capture_path := OS.get_environment("IDLE_ELITE_FIGHTING_DIAMOND_CAPTURE_PATH")
 	var temp_path := OS.get_environment("IDLE_ELITE_FIGHTING_DIAMOND_CAPTURE_TEMP_PATH")
 	var result := image.save_png(temp_path)
@@ -399,7 +406,6 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 		await process_frame
 	return false
 
-
 func _hide_capture_overlays(scene: Node) -> void:
 	if scene.has_method("_boot_warmup_runtime"):
 		scene.call("_boot_warmup_runtime").call("_dismiss_boot_splash_for_play")
@@ -415,11 +421,9 @@ func _hide_capture_overlays(scene: Node) -> void:
 		if item != null:
 			item.visible = false
 
-
 func _hide_capture_tier_banners(detail_surface: Node) -> void:
 	for node in detail_surface.get_children():
 		_hide_capture_tier_banner(node)
-
 
 func _hide_capture_tier_banner(node: Node) -> void:
 	if node.has_meta("tier_banner_plaque_hit"):
@@ -431,9 +435,6 @@ func _hide_capture_tier_banner(node: Node) -> void:
 		return
 	for child in node.get_children():
 		_hide_capture_tier_banner(child)
-
-
-
 
 func _unlock_for_capture(scene: Node) -> void:
 	var fight := scene.skills.get("fight", {}) as Dictionary

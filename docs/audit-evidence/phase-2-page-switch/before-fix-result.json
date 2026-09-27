@@ -1,0 +1,13 @@
+{
+	"before_average": "0.643,0.581,0.529",
+	"before_cream_ratio": 0.137777777777778,
+	"enter_cover_alpha": 0.927823126316071,
+	"enter_skill": "fight",
+	"failures": [
+		"page switch button stayed depressed after release: (0.0, 36.0)"
+	],
+	"held_button_id_enter": 139032792150,
+	"released_average": "0.863,0.838,0.802",
+	"released_cream_ratio": 0.580555555555556,
+	"released_offset": "(0.0, 36.0)"
+}

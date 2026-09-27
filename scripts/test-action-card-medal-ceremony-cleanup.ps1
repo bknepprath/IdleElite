@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
@@ -111,7 +110,6 @@ func _run() -> void:
 			_record("Outgoing medal changed size before beginning its fall")
 	medal_surface.call("_clear_action_card_medal_ceremony", replacement_card)
 	replacement_parent.queue_free()
-
 	var medal := TextureRect.new()
 	medal.position = Vector2(180, 220)
 	medal.size = Vector2(190, 190)
@@ -135,7 +133,6 @@ func _run() -> void:
 	if bool(scene.call("_skill_detail_surface").call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", off_medal_positions)):
 		_record("Off-medal release was incorrectly accepted as a medal hit")
 	medal.queue_free()
-
 	var scroll_script := load("res://scripts/ui/mobile_scroll_container.gd")
 	var detail_scroll := scroll_script.new() as Control
 	detail_scroll.position = Vector2.ZERO
@@ -183,7 +180,6 @@ func _run() -> void:
 	detail_scroll.queue_free()
 	fishing_button.queue_free()
 	fishing_medal.queue_free()
-
 	if failures.is_empty():
 		print("action-card-medal-ceremony-cleanup-ok")
 		quit(0)

@@ -536,7 +536,6 @@ foreach ($entry in $reviewedTextureDecisions.GetEnumerator()) {
         -Evidence $entry.Value.Evidence `
         -Reviewed
 }
-
 $rows = [System.Collections.Generic.List[object]]::new()
 $trackedImageSourceCount = 0
 $excludedImageSourceCount = 0
@@ -560,7 +559,6 @@ foreach ($path in $trackedPaths) {
     if ($exportStatus -eq "excluded" -and -not $IncludeExcluded) {
         continue
     }
-
     $file = Get-Item -LiteralPath $absolutePath
     $dimensions = Get-ImageDimensions -Path $absolutePath
     $import = Get-ImportSettings -ImagePath $path -TrackedPathSet $trackedPathSet
@@ -784,7 +782,6 @@ switch ($Format) {
     }
     default {
         $included = @($sortedRows | Where-Object ExportStatus -eq "included")
-        $excluded = @($sortedRows | Where-Object ExportStatus -eq "excluded")
         $unknownDimensions = @($included | Where-Object DimensionStatus -ne "measured")
         $unknownImports = @($included | Where-Object ImportMetadata -in @("missing", "tracked-file-missing"))
         $untrackedImports = @($included | Where-Object ImportMetadata -eq "untracked-observed")

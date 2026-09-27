@@ -1,50 +1,20 @@
-param(
-    [switch]$RequireCutover
-)
-
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
-$projectPath = Join-Path $projectRoot "project.godot"
-$mainPath = Join-Path $projectRoot "scripts\main.gd"
-$leaderboardPresentationPath = Join-Path $projectRoot "scripts\leaderboard\presentation.gd"
-$profileChatSurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
-$fishingSurfacePath = Join-Path $projectRoot "scripts\fishing\ui_surface.gd"
-$hubSurfacePath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
-$skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
-$skillSwipeSurfacePath = Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd"
-$activityCardStylesPath = Join-Path $projectRoot "scripts\ui\activity_card_styles.gd"
-$regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
-$skillStatePath = Join-Path $projectRoot "scripts\progression\skill_state.gd"
-$achievementSurfacePath = Join-Path $projectRoot "scripts\ui\achievement_overlay_surface.gd"
-
-Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
-Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
-Assert-True (Test-Path -LiteralPath $leaderboardPresentationPath) "Missing leaderboard presentation script."
-Assert-True (Test-Path -LiteralPath $profileChatSurfacePath) "Missing profile/chat surface script."
-Assert-True (Test-Path -LiteralPath $fishingSurfacePath) "Missing Fishing surface script."
-Assert-True (Test-Path -LiteralPath $hubSurfacePath) "Missing Hub surface script."
-Assert-True (Test-Path -LiteralPath $skillDetailSurfacePath) "Missing skill detail surface script."
-Assert-True (Test-Path -LiteralPath $skillSwipeSurfacePath) "Missing skill swipe activity surface script."
-Assert-True (Test-Path -LiteralPath $activityCardStylesPath) "Missing activity card styles script."
-Assert-True (Test-Path -LiteralPath $regenCirclePath) "Missing stamina gauge renderer."
-Assert-True (Test-Path -LiteralPath $skillStatePath) "Missing skill state script."
-Assert-True (Test-Path -LiteralPath $achievementSurfacePath) "Missing achievement/offline summary surface script."
-
-$project = Get-Content -LiteralPath $projectPath -Raw
-$main = Get-Content -LiteralPath $mainPath -Raw
-$leaderboardPresentation = Get-Content -LiteralPath $leaderboardPresentationPath -Raw
-$profileChatSurface = Get-Content -LiteralPath $profileChatSurfacePath -Raw
-$fishingSurface = Get-Content -LiteralPath $fishingSurfacePath -Raw
-$hubSurface = Get-Content -LiteralPath $hubSurfacePath -Raw
-$skillDetailSurface = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
-$skillSwipeSurface = Get-Content -LiteralPath $skillSwipeSurfacePath -Raw
-$activityCardStyles = Get-Content -LiteralPath $activityCardStylesPath -Raw
-$regenCircle = Get-Content -LiteralPath $regenCirclePath -Raw
-$skillState = Get-Content -LiteralPath $skillStatePath -Raw
-$achievementSurface = Get-Content -LiteralPath $achievementSurfacePath -Raw
+$project = Get-Content -LiteralPath (Join-Path $projectRoot "project.godot") -Raw
+$main = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\main.gd") -Raw
+$leaderboardPresentation = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\leaderboard\presentation.gd") -Raw
+$profileChatSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd") -Raw
+$fishingSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\fishing\ui_surface.gd") -Raw
+$hubSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\hub_surface.gd") -Raw
+$skillDetailSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd") -Raw
+$skillSwipeSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd") -Raw
+$activityCardStyles = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\activity_card_styles.gd") -Raw
+$regenCircle = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\regen_circle.gd") -Raw
+$skillState = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\progression\skill_state.gd") -Raw
+$achievementSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\achievement_overlay_surface.gd") -Raw
 
 function Get-ProjectSettingValue {
     param(
@@ -187,13 +157,8 @@ foreach ($script in $productionScripts) {
     }
 }
 
-$legacyState = $viewportWidth -eq 2160 -and $viewportHeight -eq 3840 -and $baseCanvasWidth -eq 2160 -and $baseCanvasHeight -eq 3840
 $cutoverState = $viewportWidth -eq 1080 -and $viewportHeight -eq 1920 -and $baseCanvasWidth -eq 1080 -and $baseCanvasHeight -eq 1920
-Assert-True ($legacyState -or $cutoverState) "Viewport and BASE_CANVAS must be a complete 2160 x 3840 baseline or 1080 x 1920 cutover."
-
-$strictCutover = $RequireCutover -or $cutoverState
-if ($strictCutover) {
-    Assert-True $cutoverState "1080p cutover requires project viewport and BASE_CANVAS to be 1080 x 1920."
+Assert-True $cutoverState "Project viewport and BASE_CANVAS must remain 1080 x 1920."
     Assert-True ($leaderboardPresentation -match '(?m)^const BASE_FRAME_WIDTH := 1080\r?$') "Leaderboard frame width must be 1080 after cutover."
     Assert-True ($main -match '(?m)^const ACTION_CARD_POP_GUTTER := 22\r?$') "Action-card pop gutter must retain exact half-scale 4K spacing."
     Assert-True ($leaderboardPresentation -match '(?m)^const BOTTOM_SCROLL_PAD := 360\r?$') "Leaderboard bottom spacing must retain the half-scale 4K composition."
@@ -223,8 +188,8 @@ if ($strictCutover) {
 	Assert-True ($activityCardStyles -match 'title\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Activity titles must never wrap."
 	Assert-True ($activityCardStyles -match 'title\.max_lines_visible = 1') "Activity titles must have a hard one-line limit."
 	Assert-True ($activityCardStyles -match 'title\.text_overrun_behavior = TextServer::OVERRUN_NO_TRIMMING'.Replace('::', '.')) "Activity titles must never be ellipsized."
-	Assert-True ($skillDetailSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillDetailSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Detail activity titles must retain the audited full-width lane."
-	Assert-True ($skillSwipeSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillSwipeSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Swipe activity titles must retain the audited full-width lane."
+	Assert-True ($skillDetailSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillDetailSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Detail activity titles must use the shared audited inset."
+	Assert-True ($skillSwipeSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillSwipeSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Swipe activity titles must use the shared audited inset."
 	Assert-True ($skillDetailSurface -match 'art_slot\.add_theme_constant_override\("margin_top", 24 if uses_flat_normal_card else 21\)') "Detail action-art buttons must retain the exact half-scale 4K top inset."
 	Assert-True ($skillSwipeSurface -match 'art_slot\.add_theme_constant_override\("margin_top", 9\)') "Swipe action-art buttons must retain the exact half-scale 4K preview inset."
 	Assert-True ($regenCircle -match '(?m)^const CENTER_DENOMINATOR_Y_OFFSET := 150\.0\r?$') "Stamina denominator must retain clearance below its divider."
@@ -250,7 +215,5 @@ if ($strictCutover) {
     Assert-True ($hubSurface -match '"x": round\(decor_position\.x \* 2\.0\) \* 0\.5') "Hub decor must preserve deterministic half-pixel quantization from the 4K composition."
     Assert-True ($legacyCoordinateHits.Count -eq 0) "Exact 2160/3840 production literals remain after cutover: $($legacyCoordinateHits -join '; ')"
     Assert-True ($explicitSmallFontHits.Count -eq 0) "Explicit production font sizes below 48 px remain after cutover: $($explicitSmallFontHits -join '; ')"
-}
 
-$stateName = if ($cutoverState) { "cutover" } else { "legacy" }
-Write-Output "performance-1080p-migration-contracts-ok state=$stateName viewport=${viewportWidth}x${viewportHeight} legacy_coordinate_hits=$($legacyCoordinateHits.Count) explicit_small_font_hits=$($explicitSmallFontHits.Count)"
+Write-Output "performance-1080p-migration-contracts-ok state=cutover viewport=${viewportWidth}x${viewportHeight} legacy_coordinate_hits=$($legacyCoordinateHits.Count) explicit_small_font_hits=$($explicitSmallFontHits.Count)"
