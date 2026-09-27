@@ -294,9 +294,7 @@ class _BootFlexLoadingAnimation:
 		if _headless_mode():
 			return _transparent_fallback_texture(fallback_size)
 		var loaded = load(path)
-		if loaded is Texture2D:
-			return loaded
-		return _transparent_fallback_texture(fallback_size)
+		return loaded if loaded is Texture2D else _transparent_fallback_texture(fallback_size)
 
 
 	func _transparent_fallback_texture(fallback_size: Vector2i) -> Texture2D:
@@ -345,9 +343,12 @@ func _boot_progress_step(text: String, progress: float):
 	await host.get_tree().process_frame
 
 
-func _finish_boot_render_async():
+func _finish_boot_render_async() -> bool:
 	if not host.is_inside_tree():
-		return
+		return false
+	if host._save_runtime().boot_storage_failure_blocks_restore():
+		_show_save_recovery_state()
+		return false
 	host.current_screen = "skill"
 	host.boot_detail_render_in_progress = true
 	host.boot_detail_card_yield = true
@@ -357,6 +358,13 @@ func _finish_boot_render_async():
 	host.boot_detail_render_in_progress = false
 	host.boot_lazy_background_mount_allowed = false
 	_set_progress("Finishing startup...", 0.74)
+	# A loaded save is not playable or writable until every subsystem, including
+	# profile/auth identity, has completed the same restore transaction.
+	if not host._save_runtime().pending_save_restore_data.is_empty():
+		host._save_runtime()._load_game_secondary_restore()
+	if host._save_runtime().boot_recovery_blocks_reveal():
+		_show_save_recovery_state()
+		return false
 	if not host.startup_initialized:
 		host.startup_initialized = true
 		host._crash_report_runtime().write_session_marker("running")
@@ -367,6 +375,7 @@ func _finish_boot_render_async():
 	host._activity_unlock_runtime().call_deferred("_run_startup_auto_unlock_lockpads")
 	if DisplayServer.get_name() != "headless":
 		if not boot_early_services_started:
+			boot_early_services_started = true
 			host._audio_director().call_deferred("_prepare_audio_buses")
 			host._navigation_shell().call_deferred("_ensure_nav_bar_icons")
 			host._navigation_shell().call_deferred("_sync_hero_nav_button", true)
@@ -377,6 +386,28 @@ func _finish_boot_render_async():
 		host._save_runtime().call_deferred("_schedule_boot_post_load_simulation")
 		call_deferred("begin_background_boot_validation")
 		host._ad_bonus_runtime().call_deferred("_init_ads")
+	return true
+
+
+func _show_save_recovery_state() -> void:
+	active = true
+	hide_requested = false
+	if overlay != null and is_instance_valid(overlay):
+		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	if footer != null and is_instance_valid(footer):
+		footer.offset_top = -550
+		footer.offset_bottom = -50
+		footer.add_theme_constant_override("separation", 0)
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(footer, true)
+	if label != null and is_instance_valid(label):
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size = Vector2(800, 380)
+		label.add_theme_font_size_override("font_size", 60)
+	if progress_bar != null and is_instance_valid(progress_bar):
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(progress_bar, false)
+	if splash != null and is_instance_valid(splash) and splash.has_method("stop"):
+		splash.call("stop")
+	_set_progress(host._save_runtime().boot_recovery_status_text(), 1.0)
 
 
 func validate_state(priority_skill_ids: Array = []) -> void:
@@ -408,6 +439,9 @@ func validate_state_bootstrap() -> void:
 		var skill_id := str(def["id"])
 		if not host.skills.has(skill_id):
 			host.skills[skill_id] = {"xp": 0, "level": 1}
+	SkillState.invalidate_max_stamina_cache()
+	for def in host.skill_defs:
+		var skill_id := str(def["id"])
 		if not host.stamina.has(skill_id):
 			host.stamina[skill_id] = float(SkillState.max_stamina(host, skill_id))
 		if not host.stamina_bank.has(skill_id):
@@ -505,6 +539,8 @@ func _validate_remaining_skills_deferred() -> void:
 		_validate_skill_actions(skill_id, true)
 		SkillState.recalculate_level(host, skill_id)
 		await host.get_tree().process_frame
+	if not host.deferred_skill_validation_pending or not host.is_inside_tree():
+		return
 	host.deferred_skill_validation_pending = false
 	SkillState.invalidate_stat_caches(host)
 	if host.current_screen == "skill" or host.current_screen == "home":

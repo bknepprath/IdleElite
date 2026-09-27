@@ -15,6 +15,8 @@ Decide these before editing files:
 
 Keep `version/code` monotonically increasing for Google Play.
 
+For a release that changes account or save migration behavior, complete `docs/firebase-leaderboard-setup.md` first. The build requires a fresh version-bound receipt at ignored `release/firebase-migration-readiness.json`; local config syntax alone is not release evidence. The receipt is an operator attestation bound to fresh snapshots, the configured target, the exact final rules, the verified all-writes-disabled migration-freeze rules, and the release version. It does not query Firebase, Google Cloud, or Play Console by itself.
+
 ## Files To Update
 
 Update `export_presets.cfg`:
@@ -40,9 +42,12 @@ Run from the repo root.
 
 Keep `project.godot` set to `window/stretch/mode="viewport"`. The release build is intentionally blocked if this changes because `canvas_items` has repeatedly produced severe full-screen pixel tearing on physical Samsung phones.
 
+Before building, confirm the Firebase Android app for `com.idleelite.game` has both the Google Play App Signing SHA-1 and the upload-key SHA-1 registered. The Play-delivered APK and a local bundletool APK use different signing certificates. Google recovery must be tested from the Play closed track before production promotion.
+
 ```powershell
 .\scripts\check-project.ps1
 .\scripts\check-crash-audit-contracts.ps1
+.\scripts\check-firebase-migration-readiness.ps1
 ```
 
 `check-project.ps1` calls `run-godot-safe.ps1` with headless Godot. After any Godot command, check for leftover Godot processes:
@@ -162,8 +167,10 @@ Check for a connected device:
 If a device is connected:
 
 ```powershell
-.\scripts\test-release-aab.ps1 -UninstallExisting
+.\scripts\test-release-aab.ps1
 ```
+
+For update validation, first install the previous locally signed artifact on a disposable device or emulator and record a representative v0.5.3 username, stable UID, XP, unlocks, and built modules. Install the new APK set without uninstalling and compare every value after first launch and another restart. Never use `-UninstallExisting` for this test.
 
 Then launch and verify:
 
@@ -180,20 +187,11 @@ If no device is connected, note that the device install smoke test was not run.
 
 If Play Store shows an `Update` button but then says it cannot install Idle Elite, first suspect a signing mismatch from a locally installed build. Earlier local debug/release tests used the real package name `com.idleelite.game`, while Play Store distributes the app with the Play App Signing certificate. Android will not update an installed package if the existing app was signed by a different certificate.
 
-Fix on the phone without throwing away the save:
-
-1. If Android offers **Keep app data**, choose it when uninstalling `Idle Elite`.
-2. Install it fresh from Play Store closed testing.
-
-ADB equivalent:
-
-```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" shell pm uninstall -k com.idleelite.game
-```
+Do not uninstall the production package as part of release validation. Record the installed certificate and package source, preserve the device, and reproduce on a disposable device or emulator. A Play-signed production install must be updated through a Play test track; a locally generated bundletool APK cannot replace it.
 
 Use `.\scripts\install-android-phone-debug.ps1` for future phone debug installs; it uses the preview package `com.idleelite.game.preview` so it can coexist with the Play-signed release app.
 
-If Play Store still cannot install after a clean uninstall, collect Play Store/package installer logs from the phone and inspect Play Console device compatibility.
+If a disposable test device still cannot install after an explicitly approved clean install, collect Play Store/package installer logs and inspect Play Console device compatibility. Do not use that troubleshooting step on a player's or production test device unless its data has already been recovered and its loss is explicitly accepted.
 
 ## Play Store Upload Pack
 
