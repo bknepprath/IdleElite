@@ -169,7 +169,6 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 		+ TEMPORARY_EVENT_ENTRY_FADE_SECONDS
 		+ 0.16
 	)
-	host._skill_swipe_activity_surface()._sync_current_skill_strip_detail_refs()
 	if not layout_snapshot.is_empty():
 		host._skill_detail_surface().call_deferred("_play_detail_module_layout_transition", layout_snapshot)
 	Callable(host._skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()

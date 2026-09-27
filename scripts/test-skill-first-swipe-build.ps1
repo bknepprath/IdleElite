@@ -258,7 +258,7 @@ func _state_summary(scene: Node) -> String:
 	var scroll_ratio := 0.0
 	if scroll != null and content != null and content.size.y > 1.0:
 		scroll_ratio = scroll.size.y / content.size.y
-	return "selected=%s pending=%s animating=%s mode=%s tracking=%s horizontal=%s queued=%s drag=%.1f strip_index=%s accessible_next=%s cards=%s real=%s visible_placeholders=%s page_visible=%s scroll_visible=%s stack_visible=%s regen=%s header_gauges=%s scroll=%s scroll_ratio=%.3f cover=%s cover_alpha=%.3f" % [
+	return "selected=%s pending=%s animating=%s mode=%s tracking=%s horizontal=%s queued=%s drag=%.1f accessible_next=%s cards=%s real=%s visible_placeholders=%s page_visible=%s scroll_visible=%s stack_visible=%s regen=%s header_gauges=%s scroll=%s scroll_ratio=%.3f cover=%s cover_alpha=%.3f" % [
 		str(scene.get("selected_skill_id")),
 		str(scene.get("skill_swipe_pending_full_finalize")),
 		str(scene.get("skill_swipe_animating")),
@@ -267,7 +267,6 @@ func _state_summary(scene: Node) -> String:
 		str(scene.get("skill_swipe_horizontal")),
 		str(scene.get("skill_swipe_queued_offset")),
 		float(scene.call("_skill_swipe_activity_surface").get("skill_swipe_drag_offset_x")),
-		str(scene.get("skill_strip_index")),
 		str(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)),
 		str(0 if cards == null else cards.size()),
 		str(counts.get("real", 0)),

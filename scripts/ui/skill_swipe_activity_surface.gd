@@ -180,23 +180,14 @@ var skill_swipe_finalize_target_skill_id := ""
 var skill_swipe_pending_resume_scroll_skill_id := ""
 var real_card_cache_by_skill = {}
 var skill_swipe_real_card_prewarm_token := 0
-var preview_page: Control
 var preview_pages = {}
 var preview_states = {}
-var preview_offset = 0
 var preview_module_reveal_token = 0
 var light_preview_card_style_cache = {}
 var queue_selection_banner: Control
 var action_pop_tweens := {}
 var depressed_activity_shell_buttons := {}
 var action_art_last_running_key := ""
-var skill_swipe_paper_fade_overlay: ColorRect
-var skill_swipe_paper_fade_hold_alpha := 0.0
-var skill_swipe_strip_committed_crossfade := false
-var skill_strip_ids: Array = []
-var skill_strip_index := 0
-var skill_strip_refs := {}
-var skill_strip_wrap_relocated_id := ""
 var adjacent_skill_pages: SkillAdjacentPages
 var adjacent_swap_hold_position := false
 
@@ -219,12 +210,8 @@ var SKILL_SWIPE_SETTLE_SECONDS: float:
 	get: return host.SKILL_SWIPE_SETTLE_SECONDS
 var SKILL_SWIPE_CANCEL_SECONDS: float:
 	get: return host.SKILL_SWIPE_CANCEL_SECONDS
-var SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED: bool:
-	get: return host.SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED
 var SKILL_SWIPE_GAP_READY_WAIT_FRAMES: int:
 	get: return host.SKILL_SWIPE_GAP_READY_WAIT_FRAMES
-var SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS: float:
-	get: return host.SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS
 var SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS: float:
 	get: return host.SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS
 var SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS: float:
@@ -419,53 +406,15 @@ var main_process_frame_index: int:
 func get_viewport() -> Viewport:
 	return host.get_viewport()
 
-func _set_skill_strip_page_virtual_pos(skill_id: String, virtual_x: float, _alpha := 1.0) -> void:
-	if skill_strip_wrap_relocated_id == skill_id:
-		return
-	if not skill_strip_wrap_relocated_id.is_empty():
-		_restore_skill_strip_wrap_page()
-	var refs := skill_strip_refs.get(skill_id, {}) as Dictionary
-	var page := refs.get("page") as Control
-	if page == null or not is_instance_valid(page) or page.is_queued_for_deletion():
-		return
-	var content_width := _skill_content_width()
-	page.offset_left = virtual_x
-	page.offset_right = virtual_x + content_width
-	skill_strip_wrap_relocated_id = skill_id
-
-func _restore_skill_strip_wrap_page() -> void:
-	if skill_strip_wrap_relocated_id.is_empty():
-		return
-	var sid := skill_strip_wrap_relocated_id
-	skill_strip_wrap_relocated_id = ""
-	var refs := skill_strip_refs.get(sid, {}) as Dictionary
-	var page := refs.get("page") as Control
-	if page == null or not is_instance_valid(page) or page.is_queued_for_deletion():
-		return
-	var page_idx := skill_strip_ids.find(sid)
-	if page_idx < 0:
-		return
-	var content_width := _skill_content_width()
-	page.offset_left = float(page_idx) * content_width
-	page.offset_right = float(page_idx) * content_width + content_width
-
 func _apply_skill_swipe_drag_offset(drag_x: float) -> void:
 	skill_swipe_drag_offset_x = drag_x
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		return
-	if not skill_strip_ids.is_empty():
-		var page_width := _skill_content_width()
-		var left := -float(skill_strip_index) * page_width + drag_x
-		skill_swipe_frame.offset_left = left
-		skill_swipe_frame.offset_right = left + page_width
-		_sync_skill_swipe_drag_frame_fade(drag_x)
 		return
 	var content_width: float = host._skill_swipe_frame_content_width()
 	if skill_swipe_frame.custom_minimum_size.x > 1.0:
 		content_width = skill_swipe_frame.custom_minimum_size.x
 	_apply_skill_column_layout(skill_swipe_frame, content_width, drag_x)
-	_sync_skill_swipe_drag_frame_fade(drag_x)
-	_sync_skill_swipe_live_page_fade(drag_x)
+	_set_skill_swipe_control_alpha(skill_swipe_page, 1.0)
 
 func _skill_swipe_navigation_blocks_detail_refresh() -> bool:
 	return skill_swipe_animating or skill_swipe_pending_full_finalize
@@ -494,8 +443,6 @@ func _apply_skill_column_layout(frame: Control, frame_width: float, offset_x: fl
 
 func _normalize_skill_detail_page_layout(page: Control = null) -> void:
 	_apply_skill_swipe_drag_offset(0.0)
-	if not skill_strip_ids.is_empty():
-		return
 	var target_page := page
 	if target_page == null or not is_instance_valid(target_page):
 		target_page = skill_swipe_page
@@ -545,7 +492,6 @@ func _apply_pending_swipe_resume_scroll(expected_skill_id: String = "") -> void:
 	await host._skill_detail_surface()._scroll_to_latest_unlocked_activity(false)
 
 func _reset_skill_swipe_entry_positions() -> void:
-	_restore_skill_strip_wrap_page()
 	_normalize_skill_detail_page_layout()
 
 func _ensure_skill_swipe_frame_centered() -> void:
@@ -556,25 +502,6 @@ func _ensure_skill_swipe_frame_centered() -> void:
 		return
 	_apply_skill_swipe_drag_offset(0.0)
 
-func _sync_skill_strip_page_visibility(animated: bool) -> void:
-	if skill_strip_ids.is_empty():
-		return
-	var current_idx := skill_strip_index
-	var count := skill_strip_ids.size()
-	if current_idx < 0 or count <= 0:
-		return
-	for i in count:
-		var k := str(skill_strip_ids[i])
-		var k_page := (skill_strip_refs.get(k, {}) as Dictionary).get("page") as Control
-		if k_page == null or not is_instance_valid(k_page):
-			continue
-		var dist := mini(absi(i - current_idx), count - absi(i - current_idx))
-		var should_show := dist == 0 or (animated and dist <= 1)
-		k_page.visible = should_show
-		k_page.process_mode = Node.PROCESS_MODE_INHERIT if dist == 0 else Node.PROCESS_MODE_DISABLED
-		if not should_show:
-			_set_skill_swipe_control_alpha(k_page, 1.0)
-
 func _register_action_card(card_key: String, card: Dictionary) -> void:
 	host._skill_detail_surface()._register_action_card(card_key, card)
 
@@ -584,44 +511,6 @@ func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, actio
 func _update_ui(delta: float, instant := false) -> void:
 	host._update_ui(delta, instant)
 
-func _swap_skill_strip_refs(skill_id: String) -> void:
-	if not skill_strip_refs.has(skill_id):
-		return
-	_sync_skill_strip_page_visibility(false)
-	var refs := skill_strip_refs[skill_id] as Dictionary
-	skill_swipe_page = refs.get("page") as Control
-	detail_xp_label = refs.get("xp_label") as Label
-	detail_xp_bar = refs.get("xp_bar") as CleanProgressBar
-	detail_regen_circle = refs.get("regen_circle") as RegenCircle
-	detail_regen_circle_host = refs.get("regen_circle_host") as Control
-	detail_regen_circle_fade_group = refs.get("regen_circle_fade_group") as CanvasGroup
-	detail_fish_circle = refs.get("fish_circle") as FishCircle
-	detail_auto_eat_fish_button = refs.get("auto_eat_fish_button") as TextureButton
-	host._skill_detail_surface().detail_stamina_bar = refs.get("stamina_bar") as CleanProgressBar
-	detail_header_body = refs.get("header_body") as Control
-	host._skill_detail_surface().detail_header_left_block = refs.get("header_left_block") as Control
-	_skill_detail_surface().detail_actions_scroll = refs.get("actions_scroll") as MobileScrollContainer
-	host._skill_detail_surface().detail_unlock_scroll_spacer = refs.get("unlock_scroll_spacer") as Control
-	_skill_detail_surface().detail_shelf_shadow_overlay = refs.get("shelf_shadow_overlay") as Control
-	_skill_detail_surface()._set_detail_back_button(refs.get("back_button") as BaseButton)
-	_skill_detail_surface().detail_action_card_nodes = refs.get("action_card_nodes", {}) as Dictionary
-	_skill_detail_surface().detail_rendered_action_ids = refs.get("rendered_action_ids", []) as Array
-	_skill_detail_surface().detail_lazy_plan = refs.get("lazy_plan", []) as Array
-	_skill_detail_surface().detail_lazy_stack = refs.get("lazy_stack") as VBoxContainer
-	_skill_detail_surface().detail_lazy_last_scroll = float(refs.get("lazy_last_scroll", -1.0))
-	Callable(_skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-
-func _sync_current_skill_strip_detail_refs() -> void:
-	if skill_strip_ids.is_empty() or selected_skill_id.is_empty() or not skill_strip_refs.has(selected_skill_id):
-		return
-	var refs := skill_strip_refs[selected_skill_id] as Dictionary
-	refs["action_card_nodes"] = _skill_detail_surface().detail_action_card_nodes.duplicate()
-	refs["rendered_action_ids"] = _skill_detail_surface().detail_rendered_action_ids.duplicate()
-	refs["lazy_plan"] = _skill_detail_surface().detail_lazy_plan.duplicate()
-	refs["lazy_stack"] = _skill_detail_surface().detail_lazy_stack
-	refs["lazy_last_scroll"] = _skill_detail_surface().detail_lazy_last_scroll
-	skill_strip_refs[selected_skill_id] = refs
-
 func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) -> void:
 	if _onboarding_runtime()._onboarding_blocks_skill_swipe():
 		if not _onboarding_runtime()._ensure_onboarding_swipe_unlocked(true):
@@ -629,15 +518,12 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 	_skill_detail_surface()._cancel_detail_lazy_settle_warm_mount()
 	if not _skill_swipe_animation_blocks_input():
 		_interrupt_skill_swipe_animation_for_input()
-		_park_skill_swipe_preview()
 	skill_swipe_tracking = true
 	skill_swipe_horizontal = false
 	skill_swipe_start = pointer_position
 	skill_swipe_last = pointer_position
 	skill_swipe_drag_base_x = _current_skill_swipe_page_x()
 	skill_swipe_touch_index = touch_index
-	_set_skill_strip_committed_crossfade(false)
-	_sync_skill_strip_page_visibility(true)
 
 
 func _route_skill_swipe_button_input(event: InputEvent, source: Control = null) -> bool:
@@ -716,28 +602,12 @@ func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
 		return
 	if skill_swipe_horizontal:
 		_suppress_skill_swipe_action_click()
-	if not skill_strip_ids.is_empty():
-		var strip_direction := 1.0 if delta.x > 0.0 else -1.0
-		var strip_visual_distance := _skill_swipe_visual_distance(abs_x)
-		var skill_count := skill_strip_ids.size()
-		var page_width := _skill_content_width()
-		if strip_direction > 0.0 and skill_strip_index == 0 and _onboarding_runtime()._swipe_offset_accessible(-1):
-			_set_skill_strip_page_virtual_pos(str(skill_strip_ids[skill_count - 1]), -page_width)
-		elif strip_direction < 0.0 and skill_strip_index == skill_count - 1 and _onboarding_runtime()._swipe_offset_accessible(1):
-			_set_skill_strip_page_virtual_pos(str(skill_strip_ids[0]), float(skill_count) * page_width)
-		else:
-			_restore_skill_strip_wrap_page()
-		_apply_skill_swipe_drag_offset(skill_swipe_drag_base_x + strip_direction * strip_visual_distance)
-		return
 	var target := _skill_swipe_visual_target()
 	if target == null:
 		return
-	var offset := 1 if delta.x < 0.0 else -1
-	if not _onboarding_runtime()._swipe_offset_accessible(offset):
-		_skill_swipe_activity_surface()._park_skill_swipe_preview()
 	var page_direction := 1.0 if delta.x > 0.0 else -1.0
 	var page_visual_distance := _skill_swipe_visual_distance(abs_x)
-	_skill_swipe_activity_surface()._set_skill_swipe_positions(offset, skill_swipe_drag_base_x + page_direction * page_visual_distance)
+	_apply_skill_swipe_drag_offset(skill_swipe_drag_base_x + page_direction * page_visual_distance)
 	_navigation_shell()._sync_skill_page_switch_modules_for_drag(abs_x)
 	_navigation_shell()._sync_skill_swipe_module_utility_row_for_drag(abs_x)
 
@@ -799,51 +669,6 @@ func _interrupt_skill_swipe_animation_for_input() -> void:
 		adjacent_swap_hold_position = false
 		return
 	_kill_skill_swipe_tween()
-
-
-func _begin_skill_swipe_handoff_cover() -> void:
-	_clear_skill_swipe_handoff_cover()
-	if skills_page == null or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		return
-	var page: Control = _skill_swipe_activity_surface()._active_preview_page()
-	if page == null:
-		return
-	_skill_swipe_activity_surface()._take_preview_for_handoff(false)
-
-	var cover := Control.new()
-	_navigation_shell()._apply_skill_page_cover_bounds(cover, true)
-	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cover.z_index = 0
-	cover.z_as_relative = false
-	cover.clip_contents = true
-	_ensure_skill_nav_cover_layer().add_child(cover)
-
-	var backing := ColorRect.new()
-	backing.color = _theme_paper_color()
-	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	backing.z_index = -1
-	cover.add_child(backing)
-	if module_ui_pin_refresh_cover_requested or not module_ui_pending_pin_scroll_anchor.is_empty():
-		cover.set_meta("module_pin_refresh_opaque_cover", true)
-		skill_swipe_handoff_cover = cover
-		skill_detail_refresh_cover_active = true
-		return
-	_skill_swipe_activity_surface()._set_active_preview(null, 0)
-
-	var holder := Control.new()
-	holder.position = skill_swipe_frame.global_position
-	holder.size = skill_swipe_frame.size
-	holder.custom_minimum_size = skill_swipe_frame.size
-	holder.clip_contents = true
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cover.add_child(holder)
-	page.reparent(holder)
-	page.position = Vector2.ZERO
-	page.z_index = 0
-	_skill_detail_surface()._add_skill_detail_shadow_overlay_to(cover, SKILLS_PAGE_TOP_PAD + _skill_detail_surface()._skill_detail_shadow_top_y(), _skill_detail_surface().detail_shelf_shadow_alpha)
-
-	skill_swipe_handoff_cover = cover
 
 
 func _clear_skill_swipe_handoff_cover() -> void:
@@ -1126,7 +951,7 @@ func _begin_skill_swipe_outgoing_cover() -> Control:
 	holder.custom_minimum_size = holder_size
 	holder.clip_contents = true
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.modulate = Color(1.0, 1.0, 1.0, 0.0) if _skill_swipe_activity_surface()._paper_fade_hold_active() else Color.WHITE
+	holder.modulate = Color.WHITE
 	cover.add_child(holder)
 	skill_swipe_frame.reparent(holder)
 	skill_swipe_frame.position = Vector2.ZERO
@@ -1152,37 +977,6 @@ func _skill_swipe_handoff_cover_is_opaque_cream_transition() -> bool:
 		and skill_swipe_handoff_cover.visible
 		and skill_swipe_handoff_cover.modulate.a >= 0.92
 	)
-
-
-func _fade_skill_swipe_cover_to_opaque(seconds: float):
-	var cover := skill_swipe_handoff_cover
-	if cover == null or not is_instance_valid(cover):
-		return
-	_set_canvas_item_visible_if_changed(cover, true)
-	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
-	var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
-	var outgoing_holder: Control = null
-	if holder_id != 0:
-		outgoing_holder = _valid_control_ref(instance_from_id(holder_id))
-	if outgoing_holder != null:
-		var tween := create_tween()
-		tween.tween_property(outgoing_holder, "modulate:a", 0.0, maxf(0.01, seconds)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-		await tween.finished
-		outgoing_holder = _valid_control_ref(instance_from_id(holder_id))
-		if outgoing_holder != null:
-			_set_canvas_item_alpha_if_changed(outgoing_holder, 0.0)
-		return
-	var next_modulate := cover.modulate
-	next_modulate.a = clampf(next_modulate.a, 0.0, 1.0)
-	_set_canvas_item_modulate_if_changed(cover, next_modulate)
-	if cover.modulate.a >= 0.99:
-		_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
-		return
-	var tween := create_tween()
-	tween.tween_property(cover, "modulate:a", 1.0, maxf(0.01, seconds)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	await tween.finished
-	if cover != null and is_instance_valid(cover):
-		_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
 
 
 func _clear_skill_swipe_content_under_cover() -> void:
@@ -1482,7 +1276,6 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 	skill_swipe_horizontal = false
 	skill_swipe_touch_index = -1
 	skill_swipe_drag_base_x = 0.0
-	_skill_swipe_activity_surface()._set_skill_strip_committed_crossfade(false)
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		_skill_swipe_activity_surface()._clear_skill_swipe_preview()
 		return
@@ -1497,17 +1290,9 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 		skill_swipe_tween.set_parallel(true)
 		var start_drag := skill_swipe_drag_offset_x
 		skill_swipe_tween.tween_method(_apply_skill_swipe_drag_offset, start_drag, 0.0, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-		var preview_page: Control = _skill_swipe_activity_surface()._active_preview_page()
-		if preview_page != null:
-			var preview_exit: float = _skill_swipe_activity_surface()._skill_swipe_preview_rest_x(_skill_swipe_activity_surface()._active_preview_offset())
-			skill_swipe_tween.tween_property(preview_page, "position:x", preview_exit, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-			skill_swipe_tween.tween_property(preview_page, "modulate:a", 0.0, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		skill_swipe_tween.finished.connect(_finish_skill_swipe_cancel_tween)
 	else:
-		_restore_skill_strip_wrap_page()
 		_apply_skill_swipe_drag_offset(0.0)
-		_sync_skill_strip_page_visibility(false)
-		_skill_swipe_activity_surface()._park_skill_swipe_preview()
 		_navigation_shell()._fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
 		_navigation_shell()._fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
 		_skill_swipe_activity_surface()._fade_skill_shelf_backgrounds(true)
@@ -1591,19 +1376,13 @@ func _collapse_expanded_activity_modules() -> void:
 
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
-	if offset != 0 and skill_strip_ids.is_empty() and not _adjacent_pages().has_page(offset):
+	if offset != 0 and not _adjacent_pages().has_page(offset):
 		_navigation_shell()._fade_skill_page_switch_modules(false, SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS)
 		_navigation_shell()._fade_skill_swipe_module_utility_row(false, SKILL_SWIPE_MODULE_UTILITY_FADE_OUT_SECONDS)
 		_skill_swipe_activity_surface()._fade_skill_shelf_backgrounds(false)
 	var entry_x := signi(offset) * _skill_swipe_page_span()
 	entry_x = skill_swipe_drag_offset_x
 	var animate_commit_release := absf(entry_x) > 1.0 and absf(entry_x) < absf(_skill_swipe_commit_release_target_x(offset)) - 1.0
-	if not animate_commit_release:
-		if skill_strip_ids.is_empty():
-			_skill_swipe_activity_surface()._hold_skill_swipe_paper_fade_for_commit()
-		else:
-			_skill_swipe_activity_surface()._set_skill_strip_committed_crossfade(true)
-			_skill_swipe_activity_surface()._hide_skill_swipe_paper_fade()
 	var outgoing_skill_id := selected_skill_id
 	if offset != 0 and outgoing_skill_id == "fishing" and _fishing_ui_surface().is_fishing_tool_wallet_open():
 		_fishing_ui_surface()._clear_fishing_tool_circle_menu()
@@ -1623,7 +1402,7 @@ func _commit_skill_swipe(offset: int) -> void:
 	if animate_commit_release:
 		_animate_skill_swipe_commit_release(offset, entry_x)
 	else:
-		_navigate_skill_page(offset, entry_x, true, false)
+		_navigate_skill_page(offset, entry_x)
 	action_card_press_key = ""
 	action_card_press_stat_kind = ""
 	action_card_press_dragged = false
@@ -1634,14 +1413,11 @@ func _commit_skill_swipe(offset: int) -> void:
 
 func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
 	if offset == 0 or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		_navigate_skill_page(offset, start_x, true, false)
+		_navigate_skill_page(offset, start_x)
 		return
-	if not skill_strip_ids.is_empty():
-		_skill_swipe_activity_surface()._set_skill_strip_committed_crossfade(false)
 	_kill_skill_swipe_tween()
 	skill_swipe_animating = true
 	skill_swipe_animation_mode = "settle"
-	_skill_swipe_activity_surface()._set_active_preview(_skill_swipe_activity_surface()._active_preview_page(), offset)
 	var swipe_surface = _skill_swipe_activity_surface()
 	var target_x := _skill_swipe_commit_release_target_x(offset)
 	skill_swipe_settle_offset = offset
@@ -1659,28 +1435,20 @@ func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
 
 
 func _skill_swipe_commit_release_span() -> float:
-	return _skill_content_width() if not skill_strip_ids.is_empty() else _skill_swipe_page_span()
+	return _skill_swipe_page_span()
 
 
 func _finish_skill_swipe_cancel_tween() -> void:
 	skill_swipe_animating = false
 	skill_swipe_animation_mode = ""
-	_restore_skill_strip_wrap_page()
-	_skill_swipe_activity_surface()._set_skill_strip_committed_crossfade(false)
 	_apply_skill_swipe_drag_offset(0.0)
-	_sync_skill_strip_page_visibility(false)
-	_skill_swipe_activity_surface()._park_skill_swipe_preview()
 
 
 func _finish_skill_swipe_commit_tween(offset: int, target_x: float) -> void:
 	skill_swipe_settle_offset = 0
 	skill_swipe_animating = false
 	skill_swipe_animation_mode = ""
-	if skill_strip_ids.is_empty():
-		_skill_swipe_activity_surface()._hold_skill_swipe_paper_fade_for_commit()
-	else:
-		_skill_swipe_activity_surface()._set_skill_strip_committed_crossfade(true)
-	_navigate_skill_page(offset, target_x, true, false)
+	_navigate_skill_page(offset, target_x)
 
 
 func _skill_swipe_commit_release_target_x(offset: int) -> float:
@@ -1707,18 +1475,12 @@ func _consume_queued_skill_swipe_navigation() -> bool:
 	if not _onboarding_runtime()._swipe_offset_accessible(offset):
 		return false
 	if _adjacent_pages().enabled() and _adjacent_pages().has_page(offset):
-		_navigate_skill_page(offset, skill_swipe_drag_offset_x, true, false)
+		_navigate_skill_page(offset, skill_swipe_drag_offset_x)
 		return true
 	_force_skill_swipe_cover_opaque_cream()
 	_skill_swipe_activity_surface()._ensure_skill_swipe_preview_page_cached(offset)
-	_navigate_skill_page(offset, signi(offset) * _skill_swipe_page_span(), true, false)
+	_navigate_skill_page(offset, signi(offset) * _skill_swipe_page_span())
 	return true
-
-
-func _discard_incoming_swipe_preview_for_animated_handoff(incoming_preview: Dictionary) -> void:
-	if incoming_preview.is_empty():
-		return
-	_discard_incoming_swipe_preview(incoming_preview)
 
 
 func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: Dictionary) -> void:
@@ -2399,13 +2161,11 @@ func _complete_skill_swipe_navigation() -> void:
 	skill_swipe_drag_offset_x = 0.0
 	_reset_skill_swipe_entry_positions()
 	_ensure_skill_swipe_frame_centered()
-	_skill_swipe_activity_surface()._reset_skill_swipe_fade_state(true)
 	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
 		if skill_swipe_pending_full_finalize:
 			skill_swipe_outgoing_cover_active = true
 		else:
 			_fade_clear_skill_swipe_cover(SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS)
-	_sync_skill_strip_page_visibility(false)
 	if current_screen == "skill":
 		_navigation_shell()._fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
 		_navigation_shell()._fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
@@ -2449,7 +2209,6 @@ func _begin_skill_swipe_incoming_entry(start_x: float) -> void:
 	_kill_skill_swipe_tween()
 	skill_swipe_animating = true
 	skill_swipe_animation_mode = "entry"
-	_skill_swipe_activity_surface()._hide_skill_swipe_paper_fade()
 	_apply_skill_swipe_drag_offset(start_x)
 	skill_swipe_tween = create_tween()
 	skill_swipe_tween.tween_method(
@@ -2680,14 +2439,11 @@ func _enable_interactive_control_tree(root: Control) -> void:
 			_enable_interactive_control_tree(child_control)
 
 
-func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, play_click := true) -> void:
+func _navigate_skill_page(offset: int, entry_x := 0.0) -> void:
 	if not _onboarding_runtime()._swipe_offset_accessible(offset):
 		return
-	if not skill_strip_ids.is_empty():
-		_navigate_skill_strip(offset, entry_x, animate_entry, play_click)
-		return
 	if offset != 0 and _adjacent_pages().enabled() and _adjacent_pages().has_page(offset):
-		_navigate_adjacent_skill_page(offset, animate_entry, play_click)
+		_navigate_adjacent_skill_page(offset)
 		return
 	var current_index := _skill_index(selected_skill_id)
 	if current_index < 0:
@@ -2701,48 +2457,33 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	if next_index < 0:
 		next_index += skill_count
 	var next_skill_id := str(skill_defs[next_index]["id"])
-	if play_click:
-		button_press_runtime.play_default_button_sfx()
-	var use_outgoing_animation := animate_entry and absf(entry_x) > 1.0
-	var use_gap_load_transition := use_outgoing_animation and SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED
-	var gap_entry_x := float(signi(offset)) * _skill_swipe_page_span() if use_gap_load_transition else 0.0
+	var use_outgoing_animation := absf(entry_x) > 1.0
+	var gap_entry_x := float(signi(offset)) * _skill_swipe_page_span() if use_outgoing_animation else 0.0
 	var incoming_preview := {}
 	if offset != 0:
 		incoming_preview = _skill_swipe_activity_surface()._extract_incoming_swipe_preview(offset)
-	_skill_swipe_activity_surface()._park_skill_swipe_preview()
 	if offset != 0 and selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
 		_onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
-	if not play_click and not animate_entry and absf(entry_x) <= 1.0:
-		_begin_skill_swipe_handoff_cover()
 	var transition_cover := _begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null
 	if use_outgoing_animation:
-		if not use_gap_load_transition:
-			_discard_incoming_swipe_preview_for_animated_handoff(incoming_preview)
-			incoming_preview = {}
 		skill_swipe_animating = true
 		skill_swipe_animation_mode = "entry"
-		if transition_cover != null and is_instance_valid(transition_cover) and not use_gap_load_transition:
-			await _fade_skill_swipe_cover_to_opaque(SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS)
-		if use_gap_load_transition:
-			_skill_swipe_activity_surface()._hide_skill_swipe_paper_fade()
 		_clear_skill_swipe_content_under_cover()
 	selected_skill_id = next_skill_id
 	current_screen = "skill"
 	var target_key: String = _navigation_shell()._skill_detail_cache_key(next_skill_id)
 	skill_swipe_gap_render_offset_x = gap_entry_x
 	await _skill_swipe_install_target_page(target_key, incoming_preview)
-	if use_gap_load_transition:
+	if use_outgoing_animation:
 		_apply_skill_swipe_drag_offset(gap_entry_x)
 		if transition_cover != null and is_instance_valid(transition_cover):
 			transition_cover.set_meta("swipe_gap_entry_reveal_allowed", true)
 	skill_swipe_gap_render_offset_x = 0.0
 	_update_ui(0.0, true)
-	if use_gap_load_transition:
-		await _wait_for_skill_swipe_gap_entry_ready(next_skill_id)
 	if use_outgoing_animation:
-		_begin_skill_swipe_incoming_entry(gap_entry_x if use_gap_load_transition else float(signi(offset)) * _skill_swipe_page_span())
-		if use_gap_load_transition:
-			call_deferred("_release_skill_swipe_gap_cover_when_ready", next_skill_id)
+		await _wait_for_skill_swipe_gap_entry_ready(next_skill_id)
+		_begin_skill_swipe_incoming_entry(gap_entry_x)
+		call_deferred("_release_skill_swipe_gap_cover_when_ready", next_skill_id)
 	else:
 		_reset_skill_swipe_entry_positions()
 		_complete_skill_swipe_navigation()
@@ -2773,14 +2514,11 @@ func _prepare_adjacent_pages_for_drag() -> void:
 ## Swipe commit onto an already-built neighbour: the frame keeps its on-screen
 ## position, the neighbour becomes the current page without a re-render, and no
 ## cover, chrome fade or resume scroll runs.
-func _navigate_adjacent_skill_page(offset: int, animate_entry: bool, play_click: bool) -> void:
+func _navigate_adjacent_skill_page(offset: int) -> void:
 	var adjacent := _adjacent_pages()
 	adjacent.finish_page_now(offset)
 	_action_runtime()._cancel_stamina_gauge_boost_for_navigation()
 	_collapse_expanded_activity_modules()
-	if play_click:
-		button_press_runtime.play_default_button_sfx()
-	_park_skill_swipe_preview()
 	_kill_skill_swipe_tween()
 	_cancel_skill_swipe_finalize_for_navigation()
 	skill_swipe_pending_resume_scroll_skill_id = ""
@@ -2794,12 +2532,11 @@ func _navigate_adjacent_skill_page(offset: int, animate_entry: bool, play_click:
 	_navigation_shell().last_rendered_screen_key = _navigation_shell()._skill_detail_cache_key(selected_skill_id)
 	_skill_detail_surface()._hold_skill_detail_layout_refresh_after_navigation()
 	_clear_page_transient_input_state()
-	_hide_skill_swipe_paper_fade()
 	_navigation_shell()._set_skill_page_switch_modules_alpha(1.0)
 	_navigation_shell()._fade_skill_swipe_module_utility_row(true, 0.0)
 	_fade_skill_shelf_backgrounds(true, 0.0)
 	skill_swipe_settle_offset = 0
-	if absf(landed_x) <= 1.0 or not animate_entry:
+	if absf(landed_x) <= 1.0:
 		_apply_skill_swipe_drag_offset(0.0)
 	elif adjacent_swap_hold_position:
 		# A finger caught the page mid-settle: it stays where it is and the new
@@ -2835,64 +2572,6 @@ func _finish_adjacent_skill_swipe_settle() -> void:
 	_apply_skill_swipe_drag_offset(0.0)
 	call_deferred("_consume_queued_skill_swipe_navigation")
 
-
-func _navigate_skill_strip(offset: int, entry_x: float, animate_entry: bool, play_click: bool) -> void:
-	var current_index := skill_strip_index
-	var skill_count := skill_strip_ids.size()
-	var new_index := (current_index + offset) % skill_count
-	if new_index < 0:
-		new_index += skill_count
-	if new_index == current_index:
-		return
-	_action_runtime()._cancel_stamina_gauge_boost_for_navigation()
-	_collapse_expanded_activity_modules()
-	if play_click:
-		button_press_runtime.play_default_button_sfx()
-	var page_width := _skill_content_width()
-	var tween_start := entry_x + float(offset) * page_width
-	skill_strip_index = new_index
-	selected_skill_id = str(skill_strip_ids[new_index])
-	current_screen = "skill"
-	_swap_skill_strip_refs(selected_skill_id)
-	_sync_skill_strip_page_visibility(true)
-	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, -1)
-	_ensure_finalized_skill_detail_presentable(selected_skill_id)
-	_skill_detail_surface()._hold_skill_detail_layout_refresh_after_navigation()
-	_clear_page_transient_input_state()
-	_update_ui(0.0, true)
-	if animate_entry and absf(entry_x) > 1.0:
-		_kill_skill_swipe_tween()
-		_restore_skill_strip_wrap_page()
-		_apply_skill_swipe_drag_offset(tween_start)
-		skill_swipe_animating = true
-		skill_swipe_animation_mode = "entry"
-		skill_swipe_tween = create_tween()
-		skill_swipe_tween.tween_method(
-			_apply_skill_swipe_drag_offset,
-			tween_start,
-			0.0,
-			SKILL_SWIPE_SETTLE_SECONDS
-		).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-		skill_swipe_tween.finished.connect(_complete_skill_swipe_navigation)
-	else:
-		_complete_skill_swipe_navigation()
-
-func _skill_swipe_paper_fade_progress(abs_x: float) -> float:
-	var t := clampf(abs_x / maxf(1.0, host.SKILL_SWIPE_PAPER_FADE_DISTANCE), 0.0, 1.0)
-	return t * t * (3.0 - 2.0 * t)
-
-func _set_skill_strip_committed_crossfade(committed: bool) -> void:
-	skill_swipe_strip_committed_crossfade = committed
-
-func _paper_fade_hold_active() -> bool:
-	return skill_swipe_paper_fade_hold_alpha >= 0.99
-
-func _reset_skill_swipe_fade_state(sync := false) -> void:
-	skill_swipe_strip_committed_crossfade = false
-	skill_swipe_paper_fade_hold_alpha = 0.0
-	if sync:
-		_sync_skill_strip_page_crossfade(0.0)
-		_sync_skill_swipe_paper_fade(0.0)
 
 func _collect_skill_shelf_backgrounds(root_node: Node, backgrounds: Array) -> void:
 	if root_node == null or not is_instance_valid(root_node):
@@ -2958,95 +2637,6 @@ func _finish_skill_shelf_background_fade(background_id: int) -> void:
 	var background: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(background_id))
 	if background != null and background.has_meta("skill_swipe_shelf_background_fade_tween"):
 		background.remove_meta("skill_swipe_shelf_background_fade_tween")
-
-func _ensure_skill_swipe_paper_fade_overlay() -> void:
-	if host.skills_page == null or not is_instance_valid(host.skills_page):
-		return
-	if skill_swipe_paper_fade_overlay != null and is_instance_valid(skill_swipe_paper_fade_overlay):
-		host._navigation_shell()._apply_skill_page_cover_bounds(skill_swipe_paper_fade_overlay, true)
-		return
-	skill_swipe_paper_fade_overlay = ColorRect.new()
-	skill_swipe_paper_fade_overlay.color = host._theme_paper_color()
-	host._navigation_shell()._apply_skill_page_cover_bounds(skill_swipe_paper_fade_overlay, true)
-	skill_swipe_paper_fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	skill_swipe_paper_fade_overlay.z_index = 0
-	skill_swipe_paper_fade_overlay.z_as_relative = false
-	skill_swipe_paper_fade_overlay.visible = false
-	host._skill_swipe_activity_surface()._ensure_skill_nav_cover_layer().add_child(skill_swipe_paper_fade_overlay)
-
-func _sync_skill_swipe_paper_fade(drag_x: float) -> void:
-	if skill_swipe_paper_fade_overlay == null or not is_instance_valid(skill_swipe_paper_fade_overlay):
-		return
-	host._navigation_shell()._apply_skill_page_cover_bounds(skill_swipe_paper_fade_overlay, true)
-	var alpha := maxf(_skill_swipe_paper_fade_progress(absf(drag_x)), skill_swipe_paper_fade_hold_alpha)
-	if alpha <= 0.01:
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(skill_swipe_paper_fade_overlay, false)
-		return
-	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(skill_swipe_paper_fade_overlay, true)
-	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(skill_swipe_paper_fade_overlay, alpha)
-
-func _hide_skill_swipe_paper_fade() -> void:
-	skill_swipe_paper_fade_hold_alpha = 0.0
-	if skill_swipe_paper_fade_overlay != null and is_instance_valid(skill_swipe_paper_fade_overlay):
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(skill_swipe_paper_fade_overlay, false)
-
-func _sync_skill_strip_page_crossfade(drag_x: float) -> void:
-	if skill_strip_ids.is_empty():
-		return
-	_hide_skill_swipe_paper_fade()
-	var count: int = skill_strip_ids.size()
-	if count <= 0 or skill_strip_index < 0:
-		return
-	var incoming_index: int = skill_strip_index
-	var progress := 0.0
-	if skill_swipe_strip_committed_crossfade and not skill_swipe_tracking:
-		progress = 0.0
-	elif absf(drag_x) > 1.0:
-		var offset := 1 if drag_x < 0.0 else -1
-		if host._onboarding_runtime()._swipe_offset_accessible(offset):
-			incoming_index = (skill_strip_index + offset) % count
-			if incoming_index < 0:
-				incoming_index += count
-			progress = _skill_swipe_paper_fade_progress(absf(drag_x))
-	for i in count:
-		var sid := str(skill_strip_ids[i])
-		var page := (skill_strip_refs.get(sid, {}) as Dictionary).get("page") as Control
-		if page == null or not is_instance_valid(page):
-			continue
-		var alpha := 1.0 if i == skill_strip_index else 0.0
-		if not skill_swipe_strip_committed_crossfade or skill_swipe_tracking:
-			if i == skill_strip_index:
-				alpha = 1.0 - progress
-			elif i == incoming_index:
-				alpha = progress
-		_set_skill_swipe_control_alpha(page, alpha)
-
-func _hold_skill_swipe_paper_fade_for_commit() -> void:
-	_hide_skill_swipe_paper_fade()
-
-func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
-	if not skill_strip_ids.is_empty():
-		_sync_skill_strip_page_crossfade(drag_x)
-		return
-	if skill_swipe_animation_mode == "entry":
-		_hide_skill_swipe_paper_fade()
-		return
-	_hide_skill_swipe_paper_fade()
-
-func _sync_skill_swipe_live_page_fade(drag_x: float) -> void:
-	if skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
-		return
-	if not skill_strip_ids.is_empty():
-		return
-	_set_skill_swipe_control_alpha(skill_swipe_page, 1.0)
-
-func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
-	var active_preview_page := _active_preview_page()
-	if active_preview_page == null:
-		return
-	active_preview_page.visible = false
-	var alpha := 1.0
-	_set_skill_swipe_control_alpha(active_preview_page, alpha)
 
 func _apply_recovery_progress_rail_shape(bar: ActivityProgressRail, action: Dictionary) -> void:
 	if bar == null or not RecoveryModules.has_recovery(action):
@@ -3139,50 +2729,11 @@ func _show_mounted_swipe_preview_modules(preview_page: Control, preview_state: D
 		preview_page.visible = true
 		preview_page.modulate = Color.WHITE
 
-func _active_preview_page() -> Control:
-	return _preview_control(preview_page)
-
-func _active_preview_offset() -> int:
-	return preview_offset
-
-func _set_active_preview(page: Control, offset: int) -> void:
-	preview_page = page
-	preview_offset = offset
-
 func _clear_light_preview_style_cache() -> void:
 	light_preview_card_style_cache.clear()
 
 func _preview_state_values() -> Array:
 	return preview_states.values()
-
-func _navigation_state() -> Dictionary:
-	return {
-		"skill_swipe_preview_page": preview_page,
-		"skill_swipe_preview_pages": preview_pages,
-		"skill_swipe_preview_states": preview_states,
-		"skill_swipe_preview_offset": preview_offset,
-	}
-
-func _apply_navigation_state(state: Dictionary) -> void:
-	preview_page = host._app_lifecycle_runtime().state_object_ref(state.get("skill_swipe_preview_page"))
-	preview_pages = state.get("skill_swipe_preview_pages", {}) as Dictionary
-	preview_states = state.get("skill_swipe_preview_states", {}) as Dictionary
-	preview_offset = int(state.get("skill_swipe_preview_offset", 0))
-
-func _update_skill_swipe_preview_states(delta: float, instant: bool) -> void:
-	for raw_offset in preview_states.keys():
-		var offset = int(raw_offset)
-		if preview_page != null and is_instance_valid(preview_page) and offset != preview_offset:
-			continue
-		_update_skill_swipe_preview_state(preview_states[offset] as Dictionary, delta, instant, false)
-
-func _skill_swipe_previews_need_frame_updates() -> bool:
-	return (
-		preview_page != null
-		and is_instance_valid(preview_page)
-		and not skill_swipe_tracking
-		and not skill_swipe_animating
-	)
 
 func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant: bool, update_cards := true) -> void:
 	if state == null:
@@ -4282,16 +3833,6 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 			host._skill_detail_surface()._discard_action_card_key(key)
 			continue
 		var skill_id := str(card.get("skill_id", ""))
-		if (
-			host.current_screen != "pinned"
-			and host.current_screen != "queue"
-			and not skill_strip_ids.is_empty()
-			and not skill_id.is_empty()
-			and skill_id != host.selected_skill_id
-			and skill_id != host.running_skill_id
-			and skill_id != temporary_events.event_running_skill_id
-		):
-			continue
 		if host.current_screen == "skill" and not _adjacent_pages().card_update_allowed(skill_id):
 			continue
 		var action_id := str(card.get("action_id", ""))
@@ -4339,8 +3880,6 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 		if not running and not static_refresh and not instant:
 			continue
 		if not running and not static_refresh and (skill_swipe_tracking or skill_swipe_animating):
-			continue
-		if not running and not static_refresh and not skill_strip_ids.is_empty() and skill_id != host.selected_skill_id:
 			continue
 		host._fighting_runtime().sync_blue_guy_chicken_brawl_stage_active(card, skill_id, action_id, running)
 		host._fighting_runtime().sync_rooster_punch_out_stage_active(card, skill_id, action_id, running)
@@ -4937,23 +4476,15 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 
 func _clear_skill_swipe_preview() -> void:
 	preview_module_reveal_token += 1
-	var active_was_cached = false
-	var active_preview = _preview_control(preview_page)
 	for raw_state in preview_states.values():
 		_free_swipe_preview_real_card_cache(raw_state as Dictionary)
 	for preview in preview_pages.values():
 		var cached_page = _preview_control(preview)
 		if cached_page == null:
 			continue
-		if active_preview != null and cached_page == active_preview:
-			active_was_cached = true
 		cached_page.queue_free()
 	preview_pages.clear()
 	preview_states.clear()
-	if not active_was_cached and active_preview != null:
-		active_preview.queue_free()
-	preview_page = null
-	preview_offset = 0
 
 func _skill_swipe_preview_rest_x(offset: int) -> float:
 	var direction := signi(offset)
@@ -4965,28 +4496,6 @@ func _skill_swipe_preview_rest_x(offset: int) -> float:
 	var preview_width: float = host._skill_swipe_frame_content_width(preview_skill_id) if not preview_skill_id.is_empty() else host._skill_swipe_frame_content_width(host.selected_skill_id)
 	return -(preview_width + host.SKILL_SWIPE_PAGE_GAP)
 
-func _set_skill_swipe_positions(offset: int, current_x: float) -> void:
-	_apply_skill_swipe_drag_offset(current_x)
-	var active_page := _active_preview_page()
-	if active_page != null:
-		active_page.position.x = _skill_swipe_preview_rest_x(offset)
-		_sync_skill_swipe_preview_page_fade(current_x)
-
-func _park_skill_swipe_preview() -> void:
-	var parked_page = _preview_control(preview_page)
-	var parked_offset = preview_offset
-	if parked_page != null and parked_offset != 0:
-		for raw_offset in preview_pages.keys():
-			if _preview_control(preview_pages[raw_offset]) == parked_page:
-				preview_pages.erase(raw_offset)
-				break
-		if preview_states.has(parked_offset):
-			_free_swipe_preview_real_card_cache(preview_states[parked_offset] as Dictionary)
-			preview_states.erase(parked_offset)
-		parked_page.queue_free()
-	preview_page = null
-	preview_offset = 0
-
 func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 	if offset == 0 or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return {}
@@ -4994,9 +4503,7 @@ func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 	if expected_id.is_empty():
 		return {}
 	var incoming_page: Control = null
-	if preview_page != null and is_instance_valid(preview_page) and preview_offset == offset:
-		incoming_page = preview_page
-	elif preview_pages.has(offset):
+	if preview_pages.has(offset):
 		incoming_page = _preview_control(preview_pages[offset])
 	if incoming_page == null or not is_instance_valid(incoming_page):
 		return {}
@@ -5018,9 +4525,6 @@ func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 	if preview_parent != null:
 		preview_parent.remove_child(incoming_page)
 	preview_pages.erase(offset)
-	if preview_page == incoming_page:
-		preview_page = null
-		preview_offset = 0
 	preview_states.erase(offset)
 	return {
 		"page": incoming_page,
@@ -5536,8 +5040,8 @@ func _cancel_skill_swipe_preview_modules_reveal(preview_state: Dictionary) -> vo
 	host._app_lifecycle_runtime()._kill_card_tween(preview_state, "reveal_tween")
 
 
-func _apply_skill_swipe_commit_release_offset(current_x: float, offset: int) -> void:
-	_set_skill_swipe_positions(offset, current_x)
+func _apply_skill_swipe_commit_release_offset(current_x: float, _offset: int) -> void:
+	_apply_skill_swipe_drag_offset(current_x)
 
 
 

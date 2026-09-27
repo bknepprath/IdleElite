@@ -131,12 +131,9 @@ const SKILL_DETAIL_ICON_Y_OFFSET := 8.0
 const SKILL_SWIPE_THRESHOLD := 230.0
 const SKILL_SWIPE_FEEDBACK_DEADZONE := 46.0
 const SKILL_SWIPE_PAGE_GAP := 480.0
-const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
 const SKILL_SWIPE_CANCEL_SECONDS := 0.14
-const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
-const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
 const SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS := 0.22
 const SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS := 0.28
@@ -841,8 +838,6 @@ func _update_ui(delta: float, instant := false) -> void:
 		_skill_detail_surface()._update_detail_header_gauges(static_refresh, skill_frame_refresh, detail_header_gauge_refresh, delta, instant)
 		if skill_frame_refresh:
 			_skill_detail_surface()._update_skill_detail_shadow(delta, instant)
-		if _skill_swipe_activity_surface()._skill_swipe_previews_need_frame_updates():
-			_skill_swipe_activity_surface()._update_skill_swipe_preview_states(delta, instant)
 	if (current_screen == "pinned" or current_screen == "queue") and (skill_frame_refresh or static_refresh or instant):
 		_navigation_shell()._sync_pinned_active_shelf(delta, instant)
 		_skill_detail_surface()._update_skill_detail_shadow(delta, instant)

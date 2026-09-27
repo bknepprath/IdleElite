@@ -114,20 +114,17 @@ Assert-True ($showSkillsModuleMatch.Groups[1].Value -match 'current_screen = "sk
 $directSkillNavCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_direct_skill_nav_cover\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($directSkillNavCoverMatch.Success) "Missing _begin_direct_skill_nav_cover body for direct skill transition contract."
 Assert-True ($directSkillNavCoverMatch.Groups[1].Value -match '_navigation_shell\(\)\._apply_skill_page_cover_bounds\(cover, true\)') "Direct skill transition cover must stop above global chat and bottom nav."
-$paperFadeMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _ensure_skill_swipe_paper_fade_overlay\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-Assert-True ($paperFadeMatch.Success) "Missing _ensure_skill_swipe_paper_fade_overlay body for swipe cover layering contract."
-Assert-True ($paperFadeMatch.Groups[1].Value -match '_navigation_shell\(\)\._apply_skill_page_cover_bounds\(skill_swipe_paper_fade_overlay, true\)') "Swipe paper fade overlay must cover bottom interactive UI."
-Assert-True ($paperFadeMatch.Groups[1].Value -match '_ensure_skill_nav_cover_layer\(\)\.add_child\(skill_swipe_paper_fade_overlay\)') "Swipe paper fade overlay must draw above bottom interactive UI."
 $globalBottomCoverMatch = [regex]::Match($navigationShell, '(?s)^func _global_chat_nav_cover_bottom_offset\(\) -> float:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($globalBottomCoverMatch.Success) "Missing _global_chat_nav_cover_bottom_offset body for global bottom UI layering contract."
 Assert-True ($globalBottomCoverMatch.Groups[1].Value -match '\[host\._profile_chat_overlay_surface\(\)\.chat_strip_control\(\), nav_bar\]') "Swipe covers must stop above global chat and bottom nav."
 $outgoingCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_skill_swipe_outgoing_cover\(\) -> Control:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($outgoingCoverMatch.Success) "Missing _begin_skill_swipe_outgoing_cover body for swipe release handoff contract."
-Assert-True ($outgoingCoverMatch.Groups[1].Value -match 'holder\.modulate = Color\(1\.0, 1\.0, 1\.0, 0\.0\) if _skill_swipe_activity_surface\(\)\._paper_fade_hold_active\(\) else Color\.WHITE') "Committed swipe release must not flash the outgoing page above the paper fade."
+Assert-True ($outgoingCoverMatch.Groups[1].Value -match 'holder\.modulate = Color\.WHITE') "Committed swipe release must show the outgoing page at full opacity under the cover."
 $incomingEntryMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_skill_swipe_incoming_entry\(start_x: float\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($incomingEntryMatch.Success) "Missing _begin_skill_swipe_incoming_entry body for directional swipe entry contract."
 Assert-True ($incomingEntryMatch.Groups[1].Value -match 'tween_method\(\s*_apply_skill_swipe_drag_offset,\s*start_x,\s*0\.0,') "Incoming skill page must slide from the swipe direction into center."
-Assert-True ($skillSwipeActivitySurface -match '_begin_skill_swipe_incoming_entry\((?:gap_entry_x if use_gap_load_transition else )?float\(signi\(offset\)\) \* _skill_swipe_page_span\(\)\)') "Normal skill swipe navigation must use a directional incoming entry."
+Assert-True ($skillSwipeActivitySurface -match '_begin_skill_swipe_incoming_entry\(gap_entry_x\)') "Normal skill swipe navigation must use a directional incoming entry."
+Assert-True ($skillSwipeActivitySurface -match 'var gap_entry_x := float\(signi\(offset\)\) \* _skill_swipe_page_span\(\) if use_outgoing_animation else 0\.0') "Normal skill swipe incoming entry must start from the swipe direction."
 Assert-True ($fishingUiSurface -match 'func _connect_fishing_button\(') "Fishing controls must share native button handling."
 Assert-True ($fishingUiSurface -notmatch 'func _route_fishing_offer_button_global_input\(') "Fishing offers must not intercept global pointer input."
 Assert-True ($fishingUiSurface -match '_connect_fishing_button\(button, _activate_fishing_offer_button.bind') "Fishing offers must activate through their native button."
