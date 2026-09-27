@@ -56,7 +56,6 @@ var cloud_save_history_request: HTTPRequest
 var cloud_save_history_fetch_request: HTTPRequest
 var profile_recovery_fetch_request: HTTPRequest
 var leaderboard_fetch_request: HTTPRequest
-var leaderboard_total_xp_fetch_request: HTTPRequest
 var leaderboard_submit_request: HTTPRequest
 var leaderboard_name_claim_request: HTTPRequest
 var leaderboard_name_recovery_request: HTTPRequest
@@ -100,6 +99,8 @@ var chat_stream_event_name := ""
 var chat_stream_event_data_lines := []
 var leaderboard_auth_in_flight := false
 var leaderboard_auth_mode := ""
+var leaderboard_single_score_queue: Array = []
+var leaderboard_single_score_published := 0
 var leaderboard_auth_id_token := ""
 var leaderboard_auth_refresh_token := ""
 var leaderboard_auth_expires_unix := 0
@@ -454,13 +455,6 @@ func _capture_current_profile_as_legacy_name_hint() -> void:
 		leaderboard_legacy_name_hint_key = name_key
 
 
-func _local_save_has_player_progress() -> bool:
-	if not _save_restore_complete():
-		return false
-	var payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
-	return SaveStateNormalizers.progress_evidence_score(payload, app.skill_defs) > 0
-
-
 func _legacy_authless_google_transition_eligible() -> bool:
 	if leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required:
 		return IdentitySafety.is_local_placeholder_player_id(leaderboard_legacy_authless_old_uid)
@@ -472,10 +466,13 @@ func _legacy_authless_google_transition_eligible() -> bool:
 	)
 	if not base_identity_is_authless:
 		return false
+	# Legacy authless builds could only publish scores under a claimed name, so a
+	# placeholder id with progress but no claim has nothing on the server to
+	# recover. Treating it as legacy locked every fresh install out of the
+	# leaderboard (and web players, who have no Google path, permanently).
 	return (
 		LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS)
 		or _legacy_name_hint_valid()
-		or _local_save_has_player_progress()
 	)
 
 
@@ -519,6 +516,10 @@ func prepare_profile_recovery_on_open() -> void:
 	ensure_leaderboard_http()
 	if not _save_restore_complete() or leaderboard_name_transfer_required:
 		return
+	if _anonymous_legacy_authless_transition_allowed():
+		app.leaderboard_state.status_message = "Moving this legacy profile to a secure login..."
+		_leaderboard_ensure_auth()
+		return
 	if not leaderboard_auth_recovery_required and LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
 		profile_recovery_lookup_gate = false
 		return
@@ -553,6 +554,13 @@ func _identity_has_prior_binding() -> bool:
 
 func _anonymous_signup_allowed() -> bool:
 	return not _identity_has_prior_binding() and not leaderboard_auth_recovery_required and not legacy_authless_google_transition_required()
+
+
+# Platforms without Google sign-in (the web build) still need a way off a legacy
+# authless id. They get a fresh anonymous uid and the same support-approved name
+# transfer that the Google path uses.
+func _anonymous_legacy_authless_transition_allowed() -> bool:
+	return OS.get_name() != "Android" and legacy_authless_google_transition_required() and not leaderboard_auth_recovery_required
 
 
 func _set_auth_recovery_required(reason: String, definitive_failure_code := "") -> void:
@@ -636,10 +644,6 @@ func _build_leaderboard_http() -> void:
 	leaderboard_fetch_request.timeout = 15.0
 	leaderboard_fetch_request.request_completed.connect(_on_leaderboard_fetch_completed)
 	add_child(leaderboard_fetch_request)
-	leaderboard_total_xp_fetch_request = HTTPRequest.new()
-	leaderboard_total_xp_fetch_request.timeout = 15.0
-	leaderboard_total_xp_fetch_request.request_completed.connect(_on_leaderboard_total_xp_fetch_completed)
-	add_child(leaderboard_total_xp_fetch_request)
 	leaderboard_submit_request = HTTPRequest.new()
 	leaderboard_submit_request.timeout = 15.0
 	leaderboard_submit_request.request_completed.connect(_on_leaderboard_submit_completed)
@@ -958,12 +962,13 @@ func _leaderboard_ensure_auth() -> bool:
 		if err == OK:
 			return false
 	else:
-		if not _anonymous_signup_allowed():
+		var anonymous_legacy_transition := _anonymous_legacy_authless_transition_allowed()
+		if not _anonymous_signup_allowed() and not anonymous_legacy_transition:
 			leaderboard_auth_in_flight = false
 			leaderboard_auth_mode = ""
 			_set_auth_recovery_required("The previous online login is missing.")
 			return false
-		leaderboard_auth_mode = "sign_up"
+		leaderboard_auth_mode = "anonymous_legacy_authless_transition" if anonymous_legacy_transition else "sign_up"
 		app.leaderboard_state.status_message = "Creating leaderboard login..."
 		var err = leaderboard_auth_request.request(
 			FIREBASE_AUTH_SIGN_UP_URL % api_key.uri_encode(),
@@ -1238,7 +1243,7 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 			uid_transition_allowed = IdentitySafety.recovery_refresh_response_matches_binding(local_id, expected_uid, current_uid)
 		"google_fresh_sign_in":
 			uid_transition_allowed = _anonymous_signup_allowed() and IdentitySafety.is_local_placeholder_player_id(current_uid)
-		"google_legacy_authless_transition":
+		"google_legacy_authless_transition", "anonymous_legacy_authless_transition":
 			var legacy_transition_already_started: bool = leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required
 			var legacy_source_uid: String = leaderboard_legacy_authless_old_uid if legacy_transition_already_started else current_uid
 			uid_transition_allowed = _legacy_authless_google_transition_eligible() and local_id != legacy_source_uid
@@ -1259,7 +1264,7 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		_record_auth_diagnostic("uid_transition_blocked", "%s:%s" % [mode, _auth_uid_fingerprint(local_id)])
 		_set_auth_recovery_required("Online login returned a different account id.")
 		return false
-	var legacy_authless_transition: bool = mode == "google_legacy_authless_transition"
+	var legacy_authless_transition: bool = mode in ["google_legacy_authless_transition", "anonymous_legacy_authless_transition"]
 	var deleted_auth_transition: bool = mode == "google_deleted_auth_transition"
 	var protected_identity_transition: bool = legacy_authless_transition or deleted_auth_transition
 	var fresh_google_identity: bool = mode in ["google_fresh_sign_in", "google_sign_in", "google_legacy_authless_transition", "google_deleted_auth_transition"] and current_uid != local_id
@@ -1344,7 +1349,9 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 	if protected_identity_transition:
 		# Persist the preserved source id and pending-transfer marker atomically
 		# with the Google UID before any server profile operation is allowed.
-		app._save_runtime().allow_next_identity_transition_save(current_uid, local_id)
+		# The web build has no Google sign-in; its legacy transfer binds an
+		# anonymous account instead, and the capability is scoped to exactly that.
+		app._save_runtime().allow_next_identity_transition_save(current_uid, local_id, "anonymous" if mode == "anonymous_legacy_authless_transition" else "google")
 		if not _save_identity_state("deleted account Google transition" if deleted_auth_transition else "legacy authless Google transition"):
 			leaderboard_auth_id_token = str(previous_auth_state.get("id_token", ""))
 			leaderboard_auth_refresh_token = str(previous_auth_state.get("refresh_token", ""))
@@ -2032,7 +2039,7 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh = fal
 	var last_fetch = maxi(last_success_fetch, last_failed_fetch)
 	if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:
 		return
-	if leaderboard_state.fetch_in_flight or leaderboard_state.total_xp_fetch_in_flight:
+	if leaderboard_state.fetch_in_flight:
 		return
 	leaderboard_state.fetch_in_flight = true
 	leaderboard_state.fetch_category_id = valid_id
@@ -2049,20 +2056,8 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh = fal
 		leaderboard_state.fetch_category_id = ""
 		_leaderboard_note_fetch_failure(valid_id, "Leaderboard read failed: %s" % error_string(err))
 func _leaderboard_finalize_fetch_rows(category_id: String, rows: Array) -> void:
-	var leaderboard_state = app.leaderboard_state
-	if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL:
-		leaderboard_state.pending_total_rows = rows
-		var query = "orderBy=%%22score%%22&limitToLast=%s" % LeaderboardState.TOP_COUNT
-		leaderboard_state.total_xp_fetch_in_flight = true
-		var err = leaderboard_total_xp_fetch_request.request(
-			_leaderboard_firebase_url("scores/%s" % LeaderboardState.CATEGORY_TOTAL_XP_COMPAT, query),
-			PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
-			HTTPClient.METHOD_GET
-		)
-		if err == OK:
-			return
-		leaderboard_state.total_xp_fetch_in_flight = false
-		leaderboard_state.pending_total_rows = []
+	# Total-level rows already carry total_xp for tie-breaking, so no second read
+	# of the retired total_xp category is needed (the rules deny it anyway).
 	_leaderboard_store_fetch_rows(category_id, rows)
 func _leaderboard_store_fetch_rows(category_id: String, rows: Array) -> void:
 	var leaderboard_state = app.leaderboard_state
@@ -2089,27 +2084,6 @@ func _leaderboard_store_fetch_rows(category_id: String, rows: Array) -> void:
 	leaderboard_state.status_message = "Leaderboard loaded."
 	if app.current_screen == "leaderboard" and category_id == leaderboard_state.category_id:
 		app.leaderboard_presentation._refresh_if_visible()
-
-func _on_leaderboard_total_xp_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	var leaderboard_state = app.leaderboard_state
-	leaderboard_state.total_xp_fetch_in_flight = false
-	var rows = leaderboard_state.pending_total_rows
-	leaderboard_state.pending_total_rows = []
-	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
-		var parsed = _parse_json_silent(body.get_string_from_utf8())
-		var xp_by_player = {}
-		if typeof(parsed) == TYPE_DICTIONARY:
-			for raw_player_id in (parsed as Dictionary).keys():
-				var entry = (parsed as Dictionary).get(raw_player_id, {})
-				if typeof(entry) == TYPE_DICTIONARY:
-					xp_by_player[str(raw_player_id)] = maxi(0, int((entry as Dictionary).get("score", 0)))
-		for i in range(rows.size()):
-			var row = rows[i] as Dictionary
-			if int(row.get("total_xp", 0)) <= 0:
-				row["total_xp"] = int(xp_by_player.get(str(row.get("player_id", "")), 0))
-			row["score_text"] = LeaderboardPresentation.format_score(LeaderboardState.CATEGORY_TOTAL_LEVEL, int(row.get("score", 0)), 0, int(row.get("total_xp", 0)), LeaderboardState.CATEGORY_TOTAL_LEVEL, LeaderboardState.CATEGORY_MEDALS, LeaderboardState.CATEGORY_ELITE_HEAVENLY, LeaderboardState.CATEGORY_SKILL_PREFIX, Callable(leaderboard_state, "skill_level_from_total_xp"))
-			rows[i] = row
-	_leaderboard_store_fetch_rows(LeaderboardState.CATEGORY_TOTAL_LEVEL, rows)
 
 func _leaderboard_submit_scores() -> void:
 	if app.god_mode_save_tainted:
@@ -2191,6 +2165,65 @@ func _leaderboard_submit_scores() -> void:
 		app.leaderboard_state.pending_repair_publish_version = 0
 		_leaderboard_note_submit_failure("Leaderboard write failed: %s" % error_string(err))
 
+func _leaderboard_start_single_score_writes() -> void:
+	leaderboard_single_score_queue.clear()
+	var categories: Array = app.leaderboard_state.last_submit_payload_categories.duplicate()
+	var paths: Array = app.leaderboard_state.pending_score_updates.keys()
+	for index in range(mini(categories.size(), paths.size())):
+		leaderboard_single_score_queue.append({"category_id": str(categories[index]), "path": str(paths[index])})
+	leaderboard_single_score_published = 0
+	_leaderboard_send_next_single_score()
+
+
+func _leaderboard_send_next_single_score() -> void:
+	if leaderboard_single_score_queue.is_empty():
+		leaderboard_submit_in_flight = false
+		leaderboard_submit_stage = ""
+		app.leaderboard_state.last_submit_unix = app._unix_now()
+		app.leaderboard_state.last_submit_payload_categories.clear()
+		app.leaderboard_state.pending_score_updates.clear()
+		app.leaderboard_state.pending_repair_publish_version = 0
+		app.leaderboard_state.status_message = "Leaderboard published." if leaderboard_single_score_published > 0 else "Leaderboard already has higher scores for this account."
+		app.save_game()
+		return
+	var entry: Dictionary = leaderboard_single_score_queue.front()
+	var path := str(entry.get("path", ""))
+	leaderboard_submit_in_flight = true
+	leaderboard_submit_stage = "scores_single"
+	var err = leaderboard_submit_request.request(
+		_leaderboard_firebase_url("", _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PATCH,
+		JSON.stringify({path: app.leaderboard_state.pending_score_updates.get(path, {})})
+	)
+	if err != OK:
+		leaderboard_submit_in_flight = false
+		leaderboard_single_score_queue.clear()
+		_leaderboard_note_submit_failure("Leaderboard score write failed: %s" % error_string(err))
+
+
+func _on_leaderboard_single_score_completed(result: int, response_code: int) -> void:
+	var entry: Dictionary = leaderboard_single_score_queue.pop_front() if not leaderboard_single_score_queue.is_empty() else {}
+	if result != HTTPRequest.RESULT_SUCCESS:
+		leaderboard_submit_in_flight = false
+		leaderboard_single_score_queue.clear()
+		_leaderboard_note_submit_failure("Leaderboard write failed.")
+		return
+	var leaderboard_state = app.leaderboard_state
+	var category_id = leaderboard_state.valid_category_id(str(entry.get("category_id", "")))
+	var attempted := int((app.leaderboard_state.pending_score_updates.get(str(entry.get("path", "")), {}) as Dictionary).get("score", 0))
+	if response_code >= 200 and response_code < 300:
+		leaderboard_single_score_published += 1
+		leaderboard_state.last_submitted_scores_by_category[category_id] = leaderboard_state.score_for_category(category_id)
+	elif response_code == 401 or response_code == 403:
+		# The server already holds a higher value for this category. Hold this
+		# category until the local score passes the rejected value.
+		leaderboard_state.last_submitted_scores_by_category[category_id] = maxi(attempted, int(leaderboard_state.last_submitted_scores_by_category.get(category_id, 0)))
+	if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL:
+		leaderboard_state.last_submitted_total_xp = leaderboard_state.score()
+	_leaderboard_send_next_single_score()
+
+
 func _process_leaderboard_sync(delta: float) -> void:
 	var leaderboard_state = app.leaderboard_state
 	leaderboard_state.process_seconds += delta
@@ -2266,7 +2299,8 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	if typeof(parsed) != TYPE_DICTIONARY:
 		_leaderboard_note_auth_failure("Online login returned invalid JSON.")
 		return
-	if not _apply_firebase_auth_response(parsed as Dictionary, "anonymous" if mode == "sign_up" else str(leaderboard_auth_provider), mode):
+	var response_provider := "anonymous" if mode in ["sign_up", "anonymous_legacy_authless_transition"] else str(leaderboard_auth_provider)
+	if not _apply_firebase_auth_response(parsed as Dictionary, response_provider, mode):
 		return
 	if not google_auth_pending_id_token.is_empty():
 		var resume_intent := google_auth_exchange_intent
@@ -2743,6 +2777,9 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 		app.leaderboard_state.pending_score_updates.clear()
 		_leaderboard_note_submit_failure("Leaderboard score write failed: %s" % error_string(err))
 		return
+	if stage == "scores_single":
+		_on_leaderboard_single_score_completed(result, response_code)
+		return
 	leaderboard_submit_in_flight = false
 	leaderboard_submit_stage = ""
 	if result != HTTPRequest.RESULT_SUCCESS:
@@ -2751,8 +2788,12 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 	if response_code < 200 or response_code >= 300:
 		var detail = _firebase_error_detail(body)
 		if response_code == 401 or response_code == 403:
-			leaderboard_auth_id_token = ""
-			leaderboard_auth_expires_unix = 0
+			# The write gate just accepted this token, so a denial here is a rules
+			# validation failure (a category below its stored best), not a login
+			# problem. Retry category by category so one stale value cannot freeze
+			# every other category.
+			_leaderboard_start_single_score_writes()
+			return
 		if not detail.is_empty():
 			_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s: %s" % [response_code, detail])
 		else:

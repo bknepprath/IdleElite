@@ -64,8 +64,10 @@ Assert-True ($runtime -match 'leaderboard_deleted_auth_transition_pending') "Del
 Assert-True ($runtime -match 'func account_recovery_code\(\) -> String:' -and $runtime -match 'T-%s S-%s' -and $runtime -match '_auth_uid_fingerprint\(target_uid\)' -and $runtime -match '_auth_uid_fingerprint\(source_uid\)') "Pending transfers must expose only stable target/source UID fingerprints as a support code."
 Assert-True ($runtime -match 'leaderboard_legacy_authless_old_uid' -and $runtime -match 'leaderboard_name_transfer_required') "Legacy transitions must persist the old UID and pending username-transfer state."
 Assert-True ($runtime -match 'leaderboard_legacy_username_recovery_required' -and $runtime -match 'leaderboard_legacy_name_hint_key') "Wiped legacy profiles must preserve either an untrusted name hint or an explicit support-recovery state."
-Assert-True ($runtime -match 'SaveStateNormalizers\.progress_evidence_score\(payload, app\.skill_defs\) > 0') "A no-hint authless transition must require real local gameplay evidence instead of treating every fresh placeholder as legacy."
-Assert-True ($runtime -match 'allow_next_identity_transition_save\(current_uid, local_id\)' -and $runtime -match 'cancel_next_identity_transition_save\(\)') "The established UID change must use and cancel the exact one-shot save identity-transition hook."
+$legacyEligibleBlock = [regex]::Match($runtime, '(?s)func _legacy_authless_google_transition_eligible\(\).*?(?=?
+func )').Value
+Assert-True ($legacyEligibleBlock -notmatch 'progress_evidence_score|_local_save_has_player_progress') "Gameplay progress alone must not mark a fresh placeholder as a legacy account that needs Google."
+Assert-True ($runtime -match 'allow_next_identity_transition_save\(current_uid, local_id[,)]' -and $runtime -match 'cancel_next_identity_transition_save\(\)') "The established UID change must use and cancel the exact one-shot save identity-transition hook."
 Assert-True ($runtime -match 'func complete_legacy_name_transfer\(\)' -and $runtime -match '_attempt_leaderboard_name_recovery\(\)') "Username transfer must require a separate explicit player action."
 Assert-True ($runtime -match 'name_recovery_gates/%s') "Every legacy username recovery request must include the ticket-enforcing recovery gate in its atomic update."
 Assert-True ($runtime -match 'and not leaderboard_name_transfer_required') "Cloud save must remain blocked while a legacy username transfer is pending."

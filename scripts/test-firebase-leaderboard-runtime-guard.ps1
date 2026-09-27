@@ -136,6 +136,34 @@ func _init() -> void:
 	_expect(game.leaderboard_profile.player_id == "firebaseUidOriginal123", "Rejected Google recovery must preserve the saved player UID.")
 	_expect(game.leaderboard_profile.display_name == "Validation Player", "Rejected Google recovery must preserve the username.")
 	_expect(online.leaderboard_auth_refresh_token == "recovered-refresh-token", "Rejected Google recovery must not install the wrong account refresh token.")
+	# A category the server already holds higher must not block the others.
+	var medals_path := "scores/medals_earned/firebaseUidOriginal123"
+	var total_path := "scores/total_level/firebaseUidOriginal123"
+	game.leaderboard_state.last_submitted_scores_by_category.clear()
+	game.leaderboard_state.pending_score_updates = {medals_path: {"score": 7}, total_path: {"score": 40}}
+	online.leaderboard_single_score_queue = [{"category_id": LeaderboardState.CATEGORY_MEDALS, "path": medals_path}]
+	online.leaderboard_submit_in_flight = true
+	online.leaderboard_auth_id_token = "live-id-token"
+	online.call("_on_leaderboard_single_score_completed", HTTPRequest.RESULT_SUCCESS, 401)
+	_expect(int(game.leaderboard_state.last_submitted_scores_by_category.get(LeaderboardState.CATEGORY_MEDALS, 0)) == 7, "A denied category should wait until the local score passes the rejected value.")
+	_expect(not online.leaderboard_submit_in_flight and online.leaderboard_submit_stage == "", "Finishing the per-category queue must release the submit slot.")
+	_expect(online.leaderboard_auth_id_token == "live-id-token", "A per-category validation denial must not clear the login token.")
+	online.leaderboard_single_score_queue.clear()
+	online.leaderboard_submit_in_flight = false
+	# Gameplay progress alone must not turn a fresh placeholder into a legacy account.
+	game.leaderboard_profile.player_id = "p0123456789abcdef0123456789abcdef"
+	game.leaderboard_profile.display_name = "guest1234"
+	game.leaderboard_profile.name_key = ""
+	game.leaderboard_profile.profile_claimed = false
+	game.leaderboard_profile.name_claim_verified = false
+	online.leaderboard_auth_bound_uid = ""
+	online.leaderboard_auth_refresh_token = ""
+	online.leaderboard_auth_provider = ""
+	online.leaderboard_auth_recovery_required = false
+	online.leaderboard_legacy_name_hint_display = ""
+	online.leaderboard_legacy_name_hint_key = ""
+	_expect(not online.call("legacy_authless_google_transition_required"), "A fresh install with progress must not be treated as a legacy account.")
+	_expect(online.call("_anonymous_signup_allowed"), "A fresh install with progress must be allowed to create an anonymous login.")
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")
@@ -160,8 +188,11 @@ func _expect_leaderboard_requests_idle(game: Node, context: String) -> void:
 	_expect(not online.cloud_save_upload_in_flight, "%s should not start a cloud save write." % context)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-    & $runner --headless --path $projectRoot --script $testScript
+    $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
+    $output | ForEach-Object { Write-Host $_ }
     if ($LASTEXITCODE -ne 0) { throw "Firebase runtime guard failed with exit code $LASTEXITCODE." }
+    # The safe runner does not always propagate quit(1); require the success line.
+    if (($output | Out-String) -notmatch "firebase-runtime-guard-ok") { throw "Firebase runtime guard did not report success." }
 
     $headless = @(Get-HeadlessGodotProcesses | Where-Object { $baselineHeadlessProcessIds -notcontains $_.ProcessId })
     if ($headless.Count -gt 0) {
