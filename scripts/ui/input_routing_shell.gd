@@ -1484,6 +1484,8 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 	if navigation_shell.page_switch_press_active and (event is InputEventMouseMotion or event is InputEventScreenDrag):
 		if event_position.distance_to(navigation_shell.page_switch_press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 			navigation_shell.page_switch_press_dragged = true
+			if _handoff_page_switch_drag_to_skill_swipe(event, event_position):
+				return true
 		var active_motion_button = navigation_shell._active_page_switch_button()
 		if active_motion_button != null:
 			navigation_shell._on_page_switch_button_gui_input(event, navigation_shell.page_switch_press_target_skill_id, active_motion_button)
@@ -1518,6 +1520,29 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 	navigation_shell._on_page_switch_button_gui_input(event, target_skill_id, button)
 	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
 	host._skill_detail_surface().action_card_press_key = ""
+	return true
+
+
+# On short pages the skill switcher tiles sit mid-screen, so swipes often start
+# on them. A sideways drag that begins on a tile is a page swipe, not a tap:
+# release the tile and hand the gesture to skill swipe from the original press.
+func _handoff_page_switch_drag_to_skill_swipe(event: InputEvent, event_position: Vector2) -> bool:
+	var navigation_shell = host._navigation_shell()
+	var press_position: Vector2 = navigation_shell.page_switch_press_position
+	var delta := event_position - press_position
+	if absf(delta.x) <= absf(delta.y):
+		return false
+	var active_button = navigation_shell._active_page_switch_button()
+	if active_button != null:
+		navigation_shell._clear_page_switch_button_press_state(active_button)
+		navigation_shell._release_page_switch_button_shell(active_button)
+		navigation_shell._suppress_page_switch_pressed_signal(active_button)
+	navigation_shell._clear_page_switch_press_state()
+	var swipe = host._skill_swipe_activity_surface()
+	var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
+	swipe._begin_skill_swipe_tracking(press_position, touch_index)
+	if swipe.skill_swipe_tracking:
+		swipe._update_skill_swipe_feedback(event_position)
 	return true
 
 
