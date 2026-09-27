@@ -258,6 +258,18 @@ func render_page() -> void:
 	reset.add_theme_stylebox_override("hover", host._paper_button_style(Color("#ff6b6b"), 24))
 	reset.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#ef5656"), 24, 36, true))
 	_register_reset_button(reset, "Hard Reset")
+	if OS.has_feature("web"):
+		# Browsers can drop site storage, and the web build has no cloud save.
+		var transfer_row := HBoxContainer.new()
+		transfer_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		transfer_row.add_theme_constant_override("separation", 20)
+		var export_button := settings_page_button("Export Save", "", 320, 64, 88)
+		export_button.pressed.connect(_settings_export_save_pressed)
+		transfer_row.add_child(export_button)
+		var import_button := settings_page_button("Import Save", "", 320, 64, 88)
+		import_button.pressed.connect(_settings_import_save_pressed.bind(import_button))
+		transfer_row.add_child(import_button)
+		action_stack.add_child(transfer_row)
 	action_stack.add_child(reset)
 	action_stack.add_child(discord)
 	stack.add_child(action_stack)
@@ -1289,3 +1301,18 @@ func settings_page_button(text: String, icon_path := "", min_width := 450, icon_
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(label)
 	return button
+
+
+func _settings_export_save_pressed() -> void:
+	var text: String = host._save_runtime().export_save_text()
+	if text.is_empty():
+		return
+	host._save_runtime().web_storage_guard.download_text("idle-elite-save-%s.json" % Time.get_date_string_from_system(), text)
+
+
+func _settings_import_save_pressed(button: Button) -> void:
+	host._save_runtime().web_storage_guard.request_import(func(text: String):
+		var error: String = host._save_runtime().import_save_text(text)
+		if not error.is_empty() and is_instance_valid(button):
+			button.text = error
+	)

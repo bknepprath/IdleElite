@@ -1923,6 +1923,11 @@ func _process_cloud_save_sync() -> void:
 func _cloud_save_payload_should_replace_local(remote_payload: Dictionary) -> bool:
 	var local_payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
 	var comparison_payload: Dictionary = IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
+	# A hard reset on another device bumps save_reset_generation. That may pick
+	# between local files, but it must never let a cloud copy silently discard
+	# progress this device has and the cloud copy lacks.
+	if SaveStateNormalizers.payload_regresses_game_progress(local_payload, comparison_payload, app.skill_defs):
+		return false
 	return SaveRuntime.should_replace_best_save(local_payload, comparison_payload, app.skill_defs)
 
 

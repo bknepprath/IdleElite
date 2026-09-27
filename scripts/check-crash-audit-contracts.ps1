@@ -189,7 +189,8 @@ $rootBackupPaths = @(
     "idle_elite_save.backup.json",
     "idle_elite_save.backup-2.json",
     "idle_elite_save.backup-3.json",
-    "idle_elite_save.recovery.json"
+    "idle_elite_save.recovery.json",
+    "idle_elite_save.journal.json"
 )
 $nestedCompatibilityBackupPaths = @(
     "app_userdata/Idle Elite/idle_elite_save.json",
@@ -197,7 +198,8 @@ $nestedCompatibilityBackupPaths = @(
     "app_userdata/Idle Elite/idle_elite_save.backup.json",
     "app_userdata/Idle Elite/idle_elite_save.backup-2.json",
     "app_userdata/Idle Elite/idle_elite_save.backup-3.json",
-    "app_userdata/Idle Elite/idle_elite_save.recovery.json"
+    "app_userdata/Idle Elite/idle_elite_save.recovery.json",
+    "app_userdata/Idle Elite/idle_elite_save.journal.json"
 )
 $expectedBackupPaths = @($rootBackupPaths + $nestedCompatibilityBackupPaths)
 $legacyBackupIncludes = @($backupRulesXml.'full-backup-content'.include)

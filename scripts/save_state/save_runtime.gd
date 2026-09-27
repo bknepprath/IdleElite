@@ -15,6 +15,7 @@ const FishingState = preload("res://scripts/fishing/state.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const ActionRuntime = preload("res://scripts/gameplay/action_runtime.gd")
+const WebStorageGuard = preload("res://scripts/save_state/web_storage_guard.gd")
 
 const SAVE_PATH := "user://idle_elite_save.json"
 const SAVE_TEMP_PATH := "user://idle_elite_save.tmp.json"
@@ -25,6 +26,8 @@ const SAVE_RECOVERY_SNAPSHOT_PATH := "user://idle_elite_save.recovery.json"
 const SAVE_JOURNAL_PATH := "user://idle_elite_save.journal.json"
 const SAVE_JOURNAL_TEMP_PATH := "user://idle_elite_save.journal.tmp.json"
 const SAVE_JOURNAL_MAX_EVENTS := 32
+# Minimum content age before backup tiers 1-3 are refreshed: ~1 minute, 1 hour, 1 day.
+const SAVE_BACKUP_MIN_AGE_SECONDS := [60, 3600, 86400]
 const SAVE_ENVELOPE_VERSION := 1
 const SAVE_SCHEMA_VERSION := 2
 const SAVE_PROFILE_DISPLAY_NAME_MAX_CHARS := 16
@@ -54,6 +57,7 @@ var save_repair_generation := 0
 var save_revision := 0
 var save_writes_blocked := false
 var save_writes_blocked_reason := ""
+var web_storage_guard := WebStorageGuard.new()
 var pending_post_load_saved_at := -1
 var pending_save_restore_data := {}
 var pending_save_has_achievement_toast_seen_ids := false
@@ -72,6 +76,8 @@ static func read_text(path: String) -> String:
 
 
 static func write_text(path: String, text: String) -> bool:
+	if WebStorageGuard.writes_disabled:
+		return false
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return false
@@ -83,6 +89,8 @@ static func write_text(path: String, text: String) -> bool:
 
 
 static func write_bytes(path: String, bytes: PackedByteArray) -> bool:
+	if WebStorageGuard.writes_disabled:
+		return false
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return false
@@ -254,18 +262,24 @@ static func append_save_journal_event(event_name: String, details := {}) -> void
 static func _remove_file_if_present(path: String) -> bool:
 	if not FileAccess.file_exists(path):
 		return true
+	if WebStorageGuard.writes_disabled:
+		return false
 	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
 
 
 static func _replace_with_staged_file(staging_path: String, destination_path: String) -> bool:
-	if not FileAccess.file_exists(staging_path):
+	if not FileAccess.file_exists(staging_path) or WebStorageGuard.writes_disabled:
 		return false
+	var staging_absolute := ProjectSettings.globalize_path(staging_path)
+	var destination_absolute := ProjectSettings.globalize_path(destination_path)
+	# Rename over the destination so there is never a moment with no file at the
+	# destination. POSIX rename (Android/Linux) and the web filesystem replace
+	# atomically; remove-then-rename is only a fallback for hosts that refuse.
+	if DirAccess.rename_absolute(staging_absolute, destination_absolute) == OK:
+		return true
 	if not _remove_file_if_present(destination_path):
 		return false
-	return DirAccess.rename_absolute(
-		ProjectSettings.globalize_path(staging_path),
-		ProjectSettings.globalize_path(destination_path)
-	) == OK
+	return DirAccess.rename_absolute(staging_absolute, destination_absolute) == OK
 
 
 static func copy_valid_save(source_path: String, destination_path: String, staging_path := "") -> bool:
@@ -292,18 +306,6 @@ static func copy_valid_save(source_path: String, destination_path: String, stagi
 		str(destination_result.get("error", "")).is_empty()
 		and str(destination_result.get("raw", "")) == source_text
 	)
-
-
-static func rotate_valid_save(source_path: String, destination_path: String) -> bool:
-	if not FileAccess.file_exists(source_path):
-		return true
-	var source_result := load_dictionary_result(source_path)
-	if not str(source_result.get("error", "")).is_empty():
-		append_save_journal_event("backup_rotation", {"source": source_path, "result": "source_invalid", "rotation": destination_path.get_file()})
-		return true
-	var copied := copy_valid_save(source_path, destination_path, destination_path + ".rotating")
-	append_save_journal_event("backup_rotation", {"source": source_path, "result": "ok" if copied else "failed", "rotation": destination_path.get_file()})
-	return copied
 
 
 static func quarantine_invalid_save(path: String) -> bool:
@@ -344,7 +346,8 @@ static func write_payload_atomically(
 	temp_path: String,
 	backup_path: String,
 	backup_2_path := "",
-	backup_3_path := ""
+	backup_3_path := "",
+	backup_min_age_seconds: Array = SAVE_BACKUP_MIN_AGE_SECONDS
 ) -> bool:
 	var resolved_backup_2_path := backup_2_path if not backup_2_path.is_empty() else backup_path + ".2"
 	var resolved_backup_3_path := backup_3_path if not backup_3_path.is_empty() else backup_path + ".3"
@@ -357,27 +360,20 @@ static func write_payload_atomically(
 	if not str(temp_result.get("error", "")).is_empty() or str(temp_result.get("raw", "")) != payload_text:
 		append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "temp_verify", "revision": revision})
 		return false
+	var primary_moved_to_backup := false
 	if FileAccess.file_exists(save_path):
 		var existing_result := load_dictionary_result(save_path)
 		if not str(existing_result.get("error", "")).is_empty():
 			quarantine_invalid_save(save_path)
 			append_save_journal_event("write_result", {"source": save_path, "result": "blocked", "stage": "primary_verify", "revision": revision})
 			return false
-		if not rotate_valid_save(resolved_backup_2_path, resolved_backup_3_path):
-			append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "backup_3", "revision": revision})
+		var rotation := _rotate_backup_tiers(save_path, [backup_path, resolved_backup_2_path, resolved_backup_3_path], backup_min_age_seconds)
+		if not bool(rotation.get("ok", false)):
+			append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": str(rotation.get("stage", "backup")), "revision": revision})
 			return false
-		if not rotate_valid_save(backup_path, resolved_backup_2_path):
-			append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "backup_2", "revision": revision})
-			return false
-		if not copy_valid_save(save_path, backup_path, backup_path + ".rotating"):
-			append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "backup_1", "revision": revision})
-			return false
-	if FileAccess.file_exists(save_path):
-		if not _remove_file_if_present(save_path):
-			append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "primary_remove", "revision": revision})
-			return false
+		primary_moved_to_backup = bool(rotation.get("primary_moved", false))
 	if not _replace_with_staged_file(temp_path, save_path):
-		if FileAccess.file_exists(backup_path):
+		if primary_moved_to_backup and not FileAccess.file_exists(save_path):
 			copy_valid_save(backup_path, save_path, save_path + ".restoring")
 		append_save_journal_event("write_result", {"source": save_path, "result": "failed", "stage": "primary_promote", "revision": revision})
 		return false
@@ -390,6 +386,37 @@ static func write_payload_atomically(
 		return false
 	append_save_journal_event("write_result", {"source": save_path, "result": "ok", "stage": "complete", "revision": revision, "schema": int(payload.get("save_schema_version", 0))})
 	return true
+
+
+# Backups are age tiers, not a copy chain. Each tier is only refreshed once its
+# content is older than that tier's minimum age, and refreshing is a rename of the
+# next-newer file. A single interrupted write can therefore touch at most the
+# newest copies; the hour-old and day-old copies stay untouched on disk.
+static func _rotate_backup_tiers(save_path: String, tiers: Array, min_age_seconds: Array) -> Dictionary:
+	var now := int(Time.get_unix_time_from_system())
+	var primary_moved := false
+	for index in range(tiers.size() - 1, -1, -1):
+		var destination := str(tiers[index])
+		var source := save_path if index == 0 else str(tiers[index - 1])
+		if not FileAccess.file_exists(source):
+			continue
+		if FileAccess.file_exists(destination):
+			var min_age := int(min_age_seconds[index]) if index < min_age_seconds.size() else 0
+			var age := now - int(FileAccess.get_modified_time(destination))
+			# A negative age means the clock moved backwards; refresh rather than
+			# freezing the tier until the clock catches up.
+			if age >= 0 and age < min_age:
+				continue
+		if not str(load_dictionary_result(source).get("error", "")).is_empty():
+			append_save_journal_event("backup_rotation", {"source": source, "result": "source_invalid", "rotation": destination.get_file()})
+			continue
+		if not _replace_with_staged_file(source, destination):
+			append_save_journal_event("backup_rotation", {"source": source, "result": "failed", "rotation": destination.get_file()})
+			return {"ok": false, "stage": "backup_%s" % (index + 1)}
+		append_save_journal_event("backup_rotation", {"source": source, "result": "ok", "rotation": destination.get_file()})
+		if index == 0:
+			primary_moved = true
+	return {"ok": true, "primary_moved": primary_moved}
 
 
 static func best_dictionary_from_paths(paths: Array, skill_defs: Array, action_id_aliases := {}) -> Dictionary:
@@ -939,6 +966,18 @@ func _save_total_skill_xp_evidence(data: Dictionary) -> int:
 
 
 
+func _save_for_hidden_web_page() -> void:
+	# Mobile browsers may discard a hidden tab without further notice.
+	if host.save_restore_complete and not save_writes_blocked:
+		save_game()
+
+
+func _stop_writes_for_other_web_tab() -> void:
+	save_writes_blocked = true
+	save_writes_blocked_reason = "another browser tab owns this save"
+	host.get_tree().paused = true
+
+
 func _sync_web_userfs_after_save() -> void:
 	if not OS.has_feature("web"):
 		return
@@ -1243,6 +1282,7 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 		parts.append("offline XP and mastery at %s%%" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)))
 	host.last_result = ", ".join(parts) + "."
 func load_game() -> void:
+	web_storage_guard.setup(_save_for_hidden_web_page, _stop_writes_for_other_web_tab)
 	host.loaded_save_this_boot = false
 	host.save_restore_complete = false
 	save_writes_blocked = false
@@ -1651,6 +1691,79 @@ func boot_recovery_status_text() -> String:
 	if _any_local_save_file_exists():
 		return SAVE_RECOVERY_BLOCK_MESSAGE
 	return SAVE_STORAGE_BLOCK_MESSAGE
+
+
+const SAVE_IMPORT_STAGING_PATH := "user://idle_elite_import.staging.json"
+
+
+func export_save_text() -> String:
+	for path in [SAVE_PATH, SAVE_BACKUP_PATH, SAVE_BACKUP_2_PATH, SAVE_BACKUP_3_PATH]:
+		var result := load_dictionary_result(path)
+		if str(result.get("error", "")).is_empty():
+			return str(result.get("raw", ""))
+	return ""
+
+
+# Replaces the current save with an exported file the player chose. The current
+# files are archived first, so an import can always be undone by support.
+func import_save_text(text: String) -> String:
+	if not write_text(SAVE_IMPORT_STAGING_PATH, text):
+		return "Could not read that save file."
+	var result := load_dictionary_result(SAVE_IMPORT_STAGING_PATH)
+	var error := str(result.get("error", ""))
+	if error == "future_schema":
+		_remove_file_if_present(SAVE_IMPORT_STAGING_PATH)
+		return "That save is from a newer version of Idle Elite."
+	if not error.is_empty():
+		_remove_file_if_present(SAVE_IMPORT_STAGING_PATH)
+		return "That file is not a valid Idle Elite save."
+	if not archive_local_saves_for_fresh_start():
+		return "Could not archive the current save."
+	if not _replace_with_staged_file(SAVE_IMPORT_STAGING_PATH, SAVE_PATH):
+		return "Could not install the imported save."
+	append_save_journal_event("import", {"result": "ok", "revision": int((result.get("data", {}) as Dictionary).get("save_revision", 0))})
+	_sync_web_userfs_after_save()
+	host.get_tree().reload_current_scene()
+	return ""
+
+
+func boot_recovery_can_start_fresh() -> bool:
+	# A save from a newer app version is intact; the fix is updating, not a reset.
+	return save_writes_blocked and _any_local_save_file_exists() and save_writes_blocked_reason != "a newer app version is required"
+
+
+func support_save_export_text() -> String:
+	var lines := ["Idle Elite save export", "reason: %s" % save_writes_blocked_reason]
+	for path in _local_save_paths() + [SAVE_JOURNAL_PATH]:
+		if not FileAccess.file_exists(path):
+			continue
+		lines.append("== %s ==" % str(path).get_file())
+		lines.append(read_text(path))
+	return "
+".join(lines)
+
+
+# Moves every local save file into a timestamped archive folder so a blocked boot
+# can start a new game without destroying anything support might still recover.
+func archive_local_saves_for_fresh_start() -> bool:
+	var archive_dir := "user://save-archive-%s" % int(Time.get_unix_time_from_system())
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(archive_dir)) != OK:
+		return false
+	var user_dir := DirAccess.open("user://")
+	if user_dir == null:
+		return false
+	var moved_any := false
+	for file_name in user_dir.get_files():
+		if not str(file_name).begins_with("idle_elite_save."):
+			continue
+		var source := ProjectSettings.globalize_path("user://%s" % file_name)
+		var destination := ProjectSettings.globalize_path("%s/%s" % [archive_dir, file_name])
+		if DirAccess.rename_absolute(source, destination) != OK:
+			append_save_journal_event("fresh_start_archive", {"source": str(file_name), "result": "failed"})
+			return false
+		moved_any = true
+	append_save_journal_event("fresh_start_archive", {"source": archive_dir, "result": "ok" if moved_any else "empty"})
+	return not _any_local_save_file_exists()
 
 
 func _migrate_save_to_current_schema(data: Dictionary) -> Dictionary:

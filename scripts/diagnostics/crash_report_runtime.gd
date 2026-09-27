@@ -7,6 +7,7 @@ const MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT := 80
 const CRASH_SESSION_HEARTBEAT_SECONDS := 15.0
 const ANDROID_LIFECYCLE_EVENTS := ["create", "start", "restart", "resume", "pause", "stop", "destroy"]
 const ANDROID_CLEAN_LIFECYCLE_EVENTS := ["pause", "stop", "destroy"]
+const WebStorageGuard = preload("res://scripts/save_state/web_storage_guard.gd")
 
 var host
 var pending_crash_report_text := ""
@@ -60,6 +61,8 @@ func delete_pending_crash_report() -> void:
 	var absolute_path := ProjectSettings.globalize_path(PENDING_CRASH_REPORT_PATH)
 	if absolute_path.is_empty():
 		return
+	if WebStorageGuard.writes_disabled:
+		return
 	var err := DirAccess.remove_absolute(absolute_path)
 	if err != OK and err != ERR_FILE_NOT_FOUND:
 		push_warning("Could not clear pending crash report: %s" % error_string(err))
@@ -74,6 +77,8 @@ func process_session_heartbeat(delta: float) -> void:
 
 
 func write_session_marker(status: String) -> void:
+	if WebStorageGuard.writes_disabled:
+		return
 	var file := FileAccess.open(CRASH_SESSION_MARKER_PATH, FileAccess.WRITE)
 	if file == null:
 		return
@@ -219,6 +224,8 @@ static func previous_session_report_metadata(marker_status: String, previous_lif
 
 func store_pending_crash_report_text() -> void:
 	if pending_crash_report_text.is_empty():
+		return
+	if WebStorageGuard.writes_disabled:
 		return
 	var file := FileAccess.open(PENDING_CRASH_REPORT_PATH, FileAccess.WRITE)
 	if file != null:
