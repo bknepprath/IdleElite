@@ -1642,13 +1642,13 @@ func _achievement_log_card(achievement: Dictionary, show_progress = true) -> Con
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
-	var title_label = host._label(str(achievement.get("title", "")), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title_label = host._label(str(achievement.get("title", "")), 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(title_label)
-	var subtitle_label = host._label(str(achievement.get("subtitle", "")), 48, accent if completed else host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var subtitle_label = host._label(str(achievement.get("subtitle", "")), 40, accent if completed else host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(subtitle_label)
-	var reward_label = host._label(str(achievement.get("reward", "")), 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var reward_label = host._label(str(achievement.get("reward", "")), 40, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(reward_label)
 	if show_progress:

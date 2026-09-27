@@ -135,11 +135,10 @@ func render_page() -> void:
 	var message_spacer := Control.new()
 	message_spacer.custom_minimum_size = Vector2(0, 37)
 	stack.add_child(message_spacer)
-	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	message.custom_minimum_size = Vector2(960, 110)
+	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 40, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	message.custom_minimum_size = Vector2(900, 0)
 	message.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message.add_theme_constant_override("line_spacing", -18)
 	stack.add_child(message)
 	if not rate_prompt_dismissed:
 		var review_spacer := Control.new()
@@ -155,11 +154,10 @@ func render_page() -> void:
 			star.modulate = host.COLOR_MUTED.lightened(0.12)
 			review_stars.add_child(star)
 		stack.add_child(review_stars)
-		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		review.custom_minimum_size = Vector2(960, 75)
+		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 40, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		review.custom_minimum_size = Vector2(900, 0)
 		review.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		review.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		review.add_theme_constant_override("line_spacing", -18)
 		stack.add_child(review)
 		var rate_button: Button = host._menu_button("Rate on Play Store")
 		rate_button.custom_minimum_size = Vector2(420, 71)

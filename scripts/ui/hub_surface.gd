@@ -913,26 +913,37 @@ func _hub_tutorial_tip_control() -> Control:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(center)
 
+	# A dark card keeps the tip readable over busy hub art and decor.
+	var card := PanelContainer.new()
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = Color(0.08, 0.1, 0.14, 0.88)
+	card_style.set_corner_radius_all(32)
+	card_style.content_margin_left = 44
+	card_style.content_margin_right = 44
+	card_style.content_margin_top = 34
+	card_style.content_margin_bottom = 38
+	card.add_theme_stylebox_override("panel", card_style)
+	center.add_child(card)
+
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.custom_minimum_size = Vector2(1040, 0)
-	stack.add_theme_constant_override("separation", 23)
+	stack.custom_minimum_size = Vector2(860, 0)
+	stack.add_theme_constant_override("separation", 18)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(stack)
+	card.add_child(stack)
 
 	var title := _label(HUB_TUTORIAL_TITLE, 63, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 23)
+	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
 
-	var body := _label(HUB_TUTORIAL_BODY, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var body := _label(HUB_TUTORIAL_BODY, 44, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_theme_color_override("font_outline_color", COLOR_INK)
-	body.add_theme_constant_override("outline_size", 19)
-	body.add_theme_constant_override("line_spacing", 15)
+	body.add_theme_constant_override("line_spacing", 8)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return root

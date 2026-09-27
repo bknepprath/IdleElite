@@ -21,6 +21,8 @@ This project uses Godot and the machine can overheat if too many instances run a
 ## Mobile UI Readability
 
 - Phone-visible text must be readable in a 1080px-wide portrait screenshot without zooming: body text at least 48px, help/status body text at least 52px, and titles at least 60px. If it does not fit, enlarge the container or shorten the copy; check wrapping and overlap in the rendered screenshot.
+- Exception (owner request, 2026-09-27): the open chat overlay deliberately uses 30-40px text (`CHAT_*_FONT_SIZE` in `profile_chat_overlay_surface.gd`) to sit close to the 32px chat strip. Do not raise it back to 48px.
+- Verify layout changes with `.\scripts\capture-screen-audit.ps1`, which captures every main screen at 1080x1920 from a sandboxed copy of the desktop save.
 
 ## Android Rendering Safety
 

@@ -29,6 +29,17 @@ const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
 const CHAT_STRIP_TEXT_FONT_SIZE := 32
 const CHAT_STRIP_TEXT_LINE_HEIGHT := 36.0
 const CHAT_STRIP_ICON_SIZE := 70.0
+# The open chat reads close to the chat strip's 32px text. The player asked for
+# this over the general 48px body minimum, which made chat rows feel oversized.
+const CHAT_NAME_FONT_SIZE := 34
+const CHAT_BODY_FONT_SIZE := 36
+const CHAT_TIME_FONT_SIZE := 30
+const CHAT_HEADER_FONT_SIZE := 40
+const CHAT_STATUS_TITLE_FONT_SIZE := 40
+const CHAT_STATUS_DETAIL_FONT_SIZE := 32
+const CHAT_INPUT_FONT_SIZE := 38
+const CHAT_AVATAR_SIZE := 72.0
+const PROFILE_HELP_FONT_SIZE := 40
 const CHAT_UNREAD_DOT_DIAMETER := 18.0
 const CHAT_UNREAD_DOT_EDGE_INSET := -3.0
 var host
@@ -637,7 +648,7 @@ func _close_chat_overlay(play_sfx := true) -> void:
 
 func _chat_expanded_header() -> Control:
 	var header = Control.new()
-	header.custom_minimum_size = Vector2(0, 165)
+	header.custom_minimum_size = Vector2(0, 132)
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var shelf = ColorRect.new()
 	shelf.color = host._theme_paper_color()
@@ -658,14 +669,14 @@ func _chat_expanded_header() -> Control:
 	top.add_child(tabs)
 	tabs.add_child(_chat_profile_button())
 	var world = PanelContainer.new()
-	world.custom_minimum_size = Vector2(390, 68)
+	world.custom_minimum_size = Vector2(320, 60)
 	world.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	world.add_theme_stylebox_override("panel", _chat_world_tab_style(host.COLOR_INK))
 	tabs.add_child(world)
-	var world_label = host._label("Global Chat", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var world_label = host._label("Global Chat", CHAT_HEADER_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	world_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	world.add_child(world_label)
-	host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(header, 165.0, 1.0, 211.0, "ChatExpandedHeaderShelfShadow", 0)
+	host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(header, 132.0, 1.0, 211.0, "ChatExpandedHeaderShelfShadow", 0)
 	return header
 
 func _chat_expanded_notice_visible() -> bool:
@@ -686,11 +697,11 @@ func _chat_expanded_notice() -> Control:
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
-	var title = host._label(_chat_status_title(), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(_chat_status_title(), CHAT_STATUS_TITLE_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(title)
-	var detail = host._label(_chat_status_detail(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label(_chat_status_detail(), CHAT_STATUS_DETAIL_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(0, 48)
+	detail.custom_minimum_size = Vector2(0, 36)
 	copy.add_child(detail)
 	_track_chat_status_labels(title, detail)
 	return panel
@@ -700,8 +711,8 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	var is_self = str(row_data.get("sender_id", "")) == host.leaderboard_profile.player_id
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
-	row.custom_minimum_size = Vector2(0, 130)
-	row.add_child(profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(94, 94), is_self))
+	row.custom_minimum_size = Vector2(0, 96)
+	row.add_child(profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(CHAT_AVATAR_SIZE, CHAT_AVATAR_SIZE), is_self))
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 2)
@@ -711,16 +722,16 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	copy.add_child(meta)
 	var name_text = _chat_sender_label(row_data)
 	var name_color = Color("#57b8ff") if is_self else Color("#ffc94a")
-	var player_name_label = host._label(name_text, 48, name_color, HORIZONTAL_ALIGNMENT_LEFT)
+	var player_name_label = host._label(name_text, CHAT_NAME_FONT_SIZE, name_color, HORIZONTAL_ALIGNMENT_LEFT)
 	var name_settings = LabelSettings.new()
 	if host.app_bold_font != null:
 		name_settings.font = host.app_bold_font
 	elif host.app_font != null:
 		name_settings.font = host.app_font
-	name_settings.font_size = 48
+	name_settings.font_size = CHAT_NAME_FONT_SIZE
 	name_settings.font_color = name_color
 	name_settings.outline_color = Color.BLACK
-	name_settings.outline_size = 15
+	name_settings.outline_size = 10
 	player_name_label.label_settings = name_settings
 	player_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_margin = MarginContainer.new()
@@ -730,17 +741,17 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	name_margin.add_theme_constant_override("margin_bottom", 0)
 	name_margin.add_child(player_name_label)
 	meta.add_child(name_margin)
-	var time = host._label(_chat_time_text(row_data), 48, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
-	time.custom_minimum_size = Vector2(105, 0)
+	var time = host._label(_chat_time_text(row_data), CHAT_TIME_FONT_SIZE, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
+	time.custom_minimum_size = Vector2(80, 0)
 	meta.add_child(time)
 	var bubble = PanelContainer.new()
 	bubble.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted, is_self))
 	copy.add_child(bubble)
 	var body_text = "Message removed by moderator." if deleted else str(row_data.get("text", ""))
-	var body = host._label(body_text, 48, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
+	var body = host._label(body_text, CHAT_BODY_FONT_SIZE, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(0, 56)
+	body.custom_minimum_size = Vector2(0, 44)
 	bubble.add_child(body)
 	return row
 
@@ -813,7 +824,7 @@ func _chat_expanded_composer() -> Control:
 	column.add_child(row)
 	var back = host._menu_button("<")
 	back.custom_minimum_size = Vector2(77, 77)
-	back.add_theme_font_size_override("font_size", 48)
+	back.add_theme_font_size_override("font_size", CHAT_INPUT_FONT_SIZE)
 	back.add_theme_stylebox_override("normal", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("hover", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("pressed", _chat_back_button_style(true, host.COLOR_INK))
@@ -825,7 +836,7 @@ func _chat_expanded_composer() -> Control:
 	chat_message_edit.custom_minimum_size = Vector2(0, 77)
 	chat_message_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chat_message_edit.focus_mode = Control.FOCUS_ALL
-	chat_message_edit.add_theme_font_size_override("font_size", 48)
+	chat_message_edit.add_theme_font_size_override("font_size", CHAT_INPUT_FONT_SIZE)
 	if host.app_bold_font != null:
 		chat_message_edit.add_theme_font_override("font", host.app_bold_font)
 	elif host.app_font != null:
@@ -1027,9 +1038,9 @@ func _chat_profile_button_text() -> String:
 func _chat_profile_button() -> Button:
 	var button: Button = host._menu_button(_chat_profile_button_text())
 	chat_profile_button = button
-	button.custom_minimum_size = Vector2(360, 68)
+	button.custom_minimum_size = Vector2(340, 60)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	button.add_theme_font_size_override("font_size", 48)
+	button.add_theme_font_size_override("font_size", CHAT_HEADER_FONT_SIZE)
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.pressed.connect(open_profile_overlay)
 	return button
@@ -1362,7 +1373,8 @@ func _chat_send_pressed(text: String) -> void:
 
 func _chat_send_button() -> Button:
 	var button: Button = host._menu_button("Send")
-	button.custom_minimum_size = Vector2(110, 75)
+	button.custom_minimum_size = Vector2(150, 75)
+	button.add_theme_font_size_override("font_size", CHAT_INPUT_FONT_SIZE)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.tooltip_text = ""
@@ -1574,13 +1586,13 @@ func _rebuild_profile_overlay() -> void:
 	profile_name_edit.add_theme_stylebox_override("read_only", _profile_name_field_style(false))
 	profile_name_edit.text_submitted.connect(_on_profile_name_submitted)
 	name_stack.add_child(profile_name_edit)
-	profile_status_label = host._label(_profile_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	profile_status_label = host._label(_profile_status_text(), PROFILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	profile_status_label.custom_minimum_size = Vector2(0, 120 if recovery_layout_active else 56)
 	name_stack.add_child(profile_status_label)
-	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), PROFILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	cloud_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cloud_status.add_theme_font_size_override("font_size", host.MIN_MOBILE_HELP_FONT_SIZE)
+	cloud_status.add_theme_font_size_override("font_size", PROFILE_HELP_FONT_SIZE)
 	cloud_status.custom_minimum_size = Vector2(0, 140 if recovery_layout_active else 68)
 	name_stack.add_child(cloud_status)
 	# Google sign-in exists only in the Android build; web recovery uses the

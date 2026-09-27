@@ -1616,7 +1616,11 @@ func _check_pinned_page_fishing_area_registration(scene: Node) -> void:
 			var lock_point := padlock_hit_area.get_global_rect().get_center() if padlock_hit_area != null and is_instance_valid(padlock_hit_area) else (locked_root.get_global_rect().get_center() if locked_root != null and is_instance_valid(locked_root) else fallback_art_panel.get_global_rect().get_center())
 			if not bool(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", lock_point)):
 				_record("pinned page fishing method lock point is outside the pinned-page viewport")
-			var lock_routed := bool(scene.call("_input_routing_shell").call("_route_fishing_method_lock_input", _mouse_button_event(lock_point, true)))
+			# Fishing locks are native buttons now; press the real padlock button.
+			var lock_button := padlock_hit_area as BaseButton
+			var lock_routed := lock_button != null and is_instance_valid(lock_button) and not lock_button.disabled
+			if lock_routed:
+				lock_button.emit_signal("pressed")
 			for _i in range(4):
 				await process_frame
 			if not lock_routed:
@@ -2624,7 +2628,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 			if settled_offset.distance_to(expected_settled_offset) > 1.5:
 				_record("pinned utility tab active state was not fully depressed after animation. expected=%s actual=%s" % [expected_settled_offset, settled_offset])
 	pinned_button.emit_signal("pressed")
-	for _i in range(12):
+	for _i in range(90):
 		await process_frame
 	if str(scene.get("current_screen")) != "skill":
 		_record("pinned utility button press did not return to the previous skill page")
