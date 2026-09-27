@@ -1399,10 +1399,6 @@ var _on_detail_actions_user_scroll_direction:
 	get: return host._on_detail_actions_user_scroll_direction
 	set(value): host._on_detail_actions_user_scroll_direction = value
 
-var a:
-	get: return host.a
-	set(value): host.a = value
-
 var ACTION_CARD_FACE_BORDER_ENABLED:
 	get: return host.ACTION_CARD_FACE_BORDER_ENABLED
 	set(value): host.ACTION_CARD_FACE_BORDER_ENABLED = value
@@ -1418,10 +1414,6 @@ var action_card_keys:
 var action_cards:
 	get: return host.action_cards
 	set(value): host.action_cards = value
-
-var activity_start:
-	get: return host.activity_start
-	set(value): host.activity_start = value
 
 var boot_detail_card_yield:
 	get: return host.boot_detail_card_yield
@@ -1439,22 +1431,6 @@ var boot_detail_scroll_locked:
 	get: return host.boot_detail_scroll_locked
 	set(value): host.boot_detail_scroll_locked = value
 
-var buildable_module_overlay:
-	get: return host.buildable_module_overlay
-	set(value): host.buildable_module_overlay = value
-
-var cached:
-	get: return host.cached
-	set(value): host.cached = value
-
-var children:
-	get: return host.children
-	set(value): host.children = value
-
-var cleared:
-	get: return host.cleared
-	set(value): host.cleared = value
-
 var COLOR_INK:
 	get: return host.COLOR_INK
 	set(value): host.COLOR_INK = value
@@ -1462,10 +1438,6 @@ var COLOR_INK:
 var COLOR_MUTED:
 	get: return host.COLOR_MUTED
 	set(value): host.COLOR_MUTED = value
-
-var context:
-	get: return host.context
-	set(value): host.context = value
 
 var content_scroll:
 	get: return host.content_scroll
@@ -1524,47 +1496,7 @@ var detail_xp_label: Label
 var detail_header_gauge_refresh_elapsed := 0.0
 var passive_card_progress_refresh_elapsed := 0.0
 
-var done:
-	get: return host.done
-	set(value): host.done = value
 
-var fade:
-	get: return host.fade
-	set(value): host.fade = value
-
-var fallback:
-	get: return host.fallback
-	set(value): host.fallback = value
-
-var fish_circle:
-	get: return host.fish_circle
-	set(value): host.fish_circle = value
-
-
-var keys:
-	get: return host.keys
-	set(value): host.keys = value
-
-
-var lock:
-	get: return host.lock
-	set(value): host.lock = value
-
-var missing_page:
-	get: return host.missing_page
-	set(value): host.missing_page = value
-
-var missing_scroll:
-	get: return host.missing_scroll
-	set(value): host.missing_scroll = value
-
-var missing_stack:
-	get: return host.missing_stack
-	set(value): host.missing_stack = value
-
-var mobile_scroll_container:
-	get: return host.mobile_scroll_container
-	set(value): host.mobile_scroll_container = value
 
 var MODULE_LIST_TRANSITION_MIN_MOVE:
 	get: return host.MODULE_LIST_TRANSITION_MIN_MOVE
@@ -1582,10 +1514,6 @@ var MODULE_LIST_TRANSITION_SECONDS:
 	get: return host.MODULE_LIST_TRANSITION_SECONDS
 	set(value): host.MODULE_LIST_TRANSITION_SECONDS = value
 
-var module_ui:
-	get: return host.module_ui
-	set(value): host.module_ui = value
-
 var module_ui_animating_collapse_key := ""
 var module_ui_pending_pin_scroll_anchor := {}
 var module_ui_pin_scroll_anchor_debug := ""
@@ -1597,38 +1525,10 @@ var onboarding_fight_stamina_revealed:
 	set(value): host._onboarding_runtime().onboarding_fight_stamina_revealed = value
 
 
-var phase:
-	get: return host.phase
-	set(value): host.phase = value
-
-
-var regen_circle:
-	get: return host.regen_circle
-	set(value): host.regen_circle = value
-
-var replace_stack_failed:
-	get: return host.replace_stack_failed
-	set(value): host.replace_stack_failed = value
-
-var resolved:
-	get: return host.resolved
-	set(value): host.resolved = value
-
-var s:
-	get: return host.s
-	set(value): host.s = value
-
-var scripts:
-	get: return host.scripts
-	set(value): host.scripts = value
 
 var selected_skill_id:
 	get: return host.selected_skill_id
 	set(value): host.selected_skill_id = value
-
-var skill:
-	get: return host.skill
-	set(value): host.skill = value
 
 var SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT:
 	get: return host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT
@@ -1709,10 +1609,6 @@ func _skill_detail_shelf_gradient_bottom_color(skill_id: String) -> Color:
 	return _skill_detail_shelf_color(skill_id).lerp(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.22), 0.18)
 
 
-var skill_swipe:
-	get: return host.skill_swipe
-	set(value): host.skill_swipe = value
-
 var skill_swipe_defer_initial_lazy_mount:
 	get: return host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount
 	set(value): host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount = value
@@ -1761,29 +1657,9 @@ var skills_content:
 	get: return host.skills_content
 	set(value): host.skills_content = value
 
-var slots:
-	get: return host.slots
-	set(value): host.slots = value
-
-var slots_failed:
-	get: return host.slots_failed
-	set(value): host.slots_failed = value
-
 var stamina_gauge_tip_seen:
 	get: return host._onboarding_runtime().stamina_gauge_tip_seen
 	set(value): host._onboarding_runtime().stamina_gauge_tip_seen = value
-
-var track:
-	get: return host.track
-	set(value): host.track = value
-
-var ui:
-	get: return host.ui
-	set(value): host.ui = value
-
-var us:
-	get: return host.us
-	set(value): host.us = value
 
 
 

@@ -4633,31 +4633,6 @@ func _draw_rounded_rect_row(full_rect: Rect2, row_rect: Rect2, radius: float, co
 	draw_rect(Rect2(Vector2(left, row_rect.position.y), Vector2(clipped_width, row_rect.size.y + 0.75)), color)
 
 
-func _draw_alpha_rounded_rect(rect: Rect2, radius: float, color: Color, s: float) -> void:
-	var row_height := maxf(1.0, s)
-	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
-	var y := rect.position.y
-	while y < rect.end.y:
-		var next_y := minf(rect.end.y, y + row_height)
-		var mid_y := (y + next_y) * 0.5
-		var left := rect.position.x
-		var right := rect.end.x
-		if mid_y < rect.position.y + r:
-			var dy_top := rect.position.y + r - mid_y
-			var inset_top := r - sqrt(maxf(0.0, r * r - dy_top * dy_top))
-			left += inset_top
-			right -= inset_top
-		elif mid_y > rect.end.y - r:
-			var dy_bottom := mid_y - (rect.end.y - r)
-			var inset_bottom := r - sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom))
-			left += inset_bottom
-			right -= inset_bottom
-		var clipped_width := maxf(0.0, right - left)
-		if clipped_width > 0.5:
-			draw_rect(Rect2(Vector2(left, y), Vector2(clipped_width, next_y - y)), color)
-		y = next_y
-
-
 func _draw_local_health(center: Vector2, width: float, pct: float, color: Color, s: float) -> void:
 	var rect := Rect2(center - Vector2(width * 0.5, 13.0 * s), Vector2(width, 26.0 * s))
 	draw_round_rect(rect, 13.0 * s, INK)

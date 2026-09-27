@@ -51,15 +51,6 @@ static func restored_from_save(value: Variant, action_lookup: Callable, action_k
 			restored[canonical_key] = true
 	return restored
 
-static func _valid_built_modules(built_modules: Dictionary, action_lookup: Callable) -> Dictionary:
-	var valid := {}
-	for raw_key in built_modules.keys():
-		var module_key := str(raw_key)
-		var action := action_from_key(module_key, action_lookup)
-		if bool(built_modules.get(raw_key, false)) and not action.is_empty() and is_buildable(action):
-			valid[module_key] = true
-	return valid
-
 static func _canonical_key(saved_key: String, action: Dictionary, action_key: Callable) -> String:
 	if not action_key.is_valid():
 		return saved_key

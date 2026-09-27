@@ -232,13 +232,6 @@ func _fit_font_size(font: Font, label_text: String, desired_size: int, minimum_s
 		fitted -= 2
 	return fitted
 
-func _draw_stroked_text_centered(font: Font, label_text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
-	var text_size := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var text_position := Vector2(center.x - text_size.x * 0.5, baseline)
-	draw_string_outline(font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
-	draw_string(font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
-
 func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suffix_text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
 	var main_size := font.get_string_size(main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var main_baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5

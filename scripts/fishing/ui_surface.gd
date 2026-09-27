@@ -938,6 +938,8 @@ func _fishing_detail_visible_culled_count() -> int:
 
 
 func _reset_fishing_detail_render_cull_cache() -> void:
+	if fishing_detail_visible_culled_count_cache == 0 and int(fishing_detail_render_cull_counts_cache.get("rendered", -1)) == 0 and int(fishing_detail_render_cull_counts_cache.get("culled", -1)) == 0:
+		return
 	fishing_detail_render_cull_counts_cache = {"rendered": 0, "culled": 0}
 	fishing_detail_visible_culled_count_cache = 0
 

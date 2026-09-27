@@ -1516,9 +1516,6 @@ func _hub_module_positions_for_save() -> Dictionary:
 func _restore_hub_module_positions(raw_positions: Variant, pre_migration_layout := false) -> void:
 	_hub_runtime().restore_module_positions(raw_positions, pre_migration_layout)
 
-func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:
-	return _hub_runtime().normalized_module_positions(raw_positions)
-
 func _validate_hub_module_positions() -> void:
 	_hub_runtime().validate_module_positions()
 

@@ -5,8 +5,6 @@ const ActivityQueueRuntime = preload("res://scripts/activity_queue/runtime.gd")
 const ActivityDataCatalog = preload("res://scripts/activity_data/catalog.gd")
 const AudioDirector = preload("res://scripts/audio/audio_director.gd")
 const OnboardingRuntime = preload("res://scripts/tutorial/onboarding_runtime.gd")
-const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
-const AchievementState = preload("res://scripts/achievements/state.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
 const FightingRuntime = preload("res://scripts/gameplay/fighting_runtime.gd")
@@ -34,9 +32,7 @@ const SettingsSurface = preload("res://scripts/ui/settings_surface.gd")
 const ShopSurface = preload("res://scripts/ui/shop_surface.gd")
 const CrashReportRuntime = preload("res://scripts/diagnostics/crash_report_runtime.gd")
 const OnlineRuntime = preload("res://scripts/online/online_runtime.gd")
-const GameFormatting = preload("res://scripts/core/formatting.gd")
 const VisualTextureCache = preload("res://scripts/core/visual_texture_cache.gd")
-const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const SaveRuntime = preload("res://scripts/save_state/save_runtime.gd")
@@ -46,7 +42,6 @@ const ThievingState = preload("res://scripts/thieving/state.gd")
 const ThievingSurface = preload("res://scripts/thieving/surface.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
-const FishCircle = preload("res://scripts/ui/fish_circle.gd")
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const AchievementOverlaySurface = preload("res://scripts/ui/achievement_overlay_surface.gd")
@@ -226,7 +221,6 @@ const MODULE_LIST_TRANSITION_MIN_MOVE := 2.0
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
-const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const ACTION_PROGRESS_RAIL_INSET := 0
 const ACTION_PROGRESS_RAIL_HEIGHT := 44
 
@@ -520,9 +514,17 @@ var boot_detail_completion_token := 0
 var boot_detail_scroll_locked := false
 var shutdown_cleanup_started := false
 var startup_initialized := false
+# Process tracing switches, read once in _ready instead of every frame.
+var trace_process_slow_enabled := false
+var trace_process_threshold_us := 2000
+var trace_process_skill_filter := ""
+var action_stop_hold_circle: StopHoldCircle
 var app_resume_repair_pending := false
 var web_fishing_perf_probe_enabled := false
 func _ready() -> void:
+	trace_process_slow_enabled = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	trace_process_threshold_us = 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
+	trace_process_skill_filter = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
 	_fishing_ui_surface()._load_fishing_debug_env_flags()
 	visual_texture_cache.fishing_ablation_enabled = Callable(_fishing_ui_surface(), "_fishing_ablation_enabled")
 	_performance_runtime()._configure_performance_mode()
@@ -602,10 +604,8 @@ func _skill_swipe_loading_transition_active() -> bool:
 func _process(delta: float) -> void:
 	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
-	var trace_process := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
-	var trace_process_threshold_us := 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
-	var trace_process_skill := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
-	if trace_process and not trace_process_skill.is_empty() and selected_skill_id != trace_process_skill:
+	var trace_process := trace_process_slow_enabled
+	if trace_process and not trace_process_skill_filter.is_empty() and selected_skill_id != trace_process_skill_filter:
 		trace_process = false
 	var trace_start_usec := Time.get_ticks_usec() if trace_process else 0
 	var trace_last_usec := trace_start_usec
@@ -700,6 +700,8 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	_input_routing_shell().input(event)
 func _action_stop_hold() -> StopHoldCircle:
+	if action_stop_hold_circle != null and is_instance_valid(action_stop_hold_circle) and not action_stop_hold_circle.is_queued_for_deletion() and action_stop_hold_circle.is_inside_tree():
+		return action_stop_hold_circle
 	var layer := get_node_or_null("ActionStopHoldLayer") as CanvasLayer
 	if layer == null:
 		layer = CanvasLayer.new()
@@ -714,6 +716,7 @@ func _action_stop_hold() -> StopHoldCircle:
 		layer.add_child(circle)
 	else:
 		circle.setup(self)
+	action_stop_hold_circle = circle
 	return circle
 func _notification(what: int) -> void:
 	_app_lifecycle_runtime().handle_notification(what)
@@ -789,8 +792,8 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, _skill_detail_surface().DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
-	var trace_static_refresh := static_refresh and OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
-	var trace_static_threshold_us := 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
+	var trace_static_refresh := static_refresh and trace_process_slow_enabled
+	var trace_static_threshold_us := trace_process_threshold_us
 	var trace_static_start := Time.get_ticks_usec() if trace_static_refresh else 0
 	var trace_static_last := trace_static_start
 	var trace_static_shell_us := 0

@@ -827,9 +827,6 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($mainScript.Contains('var loaded_seen = data.get("achievement_toast_seen_ids", {})')) {
         Add-Finding $errors 'scripts/main.gd still restores raw achievement_toast_seen_ids instead of _normalized_achievement_toast_seen_ids().'
     }
-    if ($mainScript.Contains('hub_module_positions.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:')) {
-        Add-Finding $errors 'scripts/main.gd restores hub_module_positions inline instead of HubSurface._normalized_hub_module_positions().'
-    }
     if ($mainScript.Contains('hub_decor_layout.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:')) {
         Add-Finding $errors 'scripts/main.gd restores hub_decor_layout inline instead of HubSurface._normalized_hub_decor_layout().'
     }

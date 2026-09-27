@@ -572,13 +572,6 @@ func _draw_center_divider(center: Vector2, y: float, width: float, draw_scale: f
 	draw_circle(start, line_width * 0.5, line_color)
 	draw_circle(finish, line_width * 0.5, line_color)
 
-func _draw_stroked_text_centered(font: Font, text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var text_position := Vector2(center.x - text_size.x * 0.5, baseline)
-	draw_string_outline(font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
-	draw_string(font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
-
 func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suffix_text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
 	var main_size := font.get_string_size(main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var main_baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5

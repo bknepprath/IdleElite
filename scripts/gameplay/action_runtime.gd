@@ -111,6 +111,10 @@ var guaranteed_success_action_completions := 0
 var consecutive_activity_crit_count := 0
 var stat_cache_version := 0
 var action_stat_value_cache := {}
+var stamina_regen_callables_ready := false
+var stamina_regen_max_stamina: Callable
+var stamina_regen_honey_can_consume: Callable
+var stamina_regen_honey_spend: Callable
 func _init(host_ref) -> void:
 	host = host_ref
 func _on_stamina_gauge_input(event: InputEvent, skill_id: String = "", source: RegenCircle = null) -> void:
@@ -245,18 +249,25 @@ func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) ->
 func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := false, excluded_skill_id := "") -> void:
 	if seconds <= 0.0:
 		return
+	if not stamina_regen_callables_ready:
+		stamina_regen_max_stamina = Callable(self, "_max_stamina_for_regen")
+		stamina_regen_honey_can_consume = Callable(self, "_honey_can_consume_for_stamina")
+		stamina_regen_honey_spend = Callable(self, "_spend_honey_for_stamina")
+		stamina_regen_callables_ready = true
 	var honey_result := SkillState.honey_adjusted_stamina_regen_seconds(
 		seconds,
 		host.skill_defs,
 		host.stamina,
-		func(skill_id: String) -> int: return SkillState.max_stamina(host, skill_id),
+		stamina_regen_max_stamina,
 		excluded_skill_id,
 		host.honey_stamina_seconds_remaining,
-		Callable(self, "_honey_can_consume_for_stamina"),
-		func() -> bool: return host.material_runtime.spend_amount("honey", 1.0)
+		stamina_regen_honey_can_consume,
+		stamina_regen_honey_spend
 	)
 	host.honey_stamina_seconds_remaining = float(honey_result["honey_seconds_remaining"])
 	var honey_adjusted_seconds := float(honey_result["seconds"])
+	var pond_regen_mult: float = 1.0 + host._hub_surface()._hub_pond_regen_bonus()
+	var now_unix: int = host._unix_now()
 	for def in host.skill_defs:
 		var skill_id := str(def["id"])
 		if skill_id == excluded_skill_id:
@@ -265,8 +276,8 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 		if SkillState.host_stamina_value(skill_id, host) >= float(max_stamina):
 			host.stamina_bank[skill_id] = 0.0
 			continue
-		var regen_delta: float = honey_adjusted_seconds * (1.0 + host._hub_surface()._hub_pond_regen_bonus())
-		regen_delta *= 1.0 + host._passive_modules_runtime().firepit_stamina_regen_bonus(skill_id, host._unix_now())
+		var regen_delta: float = honey_adjusted_seconds * pond_regen_mult
+		regen_delta *= 1.0 + host._passive_modules_runtime().firepit_stamina_regen_bonus(skill_id, now_unix)
 		if allow_gauge_boost:
 			regen_delta *= _stamina_gauge_regen_multiplier_for_skill(skill_id)
 		if allow_gauge_boost and skill_id == action_opportunity_regen_skill_id and action_opportunity_regen_seconds > 0.0:
@@ -279,6 +290,12 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 		host.stamina[skill_id] = next_stamina
 		host.stamina_bank[skill_id] = 0.0 if next_stamina >= float(max_stamina) - 0.0001 else fmod(next_bank, host.STAMINA_REGEN_SECONDS)
 		SkillState.host_sync_stamina_bank(skill_id, host)
+
+func _max_stamina_for_regen(skill_id: String) -> int:
+	return SkillState.max_stamina(host, skill_id)
+
+func _spend_honey_for_stamina() -> bool:
+	return host.material_runtime.spend_amount("honey", 1.0)
 
 func _honey_can_consume_for_stamina() -> bool:
 	return host.material_runtime.amount("honey") >= 1.0

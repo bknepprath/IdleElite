@@ -1,7 +1,6 @@
 extends RefCounted
 
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
-const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 
 const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 18.0)
 const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
@@ -282,14 +281,6 @@ class PrismConnectorOverlay extends Control:
 		for step in range(1, 9):
 			var angle := lerpf(start_angle, finish_angle, float(step) / 8.0)
 			path.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
-
-	func _diagonal_corner_inset(current: Vector2, previous: Vector2, next: Vector2) -> float:
-		var incoming := previous - current
-		var outgoing := next - current
-		if incoming.length_squared() <= 0.01 or outgoing.length_squared() <= 0.01:
-			return 0.0
-		var max_radius := minf(incoming.length(), outgoing.length()) * 0.46
-		return clampf(diagonal_radius, 0.0, max_radius)
 
 	func _rounded_rect_connector_points() -> PackedVector2Array:
 		var origin := _connector_face_origin()

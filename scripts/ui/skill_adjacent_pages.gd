@@ -72,6 +72,8 @@ const TRANSIENT_PROPERTIES := [
 ]
 
 var host
+# -1 until IDLE_ELITE_DISABLE_ADJACENT_SKILL_PAGES has been read once.
+var disabled_by_env := -1
 # offset (-1 / 1) -> page record Dictionary
 var pages := {}
 var build_token := 0
@@ -101,7 +103,9 @@ func _swipe():
 
 
 func enabled() -> bool:
-	if OS.get_environment("IDLE_ELITE_DISABLE_ADJACENT_SKILL_PAGES") == "1":
+	if disabled_by_env == -1:
+		disabled_by_env = 1 if OS.get_environment("IDLE_ELITE_DISABLE_ADJACENT_SKILL_PAGES") == "1" else 0
+	if disabled_by_env == 1:
 		return false
 	if host.current_screen != "skill":
 		return false

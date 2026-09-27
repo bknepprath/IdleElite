@@ -1208,7 +1208,10 @@ func _refresh_reset_data_buttons() -> void:
 	reset_data_buttons = live_buttons
 
 
+# Called every frame; only does work once an armed confirmation has timed out.
 func _expire_reset_data_confirm_if_needed() -> void:
+	if reset_data_confirm_until <= 0.0 or Time.get_ticks_msec() / 1000.0 < reset_data_confirm_until:
+		return
 	reset_data_confirm_until = 0.0
 	reset_data_confirm_armed_at = 0.0
 	reset_data_confirm_button = null
