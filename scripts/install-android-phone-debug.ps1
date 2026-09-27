@@ -1,5 +1,5 @@
-# Export a debug Android build and install it on the connected phone.
-# Uses com.idleelite.game.preview when the release-signed app is already installed.
+
+
 
 $ErrorActionPreference = "Stop"
 
@@ -30,7 +30,7 @@ foreach ($path in @($runner, $exportPresetsPath, $buildGradlePath, $adb, $java, 
 }
 
 & $adb devices -l
-$devices = (& $adb devices | Select-String "device$" | Where-Object { $_ -notmatch "List of devices" })
+$devices = (& $adb devices | Select-String "device$")
 if ($devices.Count -eq 0) {
     throw "No authorized Android device found. Accept the USB debugging prompt and retry."
 }
@@ -43,19 +43,18 @@ try {
     $patched = $originalExportPresets `
         -replace '(?m)^package/unique_name="com\.idleelite\.game"$', 'package/unique_name="com.idleelite.game.preview"' `
         -replace '(?m)^package/name="Idle Elite"$', 'package/name="Idle Elite Preview"'
+    if ($patched -eq $originalExportPresets -or $patched -notmatch '(?m)^package/unique_name="com\.idleelite\.game\.preview"$') { throw "Could not patch Android export preset for preview export." }
     Set-Content -LiteralPath $exportPresetsPath -Value $patched -NoNewline
     $patchedBuildGradle = $originalBuildGradle -replace 'applicationId getExportPackageName\(\)', 'applicationId "com.idleelite.game.preview"'
     if ($patchedBuildGradle -eq $originalBuildGradle) {
         throw "Could not patch Android applicationId for preview export."
     }
     Set-Content -LiteralPath $buildGradlePath -Value $patchedBuildGradle -NoNewline
-    Push-Location $projectRoot
-    & $runner --path . --export-debug $presetName $aab 2>&1 | Out-Host
+    & $runner --path $projectRoot --export-debug $presetName $aab 2>&1 | Out-Host
     Assert-CommandSucceeded "Godot export-debug"
 } finally {
     Set-Content -LiteralPath $buildGradlePath -Value $originalBuildGradle -NoNewline
     Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
-    Pop-Location
 }
 
 if (Test-Path -LiteralPath $apks) {

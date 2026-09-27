@@ -30,10 +30,6 @@ func _init(host_ref = null) -> void:
 	host = host_ref
 
 
-func setup(host_ref) -> void:
-	host = host_ref
-
-
 func xp_multiplier() -> float:
 	return xp_mult(seconds_remaining, AD_BONUS_XP_MULT)
 
@@ -47,10 +43,7 @@ func shop_status_text() -> String:
 
 
 func shop_label_text() -> String:
-	var status := shop_status_text()
-	if shop_bonus_notice_text.is_empty():
-		return status
-	return "%s\n%s" % [shop_bonus_notice_text, status]
+	return shop_status_text() if shop_bonus_notice_text.is_empty() else "%s\n%s" % [shop_bonus_notice_text, shop_status_text()]
 
 
 func process(delta: float) -> void:
@@ -77,9 +70,7 @@ func _ensure_ads_initialized() -> bool:
 	_init_ads()
 	if ads_initialized:
 		return true
-	if not _ads_supported():
-		return false
-	if _rewarded_ad_unit_id().is_empty():
+	if not _ads_supported() or _rewarded_ad_unit_id().is_empty():
 		return false
 	MobileAds.initialize()
 	ads_initialized = true
@@ -87,15 +78,13 @@ func _ensure_ads_initialized() -> bool:
 
 
 func _ads_supported() -> bool:
-	return OS.get_name() == "Android" and Engine.has_singleton("PoingGodotAdMobRewardedAd")
+	return OS.get_name() == "Android" and Engine.has_singleton("PoingGodotAdMob") and Engine.has_singleton("PoingGodotAdMobRewardedAd")
 
 
 func _rewarded_ad_unit_id() -> String:
 	if OS.get_name() != "Android":
 		return ""
-	if OS.is_debug_build():
-		return AD_TEST_UNIT_ANDROID_REWARDED
-	return AD_LIVE_UNIT_ANDROID_REWARDED
+	return AD_TEST_UNIT_ANDROID_REWARDED if OS.is_debug_build() else AD_LIVE_UNIT_ANDROID_REWARDED
 
 
 func _load_rewarded_ad(show_when_loaded: bool) -> void:
@@ -162,9 +151,7 @@ func _on_rewarded_ad_failed_to_load(error: LoadAdError) -> void:
 	ad_show_after_load = false
 	if not should_report:
 		return
-	var message := "Ad failed to load."
-	if error != null and not error.message.is_empty():
-		message = "Ad failed to load: %s" % error.message
+	var message := "Ad failed to load: %s" % error.message if error != null and not error.message.is_empty() else "Ad failed to load."
 	host._reward_feedback_surface()._set_result(message)
 
 
@@ -175,9 +162,7 @@ func _on_rewarded_ad_showed() -> void:
 func _on_rewarded_ad_failed_to_show(error: AdError) -> void:
 	ad_showing = false
 	ad_show_after_load = false
-	var message := "Ad failed to show."
-	if error != null and not error.message.is_empty():
-		message = "Ad failed to show: %s" % error.message
+	var message := "Ad failed to show: %s" % error.message if error != null and not error.message.is_empty() else "Ad failed to show."
 	host._reward_feedback_surface()._set_result(message)
 	_destroy_rewarded_ad()
 	_load_rewarded_ad(false)
@@ -192,6 +177,8 @@ func _on_rewarded_ad_dismissed() -> void:
 
 
 func _on_rewarded_ad_user_earned_reward(_item: RewardedItem) -> void:
+	if not ad_showing or ad_reward_earned_for_show:
+		return
 	ad_reward_earned_for_show = true
 	_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
 
@@ -237,9 +224,7 @@ static func status_text(seconds_remaining: float) -> String:
 
 
 static func tick(seconds_remaining: float, delta: float) -> float:
-	if seconds_remaining <= 0.0:
-		return 0.0
-	return maxf(0.0, seconds_remaining - delta)
+	return maxf(0.0, maxf(0.0, seconds_remaining) - maxf(0.0, delta))
 
 
 static func grant_seconds(seconds_remaining: float, bonus_seconds: float, max_seconds: float) -> float:
@@ -256,6 +241,4 @@ static func stack_units(seconds_remaining: float, bonus_seconds: float, max_seco
 
 static func stack_active_count(seconds_remaining: float, bonus_seconds: float, max_seconds: float) -> int:
 	var units := stack_units(seconds_remaining, bonus_seconds, max_seconds)
-	if units <= 0.0:
-		return 0
-	return clampi(int(ceil(units - 0.001)), 0, stack_max_count(max_seconds, bonus_seconds))
+	return 0 if units <= 0.0 else clampi(int(ceil(units - 0.001)), 0, stack_max_count(max_seconds, bonus_seconds))

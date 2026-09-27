@@ -94,48 +94,48 @@ const ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS := 0.02
 const ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS := 0.18
 const ACTION_PROGRESS_TURNOVER_SECONDS := ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS + ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS + ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS
 const ACTION_CARD_MEDAL_TAP_SPARKLE_COUNTS := [
-	0, # Bronze
-	1, # Silver
-	2, # Gold
-	2, # Platinum
-	3, # Sapphire
-	3, # Emerald
-	4, # Ruby
-	4, # Diamond
-	5, # Demonic
-	5, # Heavenly
-	6, # Elite Bronze
-	6, # Elite Silver
-	7, # Elite Gold
-	7, # Elite Platinum
-	8, # Elite Sapphire
-	8, # Elite Emerald
-	9, # Elite Ruby
-	10, # Elite Diamond
-	15, # Elite Demonic
-	20 # Elite Heavenly
+	0,
+	1,
+	2,
+	2,
+	3,
+	3,
+	4,
+	4,
+	5,
+	5,
+	6,
+	6,
+	7,
+	7,
+	8,
+	8,
+	9,
+	10,
+	15,
+	20
 ]
 const ACTION_CARD_MEDAL_TAP_SPARKLE_PALETTES := [
-	[Color("#d9852e"), Color("#ffb15c"), Color("#ffd08a")], # Bronze
-	[Color("#f4f7ff"), Color("#d5dbe4"), Color("#a9adb7")], # Silver
-	[Color("#fff4a8"), Color("#ffd34a"), Color("#ffffff")], # Gold
-	[Color("#ffffff"), Color("#e8f7ff"), Color("#c6d6df")], # Platinum
-	[Color("#88d8ff"), Color("#3aa0ff"), Color("#0f66ff")], # Sapphire
-	[Color("#d2ffd9"), Color("#a9ffbc"), Color("#35d86d"), Color("#1fb655")], # Emerald
-	[Color("#ff9aa4"), Color("#e84d4d"), Color("#ff2430")], # Ruby
-	[Color("#ffffff"), Color("#bdf3ff"), Color("#8fdcff")], # Diamond
-	[Color("#171615"), Color("#3a0507"), Color("#850d12"), Color("#e1121b")], # Demonic
-	[Color("#ffffff"), Color("#fff0ba"), Color("#ffe37a")], # Heavenly
-	[Color("#ffb15c"), Color("#ffcf92"), Color("#c06d2c"), Color("#fff0ba")], # Elite Bronze
-	[Color("#ffffff"), Color("#dce4ef"), Color("#aeb9c8"), Color("#cfefff")], # Elite Silver
-	[Color("#fff4a8"), Color("#ffd32f"), Color("#ffffff"), Color("#ffec66")], # Elite Gold
-	[Color("#ffffff"), Color("#f1ebe0"), Color("#d9f7ff"), Color("#c5d7e6")], # Elite Platinum
-	[Color("#7fd1ff"), Color("#1f82ff"), Color("#35e8ff"), Color("#005eff")], # Elite Sapphire
-	[Color("#d2ffd9"), Color("#7dff9b"), Color("#22cc58"), Color("#00a83f")], # Elite Emerald
-	[Color("#ff8a94"), Color("#ff2430"), Color("#ff4c6d"), Color("#e01928")], # Elite Ruby
-	[Color("#ffffff"), Color("#aeeeff"), Color("#82e7ff"), Color("#d8a8ff")], # Elite Diamond
-	[Color("#171615"), Color("#2a0204"), Color("#5a070b"), Color("#9f1017"), Color("#ff2430")], # Elite Demonic
-	[Color("#ff3b3b"), Color("#ffd93d"), Color("#48ff6d"), Color("#36e6ff"), Color("#6f7bff"), Color("#ff6bff"), Color("#ff9f1c"), Color("#b8ff2c"), Color("#ff4fd8")] # Elite Heavenly
+	[Color("#d9852e"), Color("#ffb15c"), Color("#ffd08a")],
+	[Color("#f4f7ff"), Color("#d5dbe4"), Color("#a9adb7")],
+	[Color("#fff4a8"), Color("#ffd34a"), Color("#ffffff")],
+	[Color("#ffffff"), Color("#e8f7ff"), Color("#c6d6df")],
+	[Color("#88d8ff"), Color("#3aa0ff"), Color("#0f66ff")],
+	[Color("#d2ffd9"), Color("#a9ffbc"), Color("#35d86d"), Color("#1fb655")],
+	[Color("#ff9aa4"), Color("#e84d4d"), Color("#ff2430")],
+	[Color("#ffffff"), Color("#bdf3ff"), Color("#8fdcff")],
+	[Color("#171615"), Color("#3a0507"), Color("#850d12"), Color("#e1121b")],
+	[Color("#ffffff"), Color("#fff0ba"), Color("#ffe37a")],
+	[Color("#ffb15c"), Color("#ffcf92"), Color("#c06d2c"), Color("#fff0ba")],
+	[Color("#ffffff"), Color("#dce4ef"), Color("#aeb9c8"), Color("#cfefff")],
+	[Color("#fff4a8"), Color("#ffd32f"), Color("#ffffff"), Color("#ffec66")],
+	[Color("#ffffff"), Color("#f1ebe0"), Color("#d9f7ff"), Color("#c5d7e6")],
+	[Color("#7fd1ff"), Color("#1f82ff"), Color("#35e8ff"), Color("#005eff")],
+	[Color("#d2ffd9"), Color("#7dff9b"), Color("#22cc58"), Color("#00a83f")],
+	[Color("#ff8a94"), Color("#ff2430"), Color("#ff4c6d"), Color("#e01928")],
+	[Color("#ffffff"), Color("#aeeeff"), Color("#82e7ff"), Color("#d8a8ff")],
+	[Color("#171615"), Color("#2a0204"), Color("#5a070b"), Color("#9f1017"), Color("#ff2430")],
+	[Color("#ff3b3b"), Color("#ffd93d"), Color("#48ff6d"), Color("#36e6ff"), Color("#6f7bff"), Color("#ff6bff"), Color("#ff9f1c"), Color("#b8ff2c"), Color("#ff4fd8")]
 ]
 const ACTION_CARD_MEDAL_TAP_EXTRA_SHINE_STEPS := [
 	{"level": 8, "delay": 0.30},
@@ -520,9 +520,9 @@ func _apply_skills_content_layout_for_screen() -> void:
 	host._navigation_shell()._apply_skills_content_layout_for_screen()
 
 func _request_swipe_resume_scroll() -> void:
-	# Swiping between skill detail pages should leave the incoming page at the
-	# viewport chosen by the gesture/finalize handoff. Direct navigation paths
-	# still opt into resume scrolling through _render_skill_detail.
+
+
+
 	skill_swipe_pending_resume_scroll_skill_id = ""
 
 func _apply_pending_swipe_resume_scroll(expected_skill_id: String = "") -> void:
@@ -1719,153 +1719,6 @@ func _discard_incoming_swipe_preview_for_animated_handoff(incoming_preview: Dict
 	_discard_incoming_swipe_preview(incoming_preview)
 
 
-func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: Dictionary) -> void:
-	var skill_id := str(preview_state.get("skill_id", selected_skill_id))
-	_settings_surface()._clear_settings_page_control_refs()
-	_navigation_shell()._reset_page_control_refs()
-	var frame := Control.new()
-	skill_swipe_frame = frame
-	frame.clip_contents = false
-	var frame_width := _skill_content_width()
-	_apply_skill_column_layout(frame, frame_width, skill_swipe_gap_render_offset_x)
-	skills_content.add_child(frame)
-	skill_swipe_page = preview_page
-	if preview_page.get_parent() != null:
-		preview_page.reparent(frame)
-	else:
-		frame.add_child(preview_page)
-	_normalize_skill_detail_page_layout(preview_page)
-	preview_page.z_index = 20
-	preview_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	detail_xp_label = preview_state.get("xp_label") as Label
-	detail_xp_bar = preview_state.get("xp_bar") as CleanProgressBar
-	detail_regen_circle = preview_state.get("regen_circle") as RegenCircle
-	detail_fish_circle = preview_state.get("fish_circle") as FishCircle
-	detail_auto_eat_fish_button = preview_state.get("auto_eat_fish_button") as TextureButton
-	detail_header_body = preview_state.get("header_body") as Control
-	_ensure_promoted_swipe_header_gauge(preview_page, preview_state, skill_id)
-	var preview_scroll := preview_state.get("actions_scroll") as MobileScrollContainer
-	if preview_scroll != null and is_instance_valid(preview_scroll):
-		_skill_detail_surface()._ensure_skill_detail_actions_clip_wrapper(preview_page, preview_scroll, frame_width)
-		detail_actions_scroll = preview_scroll
-		preview_scroll.visible = true
-		preview_scroll.modulate = Color.WHITE
-	_skill_swipe_activity_surface()._show_mounted_swipe_preview_modules(preview_page, preview_state)
-	_wire_mounted_swipe_preview_detail(preview_state)
-	_skill_detail_surface()._add_skill_detail_shadow_overlay(_skill_detail_surface()._skill_detail_shadow_top_y())
-	if bool(preview_state.get("proxy_handoff", false)) and not (preview_state.get("action_cards", []) as Array).is_empty():
-		_skill_detail_surface().detail_lazy_plan.clear()
-		_skill_detail_surface().detail_lazy_last_scroll = -1.0
-		_skill_detail_surface().detail_lazy_mounted_this_frame = false
-		_promote_swipe_preview_to_interactive(preview_state)
-		skill_swipe_pending_full_finalize = false
-		skill_swipe_pending_preview_state = {}
-		_skill_detail_surface()._schedule_proxy_skill_detail_full_refresh(skill_id)
-		return
-	skill_swipe_pending_full_finalize = true
-	skill_swipe_pending_preview_state = preview_state
-	_hold_skill_swipe_cover_for_pending_finalize()
-
-
-func _wire_mounted_swipe_preview_detail(_preview_state: Dictionary) -> void:
-	_skill_detail_surface().detail_lazy_stack = _skill_detail_surface()._detail_actions_stack() as VBoxContainer
-	_skill_detail_surface().detail_rendered_action_ids.clear()
-	detail_action_card_nodes.clear()
-	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
-		skill_swipe_page.mouse_filter = Control.MOUSE_FILTER_PASS
-	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame):
-		skill_swipe_frame.mouse_filter = Control.MOUSE_FILTER_PASS
-	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
-		detail_actions_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
-
-
-func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: Dictionary, skill_id: String) -> void:
-	if preview_page == null or not is_instance_valid(preview_page):
-		return
-	var gauge_parent := _swipe_preview_header_gauge_parent(preview_state, preview_page)
-	if gauge_parent == null or not is_instance_valid(gauge_parent):
-		return
-	if _fishing_rework_active_for_skill(skill_id):
-		if detail_fish_circle != null and is_instance_valid(detail_fish_circle):
-			preview_state["fish_circle"] = detail_fish_circle
-			return
-		_clear_swipe_preview_header_gauge_slot(gauge_parent)
-		detail_regen_circle = null
-		detail_regen_circle_host = null
-		detail_regen_circle_fade_group = null
-		detail_auto_eat_fish_button = null
-		var fish_circle := FishCircle.new()
-		fish_circle.custom_minimum_size = Vector2(552, 552)
-		fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		fish_circle.mouse_filter = Control.MOUSE_FILTER_PASS
-		fish_circle.z_index = 3000
-		fish_circle.z_as_relative = false
-		gauge_parent.add_child(fish_circle)
-		detail_fish_circle = fish_circle
-		preview_state["fish_circle"] = fish_circle
-		_fishing_ui_surface()._attach_fishing_fish_circle_button(fish_circle)
-		_fishing_ui_surface()._set_fish_circle_for_skill(fish_circle, skill_id, true)
-		return
-	if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
-		var existing_toggle := preview_state.get("auto_eat_fish_button") as TextureButton
-		if existing_toggle != null and is_instance_valid(existing_toggle):
-			detail_auto_eat_fish_button = existing_toggle
-			detail_auto_eat_fish_button.set_meta("auto_eat_skill_id", skill_id)
-			preview_state["regen_circle"] = detail_regen_circle
-			_fishing_ui_surface()._sync_auto_eat_fish_toggle_button(detail_auto_eat_fish_button)
-			return
-	_clear_swipe_preview_header_gauge_slot(gauge_parent)
-	detail_fish_circle = null
-	detail_regen_circle_host = Control.new()
-	detail_regen_circle_host.custom_minimum_size = Vector2(552, 552)
-	detail_regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	detail_regen_circle_host.clip_contents = false
-	detail_regen_circle_fade_group = CanvasGroup.new()
-	detail_regen_circle = RegenCircle.new()
-	detail_regen_circle.custom_minimum_size = Vector2(552, 552)
-	detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_regen_circle.modulate = Color.WHITE
-	detail_regen_circle.set_dark_mode(dark_mode_enabled)
-	detail_regen_circle.gui_input.connect(Callable(_action_runtime(), "_on_stamina_gauge_input").bind("", detail_regen_circle))
-	detail_regen_circle_fade_group.add_child(detail_regen_circle)
-	detail_regen_circle_host.add_child(detail_regen_circle_fade_group)
-	gauge_parent.add_child(detail_regen_circle_host)
-	detail_auto_eat_fish_button = _fishing_ui_surface()._attach_auto_eat_fish_toggle(detail_regen_circle_host, skill_id)
-	preview_state["regen_circle"] = detail_regen_circle
-	preview_state["regen_circle_host"] = detail_regen_circle_host
-	preview_state["regen_circle_fade_group"] = detail_regen_circle_fade_group
-	preview_state["auto_eat_fish_button"] = detail_auto_eat_fish_button
-	detail_regen_circle.sync_for_skill(self, skill_id, true)
-
-
-func _swipe_preview_header_gauge_parent(preview_state: Dictionary, preview_page: Control) -> Control:
-	var regen_circle := preview_state.get("regen_circle") as Control
-	if regen_circle != null and is_instance_valid(regen_circle):
-		return regen_circle.get_parent() as Control
-	var fish_circle := preview_state.get("fish_circle") as Control
-	if fish_circle != null and is_instance_valid(fish_circle):
-		return fish_circle.get_parent() as Control
-	var header_body := preview_state.get("header_body") as Control
-	if header_body == null or not is_instance_valid(header_body):
-		header_body = _find_swipe_preview_header_body(preview_page)
-	if header_body == null or not is_instance_valid(header_body):
-		return null
-	var row := _find_first_descendant_of_class(header_body, "HBoxContainer") as HBoxContainer
-	if row == null or not is_instance_valid(row) or row.get_child_count() <= 0:
-		return null
-	return row
-
-
-func _find_swipe_preview_header_body(preview_page: Control) -> Control:
-	if preview_page == null or not is_instance_valid(preview_page) or preview_page.get_child_count() <= 0:
-		return null
-	var header := preview_page.get_child(0) as Control
-	if header == null or not is_instance_valid(header) or header.get_child_count() <= 0:
-		return null
-	return header.get_child(0) as Control
-
-
 func _find_first_descendant_of_class(root: Control, target_class_name: String) -> Control:
 	if root == null or not is_instance_valid(root):
 		return null
@@ -1879,16 +1732,6 @@ func _find_first_descendant_of_class(root: Control, target_class_name: String) -
 		if nested != null:
 			return nested
 	return null
-
-
-func _clear_swipe_preview_header_gauge_slot(gauge_parent: Control) -> void:
-	if gauge_parent == null or not is_instance_valid(gauge_parent):
-		return
-	for child in gauge_parent.get_children():
-		if child is Control and bool((child as Control).size_flags_horizontal & Control.SIZE_EXPAND):
-			continue
-		gauge_parent.remove_child(child)
-		child.queue_free()
 
 
 func _schedule_swipe_preview_finalize_after_navigation() -> void:
@@ -1972,28 +1815,6 @@ func _preview_actions_scroll_vertical(preview_state: Dictionary) -> int:
 	if scroll == null or not is_instance_valid(scroll):
 		return -1
 	return scroll.scroll_vertical
-
-
-func _incoming_swipe_preview_usable(incoming_preview: Dictionary) -> bool:
-	var preview_page := incoming_preview.get("page") as Control
-	var preview_state := incoming_preview.get("state", {}) as Dictionary
-	if preview_page == null or not is_instance_valid(preview_page):
-		return false
-	var scroll := preview_state.get("actions_scroll") as Control
-	if scroll == null or not is_instance_valid(scroll):
-		scroll = _skill_swipe_activity_surface()._find_skill_preview_actions_scroll(preview_page)
-	if scroll == null or not is_instance_valid(scroll):
-		return false
-	var cards := preview_state.get("action_cards", []) as Array
-	if not cards.is_empty():
-		return true
-	var fishing_modules := preview_state.get("fishing_built_modules", []) as Array
-	if not fishing_modules.is_empty():
-		return true
-	# Light preview cards are only a visual handoff. Promoting them to the live
-	# page makes the modules appear briefly, then disappear when finalize swaps
-	# them for real lazy slots.
-	return _skill_swipe_handoff_cover_is_opaque_cream_transition()
 
 
 func _skill_detail_stack_has_visible_modules(stack: Control) -> bool:
@@ -2288,10 +2109,6 @@ func _discard_incoming_swipe_preview(incoming_preview: Dictionary) -> void:
 		preview_page.queue_free()
 
 
-func _should_promote_incoming_swipe_preview(skill_id: String) -> bool:
-	return false
-
-
 func _prepare_full_rendered_swipe_target_for_cover_clear(target_skill_id: String) -> void:
 	if current_screen != "skill" or selected_skill_id != target_skill_id:
 		return
@@ -2344,24 +2161,6 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dict
 	_clear_page_transient_input_state()
 	_prepare_skills_page_transition(target_key)
 	skill_swipe_drag_offset_x = skill_swipe_gap_render_offset_x
-	if (
-		not incoming_preview.is_empty()
-		and _incoming_swipe_preview_usable(incoming_preview)
-		and _should_promote_incoming_swipe_preview(selected_skill_id)
-	):
-		var preview_page := incoming_preview.get("page") as Control
-		var preview_state := incoming_preview.get("state", {}) as Dictionary
-		_settings_surface()._clear_settings_page_control_refs()
-		_app_lifecycle_runtime()._kill_transient_tweens_in_subtree(skills_content)
-		_skill_swipe_activity_surface()._clear_skill_swipe_preview()
-		skill_swipe_frame = null
-		skill_swipe_page = null
-		_navigation_shell()._reset_page_control_refs()
-		_clear_skills_content_orphans()
-		_mount_swipe_preview_as_skill_detail(preview_page, preview_state)
-		_promote_swipe_preview_to_interactive(preview_state)
-		_finish_render_screen_transition(target_key)
-		return
 	if not incoming_preview.is_empty():
 		_discard_incoming_swipe_preview(incoming_preview)
 	_settings_surface()._clear_settings_page_control_refs()
@@ -2468,85 +2267,6 @@ func _finalize_swipe_preview_to_full_detail(target_skill_id := "") -> void:
 	_skill_detail_surface().call_deferred("_finalize_swipe_preview_to_lazy_detail", preview_state, preserve_scroll, selected_skill_id, token)
 
 
-func _promote_swipe_preview_to_interactive(preview_state: Dictionary) -> void:
-	var skill_id := str(preview_state.get("skill_id", selected_skill_id))
-	if _fishing_rework_active_for_skill(skill_id):
-		_promote_fishing_swipe_preview(preview_state)
-	else:
-		for raw_card in preview_state.get("action_cards", []) as Array:
-			var card := raw_card as Dictionary
-			if card.is_empty():
-				continue
-			var heist_id := str(card.get("heist_id", ""))
-			if not heist_id.is_empty():
-				_promote_heist_swipe_preview_card(card, heist_id)
-				continue
-			if bool(card.get("passive", false)):
-				_promote_passive_swipe_preview_card(card, skill_id)
-				continue
-			var action := card.get("action", {}) as Dictionary
-			var action_id := str(action.get("id", card.get("action_id", "")))
-			if action.is_empty() or action_id.is_empty():
-				continue
-			_promote_action_swipe_preview_card(card, skill_id, action_id, action)
-	if detail_header_body != null and is_instance_valid(detail_header_body):
-		_skill_detail_surface()._enable_skill_detail_back_arrow(detail_header_body)
-		_tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
-		_skill_detail_surface()._sync_skill_detail_back_arrow_visibility()
-		if _onboarding_runtime()._onboarding_auto_run_message_resumable():
-			_onboarding_runtime().call_deferred("_run_onboarding_auto_run_message_sequence")
-		if _onboarding_runtime()._onboarding_header_reveal_sequence_resumable():
-			_onboarding_runtime().call_deferred("_run_onboarding_header_reveal_sequence")
-	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
-		var actions_clip: Control = _skill_detail_surface()._ensure_skill_detail_actions_clip_wrapper(skill_swipe_page, detail_actions_scroll, _skill_content_width())
-		if actions_clip == null or not is_instance_valid(actions_clip):
-			actions_clip = detail_actions_scroll.get_parent() as Control
-		if actions_clip != null and is_instance_valid(actions_clip):
-			_skill_detail_surface()._build_detail_jump_arrows(actions_clip)
-	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
-		skill_swipe_page.mouse_filter = Control.MOUSE_FILTER_PASS
-
-
-func _promote_action_swipe_preview_card(card: Dictionary, skill_id: String, action_id: String, action: Dictionary) -> void:
-	if bool(card.get("swipe_promoted", false)):
-		return
-	card["swipe_promoted"] = true
-	var card_root := card.get("root") as Control
-	var pop_card := card.get("pop") as Control
-	if card_root != null and is_instance_valid(card_root):
-		card_root.mouse_filter = Control.MOUSE_FILTER_PASS
-	if pop_card != null and is_instance_valid(pop_card):
-		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
-	_attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
-	card["action_id"] = action_id
-	card["action"] = action
-	card["preview_only"] = false
-	_register_action_card(_action_key(skill_id, action_id), card)
-	if not bool(card.get("swipe_proxy", false)):
-		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
-	detail_action_card_nodes[action_id] = card_root
-	if not _skill_detail_surface().detail_rendered_action_ids.has(action_id):
-		_skill_detail_surface().detail_rendered_action_ids.append(action_id)
-
-
-func _promote_heist_swipe_preview_card(card: Dictionary, heist_id: String) -> void:
-	if bool(card.get("swipe_promoted", false)):
-		return
-	card["swipe_promoted"] = true
-	card["preview_only"] = false
-	_register_action_card(_thieving_surface()._thieving_heist_card_key(heist_id), card)
-	var heist_root := card.get("root") as Control
-	if heist_root != null and is_instance_valid(heist_root):
-		heist_root.mouse_filter = Control.MOUSE_FILTER_PASS
-		var button := card.get("button") as Button
-		if button != null and is_instance_valid(button):
-			button.mouse_filter = Control.MOUSE_FILTER_STOP
-		detail_action_card_nodes["heist:%s" % heist_id] = heist_root
-	var track_id := "heist:%s" % heist_id
-	if not _skill_detail_surface().detail_rendered_action_ids.has(track_id):
-		_skill_detail_surface().detail_rendered_action_ids.append(track_id)
-
-
 func _attach_swipe_preview_activity_button(card: Dictionary, skill_id: String, action_id: String, pop_card: Control) -> void:
 	if card.get("button") != null:
 		var existing := card.get("button") as Button
@@ -2568,88 +2288,6 @@ func _attach_swipe_preview_activity_button(card: Dictionary, skill_id: String, a
 	button.gui_input.connect(_skill_swipe_activity_surface()._on_action_card_input.bind(skill_id, action_id, button))
 	pop_card.add_child(button)
 	card["button"] = button
-
-
-func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> void:
-	if bool(card.get("swipe_promoted", false)):
-		return
-	card["swipe_promoted"] = true
-	var action := card.get("action", {}) as Dictionary
-	var module_id := str(action.get("id", ""))
-	if module_id.is_empty():
-		return
-	var card_root := card.get("root") as Control
-	var pop_card := card.get("pop") as Control
-	if card_root != null and is_instance_valid(card_root):
-		card_root.clip_contents = false
-		card_root.mouse_filter = Control.MOUSE_FILTER_PASS
-	if pop_card != null and is_instance_valid(pop_card):
-		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
-	var loot := card.get("loot") as Control
-	if loot != null and is_instance_valid(loot):
-		loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var collect_button := card.get("button") as Button
-	if collect_button != null and is_instance_valid(collect_button):
-		collect_button.mouse_filter = Control.MOUSE_FILTER_STOP
-		collect_button.gui_input.connect(_passive_firepit_surface()._on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
-		collect_button.pressed.connect(_passive_firepit_surface()._on_passive_collect_pressed.bind(module_id))
-	var info_button := card.get("info_button") as Button
-	if info_button != null and is_instance_valid(info_button):
-		info_button.mouse_filter = Control.MOUSE_FILTER_STOP
-		var info_popover := card.get("info_popover") as Control
-		if info_popover != null:
-			info_button.gui_input.connect(_passive_firepit_surface()._on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
-			info_button.pressed.connect(Callable(_passive_firepit_surface(), "_toggle_passive_info_popover").bind(info_popover))
-	var plank_button := card.get("plank") as Button
-	if plank_button != null and is_instance_valid(plank_button):
-		plank_button.mouse_filter = Control.MOUSE_FILTER_STOP
-		plank_button.gui_input.connect(_passive_firepit_surface()._on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
-		plank_button.pressed.connect(_passive_firepit_surface()._on_passive_plank_pressed.bind(module_id))
-	var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
-	for stat_type in upgrade_buttons.keys():
-		var upgrade := upgrade_buttons.get(stat_type) as Button
-		if upgrade == null or not is_instance_valid(upgrade):
-			continue
-		upgrade.mouse_filter = Control.MOUSE_FILTER_STOP
-		upgrade.gui_input.connect(_passive_firepit_surface()._on_passive_module_button_input.bind("upgrade", module_id, stat_type, null, upgrade))
-		upgrade.pressed.connect(_passive_firepit_surface()._on_passive_upgrade_pressed.bind(module_id, stat_type))
-	card["preview_only"] = false
-	_register_action_card(_action_key(skill_id, module_id), card)
-	if not bool(card.get("swipe_proxy", false)):
-		_passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, _activity_unlock_runtime()._is_action_unlocked(skill_id, action))
-	detail_action_card_nodes[module_id] = card_root
-	if not _skill_detail_surface().detail_rendered_action_ids.has(module_id):
-		_skill_detail_surface().detail_rendered_action_ids.append(module_id)
-
-
-func _promote_fishing_swipe_preview(preview_state: Dictionary) -> void:
-	var skill_id := "fishing"
-	for raw_card in preview_state.get("action_cards", []) as Array:
-		var card := raw_card as Dictionary
-		if card.is_empty():
-			continue
-		var action := card.get("action", {}) as Dictionary
-		var action_id := str(action.get("id", card.get("action_id", "")))
-		if bool(card.get("passive", false)) or _passive_modules_runtime().is_passive_action(action):
-			_promote_passive_swipe_preview_card(card, skill_id)
-			continue
-		if action.is_empty() or action_id.is_empty():
-			continue
-		_promote_action_swipe_preview_card(card, skill_id, action_id, action)
-	for raw_built in preview_state.get("fishing_built_modules", []) as Array:
-		var built := raw_built as Dictionary
-		if built.is_empty():
-			continue
-		var area_key := str(built.get("area_key", ""))
-		if area_key.is_empty():
-			continue
-		_register_action_card(area_key, built.get("area_card", {}) as Dictionary)
-		var root := built.get("root") as Control
-		if root != null and is_instance_valid(root):
-			_enable_interactive_control_tree(root)
-			for method_id in built.get("method_ids", []) as Array:
-				detail_action_card_nodes[str(method_id)] = root
-	_skill_detail_surface().detail_rendered_action_ids = _fishing_ui_surface()._fishing_detail_render_signature()
 
 
 func _enable_interactive_control_tree(root: Control) -> void:
@@ -2783,9 +2421,6 @@ func _navigate_skill_strip(offset: int, entry_x: float, animate_entry: bool, pla
 	else:
 		_complete_skill_swipe_navigation()
 
-func _skill_swipe_preview_fade_progress(abs_x: float) -> float:
-	var t := clampf(abs_x / maxf(1.0, host.SKILL_SWIPE_PREVIEW_FADE_DISTANCE), 0.0, 1.0)
-	return t * t * (3.0 - 2.0 * t)
 
 func _skill_swipe_paper_fade_progress(abs_x: float) -> float:
 	var t := clampf(abs_x / maxf(1.0, host.SKILL_SWIPE_PAPER_FADE_DISTANCE), 0.0, 1.0)
@@ -2958,41 +2593,6 @@ func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
 	var alpha := 1.0
 	_set_skill_swipe_control_alpha(active_preview_page, alpha)
 
-func _apply_recovery_progress_rail_shape(bar: ActivityProgressRail, action: Dictionary) -> void:
-	if bar == null or not RecoveryModules.has_recovery(action):
-		return
-	bar.offset_top = -ActivityCardStyles.RECOVERY_WIDE_U_RAIL_HEIGHT
-	bar.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
-	bar.bottom_radius = host.ACTION_CARD_FACE_RADIUS
-	bar.bottom_shape = "wide_u"
-	bar.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	bar.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	bar.queue_redraw()
-	bar._queue_opportunity_overlay_redraw()
-
-
-func _apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictionary) -> void:
-	if depth == null or not RecoveryModules.has_recovery(action):
-		return
-	depth.bottom_shape = "wide_u"
-	depth.draw_lip_lines = true
-	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	depth.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	depth.queue_redraw()
-
-
-func _apply_recovery_card_background_shape(bg: Control, action: Dictionary) -> void:
-	if bg == null or not RecoveryModules.has_recovery(action):
-		return
-	var rounded_bg := bg as RoundedTextureRect
-	if rounded_bg == null:
-		return
-	rounded_bg.bottom_shape = "wide_u"
-	rounded_bg.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	rounded_bg.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	rounded_bg.queue_redraw()
-
-
 func _preview_control(value) -> Control:
 	if value == null:
 		return null
@@ -3031,24 +2631,6 @@ func _find_skill_preview_stack(preview_page: Control) -> Control:
 		return null
 	return scroll.get_child(0) as Control
 
-func _show_mounted_swipe_preview_modules(preview_page: Control, preview_state: Dictionary) -> void:
-	_cancel_skill_swipe_preview_modules_reveal(preview_state)
-	var modules_root := preview_state.get("modules_root") as Control
-	if modules_root != null and is_instance_valid(modules_root):
-		modules_root.visible = true
-		modules_root.modulate = Color.WHITE
-	_cancel_skill_swipe_preview_modules_reveal(preview_state)
-	if modules_root == null or not is_instance_valid(modules_root):
-		modules_root = preview_state.get("actions_scroll") as Control
-	if modules_root == null or not is_instance_valid(modules_root):
-		modules_root = _find_skill_preview_actions_scroll(preview_page)
-	if modules_root != null and is_instance_valid(modules_root):
-		modules_root.visible = true
-		modules_root.modulate = Color(1, 1, 1, 1)
-	if preview_page != null and is_instance_valid(preview_page):
-		preview_page.visible = true
-		preview_page.modulate = Color.WHITE
-
 func _active_preview_page() -> Control:
 	return _preview_control(preview_page)
 
@@ -3058,10 +2640,6 @@ func _active_preview_offset() -> int:
 func _set_active_preview(page: Control, offset: int) -> void:
 	preview_page = page
 	preview_offset = offset
-
-func _cancel_preview_prewarm() -> void:
-	return
-
 
 func _clear_light_preview_style_cache() -> void:
 	light_preview_card_style_cache.clear()
@@ -3193,13 +2771,11 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 		if fluid_strip != null:
 			if fluid_strip.has_method("set_running"):
 				fluid_strip.call("set_running", running)
-			if running and fluid_strip.has_method("set_attempt_progress"):
-				fluid_strip.call("set_attempt_progress", card_progress)
 			if card.get("is_fishing_area"):
 				var water_strip_host := card.get("water_strip_host") as Control
 				if water_strip_host != null:
 					var strip_visible := running
-					if fluid_strip != null and fluid_strip.has_method("is_animating_visible"):
+					if fluid_strip.has_method("is_animating_visible"):
 						strip_visible = strip_visible or bool(fluid_strip.call("is_animating_visible"))
 					host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(water_strip_host, strip_visible)
 					card["fluid_exiting"] = (not running) and strip_visible
@@ -4094,10 +3670,7 @@ func _activity_queue_overlay_style() -> StyleBoxFlat:
 	style.bg_color = Color.WHITE
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_corner_radius_all(999)
 	return style
 
 
@@ -4936,12 +4509,6 @@ func _set_skill_swipe_positions(offset: int, current_x: float) -> void:
 		active_page.position.x = _skill_swipe_preview_rest_x(offset)
 		_sync_skill_swipe_preview_page_fade(current_x)
 
-func _hide_parked_skill_swipe_preview_pages(active_page: Control = null) -> void:
-	for preview in preview_pages.values():
-		var page = _preview_control(preview)
-		if page == null or page == active_page:
-			continue
-		page.visible = false
 
 func _park_skill_swipe_preview() -> void:
 	var parked_page = _preview_control(preview_page)
@@ -5094,39 +4661,6 @@ func _preview_detail_entries_for_skill(skill_id: String) -> Array:
 		entries.append(entry_data)
 	return entries
 
-func _prewarm_swipe_preview_real_card_cache(preview_state: Dictionary, skill_id: String, token: int) -> void:
-	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
-		return
-	var cache = preview_state.get("real_card_cache", {}) as Dictionary
-	if cache == null:
-		cache = {}
-	preview_state["real_card_cache"] = cache
-	var content_width = host._skill_content_width()
-	var actions_width = content_width
-	var built_count = cache.size()
-	for entry in _preview_detail_entries_for_skill(skill_id):
-		if built_count >= host.SKILL_SWIPE_REAL_CARD_PREWARM_COUNT:
-			break
-		if not _skill_swipe_prewarm_can_continue(host.selected_skill_id, token):
-			_free_swipe_preview_real_card_cache(preview_state)
-			return
-		var entry_data = entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action = entry_data.get("action", {}) as Dictionary
-		var action_id = str(action.get("id", ""))
-		if action_id.is_empty() or cache.has(action_id):
-			continue
-		await host.get_tree().process_frame
-		if not _skill_swipe_prewarm_can_continue(host.selected_skill_id, token):
-			_free_swipe_preview_real_card_cache(preview_state)
-			return
-		var cached = _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
-		if cached.is_empty():
-			continue
-		cache[str(cached.get("track_id", action_id))] = cached
-		built_count += 1
-
 func _free_swipe_real_card_cache_dictionary(cache: Dictionary) -> void:
 	if cache == null or cache.is_empty():
 		return
@@ -5146,113 +4680,7 @@ func _free_global_swipe_real_card_cache() -> void:
 		_free_swipe_real_card_cache_dictionary(raw_cache as Dictionary)
 	real_card_cache_by_skill.clear()
 
-func _prune_global_swipe_real_card_cache_for_skills(allowed_skill_ids: Dictionary) -> void:
-	for raw_skill_id in real_card_cache_by_skill.keys().duplicate():
-		var skill_id = str(raw_skill_id)
-		if allowed_skill_ids.has(skill_id):
-			continue
-		var cache = real_card_cache_by_skill.get(skill_id, {}) as Dictionary
-		_free_swipe_real_card_cache_dictionary(cache)
-		real_card_cache_by_skill.erase(skill_id)
 
-func _skill_swipe_real_card_prewarm_can_continue(source_skill_id: String, token: int) -> bool:
-	return false
-
-func _queue_skill_swipe_real_card_cache_prewarm(source_skill_id: String) -> void:
-	return
-
-func _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id: String, source_skill_id: String, token: int) -> void:
-	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
-		return
-	var cache = real_card_cache_by_skill.get(skill_id, {}) as Dictionary
-	if cache == null:
-		cache = {}
-	real_card_cache_by_skill[skill_id] = cache
-	var content_width = host._skill_content_width()
-	var actions_width = content_width
-	var built_count = cache.size()
-	for entry in _preview_detail_entries_for_skill(skill_id):
-		if built_count >= host.SKILL_SWIPE_REAL_CARD_PREWARM_COUNT:
-			break
-		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
-			return
-		var entry_data = entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action = entry_data.get("action", {}) as Dictionary
-		var action_id = str(action.get("id", ""))
-		if action_id.is_empty() or cache.has(action_id):
-			continue
-		await host.get_tree().process_frame
-		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
-			return
-		var cached = _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
-		if cached.is_empty():
-			continue
-		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
-			_free_swipe_real_card_cache_dictionary({"stale": cached})
-			return
-		cache[str(cached.get("track_id", action_id))] = cached
-		built_count += 1
-
-func _prewarm_global_swipe_real_card_cache_for_neighbors_idle(source_skill_id: String, token: int) -> void:
-	if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
-		return
-	var allowed = {source_skill_id: true}
-	for offset in [-1, 1]:
-		if not host._onboarding_runtime()._swipe_offset_accessible(offset):
-			continue
-		var neighbor_skill_id = _skill_id_for_swipe_offset(offset)
-		if not neighbor_skill_id.is_empty():
-			allowed[neighbor_skill_id] = true
-	_prune_global_swipe_real_card_cache_for_skills(allowed)
-	await _prewarm_global_swipe_real_card_cache_for_skill_idle(source_skill_id, source_skill_id, token)
-	for raw_skill_id in allowed.keys():
-		var skill_id = str(raw_skill_id)
-		if skill_id == source_skill_id:
-			continue
-		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
-			return
-		await _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id, source_skill_id, token)
-
-func _prewarm_global_swipe_real_card_cache_for_skill(skill_id: String, source_skill_id: String, token: int) -> void:
-	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
-		return
-	var cache = real_card_cache_by_skill.get(skill_id, {}) as Dictionary
-	if cache == null:
-		cache = {}
-	real_card_cache_by_skill[skill_id] = cache
-	var content_width = host._skill_content_width()
-	var actions_width = content_width
-	var built_count = cache.size()
-	for entry in _preview_detail_entries_for_skill(skill_id):
-		if built_count >= host.SKILL_SWIPE_REAL_CARD_PREWARM_COUNT:
-			break
-		if not _skill_swipe_prewarm_can_continue(source_skill_id, token):
-			return
-		var entry_data = entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action = entry_data.get("action", {}) as Dictionary
-		var action_id = str(action.get("id", ""))
-		if action_id.is_empty() or cache.has(action_id):
-			continue
-		await host.get_tree().process_frame
-		if not _skill_swipe_prewarm_can_continue(source_skill_id, token):
-			return
-		var cached = _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
-		if cached.is_empty():
-			continue
-		cache[str(cached.get("track_id", action_id))] = cached
-		built_count += 1
-
-func _prewarm_global_swipe_real_card_cache_for_neighbors(source_skill_id: String, token: int) -> void:
-	await _prewarm_global_swipe_real_card_cache_for_skill(source_skill_id, source_skill_id, token)
-	for offset in [-1, 1]:
-		var neighbor_skill_id = _skill_id_for_swipe_offset(offset)
-		if neighbor_skill_id.is_empty():
-			continue
-		await _prewarm_global_swipe_real_card_cache_for_skill(neighbor_skill_id, source_skill_id, token)
 
 func _apply_global_swipe_real_card_cache_to_lazy_plan(skill_id: String) -> void:
 	if skill_id.is_empty() or host._skill_detail_surface().detail_lazy_plan.is_empty():
@@ -5276,34 +4704,7 @@ func _apply_global_swipe_real_card_cache_to_lazy_plan(skill_id: String) -> void:
 	if cache.is_empty():
 		real_card_cache_by_skill.erase(skill_id)
 
-func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary) -> void:
-	if preview_state.is_empty() or host._skill_detail_surface().detail_lazy_plan.is_empty():
-		return
-	var cache = preview_state.get("real_card_cache", {}) as Dictionary
-	if cache == null or cache.is_empty():
-		preview_state.erase("real_card_cache")
-		return
-	for raw_lazy_entry in host._skill_detail_surface().detail_lazy_plan:
-		var lazy_entry = raw_lazy_entry as Dictionary
-		var track_id = str(lazy_entry.get("track_id", ""))
-		if track_id.is_empty() or not cache.has(track_id):
-			continue
-		var cached = cache.get(track_id, {}) as Dictionary
-		var root = host._app_lifecycle_runtime().valid_control_ref(cached.get("root"))
-		var card = cached.get("card", {}) as Dictionary
-		if root == null or root.is_queued_for_deletion() or card.is_empty():
-			continue
-		lazy_entry["cached_root"] = root
-		lazy_entry["cached_card"] = card
-		cache.erase(track_id)
-	_free_swipe_preview_real_card_cache({"real_card_cache": cache})
-	preview_state.erase("real_card_cache")
 
-func _skill_swipe_prewarm_can_continue(skill_id: String, token: int) -> bool:
-	return false
-
-func _finish_skill_swipe_preview_prewarm(token: int) -> void:
-	return
 
 func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
@@ -5408,10 +4809,7 @@ func _skill_swipe_light_preview_card_style(skill_id: String) -> StyleBoxFlat:
 	style.bg_color = theme.darkened(0.06)
 	style.border_color = Color(host.COLOR_INK.r, host.COLOR_INK.g, host.COLOR_INK.b, 0.72)
 	style.set_border_width_all(5)
-	style.corner_radius_top_left = 46
-	style.corner_radius_top_right = 46
-	style.corner_radius_bottom_left = 46
-	style.corner_radius_bottom_right = 46
+	style.set_corner_radius_all(46)
 	light_preview_card_style_cache[key] = style
 	return style
 
@@ -5485,10 +4883,7 @@ func _skill_swipe_light_preview_header_circle_style(skill_id: String) -> StyleBo
 	style.bg_color = theme.darkened(0.02)
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(12)
-	style.corner_radius_top_left = 220
-	style.corner_radius_top_right = 220
-	style.corner_radius_bottom_left = 220
-	style.corner_radius_bottom_right = 220
+	style.set_corner_radius_all(220)
 	style.shadow_color = theme.darkened(0.48)
 	style.shadow_size = 8
 	style.shadow_offset = Vector2(0, 10)
@@ -5562,26 +4957,6 @@ func _render_light_skill_swipe_preview_entries(stack: VBoxContainer, skill_id: S
 		preview_entry_y += entry_height + host._skill_detail_surface().DETAIL_LAZY_STACK_SEPARATION
 		preview_index += 1
 	pending_placeholder_height = _flush_skill_swipe_preview_placeholder(stack, actions_width, pending_placeholder_height)
-
-func _force_show_skill_swipe_preview_modules(offset: int) -> void:
-	if not preview_states.has(offset):
-		return
-	var state = preview_states[offset] as Dictionary
-	if state == null:
-		return
-	_cancel_skill_swipe_preview_modules_reveal(state)
-	if not bool(state.get("prewarmed", false)):
-		_update_skill_swipe_preview_state(state, 0.0, true)
-	var modules_root = state.get("modules_root") as Control
-	if modules_root != null and is_instance_valid(modules_root):
-		modules_root.visible = true
-		modules_root.modulate.a = 1.0
-
-
-func _cancel_skill_swipe_preview_modules_reveal(preview_state: Dictionary) -> void:
-	preview_module_reveal_token += 1
-	host._app_lifecycle_runtime()._kill_card_tween(preview_state, "reveal_tween")
-
 
 func _apply_skill_swipe_commit_release_offset(current_x: float, offset: int) -> void:
 	_set_skill_swipe_positions(offset, current_x)
@@ -5832,7 +5207,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.z_index = 1
 	var depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), card_depth_offset, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
 	ThemeStyles.apply_activity_card_depth_action_theme(depth, skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
-	_apply_recovery_card_depth_shape(depth, action)
+	ActivityCardStyles.apply_recovery_card_depth_shape(depth, action)
 	depth.visible = true
 	if uses_flat_normal_card:
 		ActivityCardStyles.apply_normal_activity_card_depth(depth, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
@@ -5872,7 +5247,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		card_root.add_child(body_connectors)
 		pop_card.set_meta("activity_card_connector_node_id", body_connectors.get_instance_id())
 	var bg = host._skill_detail_surface()._action_card_background(skill_id, action)
-	_apply_recovery_card_background_shape(bg, action)
+	ActivityCardStyles.apply_recovery_card_background_shape(bg, action)
 	if uses_flat_normal_card:
 		bg.offset_left = 0.0
 		bg.offset_right = 0.0
@@ -6082,7 +5457,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 			progress.bottom_radius = host.ACTION_CARD_FACE_RADIUS
 		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
 			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
-		_apply_recovery_progress_rail_shape(progress, action)
+		ActivityCardStyles.apply_recovery_progress_rail_shape(host, progress, action)
 		progress.z_index = 232
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(progress)
@@ -6791,10 +6166,6 @@ func _release_activity_button_shell_bound(button_id: int, force_visual_release :
 
 func has_depressed_activity_shell_button(button_id: int) -> bool:
 	return depressed_activity_shell_buttons.has(button_id)
-
-
-func forget_depressed_activity_shell_button(button_id: int) -> void:
-	depressed_activity_shell_buttons.erase(button_id)
 
 
 func release_depressed_activity_shell_buttons_if_pointer_left(event: InputEvent) -> void:

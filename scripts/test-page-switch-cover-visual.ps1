@@ -35,6 +35,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 90
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -60,7 +62,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 	if not await _wait_for_boot_hidden(scene):
@@ -197,19 +199,10 @@ func _select_skill(scene: Node, skill_id: String) -> void:
 	_fail("failed to select skill %s" % skill_id)
 
 
-func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
-	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = pressed
-	event.position = point
-	event.global_position = point
-	return event
-
-
 func _press_page_switch_button(scene: Node, button: Button) -> void:
 	var point := button.get_global_rect().get_center()
-	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", _mouse_button_event(point, true))
-	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", _mouse_button_event(point, false))
+	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", TestHelpers.mouse_button_event(point, true))
+	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", TestHelpers.mouse_button_event(point, false))
 
 
 func _scroll_detail_to_bottom(scene: Node) -> void:
@@ -329,22 +322,6 @@ func _write_result() -> void:
 func _wait_test_frame() -> void:
 	await process_frame
 	await create_timer(TEST_FRAME_SECONDS, true, false, true).timeout
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _wait_for_boot_hidden(scene: Node) -> bool:

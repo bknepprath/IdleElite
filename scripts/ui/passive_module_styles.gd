@@ -183,10 +183,7 @@ class SerpentineProgressBar:
 static func currency(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(panel_color, 28, 14, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 12
-	style.border_width_right = 12
-	style.border_width_top = 12
-	style.border_width_bottom = 12
+	style.set_border_width_all(12)
 	style.content_margin_left = 22
 	style.content_margin_right = 16
 	style.content_margin_top = 10
@@ -197,10 +194,7 @@ static func currency(panel_color: Color, ink_color: Color, surface_style: Callab
 static func stat(ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(Color.WHITE, 22, 18, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 10
-	style.border_width_right = 10
-	style.border_width_top = 10
-	style.border_width_bottom = 10
+	style.set_border_width_all(10)
 	style.content_margin_left = 24
 	style.content_margin_right = 20
 	style.content_margin_top = 6
@@ -211,10 +205,7 @@ static func stat(ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
 static func popup(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(panel_color, 22, 20, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
+	style.set_border_width_all(8)
 	return style
 
 
@@ -225,10 +216,7 @@ static func icon_button(active := false, hovered := false, ink_color := Color.BL
 	var style := surface_style.call(fill, 24, 8, true) as StyleBoxFlat
 	style.border_color = Color("#178b38") if active else ink_color
 	var border_width := 14 if active else 10
-	style.border_width_left = border_width
-	style.border_width_right = border_width
-	style.border_width_top = border_width
-	style.border_width_bottom = border_width
+	style.set_border_width_all(border_width)
 	if active:
 		style.shadow_color = Color(0.05, 0.30, 0.12, 0.42)
 		style.shadow_size = 8
@@ -239,14 +227,8 @@ static func plank_light(active: bool, ink_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#44f078") if active else Color("#e63d35")
 	style.border_color = ink_color
-	style.border_width_left = 6
-	style.border_width_right = 6
-	style.border_width_top = 6
-	style.border_width_bottom = 6
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_border_width_all(6)
+	style.set_corner_radius_all(999)
 	style.shadow_color = Color(0.18, 0.82, 0.28, 0.48) if active else Color(0.78, 0.12, 0.09, 0.42)
 	style.shadow_size = 6
 	style.shadow_offset = Vector2.ZERO

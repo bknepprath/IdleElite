@@ -346,12 +346,12 @@ func _run() -> void:
 	if $activeLiteral and "$captureCueLiteral" == "area-clear-xp" and not found_natural_area_clear_xp:
 		_fail("natural Giants area clear +%d XP was not reached" % expected_area_clear_xp)
 		return
-	# Capture the exact detected production state in its already-mounted composition. Reframing here can remount the lazy card.
+
 	var settle_frames := 36
 	if "$captureCueLiteral" in ["goblins", "rouses-crash", "werewolf-transform", "cave-troll-slam", "directional-breath"]:
 		settle_frames = 2
 	if expected_enemy_id == "dragons":
-		# Preserve the naturally detected brawl/strike cue; do not mutate the actor to hold it.
+
 		settle_frames = 3
 	if "$captureCueLiteral" == "area-clear-xp":
 		settle_frames = 46

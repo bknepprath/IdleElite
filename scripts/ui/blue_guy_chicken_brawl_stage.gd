@@ -1208,7 +1208,7 @@ func _advance_normal_wave() -> void:
 
 func _spawn_chicken(lane: int) -> void:
 	chicken_serial += 1
-	# Four entry edges plus the windup/recovery holds are deliberate crowd choreography.
+
 	var side := lane % 4
 	var edge_t := fposmod(float(lane) * 0.271 + float(chicken_serial) * 0.173, 1.0)
 	var variant := _variant_for_spawn(chicken_serial)
@@ -1939,8 +1939,8 @@ func _step_chicken(chicken: Dictionary, delta: float) -> void:
 			chicken["attack_duration"] = phase_timer
 			attack_cd = _enemy_attack_cooldown()
 
-	# A R.O.U.S. roll is a committed out-and-back attack, so the diamond's
-	# walkable clamp must not bend either leg around the hero.
+
+
 	var next_pos := _clamp_rouses_roll_to_stage(pos) if enemy_id == "rouses" and phase in ["strike", "recovery"] else _clamp_norm_to_arena(pos)
 	if enemy_id == "dragons":
 		chicken["dragon_is_walking"] = phase.is_empty() and next_pos.distance_squared_to(old_pos) > 0.0000001
@@ -2213,7 +2213,7 @@ func _step_enemy_strike(chicken: Dictionary, pos: Vector2, dir: Vector2, delta: 
 		"dragons":
 			var dragon_kind := str(chicken.get("dragon_attack_kind", "brawl"))
 			if dragon_kind == "brawl":
-				# ponytail: hold the boss in the readable brawl pocket; the recovery owns retreat.
+
 				chicken["pos"] = pos
 				_update_dragon_melee_aim(chicken, pos)
 			elif dragon_kind == "pounce":
@@ -3341,31 +3341,10 @@ func _draw_diamond_prism_faces(front: PackedVector2Array, back: PackedVector2Arr
 		draw_colored_polygon(PackedVector2Array([front[i], front[next], back[next], back[i]]), depth_color)
 
 
-func _draw_diamond_depth_caps(front: PackedVector2Array, offset: Vector2, s: float) -> void:
-	var bottom := _diamond_extreme_y_point(front, true) + offset
-	_draw_ellipse(bottom, Vector2(26.0, 15.0) * s, _arena_depth_color_for_enemy(enemy_id))
-
-
-func _draw_diamond_visible_back_outline(front: PackedVector2Array, back: PackedVector2Array, offset: Vector2, s: float) -> void:
-	for i in range(front.size()):
-		var next := (i + 1) % front.size()
-		var normal := _diamond_edge_outward_normal(front[i], front[next])
-		if normal.dot(offset) > 0.15:
-			draw_line(back[i], back[next], INK, 8.0 * s, true)
-
-
 func _draw_diamond_front_and_depth_outline(front: PackedVector2Array, s: float) -> void:
 	var closed := PackedVector2Array(front)
 	closed.append(front[0])
 	draw_polyline(closed, INK, 8.0 * s, true)
-
-
-func _draw_diamond_bottom_back_outline(front: PackedVector2Array, offset: Vector2, s: float) -> void:
-	for i in range(front.size()):
-		var next := (i + 1) % front.size()
-		if not _diamond_depth_edge_visible(front[i], front[next], offset):
-			continue
-		draw_line(front[i] + offset, front[next] + offset, INK, 8.0 * s, true)
 
 
 func _draw_diamond_visible_depth_outline(back: PackedVector2Array, s: float) -> void:
@@ -3380,21 +3359,6 @@ func _draw_diamond_visible_depth_outline(back: PackedVector2Array, s: float) -> 
 			draw_line(back[i], back[next], INK, 8.0 * s, true)
 
 
-func _diamond_lower_depth_path(points: PackedVector2Array, cutoff_y: float) -> PackedVector2Array:
-	var path := PackedVector2Array()
-	for i in range(points.size()):
-		var current := points[i]
-		var next := points[(i + 1) % points.size()]
-		if current.y >= cutoff_y:
-			path.append(current)
-		if (current.y < cutoff_y and next.y >= cutoff_y) or (current.y >= cutoff_y and next.y < cutoff_y):
-			var t := (cutoff_y - current.y) / (next.y - current.y)
-			path.append(current.lerp(next, t))
-	if path.size() > 1 and path[0].x > path[path.size() - 1].x:
-		path.reverse()
-	return path
-
-
 func _draw_diamond_depth_corner_connectors(front: PackedVector2Array, offset: Vector2, s: float) -> void:
 	for i in range(front.size()):
 		var next := (i + 1) % front.size()
@@ -3407,33 +3371,6 @@ func _draw_diamond_depth_corner_connectors(front: PackedVector2Array, offset: Ve
 
 func _diamond_depth_offset(_s: float) -> Vector2:
 	return ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET * 2.0
-
-
-func _diamond_extreme_x_point(points: PackedVector2Array, right_side: bool) -> Vector2:
-	var best := points[0]
-	for point in points:
-		if (right_side and point.x > best.x) or (not right_side and point.x < best.x):
-			best = point
-	return best
-
-
-func _diamond_extreme_y_point(points: PackedVector2Array, bottom_side: bool) -> Vector2:
-	var best := points[0]
-	for point in points:
-		if (bottom_side and point.y > best.y) or (not bottom_side and point.y < best.y):
-			best = point
-	return best
-
-
-func _diamond_extreme_depth_connector_point(points: PackedVector2Array, positive: bool) -> Vector2:
-	var best := points[0]
-	var best_score := best.x - best.y
-	for point in points:
-		var score := point.x - point.y
-		if (positive and score > best_score) or (not positive and score < best_score):
-			best = point
-			best_score = score
-	return best
 
 
 func _rounded_diamond_points(points: PackedVector2Array, corner_radius: float, segments: int) -> PackedVector2Array:
@@ -3457,15 +3394,6 @@ func _rounded_diamond_points(points: PackedVector2Array, corner_radius: float, s
 	return rounded
 
 
-func _draw_diamond_depth_outlines(front: PackedVector2Array, back: PackedVector2Array, visible_edges: Array[bool], travel: Vector2, s: float) -> void:
-	var width := 8.0 * s
-	for i in range(front.size()):
-		if not bool(visible_edges[i]):
-			continue
-		var next := (i + 1) % front.size()
-		draw_line(back[i], back[next], INK, width, true)
-
-
 func _diamond_edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 	var edge := p1 - p0
 	if edge.length_squared() <= 0.001:
@@ -3476,12 +3404,6 @@ func _diamond_edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 func _diamond_depth_edge_visible(p0: Vector2, p1: Vector2, travel: Vector2) -> bool:
 	var normal := _diamond_edge_outward_normal(p0, p1)
 	return normal.dot(travel) > 0.15
-
-
-func _diamond_side_face_visible(normal: Vector2, travel: Vector2) -> bool:
-	if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
-		return false
-	return normal.x > 0.08 or normal.y > 0.56
 
 
 func _diamond_half_width_at_y(y: float, points: PackedVector2Array) -> float:

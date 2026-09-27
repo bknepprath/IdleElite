@@ -1343,7 +1343,7 @@ func _check_rouses_werewolves_identity(stage: Control) -> void:
 	stage.call("_step_enemy_strike", saved_charge, saved_charge["pos"], Vector2.LEFT, 0.05)
 	_expect((saved_charge["pos"] as Vector2).x > charge_before.x, "Werewolf charge should keep its saved direction after hero movement")
 
-	# Natural production beat: the stationary center hero is crossed once, then the saved straight charge skids at the far wall.
+
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_hp", 100000.0)
 	stage.set("hero_hurt_cooldown", 0.0)
@@ -1358,7 +1358,7 @@ func _check_rouses_werewolves_identity(stage: Control) -> void:
 	_expect(is_zero_approx(float(natural_wolf.get("stagger_timer", 0.0))) and not bool(natural_wolf.get("wall_hit", false)), "Werewolf SKID should enter ordinary recovery without stagger")
 	_expect(float(stage.get("hero_hp")) < 100000.0 and bool(natural_wolf.get("attack_damage_done", false)), "center stationary Werewolf charge may damage once before SKID")
 
-	# Synthetic off-path proof: moving the hero off the saved line must not create contact damage.
+
 	stage.set("hero_pos", Vector2(0.50, 0.82))
 	stage.set("hero_hp", 100000.0)
 	stage.set("hero_hurt_cooldown", 0.0)
@@ -1487,7 +1487,7 @@ func _visible_float_count(stage: Control, text: String) -> int:
 
 
 func _check_center_identity_reachability(stage: Control, scene: Node) -> void:
-	# Actual stage loop: normal center hero, production approach/attack lifecycle, no actor or phase injection.
+
 	for sample in [{"id": "fight-r.o.u.s.es", "level": 24, "flag": "rouses_returned", "label": "R.O.U.S.es return"}, {"id": "fight-r.o.u.s.es", "level": 99, "flag": "rouses_returned", "label": "level-99 R.O.U.S.es return"}, {"id": "fight-werewolves", "level": 47, "flag": "charge_skidded", "label": "Werewolf skid"}, {"id": "fight-werewolves", "level": 99, "flag": "charge_skidded", "label": "level-99 Werewolf skid"}, {"id": "fight-cave-trolls", "level": 59, "flag": "slam_impacted", "label": "Cave Troll SLAM"}, {"id": "fight-cave-trolls", "level": 99, "flag": "slam_impacted", "label": "level-99 Cave Troll SLAM"}, {"id": "fight-vampires", "level": 88, "flag": "vampire_crossed", "label": "level-88 Vampire flank cross"}, {"id": "fight-vampires", "level": 99, "flag": "vampire_crossed", "label": "level-99 Vampire flank cross"}]:
 		var action := scene.call("_action_data", "fight", str(sample["id"])) as Dictionary
 		stage.call("setup_action", action)
@@ -1803,7 +1803,7 @@ func _run_cycle(scene: Node, action_id: String, level: int, seed_value: int) -> 
 	stage.call("set_active_fight", true)
 	var cleared := false
 	for frame in range(18000):
-		# ponytail: deterministic orbit, with a longer goblin retreat, exercises attack range and avoidance.
+
 		var dodge_t := float(frame) * 0.05
 		var dodge_target := Vector2(0.5 + cos(dodge_t * 0.9) * 0.16, 0.55 + sin(dodge_t * 0.9) * 0.16)
 		var current_pos := stage.get("hero_pos") as Vector2

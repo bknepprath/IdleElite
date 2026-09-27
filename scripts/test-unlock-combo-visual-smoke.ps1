@@ -38,6 +38,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 const FishingState = preload("res://scripts/fishing/state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -64,7 +66,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
@@ -117,22 +119,6 @@ func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void
 	scene.call("_clear_pending_activity_readiness_action", skill_id, action_id)
 	activity_unlock_runtime.set("manual_activity_unlocks_trust_checked", true)
 	activity_unlock_runtime.set("manual_activity_unlocks_trusted", true)
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
@@ -633,7 +619,7 @@ func _check_fishing_scroll_limit_reaches_lazy_bottom(scene: Node) -> void:
 		float(scene.call("_skill_detail_bottom_scroll_pad", "fishing")) - float(scene.call("_skills_content_bottom_inset_for_screen"))
 	)
 	if float(scene.call("_detail_stack_page_switch_bottom")) >= 0.0:
-		# Matches _sync_detail_actions_scroll_limit: page gap 48 plus 12px when the page switch module is in-stack.
+
 		bottom_gap = maxf(0.0, bottom_gap - 60.0)
 	var expected_max := maxi(0, int(ceil(expected_bottom + bottom_gap - viewport_height)))
 	var actual_max := int(scroll.call("get_max_scroll_vertical"))

@@ -41,7 +41,6 @@ var last_save_unix_time := 0
 var last_save_monotonic_msec := -1
 var save_dirty := false
 var save_dirty_reason := ""
-var allow_next_save_progress_regression := false
 var next_save_identity_transition_source_uid := ""
 var next_save_identity_transition_target_uid := ""
 var next_save_vetted_progress_repair_source := {}
@@ -170,9 +169,9 @@ static func _payload_semantic_error(payload: Dictionary, schema_version: int) ->
 	if typeof(skills_value) != TYPE_DICTIONARY:
 		return "missing_skills"
 	var skills := skills_value as Dictionary
-	# Schema-zero fixtures and historical desktop saves may legitimately contain an
-	# empty skills dictionary. Every save emitted by schema v1 or later contains at
-	# least one skill, so an empty current save is an incomplete write.
+
+
+
 	if schema_version >= 1 and skills.is_empty():
 		return "empty_skills"
 	for raw_skill_id in skills.keys():
@@ -185,9 +184,9 @@ static func _payload_semantic_error(payload: Dictionary, schema_version: int) ->
 		if not skill_state.has("xp") or typeof(skill_state.get("xp")) not in [TYPE_INT, TYPE_FLOAT] or float(skill_state.get("xp", 0)) < 0.0:
 			return "invalid_skill_xp"
 	if schema_version >= 1:
-		# Schema v1 and later are always emitted as complete gameplay payloads. A
-		# fragment that happens to contain one valid skill is an interrupted/truncated
-		# write, not a save that can safely be filled from current defaults.
+
+
+
 		for required_dictionary in ["mastery", "stamina", "stamina_bank", "mats"]:
 			if typeof(payload.get(required_dictionary, null)) != TYPE_DICTIONARY:
 				return "missing_%s" % required_dictionary
@@ -196,16 +195,16 @@ static func _payload_semantic_error(payload: Dictionary, schema_version: int) ->
 				return "missing_%s" % required_number
 		if typeof(payload.get("selected_skill_id", null)) != TYPE_STRING:
 			return "missing_selected_skill_id"
-	# Identity metadata can be repaired independently. Rejecting the whole payload
-	# here would make intact gameplay unavailable because of a damaged profile.
+
+
 	return ""
 
 
 static func encoded_payload(payload: Dictionary) -> String:
 	var payload_text := JSON.stringify(payload)
-	# Keep a complete flat copy for rollback builds whose loader predates the
-	# envelope. Current builds ignore this compatibility copy and verify the
-	# checksummed payload_json before returning any save data.
+
+
+
 	var encoded := payload.duplicate(true)
 	encoded["save_envelope_version"] = SAVE_ENVELOPE_VERSION
 	encoded["checksum"] = payload_text.sha256_text()
@@ -230,8 +229,8 @@ static func append_save_journal_event(event_name: String, details := {}) -> void
 	}
 	if typeof(details) == TYPE_DICTIONARY:
 		var source := details as Dictionary
-		# This whitelist intentionally excludes payload contents, profile values,
-		# tokens, display names, and arbitrary error bodies.
+
+
 		for key in ["source", "result", "schema", "revision", "migration_from", "migration_to", "trigger", "stage", "rotation"]:
 			if not source.has(key):
 				continue
@@ -313,8 +312,8 @@ static func quarantine_invalid_save(path: String) -> bool:
 	if str(result.get("error", "")).is_empty():
 		return false
 	if not result.has("raw"):
-		# Open/read failures cannot be copied safely. Leave the original in place so
-		# boot recovery will remain fail-closed.
+
+
 		append_save_journal_event("quarantine", {"source": path, "result": "unavailable"})
 		return false
 	var raw := str(result.get("raw", ""))
@@ -442,13 +441,13 @@ static func should_replace_best_save(best_save: Dictionary, candidate: Dictionar
 		SaveStateNormalizers.claimed_name_boundary_changes(best_comparison, candidate_comparison)
 		and not candidate_is_vetted_identity_repair
 	):
-		# A repair generation is never authority to rename a claimed profile. Keep the
-		# caller's path ordering until an explicit identity transition is persisted.
+
+
 		return false
-	# A newer repair generation may cross an identity guard only when it is exactly
-	# the constrained normalization accepted by vetted_identity_repair_is_safe().
-	# A complete identity from an older backup is grafted onto the selected gameplay
-	# payload separately; it must never make the entire older payload win here.
+
+
+
+
 	if candidate_is_vetted_identity_repair:
 		return true
 	if best_is_vetted_identity_repair:
@@ -456,8 +455,8 @@ static func should_replace_best_save(best_save: Dictionary, candidate: Dictionar
 	if candidate_identity_regresses != best_identity_regresses and not candidate_repairs_incomplete_claim:
 		return not candidate_identity_regresses
 	if candidate_identity_regresses and best_identity_regresses:
-		# Never use recency to cross an established account boundary. The caller's
-		# path order remains the deterministic authority for conflicting identities.
+
+
 		return false
 	if stable_account_boundary and candidate_repair_generation != best_repair_generation:
 		return candidate_repair_generation > best_repair_generation
@@ -481,9 +480,7 @@ static func should_replace_best_save(best_save: Dictionary, candidate: Dictionar
 
 
 static func _candidate_repairs_incomplete_claimed_identity(existing_payload: Dictionary, candidate_payload: Dictionary) -> bool:
-	if not SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(existing_payload):
-		return false
-	if SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(candidate_payload):
+	if not SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(existing_payload) or SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(candidate_payload):
 		return false
 	if not bool(candidate_payload.get("leaderboard_profile_claimed", false)) or not bool(candidate_payload.get("leaderboard_name_claim_verified", false)):
 		return false
@@ -491,7 +488,7 @@ static func _candidate_repairs_incomplete_claimed_identity(existing_payload: Dic
 		return false
 	var candidate_display_name := str(candidate_payload.get("leaderboard_display_name", "")).strip_edges()
 	var candidate_name_key := str(candidate_payload.get("leaderboard_name_key", "")).strip_edges()
-	if LeaderboardProfile.is_default_display_name(candidate_display_name, SAVE_PROFILE_DISPLAY_NAME_MAX_CHARS) or LeaderboardProfile.is_guest_display_name(candidate_display_name, SAVE_PROFILE_GUEST_NAME_PREFIX, SAVE_PROFILE_DISPLAY_NAME_MAX_CHARS):
+	if LeaderboardProfile.is_guest_display_name(candidate_display_name, SAVE_PROFILE_GUEST_NAME_PREFIX, SAVE_PROFILE_DISPLAY_NAME_MAX_CHARS):
 		return false
 	if LeaderboardProfile.sanitize_display_name(candidate_display_name, SAVE_PROFILE_DISPLAY_NAME_MAX_CHARS) != candidate_display_name:
 		return false
@@ -508,9 +505,9 @@ static func _candidate_repairs_incomplete_claimed_identity(existing_payload: Dic
 			continue
 		if not existing_value.is_empty() and str(candidate_payload.get(key, "")).strip_edges() != existing_value:
 			return false
-	# The candidate supplies only these validated claim fields. Its older token,
-	# provider, recovery markers, gameplay, and revision never enter the repaired
-	# payload, so legacy v1 candidates may safely omit newer identity metadata.
+
+
+
 	return true
 
 
@@ -518,10 +515,10 @@ static func payload_with_recovered_claimed_identity(existing_payload: Dictionary
 	if not _candidate_repairs_incomplete_claimed_identity(existing_payload, candidate_payload):
 		return existing_payload
 	var repaired := existing_payload.duplicate(true)
-	# Copy only the server-validated claim boundary. Gameplay, save revision, repair
-	# generation, currencies, credentials, and every other local field remain from
-	# the selected primary so username recovery can never roll progress back. Force
-	# one canonical server check before online writes resume.
+
+
+
+
 	for key in ["leaderboard_display_name", "leaderboard_name_key", "leaderboard_profile_claimed", "leaderboard_name_claim_verified"]:
 		repaired[key] = candidate_payload.get(key)
 	repaired["leaderboard_auth_recovery_required"] = true
@@ -534,7 +531,8 @@ func _init(host_ref) -> void:
 	host = host_ref
 
 
-func _init_state() -> void:
+func _init_state(reset_online_state := true) -> void:
+	host.save_restore_complete = false
 	SkillState.invalidate_stat_caches(host)
 	host._app_lifecycle_runtime().clear_lazy_overlay_registry()
 	host.skills.clear()
@@ -597,7 +595,6 @@ func _init_state() -> void:
 	host._onboarding_runtime().silver_opportunity_tip_action_key = ""
 	host.stamina_gauge_pre_tip_hold_seconds = 0.0
 	host.show_stamina_decimal = false
-	host.offline_progress_cap_notifications_enabled = false
 	host.stamina_gauge_tip_root = null
 	host._onboarding_runtime().onboarding_fight_summary_revealed = true
 	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = true
@@ -622,16 +619,17 @@ func _init_state() -> void:
 	unlock_ceremony.clear_preview_reveal_guards()
 	host._onboarding_runtime()._cancel_onboarding_header_sequence()
 	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
-	var leaderboard_state = host.leaderboard_state
-	leaderboard_state.reset_submission_metadata()
-	host.leaderboard_profile.reset(host.PROFILE_GUEST_NAME_PREFIX)
-	leaderboard_state.rows_by_category.clear()
-	leaderboard_state.fetch_unix_by_category.clear()
-	leaderboard_state.fetch_retry_unix_by_category.clear()
-	leaderboard_state.status_message = ""
-	host._online_runtime().reset_cloud_save_state()
-	host._online_runtime().reset_leaderboard_runtime_state()
-	host._online_runtime().reset_chat_runtime_state()
+	if reset_online_state:
+		var leaderboard_state = host.leaderboard_state
+		leaderboard_state.reset_submission_metadata()
+		host.leaderboard_profile.reset(host.PROFILE_GUEST_NAME_PREFIX)
+		leaderboard_state.rows_by_category.clear()
+		leaderboard_state.fetch_unix_by_category.clear()
+		leaderboard_state.fetch_retry_unix_by_category.clear()
+		leaderboard_state.status_message = ""
+		host._online_runtime().reset_cloud_save_state()
+		host._online_runtime().reset_leaderboard_runtime_state()
+		host._online_runtime().reset_chat_runtime_state()
 	host.last_passive_process_unix = host._unix_now()
 	host._ad_bonus_runtime().seconds_remaining = 0.0
 	for def in host.skill_defs:
@@ -673,7 +671,6 @@ func reset_data(feedback_button: Button = null) -> void:
 	host._boot_warmup_runtime().prepare_selected_skill_for_render(false)
 	host.last_result = "Data wiped."
 	save_reset_generation = maxi(save_reset_generation + 1, int(round(Time.get_unix_time_from_system() * 1000.0)))
-	allow_next_save_progress_regression = true
 	host.save_restore_complete = true
 	host._onboarding_runtime()._start_tutorial()
 	host._update_ui(0.0, true)
@@ -689,9 +686,9 @@ func _mark_save_dirty(reason = "") -> void:
 
 
 func allow_next_identity_transition_save(source_uid: String, target_uid: String) -> bool:
-	# This capability is reserved for a completed, user-initiated account switch.
-	# Refresh, anonymous signup, and background auth must never call it. Exact UID
-	# anchors prevent it from authorizing any different in-memory transition.
+
+
+
 	cancel_next_identity_transition_save()
 	var clean_source_uid := LeaderboardProfile.sanitize_player_id(source_uid)
 	var clean_target_uid := LeaderboardProfile.sanitize_player_id(target_uid)
@@ -743,8 +740,8 @@ func _clear_vetted_save_repair_capabilities() -> void:
 
 
 func save_game() -> bool:
-	# Identity-transition authority is one-shot. Consume it before every exit path,
-	# including storage failures, so a later unrelated save cannot inherit it.
+
+
 	var identity_transition_capability := _consume_next_identity_transition_save()
 	if OS.get_environment("IDLE_ELITE_DISABLE_SAVE_WRITES") == "1":
 		save_dirty = false
@@ -771,19 +768,13 @@ func save_game() -> bool:
 		save_dirty = true
 		save_dirty_reason = "progress regression blocked"
 		host.last_result = "Save protected: progress regression blocked."
-		push_warning(
-			"Idle Elite blocked a save that would reduce progress at %s" % ProjectSettings.globalize_path(SAVE_PATH)
-		)
+		push_warning("Idle Elite blocked a save that would reduce progress at %s" % ProjectSettings.globalize_path(SAVE_PATH))
 		return false
-	if allow_next_save_progress_regression:
-		allow_next_save_progress_regression = false
 	if not _write_save_payload_atomically(payload):
 		save_dirty = true
 		save_dirty_reason = "save file write failed"
 		host.last_result = "Save failed."
-		push_warning(
-			"Idle Elite save failed at %s" % ProjectSettings.globalize_path(SAVE_PATH)
-		)
+		push_warning("Idle Elite save failed at %s" % ProjectSettings.globalize_path(SAVE_PATH))
 		return false
 	save_revision = int(payload.get("save_revision", save_revision + 1))
 	_sync_web_userfs_after_save()
@@ -792,7 +783,6 @@ func save_game() -> bool:
 		host._online_runtime().upload_cloud_save()
 	save_dirty = false
 	save_dirty_reason = ""
-	allow_next_save_progress_regression = false
 	_clear_vetted_save_repair_capabilities()
 	return true
 
@@ -817,8 +807,6 @@ func _write_save_payload_atomically(payload: Dictionary) -> bool:
 
 
 func _save_payload_can_replace_existing_save(next_payload: Dictionary, identity_transition_capability := {}) -> bool:
-	if allow_next_save_progress_regression:
-		return true
 	var action_id_aliases = host.FISHING_ACTION_ID_ALIASES
 	var existing = best_dictionary_from_paths(_local_save_paths(), host.skill_defs, action_id_aliases)
 	var existing_comparison := SaveStateNormalizers.payload_with_canonical_action_keys(existing, action_id_aliases)
@@ -883,8 +871,8 @@ static func _vetted_claimed_identity_recovery_is_safe(existing_payload: Dictiona
 		return false
 	if not _identity_repair_matches_expected_claim(next_payload, expected_repair):
 		return false
-	# The backup authorizes only the claimed name fields. The selected primary's
-	# UID, credentials, provider, and recovery/transfer anchors must still survive.
+
+
 	return not SaveStateNormalizers.payload_regresses_identity(expected_repair, next_payload)
 
 
@@ -965,24 +953,18 @@ func _event_running_action_id_for_save() -> String:
 
 
 func _selected_skill_id_for_save() -> String:
-	if SkillState.has_skill_id(host.skill_defs, host.selected_skill_id):
-		return host.selected_skill_id
-	return _default_skill_id_for_save()
+	return host.selected_skill_id if SkillState.has_skill_id(host.skill_defs, host.selected_skill_id) else _default_skill_id_for_save()
 
 
 func _running_skill_id_for_save() -> String:
 	var action_id := _running_action_id_for_save()
-	if action_id.is_empty() or not SkillState.has_skill_id(host.skill_defs, host.running_skill_id):
-		return ""
-	return host.running_skill_id
+	return host.running_skill_id if not action_id.is_empty() and SkillState.has_skill_id(host.skill_defs, host.running_skill_id) else ""
 
 
 func _event_running_skill_id_for_save() -> String:
 	var temporary_events = host._temporary_event_runtime()
 	var action_id := _event_running_action_id_for_save()
-	if action_id.is_empty() or not SkillState.has_skill_id(host.skill_defs, temporary_events.event_running_skill_id):
-		return ""
-	return temporary_events.event_running_skill_id
+	return temporary_events.event_running_skill_id if not action_id.is_empty() and SkillState.has_skill_id(host.skill_defs, temporary_events.event_running_skill_id) else ""
 
 
 func _default_skill_id_for_save() -> String:
@@ -1025,6 +1007,7 @@ func _canonical_action_key(key: String) -> String:
 
 
 func _save_payload(now: int) -> Dictionary:
+	var auto_eat_fish_by_skill: Dictionary = host.fishing_runtime.auto_eat_fish_enabled_by_skill_for_save(host)
 	var payload := {
 		"save_schema_version": SAVE_SCHEMA_VERSION,
 		"save_reset_generation": save_reset_generation,
@@ -1039,8 +1022,8 @@ func _save_payload(now: int) -> Dictionary:
 		"blue_guy_health_bank": host._fighting_runtime().blue_guy_health_bank_for_save(),
 		"mats": host.material_runtime.save_wallet(),
 		"log_currency": maxi(0, host.material_runtime.legacy_softwood_amount),
-		"auto_eat_fish_enabled": not host.fishing_runtime.auto_eat_fish_enabled_by_skill_for_save(host).is_empty(),
-		"auto_eat_fish_enabled_by_skill": host.fishing_runtime.auto_eat_fish_enabled_by_skill_for_save(host),
+		"auto_eat_fish_enabled": not auto_eat_fish_by_skill.is_empty(),
+		"auto_eat_fish_enabled_by_skill": auto_eat_fish_by_skill,
 		"passive_modules": host._passive_modules_runtime().for_save(),
 		"convergence_modules": host._convergence_runtime()._convergence_modules_for_save(),
 		"built_modules": BuildableModules.normalized_for_save(host.built_modules, Callable(host, "_action_data"), Callable(host, "_action_key")),
@@ -1137,15 +1120,12 @@ func _save_payload(now: int) -> Dictionary:
 		"leaderboard_auth_refresh_token": LeaderboardProfile.auth_refresh_token_for_save(host),
 		"leaderboard_auth_retry_after_unix": maxi(0, int(host._online_runtime().leaderboard_auth_retry_after_unix)),
 		"leaderboard_fetch_retry_unix_by_category": host.leaderboard_state.fetch_retry_unix_by_category_for_save(),
-		# Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible.
+
 		"last_result": host.last_result,
 		"saved_at": now
 	}
 	var online_runtime = host._online_runtime()
-	if online_runtime.has_method("auth_identity_metadata_for_save"):
-		var auth_identity_metadata = online_runtime.call("auth_identity_metadata_for_save")
-		if typeof(auth_identity_metadata) == TYPE_DICTIONARY:
-			payload.merge(auth_identity_metadata as Dictionary, true)
+	payload.merge(online_runtime.auth_identity_metadata_for_save(), true)
 	payload.merge(online_runtime.chat_metadata_for_save(now), true)
 	payload.merge(host.fishing_runtime.save_payload(
 		FishingState.FISHING_NET_HAUL_THRESHOLD,
@@ -1167,11 +1147,7 @@ func _autosave_if_needed() -> void:
 func _autosave_has_live_state_changes() -> bool:
 	if not host.startup_initialized:
 		return false
-	if not host.running_skill_id.is_empty():
-		return true
-	if not host.thieving_state.action_jails.is_empty():
-		return true
-	if host._ad_bonus_runtime().seconds_remaining > 0.0:
+	if not host.running_skill_id.is_empty() or not host.thieving_state.action_jails.is_empty() or host._ad_bonus_runtime().seconds_remaining > 0.0:
 		return true
 	for raw_module_id in HubRuntime.HUB_MODULE_ORDER:
 		if host._hub_surface()._hub_module_building(str(raw_module_id)):
@@ -1211,14 +1187,13 @@ func _apply_offline_progress(saved_at_unix_time: int) -> int:
 	var offline = _trusted_offline_seconds(saved_at_unix_time, now)
 	if offline <= 0:
 		return 0
+	host._ad_bonus_runtime().seconds_remaining = maxf(0.0, host._ad_bonus_runtime().seconds_remaining - float(offline))
 	if not host.offline_progress_enabled:
-		host._ad_bonus_runtime().seconds_remaining = maxf(0.0, host._ad_bonus_runtime().seconds_remaining - float(offline))
 		return 0
 	var active_result = host._action_runtime()._apply_offline_active_action(float(offline))
 	if not bool(active_result.get("handled", false)):
 		host._action_runtime()._apply_stamina_regen_seconds(float(offline), false)
 		host._fighting_runtime().apply_blue_guy_health_regen_seconds(float(offline))
-	host._ad_bonus_runtime().seconds_remaining = maxf(0.0, host._ad_bonus_runtime().seconds_remaining - float(offline))
 	_set_offline_result_text(float(offline), active_result)
 	host._achievement_overlay_surface()._maybe_show_offline_summary(float(offline), active_result)
 	return offline
@@ -1232,9 +1207,7 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 	if completions <= 0:
 		host.last_result = "Away %s: %s waited for stamina." % [GameFormatting.duration(offline_seconds), action_name]
 		return
-	var parts := [
-		"Away %s: %s x%s" % [GameFormatting.duration(offline_seconds), action_name, completions]
-	]
+	var parts := ["Away %s: %s x%s" % [GameFormatting.duration(offline_seconds), action_name, completions]]
 	var xp_total := int(active_result.get("xp", 0))
 	if xp_total > 0:
 		parts.append("+%s XP" % xp_total)
@@ -1330,15 +1303,14 @@ func _load_game_secondary_restore() -> void:
 	if pending_save_restore_data.is_empty():
 		return
 	var restored_save := pending_save_restore_data
-	# Restore account identity before any subsystem that can initiate an online
-	# request. Keep the pending payload until every restore step has completed so a
-	# runtime error cannot turn a partial restore into a saveable state.
+
+
+
 	host.leaderboard_state.restore_submission_metadata_from_save(restored_save)
 	LeaderboardProfile.restore_profile_metadata_from_save(host, restored_save, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
 	LeaderboardProfile.restore_auth_metadata_from_save(host, restored_save)
 	var online_runtime = host._online_runtime()
-	if online_runtime.has_method("restore_auth_identity_metadata_from_save"):
-		online_runtime.call("restore_auth_identity_metadata_from_save", restored_save)
+	online_runtime.restore_auth_identity_metadata_from_save(restored_save)
 	achievement_toast_seen_ids = AchievementState.normalized_seen_ids(restored_save.get("achievement_toast_seen_ids", {}))
 	if not pending_save_has_achievement_toast_seen_ids:
 		AchievementState.mark_completed_seen_ids(AchievementState.milestones(host, false), achievement_toast_seen_ids, ["activity-crit", "activity-mega-crit"])
@@ -1393,12 +1365,8 @@ func _save_needs_fishing_restore(data: Dictionary) -> bool:
 	return selected == "fishing" or running == "fishing"
 
 
-func _legacy_clock_guard_was_saved(data: Dictionary) -> bool:
-	return bool(data.get("offline_clock_guard_tainted", false)) or int(data.get("offline_clock_guard_last_rejected_unix", 0)) > 0
-
-
 func _apply_legacy_clock_guard_leaderboard_forgiveness(data: Dictionary) -> void:
-	if not _legacy_clock_guard_was_saved(data):
+	if not (bool(data.get("offline_clock_guard_tainted", false)) or int(data.get("offline_clock_guard_last_rejected_unix", 0)) > 0):
 		return
 	host.leaderboard_state.last_submitted_score = 0
 	host.leaderboard_state.last_submitted_total_xp = 0
@@ -1448,7 +1416,6 @@ func _apply_post_load_simulation() -> void:
 	host._hub_runtime().sync_trophy_level_from_thieving()
 	host._hub_surface()._validate_hub_module_positions()
 	host._hub_runtime().sync_missions()
-	host._hub_runtime().sync_trophy_level_from_thieving()
 	if not host._audio_director().music_start_chance_unlocked and host._audio_director()._saved_music_groove_floor() >= host._audio_director().MUSIC_BASE_ACTION_THRESHOLD:
 		host._audio_director().music_start_chance_unlocked = true
 	host._audio_director()._maybe_start_music_cycle_on_launch()
@@ -1496,17 +1463,16 @@ func _boot_save_dictionary() -> Dictionary:
 			selected_data = recovery_data
 			selected_path = recovery_path
 			selected_recovered = true
-		if not save_data.is_empty():
-			if selected_data.is_empty():
-				selected_data = save_data
-				selected_path = SAVE_PATH
+		if not save_data.is_empty() and selected_data.is_empty():
+			selected_data = save_data
+			selected_path = SAVE_PATH
 	if selected_data.is_empty() and not recovery_data.is_empty():
 		selected_data = recovery_data
 		selected_path = recovery_path
 		selected_recovered = true
 
-	# A valid but brand-new/current blank save must not hide a progressed save from
-	# the former desktop project directory during an in-place application update.
+
+
 	var legacy_save = _legacy_desktop_save_for_recovery(selected_data)
 	if not legacy_save.is_empty():
 		var legacy_identity_repair_source := legacy_save.duplicate(true)
@@ -1556,7 +1522,7 @@ func _boot_save_dictionary() -> Dictionary:
 			boot_result["identity_repair_source"] = selected_identity_repair_source
 			boot_result["identity_repair_payload"] = selected_data.duplicate(true)
 		return boot_result
-	if any_save_file_exists:
+	if any_save_file_exists or _has_prior_save_history():
 		return {"data": {}, "error": "all local save copies are unreadable or incomplete"}
 	return {"data": {}, "recovered": false}
 
@@ -1605,13 +1571,6 @@ func _start_new_save_file() -> void:
 
 
 
-func _recovery_save_dictionary() -> Dictionary:
-	var best_save := _recovery_save_result().get("data", {}) as Dictionary
-	if not best_save.is_empty():
-		push_warning("Idle Elite recovered save progress from backup storage.")
-	return best_save
-
-
 func _recovery_save_result() -> Dictionary:
 	return best_dictionary_result_from_paths(
 		[SAVE_TEMP_PATH, SAVE_BACKUP_PATH, SAVE_BACKUP_2_PATH, SAVE_BACKUP_3_PATH, SAVE_RECOVERY_SNAPSHOT_PATH],
@@ -1651,7 +1610,13 @@ func _any_local_save_file_exists() -> bool:
 	for path in _local_save_paths():
 		if FileAccess.file_exists(path):
 			return true
-	return false
+	return _has_prior_save_history()
+
+
+func _has_prior_save_history() -> bool:
+
+
+	return FileAccess.file_exists(SAVE_JOURNAL_PATH) or FileAccess.file_exists(SAVE_JOURNAL_TEMP_PATH)
 
 
 func boot_storage_failure_blocks_restore() -> bool:
@@ -1673,20 +1638,10 @@ func _migrate_save_to_current_schema(data: Dictionary) -> Dictionary:
 	var schema_version := int(migrated.get("save_schema_version", 0))
 	if schema_version < 0 or schema_version > SAVE_SCHEMA_VERSION:
 		return {}
-	while schema_version < SAVE_SCHEMA_VERSION:
-		match schema_version:
-			0:
-				# Pre-versioned flat saves already use the v1 field layout.
-				schema_version = 1
-			1:
-				# v2 adds storage metadata only; gameplay and profile values remain
-				# byte-for-byte equivalent after JSON decoding.
-				if not migrated.has("save_revision"):
-					migrated["save_revision"] = 0
-				schema_version = 2
-			_:
-				return {}
-		migrated["save_schema_version"] = schema_version
+
+	if schema_version < 2 and not migrated.has("save_revision"):
+		migrated["save_revision"] = 0
+	migrated["save_schema_version"] = SAVE_SCHEMA_VERSION
 	if SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(migrated):
 		migrated["leaderboard_auth_recovery_required"] = true
 		if str(migrated.get("leaderboard_auth_recovery_reason", "")).strip_edges().is_empty():
@@ -1701,7 +1656,8 @@ func _legacy_desktop_save_for_recovery(current_data: Dictionary) -> Dictionary:
 			continue
 		var legacy_data = load_dictionary(path)
 		if _save_should_use_legacy_desktop_recovery(current_data, legacy_data):
-			return _prepare_legacy_desktop_save_for_recovery(legacy_data)
+			_normalize_legacy_desktop_skill_levels(legacy_data)
+			return legacy_data
 	return {}
 
 
@@ -1731,18 +1687,9 @@ func _save_should_use_legacy_desktop_recovery(current_data: Dictionary, legacy_d
 		return false
 	var current_uid := SaveStateNormalizers.stable_account_uid(current_data)
 	var legacy_uid := SaveStateNormalizers.stable_account_uid(legacy_data)
-	# An established blank account may be new gameplay, but it is still an account
-	# boundary. Only import a legacy candidate into it when the UID proves ownership.
-	if not current_uid.is_empty() and legacy_uid != current_uid:
-		return false
-	return true
 
 
-
-func _prepare_legacy_desktop_save_for_recovery(data: Dictionary) -> Dictionary:
-	var prepared = data.duplicate(true)
-	_normalize_legacy_desktop_skill_levels(prepared)
-	return prepared
+	return current_uid.is_empty() or legacy_uid == current_uid
 
 
 
@@ -1765,8 +1712,8 @@ func _normalize_legacy_desktop_skill_levels(data: Dictionary) -> void:
 		if typeof(saved_xp) not in [TYPE_INT, TYPE_FLOAT] or float(saved_xp) < 0.0:
 			state["xp"] = SkillState.xp_for_level(saved_level)
 		else:
-			# XP is the authoritative accumulated-progress value. Replacing a valid
-			# legacy value with the floor for its cached level loses within-level XP.
+
+
 			state["xp"] = maxi(0, int(saved_xp))
 		state["level"] = saved_level
 		source[skill_id] = state
@@ -1785,9 +1732,9 @@ func _repair_save_for_regular_play(data: Dictionary) -> bool:
 		repaired = true
 	if str(data.get(TRUSTED_DESTRUCTIVE_REPAIR_KEY, "")) != TRUSTED_DESTRUCTIVE_REPAIR_MARKER:
 		return repaired
-	# Destructive historical heuristics are support-authorized only. Requirement
-	# thresholds, XP curves, and offline progression have all changed over time, so
-	# none of these shapes proves corruption in an ordinary player save.
+
+
+
 	data.erase(TRUSTED_DESTRUCTIVE_REPAIR_KEY)
 	repaired = true
 	if _repair_manual_activity_unlock_corruption(data):
@@ -1851,9 +1798,7 @@ func _saved_skill_level_for_repair(data: Dictionary, skill_id: String) -> int:
 
 
 func _repair_onboarding_progress_mismatch(data: Dictionary) -> bool:
-	if bool(data.get("onboarding_tutorial_complete", false)):
-		return false
-	if not SaveStateNormalizers.has_progress_beyond_onboarding(data, host.skill_defs, host.TUTORIAL_STARTER_SKILL_ID):
+	if bool(data.get("onboarding_tutorial_complete", false)) or not SaveStateNormalizers.has_progress_beyond_onboarding(data, host.skill_defs, host.TUTORIAL_STARTER_SKILL_ID):
 		return false
 	SaveStateNormalizers.mark_onboarding_complete(data)
 	return true
@@ -1911,10 +1856,7 @@ func _action_ref_from_key(key: String) -> Dictionary:
 	for raw_action in host.actions_by_skill.get(skill_id, []):
 		var action = raw_action as Dictionary
 		if str(action.get("id", "")) == action_id:
-			return {
-				"skill_id": skill_id,
-				"action": action
-			}
+			return {"skill_id": skill_id, "action": action}
 	return {}
 
 
@@ -2029,10 +1971,7 @@ func _save_has_unmarked_maxed_skills(data: Dictionary) -> bool:
 
 
 func _save_activity_completion_evidence(data: Dictionary) -> int:
-	return maxi(
-		maxi(0, int(data.get("activity_completion_count", 0))),
-		maxi(0, int(data.get("onboarding_starter_action_completion_count", 0)))
-	)
+	return maxi(maxi(0, int(data.get("activity_completion_count", 0))), maxi(0, int(data.get("onboarding_starter_action_completion_count", 0))))
 
 
 
@@ -2059,6 +1998,14 @@ func _restore_boot_render_save_fields(data: Dictionary) -> void:
 	SaveStateNormalizers.mark_onboarding_complete(data)
 	_restore_thieving_trophies_from_save(data)
 	_restore_boot_visible_tip_flags_from_save(data)
+	_restore_onboarding_display_flags(data)
+	_restore_tutorial_state_from_save(data)
+	_apply_onboarding_restored_completion_implications()
+	_restore_tutorial_gate_latch_from_save(data)
+	_restore_tip_metadata_from_save(data)
+
+
+func _restore_onboarding_display_flags(data: Dictionary) -> void:
 	host._onboarding_runtime().skill_swipe_tip_seen = bool(data.get("skill_swipe_tip_seen", false))
 	host._onboarding_runtime().onboarding_explore_tip_seen = bool(data.get("onboarding_explore_tip_seen", false))
 	host._onboarding_runtime().onboarding_tutorial_complete = bool(data.get("onboarding_tutorial_complete", false))
@@ -2067,10 +2014,6 @@ func _restore_boot_render_save_fields(data: Dictionary) -> void:
 	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
 	host._onboarding_runtime().onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
 	host._onboarding_runtime().onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
-	_restore_tutorial_state_from_save(data)
-	_apply_onboarding_restored_completion_implications()
-	_restore_tutorial_gate_latch_from_save(data)
-	_restore_tip_metadata_from_save(data)
 
 
 
@@ -2148,15 +2091,8 @@ func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 	host._onboarding_runtime().onboarding_header_reveal_after_progress = bool(data.get("onboarding_header_reveal_after_progress", false))
 	host._onboarding_runtime().onboarding_swipe_tip_eligible = bool(data.get("onboarding_swipe_tip_eligible", false))
 	host._onboarding_runtime().onboarding_swipe_navigation_unlocked = bool(data.get("onboarding_swipe_navigation_unlocked", false))
-	host._onboarding_runtime().skill_swipe_tip_seen = bool(data.get("skill_swipe_tip_seen", false))
-	host._onboarding_runtime().onboarding_explore_tip_seen = bool(data.get("onboarding_explore_tip_seen", false))
-	host._onboarding_runtime().onboarding_tutorial_complete = bool(data.get("onboarding_tutorial_complete", false))
-	host._onboarding_runtime().stamina_gauge_tip_seen = bool(data.get("stamina_gauge_tip_seen", false))
-	host._onboarding_runtime().onboarding_fight_summary_revealed = bool(data.get("onboarding_fight_summary_revealed", false))
-	var saved_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
-	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = saved_auto_run_message_shown
-	host._onboarding_runtime().onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
-	host._onboarding_runtime().onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
+	_restore_onboarding_display_flags(data)
+	var saved_auto_run_message_shown = host._onboarding_runtime().onboarding_fight_auto_run_message_shown
 	_restore_tutorial_state_from_save(data)
 	host._tutorial_overlay_surface().restore_onboarding_tip_flags(data)
 	if host._onboarding_runtime().onboarding_starter_action_completion_count == 0 and saved_auto_run_message_shown:

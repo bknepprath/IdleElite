@@ -363,8 +363,8 @@ func _finish_boot_render_async() -> bool:
 	host.boot_detail_render_in_progress = false
 	host.boot_lazy_background_mount_allowed = false
 	_set_progress("Finishing startup...", 0.74)
-	# A loaded save is not playable or writable until every subsystem, including
-	# profile/auth identity, has completed the same restore transaction.
+
+
 	if not host._save_runtime().pending_save_restore_data.is_empty():
 		host._save_runtime()._load_game_secondary_restore()
 	if host._save_runtime().boot_recovery_blocks_reveal():

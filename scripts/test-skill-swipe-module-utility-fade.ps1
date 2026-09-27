@@ -8,6 +8,8 @@ New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 var failed := false
 
 func _init() -> void:
@@ -32,7 +34,7 @@ func _run() -> void:
 	scene.call("_render_screen")
 	await _wait_frames(12)
 
-	var utility_row := _valid_control(scene.call("_navigation_shell").module_utility_row)
+	var utility_row := TestHelpers.valid_control_object(scene.call("_navigation_shell").module_utility_row)
 	if utility_row == null:
 		_fail("module_utility_row missing")
 		return
@@ -101,11 +103,6 @@ func _run() -> void:
 
 	print("skill-swipe-module-utility-fade-ok drag_alpha=%.3f release_min_alpha=%.3f final_alpha=%.3f shelf_drag_alpha=%.3f shelf_release_min_alpha=%.3f shelf_final_alpha=%.3f" % [drag_alpha, release_min_alpha, utility_row.modulate.a, shelf_drag_alpha, shelf_release_min_alpha, target_shelf_background.modulate.a])
 	quit(0)
-
-func _valid_control(value) -> Control:
-	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
-		return null
-	return value as Control
 
 func _find_named_control(root_node: Node, node_name: String) -> Control:
 	if root_node == null or not is_instance_valid(root_node):

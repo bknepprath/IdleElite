@@ -8,7 +8,6 @@ var border_width := 12.0
 var radius := 66.0
 var anti_aliasing := true
 var bottom_shape := "round"
-var bottom_cutout_color := Color("#f8f1e5")
 var wide_u_bottom_rise := 58.0
 var wide_u_shoulder_ratio := 0.285
 

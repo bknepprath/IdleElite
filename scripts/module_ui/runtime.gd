@@ -72,8 +72,6 @@ var module_ui_collapse_press_dragged := false
 
 static func normalize(value: Variant) -> String:
 	var key := str(value).strip_edges()
-	if key.is_empty():
-		return ""
 	for prefix in VALID_PREFIXES:
 		if key.begins_with(prefix) and key.length() > prefix.length():
 			return key
@@ -190,11 +188,7 @@ static func canonical_action_id(skill_id: String, action_id: String, aliases := 
 
 static func normalized_sort_mode(value: Variant) -> String:
 	var mode := str(value)
-	match mode:
-		SORT_LEVEL, SORT_LEVEL_REVERSE:
-			return mode
-		_:
-			return SORT_LEVEL
+	return mode if mode == SORT_LEVEL or mode == SORT_LEVEL_REVERSE else SORT_LEVEL
 
 
 static func press_event_position(event: InputEvent) -> Vector2:
@@ -219,9 +213,7 @@ static func press_event_is_release(event: InputEvent) -> bool:
 
 
 static func press_touch_index_for_event(event: InputEvent) -> int:
-	if event is InputEventScreenTouch:
-		return (event as InputEventScreenTouch).index
-	return -1
+	return (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
 
 
 static func action_is_collection_module(owner_skill_id: String, action: Dictionary) -> bool:
@@ -520,9 +512,7 @@ func random_pin_texture_path(valid_paths: Array, fallback_path: String) -> Strin
 func pin_texture_path_for_key(module_key: String, valid_paths: Array, fallback_path: String) -> String:
 	var key := normalize(module_key)
 	var path := str(pin_color_paths.get(key, ""))
-	if not path.is_empty() and valid_paths.has(path):
-		return path
-	return fallback_path
+	return path if not path.is_empty() and valid_paths.has(path) else fallback_path
 
 
 func assign_random_pin_texture_path(module_key: String, valid_paths: Array, fallback_path: String) -> String:
@@ -542,7 +532,7 @@ func clear_pin_texture_path(module_key: String) -> void:
 
 func pin_module_key(module_key: String, skill_id: String, valid_paths: Array, fallback_path: String) -> void:
 	var key := normalize(module_key)
-	if key.is_empty():
+	if key.is_empty() or pinned_order.has(key):
 		return
 	assign_random_pin_texture_path(key, valid_paths, fallback_path)
 	pinned_order.append(key)
@@ -625,9 +615,8 @@ func sort_mode_for_save() -> String:
 func restore_from_save(data: Dictionary, valid_paths: Array, fallback_path: String, allow_key: Callable) -> bool:
 	pinned_order = pinned_order_unlocked_only(normalized_order(data.get("module_ui_pinned_order", [])), allow_key)
 	pin_color_paths = pin_color_paths_unlocked_only(normalized_paths(data.get("module_ui_pin_color_paths", {}), valid_paths), valid_paths, allow_key)
-	for raw_key in pinned_order:
-		var key := normalize(raw_key)
-		if not key.is_empty() and not pin_color_paths.has(key):
+	for key in pinned_order:
+		if not pin_color_paths.has(key):
 			assign_random_pin_texture_path(key, valid_paths, fallback_path)
 	pin_preview_tokens.clear()
 	var collapse_save_version := int(data.get("module_ui_collapse_save_version", 0))

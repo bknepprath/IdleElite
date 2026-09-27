@@ -21,6 +21,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 80
 const SKILLS_TO_SAMPLE := ["fight", "build", "woodcutting", "thieving"]
@@ -44,7 +46,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 
@@ -280,8 +282,8 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 		var card := raw_card as Dictionary
 		if not bool(card.get("locked_preview_hidden", false)):
 			continue
-		var root_control := _valid_control(card.get("root"))
-		var entry_control := _valid_control(card.get("entry"))
+		var root_control := TestHelpers.valid_control(card.get("root"))
+		var entry_control := TestHelpers.valid_control(card.get("entry"))
 		if root_control == null or entry_control == null:
 			continue
 		if not root_control.is_inside_tree() or not entry_control.is_inside_tree():
@@ -372,7 +374,7 @@ func _placeholder_summary(scene: Node) -> String:
 		return ""
 	var viewport_rect := scroll.get_global_rect()
 	for raw_child in stack.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null or child.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
 			continue
 		if not child.visible or not child.is_visible_in_tree():
@@ -398,7 +400,7 @@ func _control_tree_has_placeholder(control: Control) -> bool:
 	if bool(control.get_meta("detail_lazy_placeholder", false)):
 		return true
 	for raw_child in control.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child != null and _control_tree_has_placeholder(child):
 			return true
 	return false
@@ -406,7 +408,7 @@ func _control_tree_has_placeholder(control: Control) -> bool:
 
 func _slot_has_real_content(control: Control) -> bool:
 	for raw_child in control.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null:
 			continue
 		if bool(child.get_meta("detail_lazy_placeholder", false)):
@@ -417,34 +419,10 @@ func _slot_has_real_content(control: Control) -> bool:
 
 
 func _swipe_cover_alpha(scene: Node) -> float:
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := TestHelpers.valid_control(scene.get("skill_swipe_handoff_cover"))
 	if cover == null or not cover.visible:
 		return 0.0
 	return cover.modulate.a
-
-
-func _valid_control(value: Variant) -> Control:
-	if value == null:
-		return null
-	if not is_instance_valid(value):
-		return null
-	return value as Control
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _fail(message: String) -> void:

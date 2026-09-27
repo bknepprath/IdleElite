@@ -51,6 +51,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -218,7 +220,7 @@ func _run() -> void:
 		_fail("tutorial starter skill page should render only one activity module, got %s: %s" % [str(_tutorial_module_count(scene)), _summary(scene)])
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("tutorial starter skill page should render only Push Ups, got %s: %s" % [str(_rendered_action_ids(scene)), _summary(scene)])
+		_fail("tutorial starter skill page should render only Push Ups, got %s: %s" % [str(TestHelpers.rendered_action_ids(scene)), _summary(scene)])
 		return
 	if not _tutorial_blocks_info_chip_expansion(scene):
 		return
@@ -260,11 +262,11 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 
 
 func _tutorial_module_count(scene: Node) -> int:
-	return _rendered_action_ids(scene).size()
+	return TestHelpers.rendered_action_ids(scene).size()
 
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
-	var ids := _rendered_action_ids(scene)
+	var ids := TestHelpers.rendered_action_ids(scene)
 	return ids.size() == 1 and ids[0] == "push-ups"
 
 
@@ -356,19 +358,6 @@ func _nav_button(scene: Node, button_name: String) -> Button:
 
 func _color_nearly_equal(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01 and absf(a.a - b.a) < 0.01
-
-
-func _rendered_action_ids(scene: Node) -> Array:
-	var ids := []
-	var cards := scene.get("action_cards") as Dictionary
-	if cards == null:
-		return ids
-	for raw_key in cards.keys():
-		var key := str(raw_key)
-		if key.begins_with("fight:"):
-			ids.append(key.substr("fight:".length()))
-	ids.sort()
-	return ids
 
 
 func _has_page_switch_module(scene: Node) -> bool:

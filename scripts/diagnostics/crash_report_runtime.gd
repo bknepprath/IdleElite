@@ -20,6 +20,7 @@ func _init(host_ref = null) -> void:
 
 func start_session() -> void:
 	crash_session_id = _new_crash_session_id()
+	crash_session_heartbeat_elapsed = 0.0
 
 
 func begin_boot_session() -> void:
@@ -37,9 +38,16 @@ func load_pending_crash_report() -> void:
 	if not FileAccess.file_exists(PENDING_CRASH_REPORT_PATH):
 		return
 	var file := FileAccess.open(PENDING_CRASH_REPORT_PATH, FileAccess.READ)
-	if file != null:
-		pending_crash_report_text = file.get_as_text()
-		file = null
+	if file == null:
+		push_warning("Could not read pending crash report.")
+		return
+	var report_text := file.get_as_text()
+	var read_error := file.get_error()
+	file.close()
+	if read_error != OK or report_text.is_empty():
+		push_warning("Could not read pending crash report contents.")
+		return
+	pending_crash_report_text = report_text
 	delete_pending_crash_report()
 
 
@@ -117,7 +125,7 @@ func _live_session_context() -> Dictionary:
 		"chat_stream_connecting": online_runtime.chat_stream_connecting,
 		"chat_keyboard_focus_active": host._profile_chat_overlay_surface().keyboard_focus_active(),
 		"chat_keyboard_lift_pixels": host._profile_chat_overlay_surface().keyboard_lift_pixels(),
-		"last_result": host.last_result
+		"last_result": _bounded_support_text(host.last_result, 240)
 	}
 	context.merge(save_support_context(save_runtime), true)
 	if save_runtime.has_method("save_journal_events"):
@@ -137,7 +145,7 @@ static func save_support_context(save_runtime) -> Dictionary:
 		"save_writes_blocked": save_runtime.save_writes_blocked,
 		"save_writes_blocked_reason": _bounded_support_text(save_runtime.save_writes_blocked_reason, 120),
 		"save_dirty": save_runtime.save_dirty,
-		"save_dirty_reason": save_runtime.save_dirty_reason,
+		"save_dirty_reason": _bounded_support_text(save_runtime.save_dirty_reason, 120),
 	}
 
 
@@ -162,9 +170,7 @@ func load_android_diagnostic_events() -> Array:
 		if event.is_empty():
 			continue
 		events.append(event)
-	while events.size() > MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT:
-		events.pop_front()
-	return events
+	return events.slice(maxi(0, events.size() - MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT), events.size())
 
 
 func synthesize_unclean_session_crash_report() -> void:
@@ -221,8 +227,11 @@ func store_pending_crash_report_text() -> void:
 	if pending_crash_report_text.is_empty():
 		return
 	var file := FileAccess.open(PENDING_CRASH_REPORT_PATH, FileAccess.WRITE)
-	if file != null:
-		file.store_string(pending_crash_report_text)
+	if file == null:
+		push_warning("Could not store pending crash report.")
+		return
+	file.store_string(pending_crash_report_text)
+	file.close()
 
 
 func _new_crash_session_id() -> String:
@@ -393,19 +402,18 @@ static func _bounded_support_text(value: Variant, max_length: int) -> String:
 
 
 static func append_stack_summary(lines: Array, stack_trace: String) -> void:
-	var stack_lines := []
+	var rendered := []
 	for line in stack_trace.split("\n", false):
-		var trimmed := str(line).strip_edges()
+		var trimmed := _bounded_support_text(line, 240)
 		if trimmed.is_empty():
 			continue
-		stack_lines.append(trimmed)
-		if stack_lines.size() >= 3:
+		rendered.append("- %s" % trimmed)
+		if rendered.size() >= 3:
 			break
-	if stack_lines.is_empty():
+	if rendered.is_empty():
 		return
 	lines.append("stack:")
-	for stack_line in stack_lines:
-		lines.append("- %s" % stack_line)
+	lines.append_array(rendered)
 
 
 static func append_event_summary(lines: Array, events: Array, max_count: int) -> void:

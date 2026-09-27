@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize fishing areas to the current player-facing location model."""
+
 
 import json
 from pathlib import Path
@@ -98,13 +98,14 @@ AREAS = [
 
 data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
 fishing = next(s for s in data["skills"] if s["id"] == "fishing")
+backgrounds = {area["id"]: area["background"] for area in AREAS}
 
 for action in fishing["actions"]:
     aid = action["id"]
     if aid not in ACTION_AREA:
         raise SystemExit(f"Missing area mapping for {aid}")
     action["area"] = ACTION_AREA[aid]
-    action["background"] = next(a["background"] for a in AREAS if a["id"] == action["area"])
+    action["background"] = backgrounds[action["area"]]
 
 fishing["areas"] = AREAS
 JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

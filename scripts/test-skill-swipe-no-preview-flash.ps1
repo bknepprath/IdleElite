@@ -8,6 +8,8 @@ New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const MAIN_SCENE := "res://scenes/main.tscn"
 
 var _failed := false
@@ -51,14 +53,14 @@ func _prepare_swipe_state(scene: Node) -> void:
 	scene.call("_render_screen")
 
 func _assert_drag_frame(scene: Node, frame_index: int) -> void:
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := TestHelpers.valid_control_object(scene.get("skill_swipe_page"))
 	if page == null:
 		_fail("missing real swipe page during drag frame %s" % frame_index)
 		return
 	if page.modulate.a < 0.995:
 		_fail("real swipe page faded during drag frame %s alpha=%.3f" % [frame_index, page.modulate.a])
 		return
-	var preview := _valid_control(scene.call("_skill_swipe_activity_surface").get("preview_page"))
+	var preview := TestHelpers.valid_control_object(scene.call("_skill_swipe_activity_surface").get("preview_page"))
 	if preview != null and preview.visible and preview.modulate.a > 0.01:
 		_fail("lightweight preview became visible during drag frame %s alpha=%.3f" % [frame_index, preview.modulate.a])
 		return
@@ -69,11 +71,6 @@ func _wait_until_settled(scene: Node, max_frames: int) -> void:
 		if not bool(scene.get("skill_swipe_animating")) and not bool(scene.get("skill_swipe_tracking")) and str(scene.get("selected_skill_id")) == "woodcutting":
 			return
 	_fail("swipe did not settle on woodcutting")
-
-func _valid_control(value) -> Control:
-	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
-		return null
-	return value as Control
 
 func _wait_frames(count: int) -> void:
 	for i in range(count):

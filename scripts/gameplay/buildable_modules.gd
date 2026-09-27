@@ -26,6 +26,16 @@ static func is_built(built_modules: Dictionary, skill_id: String, action: Dictio
 
 
 static func normalized_for_save(built_modules: Dictionary, action_lookup: Callable, action_key := Callable()) -> Dictionary:
+	return _normalize_built_modules(built_modules, action_lookup, action_key)
+
+
+static func restored_from_save(value: Variant, action_lookup: Callable, action_key := Callable()) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	return _normalize_built_modules(value as Dictionary, action_lookup, action_key)
+
+
+static func _normalize_built_modules(built_modules: Dictionary, action_lookup: Callable, action_key: Callable) -> Dictionary:
 	var normalized := {}
 	for raw_key in built_modules.keys():
 		var module_key := str(raw_key)
@@ -38,23 +48,6 @@ static func normalized_for_save(built_modules: Dictionary, action_lookup: Callab
 		if not canonical_key.is_empty():
 			normalized[canonical_key] = true
 	return normalized
-
-
-static func restored_from_save(value: Variant, action_lookup: Callable, action_key := Callable()) -> Dictionary:
-	var restored := {}
-	if typeof(value) != TYPE_DICTIONARY:
-		return restored
-	for raw_key in (value as Dictionary).keys():
-		var module_key := str(raw_key)
-		if not bool((value as Dictionary).get(raw_key, false)):
-			continue
-		var action := action_from_key(module_key, action_lookup)
-		if action.is_empty() or not is_buildable(action):
-			continue
-		var canonical_key := _canonical_key(module_key, action, action_key)
-		if not canonical_key.is_empty():
-			restored[canonical_key] = true
-	return restored
 
 
 static func _canonical_key(saved_key: String, action: Dictionary, action_key: Callable) -> String:
@@ -88,9 +81,10 @@ static func xp_reward(action: Dictionary) -> int:
 	if not is_buildable(action):
 		return 0
 	var total := 0
-	for raw_mat_id in cost(action).keys():
+	var build_cost := cost(action)
+	for raw_mat_id in build_cost.keys():
 		var mat_id := str(raw_mat_id)
-		total += int(round(float(cost(action).get(raw_mat_id, 0.0)) * float(MATERIAL_BUILD_XP.get(mat_id, 40))))
+		total += int(round(float(build_cost.get(raw_mat_id, 0.0)) * float(MATERIAL_BUILD_XP.get(mat_id, 40))))
 	return maxi(0, total)
 
 

@@ -29,6 +29,8 @@ try {
     @"
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 func _init() -> void:
@@ -50,7 +52,7 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_startup(self, scene):
 		_fail("main scene did not become capture-ready")
 		return
 	scene.call("_test_state_runtime").call("_god_mode_unlock_onboarding_state")
@@ -111,14 +113,6 @@ func _run() -> void:
 		return
 	scene.queue_free()
 	quit(0)
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _i in range(240):
-		if bool(scene.get("startup_initialized")):
-			return true
-		await process_frame
-	return false
 
 
 func _hide_capture_overlays(scene: Node) -> void:

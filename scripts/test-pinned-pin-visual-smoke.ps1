@@ -81,6 +81,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const EXPECTED_PIN_TEXTURE := "res://assets/content/ui/navigation-controls/pin.png"
 const EXPECTED_PIN_COLOR_TEXTURES := [
@@ -113,7 +115,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready_strict(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 	if not await _wait_for_boot_hidden(scene):
@@ -132,22 +134,6 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			scene.get("startup_initialized") == true
-			and scene.get("boot_detail_render_in_progress") != true
-			and scene.get("boot_detail_scroll_locked") != true
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _wait_for_boot_hidden(scene: Node) -> bool:

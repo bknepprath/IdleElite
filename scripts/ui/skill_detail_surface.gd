@@ -1,6 +1,7 @@
 extends RefCounted
 
 const BuildableModules = preload("res://scripts/gameplay/buildable_modules.gd")
+const TierBannerButton = preload("res://scripts/ui/tier_banner_button.gd")
 const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 const ActivityUnlockCeremonySurface = preload("res://scripts/ui/activity_unlock_ceremony_surface.gd")
 const ActivityLockCluster = preload("res://scripts/ui/activity_lock_cluster.gd")
@@ -240,10 +241,7 @@ class BuildableModuleOverlay:
 				shadow.offset_bottom = top + height + 36.0
 				var shadow_style := StyleBoxFlat.new()
 				shadow_style.bg_color = Color(0, 0, 0, 0.01)
-				shadow_style.corner_radius_top_left = 86
-				shadow_style.corner_radius_top_right = 86
-				shadow_style.corner_radius_bottom_left = 86
-				shadow_style.corner_radius_bottom_right = 86
+				shadow_style.set_corner_radius_all(86)
 				shadow_style.shadow_color = Color(0, 0, 0, 0.24)
 				shadow_style.shadow_size = 22
 				shadow_style.shadow_offset = Vector2(0, 10)
@@ -450,10 +448,7 @@ class BuildableModuleOverlay:
 		style.bg_color = Color("#2f8f58") if can_afford else Color("#9a6330")
 		style.border_color = ink_color
 		style.set_border_width_all(12)
-		style.corner_radius_top_left = 34
-		style.corner_radius_top_right = 34
-		style.corner_radius_bottom_left = 34
-		style.corner_radius_bottom_right = 34
+		style.set_corner_radius_all(34)
 		style.shadow_color = Color(0, 0, 0, 0.34)
 		style.shadow_size = 10
 		style.shadow_offset = Vector2(0, 8)
@@ -547,10 +542,7 @@ class ConvergenceBuildOverlay:
 		style.bg_color = Color("#2f8f58")
 		style.border_color = ink_color
 		style.set_border_width_all(8)
-		style.corner_radius_top_left = 34
-		style.corner_radius_top_right = 34
-		style.corner_radius_bottom_left = 34
-		style.corner_radius_bottom_right = 34
+		style.set_corner_radius_all(34)
 		style.shadow_color = Color(0, 0, 0, 0.34)
 		style.shadow_size = 10
 		style.shadow_offset = Vector2(0, 8)
@@ -584,9 +576,7 @@ const FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
 const DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 2
 const FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 4
-const DETAIL_LAZY_BOOT_EAGER_COUNT := 2
 const DETAIL_LAZY_BOOT_SLOT_BATCH_SIZE := 8
-const BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME := 3
 const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
@@ -1112,67 +1102,18 @@ func _append_detail_eager_entry(stack: VBoxContainer, skill_id: String, entry_da
 		_detail_eager_add_smooth_tutorial_tip(stack, host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, OnboardingRuntime.SILVER_OPPORTUNITY_TIP_TEXT, "silver_opportunity_tip_notes"), content_width, actions_width, "silver_opportunity_tip_notes")
 
 
-func _complete_boot_detail_cards_async() -> void:
-	if boot_detail_render_queue.is_empty():
-		boot_detail_scroll_locked = false
-		return
-	var stack: VBoxContainer = host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack) as VBoxContainer
-	if stack == null:
-		boot_detail_render_queue.clear()
-		boot_detail_scroll_locked = false
-		return
-	host.boot_detail_completion_token += 1
-	var token: int = host.boot_detail_completion_token
-	var skill_id: String = selected_skill_id
-	var content_width: float = host._skill_content_width()
-	var actions_width: float = content_width
-	while boot_detail_render_queue.size() > 0:
-		if token != host.boot_detail_completion_token or current_screen != "skill":
-			boot_detail_scroll_locked = false
-			return
-		for _i in range(BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME):
-			if boot_detail_render_queue.is_empty():
-				break
-			if token != host.boot_detail_completion_token:
-				boot_detail_scroll_locked = false
-				return
-			var entry_data := boot_detail_render_queue.pop_front() as Dictionary
-			_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
-		await host.get_tree().process_frame
-	if token != host.boot_detail_completion_token or current_screen != "skill":
-		boot_detail_scroll_locked = false
-		return
-	_append_detail_eager_trailing_tips(stack, content_width, actions_width)
-	host._navigation_shell()._render_page_switch_module(stack, skill_id, content_width, actions_width)
-	boot_detail_render_queue.clear()
-	boot_detail_scroll_locked = false
-	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-
-
-func _render_detail_eager_card_list_async(stack: VBoxContainer, content_width: float, actions_width: float, max_main_entries: int = -1):
+func _render_detail_eager_card_list_async(stack: VBoxContainer, content_width: float, actions_width: float):
 	detail_lazy_plan.clear()
 	detail_lazy_last_scroll = -1.0
 	detail_lazy_stack = stack
-	boot_detail_render_queue.clear()
-	var skill_id: String = selected_skill_id
-	if max_main_entries < 0:
-		detail_rendered_action_ids.clear()
-		for entry in _visible_detail_entries_for_skill(skill_id):
-			_append_detail_eager_entry(stack, skill_id, entry as Dictionary, content_width, actions_width)
-			await host.get_tree().process_frame
-		_append_detail_eager_trailing_tips(stack, content_width, actions_width)
-		detail_lazy_stack = null
-		return
+	host.boot_detail_render_queue.clear()
+	var skill_id: String = host.selected_skill_id
 	detail_rendered_action_ids.clear()
-	var main_rendered := 0
 	for entry in _visible_detail_entries_for_skill(skill_id):
-		var entry_data := entry as Dictionary
-		if main_rendered >= max_main_entries:
-			boot_detail_render_queue.append(entry_data)
-			continue
-		_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
-		main_rendered += 1
+		_append_detail_eager_entry(stack, skill_id, entry as Dictionary, content_width, actions_width)
 		await host.get_tree().process_frame
+	_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+	detail_lazy_stack = null
 
 
 func _begin_detail_lazy_card_list_render(skill_id: String) -> void:
@@ -1185,33 +1126,31 @@ func _begin_detail_lazy_card_list_render(skill_id: String) -> void:
 func _finish_detail_lazy_card_list_render() -> void:
 	if OS.get_environment("IDLE_ELITE_TRACE_SWIPE_RENDER") == "1":
 		print("SWIPE_RENDER_TRACE lazy_list skill=%s defer=%s cover=%s alpha=%.3f plan=%s" % [
-			selected_skill_id,
+			host.selected_skill_id,
 			str(host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount),
 			str(host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition()),
 			0.0 if host._skill_swipe_activity_surface().skill_swipe_handoff_cover == null or not is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_handoff_cover) else host._skill_swipe_activity_surface().skill_swipe_handoff_cover.modulate.a,
 			str(detail_lazy_plan.size())
 		])
 	if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
-		_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id))
+		_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(host.selected_skill_id))
 	if not host._skill_swipe_loading_transition_active() and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
 		_detail_lazy_mount_thieving_heists_sync(true)
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 		host._skill_swipe_activity_surface().skill_swipe_handoff_cover.set_meta("swipe_cover_last_lazy_mount_process_frame", Engine.get_process_frames())
 	_cancel_detail_card_texture_prewarm()
-	if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
-		host._skill_swipe_activity_surface()._queue_skill_swipe_real_card_cache_prewarm(selected_skill_id)
-	_queue_detail_lazy_settle_warm_mount(selected_skill_id)
+	_queue_detail_lazy_settle_warm_mount(host.selected_skill_id)
 
 
 func _render_detail_lazy_card_list(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
-	_begin_detail_lazy_card_list_render(selected_skill_id)
-	_detail_lazy_create_slots(stack, selected_skill_id, content_width, actions_width)
+	_begin_detail_lazy_card_list_render(host.selected_skill_id)
+	_detail_lazy_create_slots(stack, host.selected_skill_id, content_width, actions_width)
 	_finish_detail_lazy_card_list_render()
 
 
 func _render_detail_lazy_card_list_batched(stack: VBoxContainer, content_width: float, actions_width: float, batch_size: int) -> bool:
-	var skill_id: String = selected_skill_id
+	var skill_id: String = host.selected_skill_id
 	_begin_detail_lazy_card_list_render(skill_id)
 	var slots_created := await _detail_lazy_create_slots_batched(
 		stack,
@@ -1239,7 +1178,7 @@ func _process_detail_lazy_runtime(delta: float, detail_scroll_visual_work: bool)
 func _process_detail_lazy_window(delta: float) -> int:
 	if detail_lazy_plan.is_empty() or detail_lazy_stack == null:
 		return 0
-	if host._fishing_ui_surface()._fishing_ablation_enabled("no_lazy") and host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_ui_surface()._fishing_ablation_enabled("no_lazy") and host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return 0
 	if host._skill_swipe_activity_surface().skill_swipe_finalized_lazy_mount_pending:
 		return 0
@@ -1248,8 +1187,8 @@ func _process_detail_lazy_window(delta: float) -> int:
 	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 		return 0
 	if (
-		host._fishing_rework_active_for_skill(selected_skill_id)
-		and detail_lazy_settle_warm_mount_skill_id == selected_skill_id
+		host._fishing_rework_active_for_skill(host.selected_skill_id)
+		and detail_lazy_settle_warm_mount_skill_id == host.selected_skill_id
 		and not detail_scroll_visual_work_this_frame
 	):
 		return 0
@@ -1274,7 +1213,7 @@ func _detail_lazy_window_scan_due() -> bool:
 		return true
 	if detail_lazy_window_sync_elapsed >= DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS:
 		return true
-	if host.running_skill_id == selected_skill_id and not host.running_action_id.is_empty():
+	if host.running_skill_id == host.selected_skill_id and not host.running_action_id.is_empty():
 		var running_lazy_entry: Dictionary = _detail_lazy_entry_for_track_id(host.running_action_id)
 		if not running_lazy_entry.is_empty() and not bool(running_lazy_entry.get("mounted", false)):
 			return true
@@ -1284,7 +1223,7 @@ func _detail_lazy_window_scan_due() -> bool:
 func _queue_detail_lazy_settle_warm_mount(skill_id: String) -> void:
 	if not DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED:
 		return
-	if current_screen != "skill" or skill_id.is_empty() or selected_skill_id != skill_id:
+	if host.current_screen != "skill" or skill_id.is_empty() or host.selected_skill_id != skill_id:
 		return
 	if host._skill_swipe_loading_transition_active() or host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
 		return
@@ -1299,9 +1238,9 @@ func _cancel_detail_lazy_settle_warm_mount() -> void:
 
 
 func _maybe_resume_fishing_detail_idle_warm_mount() -> void:
-	if current_screen != "skill" or not host._fishing_rework_active_for_skill(selected_skill_id):
+	if host.current_screen != "skill" or not host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return
-	if detail_lazy_settle_warm_mount_skill_id == selected_skill_id:
+	if detail_lazy_settle_warm_mount_skill_id == host.selected_skill_id:
 		return
 	if detail_lazy_plan.is_empty() or host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack) == null:
 		return
@@ -1309,16 +1248,16 @@ func _maybe_resume_fishing_detail_idle_warm_mount() -> void:
 		return
 	if host._fishing_ui_surface()._fishing_detail_scroll_is_actively_moving():
 		return
-	_queue_detail_lazy_settle_warm_mount(selected_skill_id)
+	_queue_detail_lazy_settle_warm_mount(host.selected_skill_id)
 
 
 func _finish_detail_lazy_settle_warm_mount(skill_id: String, detail_scroll_visual_work: bool) -> void:
 	detail_lazy_settle_warm_mount_skill_id = ""
-	if current_screen == "skill" and selected_skill_id == skill_id:
-		if not (host._fishing_rework_active_for_skill(selected_skill_id) and detail_scroll_visual_work):
+	if host.current_screen == "skill" and host.selected_skill_id == skill_id:
+		if not (host._fishing_rework_active_for_skill(host.selected_skill_id) and detail_scroll_visual_work):
 			host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
 		_sync_detail_actions_scroll_limit()
-		if host._fishing_rework_active_for_skill(selected_skill_id):
+		if host._fishing_rework_active_for_skill(host.selected_skill_id):
 			host._fishing_ui_surface()._sync_fishing_detail_render_culling(true)
 
 
@@ -1326,7 +1265,7 @@ func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> 
 	var skill_id := detail_lazy_settle_warm_mount_skill_id
 	if skill_id.is_empty():
 		return
-	if current_screen != "skill" or selected_skill_id != skill_id:
+	if host.current_screen != "skill" or host.selected_skill_id != skill_id:
 		detail_lazy_settle_warm_mount_skill_id = ""
 		return
 	if host._skill_swipe_loading_transition_active() or host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
@@ -1381,53 +1320,9 @@ func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> 
 	_finish_detail_lazy_settle_warm_mount(skill_id, detail_scroll_visual_work)
 
 
-var _on_detail_actions_user_scroll_direction:
-	get: return host._on_detail_actions_user_scroll_direction
-	set(value): host._on_detail_actions_user_scroll_direction = value
-
 var a:
 	get: return host.a
 	set(value): host.a = value
-
-var ACTION_CARD_FACE_BORDER_ENABLED:
-	get: return host.ACTION_CARD_FACE_BORDER_ENABLED
-	set(value): host.ACTION_CARD_FACE_BORDER_ENABLED = value
-
-var ACTION_CARD_FACE_BORDER_Z_INDEX:
-	get: return host.ACTION_CARD_FACE_BORDER_Z_INDEX
-	set(value): host.ACTION_CARD_FACE_BORDER_Z_INDEX = value
-
-var action_card_keys:
-	get: return host.action_card_keys
-	set(value): host.action_card_keys = value
-
-var action_cards:
-	get: return host.action_cards
-	set(value): host.action_cards = value
-
-var activity_start:
-	get: return host.activity_start
-	set(value): host.activity_start = value
-
-var boot_detail_card_yield:
-	get: return host.boot_detail_card_yield
-	set(value): host.boot_detail_card_yield = value
-
-var boot_detail_render_in_progress:
-	get: return host.boot_detail_render_in_progress
-	set(value): host.boot_detail_render_in_progress = value
-
-var boot_detail_render_queue:
-	get: return host.boot_detail_render_queue
-	set(value): host.boot_detail_render_queue = value
-
-var boot_detail_scroll_locked:
-	get: return host.boot_detail_scroll_locked
-	set(value): host.boot_detail_scroll_locked = value
-
-var buildable_module_overlay:
-	get: return host.buildable_module_overlay
-	set(value): host.buildable_module_overlay = value
 
 var cached:
 	get: return host.cached
@@ -1437,37 +1332,9 @@ var children:
 	get: return host.children
 	set(value): host.children = value
 
-var cleared:
-	get: return host.cleared
-	set(value): host.cleared = value
-
-var COLOR_INK:
-	get: return host.COLOR_INK
-	set(value): host.COLOR_INK = value
-
-var COLOR_MUTED:
-	get: return host.COLOR_MUTED
-	set(value): host.COLOR_MUTED = value
-
 var context:
 	get: return host.context
 	set(value): host.context = value
-
-var content_scroll:
-	get: return host.content_scroll
-	set(value): host.content_scroll = value
-
-var COLOR_GOLD:
-	get: return host.COLOR_GOLD
-	set(value): host.COLOR_GOLD = value
-
-var current_screen:
-	get: return host.current_screen
-	set(value): host.current_screen = value
-
-var dark_mode_enabled:
-	get: return host.dark_mode_enabled
-	set(value): host.dark_mode_enabled = value
 
 var detail_action_card_nodes := {}
 var detail_actions_scroll: MobileScrollContainer
@@ -1496,10 +1363,6 @@ var detail_regen_circle: RegenCircle
 var detail_regen_circle_fade_group: CanvasGroup
 var detail_regen_circle_host: Control
 
-var DETAIL_RESTORE_SCROLL_BOTTOM:
-	get: return host.DETAIL_RESTORE_SCROLL_BOTTOM
-	set(value): host.DETAIL_RESTORE_SCROLL_BOTTOM = value
-
 var detail_stamina_bar: CleanProgressBar
 var detail_unlock_scroll_spacer: Control
 var detail_unlock_scroll_spacer_tween: Tween
@@ -1510,67 +1373,11 @@ var detail_xp_label: Label
 var detail_header_gauge_refresh_elapsed := 0.0
 var passive_card_progress_refresh_elapsed := 0.0
 
-var done:
-	get: return host.done
-	set(value): host.done = value
-
-var fade:
-	get: return host.fade
-	set(value): host.fade = value
-
-var fallback:
-	get: return host.fallback
-	set(value): host.fallback = value
-
-var fish_circle:
-	get: return host.fish_circle
-	set(value): host.fish_circle = value
-
 
 var keys:
 	get: return host.keys
 	set(value): host.keys = value
 
-
-var lock:
-	get: return host.lock
-	set(value): host.lock = value
-
-var missing_page:
-	get: return host.missing_page
-	set(value): host.missing_page = value
-
-var missing_scroll:
-	get: return host.missing_scroll
-	set(value): host.missing_scroll = value
-
-var missing_stack:
-	get: return host.missing_stack
-	set(value): host.missing_stack = value
-
-var mobile_scroll_container:
-	get: return host.mobile_scroll_container
-	set(value): host.mobile_scroll_container = value
-
-var MODULE_LIST_TRANSITION_MIN_MOVE:
-	get: return host.MODULE_LIST_TRANSITION_MIN_MOVE
-	set(value): host.MODULE_LIST_TRANSITION_MIN_MOVE = value
-
-var MODULE_LIST_TRANSITION_NEW_OFFSET_Y:
-	get: return host.MODULE_LIST_TRANSITION_NEW_OFFSET_Y
-	set(value): host.MODULE_LIST_TRANSITION_NEW_OFFSET_Y = value
-
-var MODULE_LIST_TRANSITION_NEW_SECONDS:
-	get: return host.MODULE_LIST_TRANSITION_NEW_SECONDS
-	set(value): host.MODULE_LIST_TRANSITION_NEW_SECONDS = value
-
-var MODULE_LIST_TRANSITION_SECONDS:
-	get: return host.MODULE_LIST_TRANSITION_SECONDS
-	set(value): host.MODULE_LIST_TRANSITION_SECONDS = value
-
-var module_ui:
-	get: return host.module_ui
-	set(value): host.module_ui = value
 
 var module_ui_animating_collapse_key := ""
 var module_ui_pending_pin_scroll_anchor := {}
@@ -1583,62 +1390,6 @@ var onboarding_fight_stamina_revealed:
 	set(value): host._onboarding_runtime().onboarding_fight_stamina_revealed = value
 
 
-var phase:
-	get: return host.phase
-	set(value): host.phase = value
-
-
-var regen_circle:
-	get: return host.regen_circle
-	set(value): host.regen_circle = value
-
-var replace_stack_failed:
-	get: return host.replace_stack_failed
-	set(value): host.replace_stack_failed = value
-
-var resolved:
-	get: return host.resolved
-	set(value): host.resolved = value
-
-var s:
-	get: return host.s
-	set(value): host.s = value
-
-var scripts:
-	get: return host.scripts
-	set(value): host.scripts = value
-
-var selected_skill_id:
-	get: return host.selected_skill_id
-	set(value): host.selected_skill_id = value
-
-var skill:
-	get: return host.skill
-	set(value): host.skill = value
-
-var SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT:
-	get: return host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT
-	set(value): host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT = value
-
-var SKILL_DETAIL_HEADER_HEIGHT:
-	get: return host.SKILL_DETAIL_HEADER_HEIGHT
-	set(value): host.SKILL_DETAIL_HEADER_HEIGHT = value
-
-var SKILL_DETAIL_HEADER_MARGIN_BOTTOM:
-	get: return host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM
-	set(value): host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM = value
-
-var SKILL_DETAIL_LEFT_SEPARATION:
-	get: return host.SKILL_DETAIL_LEFT_SEPARATION
-	set(value): host.SKILL_DETAIL_LEFT_SEPARATION = value
-
-var SKILL_DETAIL_TEXT_SEPARATION:
-	get: return host.SKILL_DETAIL_TEXT_SEPARATION
-	set(value): host.SKILL_DETAIL_TEXT_SEPARATION = value
-
-var SKILL_DETAIL_XP_FONT_SIZE:
-	get: return host.SKILL_DETAIL_XP_FONT_SIZE
-	set(value): host.SKILL_DETAIL_XP_FONT_SIZE = value
 
 
 func _skill_detail_shelf_style(skill_id: String, draw_bottom_border := true) -> StyleBoxFlat:
@@ -1690,10 +1441,6 @@ func _skill_detail_shelf_gradient_bottom_color(skill_id: String) -> Color:
 	return _skill_detail_shelf_color(skill_id).lerp(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.22), 0.18)
 
 
-var skill_swipe:
-	get: return host.skill_swipe
-	set(value): host.skill_swipe = value
-
 var skill_swipe_defer_initial_lazy_mount:
 	get: return host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount
 	set(value): host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount = value
@@ -1701,18 +1448,6 @@ var skill_swipe_defer_initial_lazy_mount:
 var skill_swipe_drag_offset_x:
 	get: return host._skill_swipe_activity_surface().skill_swipe_drag_offset_x
 	set(value): host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = value
-
-var SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE:
-	get: return host.SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE
-	set(value): host.SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE = value
-
-var SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
-	get: return host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT
-	set(value): host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT = value
-
-var SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE:
-	get: return host.SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE
-	set(value): host.SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE = value
 
 var skill_swipe_finalized_lazy_mount_pending:
 	get: return host._skill_swipe_activity_surface().skill_swipe_finalized_lazy_mount_pending
@@ -1738,33 +1473,9 @@ var skill_swipe_pending_full_finalize:
 	get: return host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize
 	set(value): host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize = value
 
-var skills_content:
-	get: return host.skills_content
-	set(value): host.skills_content = value
-
-var slots:
-	get: return host.slots
-	set(value): host.slots = value
-
-var slots_failed:
-	get: return host.slots_failed
-	set(value): host.slots_failed = value
-
 var stamina_gauge_tip_seen:
 	get: return host._onboarding_runtime().stamina_gauge_tip_seen
 	set(value): host._onboarding_runtime().stamina_gauge_tip_seen = value
-
-var track:
-	get: return host.track
-	set(value): host.track = value
-
-var ui:
-	get: return host.ui
-	set(value): host.ui = value
-
-var us:
-	get: return host.us
-	set(value): host.us = value
 
 
 
@@ -1778,7 +1489,7 @@ func onboarding_first_module_center_active(skill_id: String = "") -> bool:
 
 func onboarding_first_module_top_spacer_height(skill_id: String = "") -> float:
 	if skill_id.is_empty():
-		skill_id = selected_skill_id
+		skill_id = host.selected_skill_id
 	if not onboarding_first_module_center_active(skill_id):
 		return float(host.SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT)
 	var visible_screen_height: float = host._current_canvas_size().y - host._navigation_shell()._bottom_ui_reserved_height_for_current_screen()
@@ -2145,7 +1856,7 @@ func _sync_action_stat_chip_title(value_label: Label, title_text: String) -> voi
 
 
 func _on_action_stat_box_gui_input(event: InputEvent, skill_id: String, action_id: String, stat_kind: String) -> void:
-	var card := action_cards.get(host._action_key(skill_id, action_id), {}) as Dictionary
+	var card := host.action_cards.get(host._action_key(skill_id, action_id), {}) as Dictionary
 	if not _action_stat_box_accepts_input(card, stat_kind):
 		return
 	if event is InputEventMouseButton:
@@ -2317,7 +2028,7 @@ func _sync_action_stat_box_input_enabled(card: Dictionary, enabled: bool) -> voi
 
 
 func _action_stat_label(text: String) -> Label:
-	var label := host._label(text, 120, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER) as Label
+	var label := host._label(text, 120, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER) as Label
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2370,16 +2081,6 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	return box
 
 
-func _compact_action_stat_box(box: Control, value_label: Label) -> void:
-	if box == null or value_label == null:
-		return
-	box.custom_minimum_size = Vector2(214, 142)
-	value_label.add_theme_font_size_override("font_size", 96)
-	var title_label := (value_label.get_meta("stat_title_label") as Label) if value_label.has_meta("stat_title_label") else null
-	if title_label != null:
-		title_label.add_theme_font_size_override("font_size", 96)
-
-
 func _normal_activity_stat_item(value_label: Label, stat_kind: String, interactive := false, skill_id := "", action_id := "") -> Control:
 	var item := PanelContainer.new()
 	item.custom_minimum_size = Vector2(0, 160)
@@ -2417,7 +2118,7 @@ func _normal_activity_stat_item(value_label: Label, stat_kind: String, interacti
 	item.set_meta("normal_activity_stat_value_label", value_label)
 	value_label.add_theme_font_size_override("font_size", 96)
 	value_label.add_theme_color_override("font_color", Color.WHITE)
-	value_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	value_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	value_label.add_theme_constant_override("outline_size", 32)
 	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -2470,17 +2171,6 @@ func _finish_normal_activity_stat_symbol_wiggle(symbol_id: int, value_label_id: 
 			value_label.scale = Vector2.ONE
 
 
-func _normal_activity_stat_row_label() -> Label:
-	var label := host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
-	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 24)
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
-
-
 func _normal_activity_stat_panel(minimum_size: Vector2, outline_color: Color) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = minimum_size
@@ -2489,7 +2179,7 @@ func _normal_activity_stat_panel(minimum_size: Vector2, outline_color: Color) ->
 	panel.z_index = 20
 	var style := StyleBoxFlat.new()
 	style.bg_color = outline_color
-	style.border_color = COLOR_INK
+	style.border_color = host.COLOR_INK
 	style.set_border_width_all(14)
 	style.set_corner_radius_all(32)
 	style.content_margin_left = 32
@@ -2556,7 +2246,7 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 		label.add_theme_constant_override("outline_size", 32)
 		if title_label != null:
 			title_label.add_theme_color_override("font_color", Color("#ffd54a"))
-			title_label.add_theme_color_override("font_outline_color", COLOR_INK)
+			title_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 			title_label.add_theme_constant_override("outline_size", 32)
 		return
 	if buffed:
@@ -2638,7 +2328,7 @@ func _normal_activity_stat_box_style(pressed := false) -> StyleBoxFlat:
 
 
 func _stat_box_style(active := false, pressed := false, fill := Color.WHITE) -> StyleBoxTexture:
-	var outline: Color = host.COLOR_BLUE if active else COLOR_INK
+	var outline: Color = host.COLOR_BLUE if active else host.COLOR_INK
 	return PaperButtonStyles.paper_button_style_with_shape(fill, 38, 18, pressed, false, outline, 5.5, host.paper_button_style_textures, host.dark_mode_enabled, ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, Callable(host, "_theme_surface_color"), Callable(host, "_theme_outline_color"), Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
 
 
@@ -2669,9 +2359,9 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	button.add_to_group("skill_header_info_buttons")
 	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
 	_apply_info_symbol_button_text_color(button)
-	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
-	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
-	button.add_theme_stylebox_override("pressed", PassiveModuleStyles.round_button(COLOR_GOLD.darkened(0.08), COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
+	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
+	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
+	button.add_theme_stylebox_override("pressed", PassiveModuleStyles.round_button(host.COLOR_GOLD.darkened(0.08), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
@@ -2741,7 +2431,7 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	popover.z_index = 4095
 	popover.z_as_relative = false
 	popover.add_to_group("skill_header_info_popovers")
-	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, COLOR_INK, Callable(host, "_surface_style")))
+	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
@@ -2753,50 +2443,15 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	stack.add_theme_constant_override("separation", 10)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title: Label = host._label(title_text, host.MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title: Label = host._label(title_text, host.MIN_MOBILE_INFO_TITLE_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body: Label = host._label(body_text, host.MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body: Label = host._label(body_text, host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(920, 220)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
-
-
-func _apply_recovery_progress_rail_shape(bar: ActivityProgressRail, action: Dictionary) -> void:
-	if bar == null or not RecoveryModules.has_recovery(action):
-		return
-	bar.offset_top = -ActivityCardStyles.RECOVERY_WIDE_U_RAIL_HEIGHT
-	bar.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
-	bar.bottom_radius = host.ACTION_CARD_FACE_RADIUS
-	bar.bottom_shape = "wide_u"
-	bar.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	bar.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	bar.queue_redraw()
-	bar._queue_opportunity_overlay_redraw()
-
-
-func _apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictionary) -> void:
-	if depth == null or not RecoveryModules.has_recovery(action):
-		return
-	depth.bottom_shape = "wide_u"
-	depth.draw_lip_lines = true
-	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	depth.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	depth.queue_redraw()
-
-
-func _apply_recovery_card_background_shape(bg: Control, action: Dictionary) -> void:
-	if bg == null or not RecoveryModules.has_recovery(action):
-		return
-	var rounded_bg := bg as RoundedTextureRect
-	if rounded_bg == null:
-		return
-	rounded_bg.bottom_shape = "wide_u"
-	rounded_bg.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
-	rounded_bg.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
-	rounded_bg.queue_redraw()
 
 
 func _skill_detail_bottom_scroll_pad(skill_id := "") -> float:
@@ -2813,7 +2468,7 @@ func _detail_actions_bottom_scroll_pad(skill_id: String) -> float:
 
 
 func _detail_unlock_extra_scroll_space_allowed(skill_id: String) -> bool:
-	if current_screen != "skill" or skill_id.is_empty() or skill_id != selected_skill_id:
+	if host.current_screen != "skill" or skill_id.is_empty() or skill_id != host.selected_skill_id:
 		return false
 	return (
 		host._activity_unlock_runtime().has_pending_readiness_for_skill(skill_id)
@@ -2826,7 +2481,7 @@ func _detail_unlock_extra_scroll_space_allowed(skill_id: String) -> bool:
 func _sync_detail_actions_bottom_spacer() -> void:
 	if detail_unlock_scroll_spacer == null or not is_instance_valid(detail_unlock_scroll_spacer):
 		return
-	var height := _detail_actions_bottom_scroll_pad(selected_skill_id)
+	var height := _detail_actions_bottom_scroll_pad(host.selected_skill_id)
 	var next_visible := height > 1.0
 	if (
 		absf(detail_unlock_scroll_spacer.custom_minimum_size.y - height) <= 0.5
@@ -2840,15 +2495,15 @@ func _sync_detail_actions_bottom_spacer() -> void:
 
 func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
 	var normalized_height := maxf(0.0, height)
-	var current_height := _detail_unlock_scroll_spacer_height(selected_skill_id)
+	var current_height := _detail_unlock_scroll_spacer_height(host.selected_skill_id)
 	if absf(current_height - normalized_height) <= 0.5:
 		return
-	if selected_skill_id.is_empty():
+	if host.selected_skill_id.is_empty():
 		detail_unlock_scroll_spacer_heights.clear()
 	elif normalized_height > 1.0:
-		detail_unlock_scroll_spacer_heights[selected_skill_id] = normalized_height
+		detail_unlock_scroll_spacer_heights[host.selected_skill_id] = normalized_height
 	else:
-		detail_unlock_scroll_spacer_heights.erase(selected_skill_id)
+		detail_unlock_scroll_spacer_heights.erase(host.selected_skill_id)
 	_sync_detail_actions_bottom_spacer()
 
 
@@ -2865,12 +2520,12 @@ func _sync_detail_actions_scroll_limit_deferred() -> void:
 
 
 func _sync_detail_actions_scroll_limit() -> void:
-	if current_screen != "skill":
+	if host.current_screen != "skill":
 		return
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
 	host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
-	if boot_detail_scroll_locked:
+	if host.boot_detail_scroll_locked:
 		detail_actions_scroll.set_max_scroll_override(0)
 		detail_actions_scroll.set_scroll_enabled_by_content(false)
 		return
@@ -2881,14 +2536,14 @@ func _sync_detail_actions_scroll_limit() -> void:
 		return
 	var viewport_height := _detail_actions_scroll_viewport_height()
 	var real_content_bottom := float(visible_content.get("bottom", 0.0))
-	var bottom_gap := maxf(0.0, _skill_detail_bottom_scroll_pad(selected_skill_id) - host._navigation_shell()._skills_content_bottom_inset_for_screen())
+	var bottom_gap := maxf(0.0, _skill_detail_bottom_scroll_pad(host.selected_skill_id) - host._navigation_shell()._skills_content_bottom_inset_for_screen())
 	if int(visible_content.get("count", 0)) <= 1 and _detail_has_hidden_locked_activity_preview():
 		bottom_gap = 0.0
 	else:
 		var page_switch_bottom := _detail_stack_page_switch_bottom()
 		if page_switch_bottom >= 0.0:
 			real_content_bottom = maxf(real_content_bottom, page_switch_bottom)
-		var page_gap: float = host.THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD if selected_skill_id == "thieving" else host.SKILL_DETAIL_BOTTOM_SCROLL_PAD
+		var page_gap: float = host.THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD if host.selected_skill_id == "thieving" else host.SKILL_DETAIL_BOTTOM_SCROLL_PAD
 		bottom_gap = maxf(0.0, bottom_gap - NavigationShell.PAGE_SWITCH_MODULE_HEIGHT - float(page_gap) - 12.0)
 	var max_scroll_to_content := maxi(0, int(ceil(real_content_bottom + bottom_gap - viewport_height)))
 	detail_actions_scroll.set_max_scroll_override(max_scroll_to_content)
@@ -2909,7 +2564,7 @@ func _detail_actions_scroll_viewport_height() -> float:
 	if viewport_height > obscured_bottom + 1.0:
 		viewport_height -= obscured_bottom
 	if viewport_height <= 1.0:
-		viewport_height = host._current_canvas_size().y - SKILL_DETAIL_HEADER_HEIGHT - SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT - host._navigation_shell()._bottom_ui_reserved_height_for_current_screen()
+		viewport_height = host._current_canvas_size().y - host.SKILL_DETAIL_HEADER_HEIGHT - host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT - host._navigation_shell()._bottom_ui_reserved_height_for_current_screen()
 	return maxf(1.0, viewport_height)
 
 
@@ -2948,9 +2603,9 @@ func _detail_authoritative_scrollable_module_bottom() -> Dictionary:
 
 
 func _detail_has_hidden_locked_activity_preview() -> bool:
-	if action_cards.is_empty():
+	if host.action_cards.is_empty():
 		return false
-	for raw_card in action_cards.values():
+	for raw_card in host.action_cards.values():
 		var card := raw_card as Dictionary
 		if bool(card.get("locked_preview_hidden", false)):
 			return true
@@ -2972,8 +2627,8 @@ func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 		var kind := str(lazy_entry.get("kind", ""))
 		if not _detail_lazy_kind_is_module(kind):
 			continue
-		var action_key: String = host._action_key(selected_skill_id, str(lazy_entry.get("track_id", "")))
-		var action_card := action_cards.get(action_key, {}) as Dictionary
+		var action_key: String = host._action_key(host.selected_skill_id, str(lazy_entry.get("track_id", "")))
+		var action_card := host.action_cards.get(action_key, {}) as Dictionary
 		if bool(action_card.get("locked_preview_hidden", false)):
 			continue
 		var stack_host: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
@@ -3088,7 +2743,7 @@ func _detail_actions_scrollable_content_bottom() -> Dictionary:
 			continue
 		bottom = maxf(bottom, node_bottom)
 		count += 1
-	if _detail_unlock_extra_scroll_space_allowed(selected_skill_id):
+	if _detail_unlock_extra_scroll_space_allowed(host.selected_skill_id):
 		var spacer_bottom := _detail_unlock_scroll_spacer_bottom_in_stack(stack)
 		if spacer_bottom >= 0.0:
 			bottom = maxf(bottom, spacer_bottom)
@@ -3191,7 +2846,7 @@ func _preserve_detail_scroll_after_height_change_if_above_view(control: Control)
 
 
 func _detail_scroll_height_change_preserve_context(control: Control) -> Dictionary:
-	if current_screen != "skill" or detail_actions_scroll == null or control == null:
+	if host.current_screen != "skill" or detail_actions_scroll == null or control == null:
 		return {}
 	if not is_instance_valid(detail_actions_scroll) or not is_instance_valid(control):
 		return {}
@@ -3222,7 +2877,7 @@ func _preserve_detail_scroll_after_height_change_deferred(context: Dictionary) -
 func _apply_detail_scroll_height_change_preserve_context(_progress: float, context: Dictionary) -> void:
 	if context.is_empty() or bool(context.get("cancelled", false)):
 		return
-	if current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+	if host.current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
 	var last_scroll := int(context.get("last_scroll", context.get("before_scroll", 0)))
 	if absi(detail_actions_scroll.scroll_vertical - last_scroll) > 4:
@@ -3248,8 +2903,8 @@ func _release_detail_unlock_extra_scroll_space() -> void:
 		return
 	if detail_unlock_scroll_spacer_tween != null and detail_unlock_scroll_spacer_tween.is_valid():
 		detail_unlock_scroll_spacer_tween.kill()
-	var base_pad := _skill_detail_bottom_scroll_pad(selected_skill_id)
-	var start_height := maxf(detail_unlock_scroll_spacer.custom_minimum_size.y, _detail_actions_bottom_scroll_pad(selected_skill_id))
+	var base_pad := _skill_detail_bottom_scroll_pad(host.selected_skill_id)
+	var start_height := maxf(detail_unlock_scroll_spacer.custom_minimum_size.y, _detail_actions_bottom_scroll_pad(host.selected_skill_id))
 	var start_extra := maxf(0.0, start_height - base_pad)
 	if start_extra <= 1.0:
 		_set_detail_unlock_scroll_spacer_height(0.0)
@@ -3266,19 +2921,19 @@ func _finish_detail_unlock_scroll_spacer_tween() -> void:
 
 
 func _visible_detail_regen_gauge_needs_header_refresh() -> bool:
-	if current_screen != "skill" or host._fishing_rework_active_for_skill(selected_skill_id):
+	if host.current_screen != "skill" or host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return false
 	if detail_regen_circle == null or not is_instance_valid(detail_regen_circle) or not detail_regen_circle.is_inside_tree():
 		return false
-	var maximum: float = float(SkillState.max_stamina(host, selected_skill_id))
-	return SkillState.host_stamina_value(selected_skill_id, host) < float(maximum) - 0.0001
+	var maximum: float = float(SkillState.max_stamina(host, host.selected_skill_id))
+	return SkillState.host_stamina_value(host.selected_skill_id, host) < float(maximum) - 0.0001
 
 
 func _consume_detail_header_gauge_refresh(delta: float, instant: bool, static_refresh: bool, skill_frame_refresh: bool) -> bool:
 	if instant or static_refresh:
 		detail_header_gauge_refresh_elapsed = 0.0
 		return true
-	if not skill_frame_refresh or current_screen != "skill":
+	if not skill_frame_refresh or host.current_screen != "skill":
 		return false
 	detail_header_gauge_refresh_elapsed += maxf(0.0, delta)
 	if detail_header_gauge_refresh_elapsed < host.DETAIL_HEADER_GAUGE_REFRESH_SECONDS:
@@ -3291,7 +2946,7 @@ func _consume_passive_card_progress_refresh(delta: float, instant: bool, static_
 	if instant or static_refresh:
 		passive_card_progress_refresh_elapsed = 0.0
 		return true
-	if not skill_frame_refresh or current_screen != "skill":
+	if not skill_frame_refresh or host.current_screen != "skill":
 		return false
 	passive_card_progress_refresh_elapsed += maxf(0.0, delta)
 	if passive_card_progress_refresh_elapsed < host.PASSIVE_CARD_PROGRESS_REFRESH_SECONDS:
@@ -3301,22 +2956,22 @@ func _consume_passive_card_progress_refresh(delta: float, instant: bool, static_
 
 
 func _update_detail_header_gauges(static_refresh: bool, skill_frame_refresh: bool, detail_header_gauge_refresh: bool, delta: float, instant: bool) -> void:
-	var detail_xp := SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
+	var detail_xp := SkillState.xp_progress(host.skills, host.selected_skill_id, SkillState.host_skill_level(host, host.selected_skill_id))
 	if static_refresh and detail_xp_label != null:
-		host._app_lifecycle_runtime().set_label_text_if_changed(detail_xp_label, SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)))
+		host._app_lifecycle_runtime().set_label_text_if_changed(detail_xp_label, SkillState.level_xp_text(host.skills, host.selected_skill_id, SkillState.host_skill_level(host, host.selected_skill_id)))
 	if skill_frame_refresh and detail_xp_bar != null:
 		if static_refresh:
-			ThemeStyles.apply_xp_progress_bar_theme(detail_xp_bar, ThemeStyles.skill_theme_color(selected_skill_id, host.COLOR_BLUE), host.COLOR_INK)
+			ThemeStyles.apply_xp_progress_bar_theme(detail_xp_bar, ThemeStyles.skill_theme_color(host.selected_skill_id, host.COLOR_BLUE), host.COLOR_INK)
 		ThemeStyles.set_progress_bar_value(detail_xp_bar, float(detail_xp["pct"]), delta, instant)
-	if detail_header_gauge_refresh and host._fishing_rework_active_for_skill(selected_skill_id):
+	if detail_header_gauge_refresh and host._fishing_rework_active_for_skill(host.selected_skill_id):
 		if detail_fish_circle != null:
-			host._fishing_ui_surface()._set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, instant)
+			host._fishing_ui_surface()._set_fish_circle_for_skill(detail_fish_circle, host.selected_skill_id, instant)
 	elif detail_header_gauge_refresh and detail_regen_circle != null:
-		detail_regen_circle.sync_for_skill(host, selected_skill_id, instant)
+		detail_regen_circle.sync_for_skill(host, host.selected_skill_id, instant)
 
 
 func _clamp_detail_actions_scroll_to_content() -> void:
-	if current_screen != "skill":
+	if host.current_screen != "skill":
 		return
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
@@ -3347,7 +3002,7 @@ func _resolve_detail_lazy_stack() -> VBoxContainer:
 
 
 func _restore_detail_actions_scroll(target: int) -> void:
-	if current_screen != "skill" or detail_actions_scroll == null:
+	if host.current_screen != "skill" or detail_actions_scroll == null:
 		return
 	await host.get_tree().process_frame
 	if not module_ui_pending_pin_scroll_anchor.is_empty():
@@ -3366,11 +3021,11 @@ func _restore_detail_actions_scroll(target: int) -> void:
 
 
 func _scroll_detail_actions_to_bottom_after_layout() -> void:
-	if current_screen != "skill" or detail_actions_scroll == null:
+	if host.current_screen != "skill" or detail_actions_scroll == null:
 		return
 	await host.get_tree().process_frame
 	await host.get_tree().process_frame
-	if current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+	if host.current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
 	_sync_detail_actions_scroll_limit()
 	var max_scroll: int = detail_actions_scroll.get_max_scroll_vertical()
@@ -3394,15 +3049,15 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		skill_swipe_drag_offset_x = initial_drag_x
 	var content_width = host._skill_content_width()
 	var actions_width = content_width
-	if not _detail_unlock_extra_scroll_space_allowed(selected_skill_id):
-		detail_unlock_scroll_spacer_heights.erase(selected_skill_id)
+	if not _detail_unlock_extra_scroll_space_allowed(host.selected_skill_id):
+		detail_unlock_scroll_spacer_heights.erase(host.selected_skill_id)
 	if not strip_mode:
 		var frame = Control.new()
 		skill_swipe_frame = frame
 		frame.clip_contents = false
 		var frame_width = content_width
 		host._skill_swipe_activity_surface()._apply_skill_column_layout(frame, frame_width, initial_drag_x)
-		skills_content.add_child(frame)
+		host.skills_content.add_child(frame)
 
 	var page = VBoxContainer.new()
 	skill_swipe_page = page
@@ -3425,22 +3080,22 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	skill_swipe_frame.add_child(page)
 
 	var header = PanelContainer.new()
-	header.custom_minimum_size = Vector2(0, SKILL_DETAIL_HEADER_HEIGHT)
+	header.custom_minimum_size = Vector2(0, host.SKILL_DETAIL_HEADER_HEIGHT)
 	header.custom_minimum_size.x = content_width
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_theme_stylebox_override("panel", _skill_detail_shelf_style(selected_skill_id, false))
+	header.add_theme_stylebox_override("panel", _skill_detail_shelf_style(host.selected_skill_id, false))
 	page.add_child(header)
 	var header_body = Control.new()
 	detail_header_body = header_body
 	header_body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	header.add_child(header_body)
-	_add_skill_detail_shelf_background(header_body, selected_skill_id, content_width)
+	_add_skill_detail_shelf_background(header_body, host.selected_skill_id, content_width)
 	var header_margin = MarginContainer.new()
 	header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	header_margin.add_theme_constant_override("margin_left", 66)
 	header_margin.add_theme_constant_override("margin_right", 46)
 	header_margin.add_theme_constant_override("margin_top", 88)
-	header_margin.add_theme_constant_override("margin_bottom", SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
+	header_margin.add_theme_constant_override("margin_bottom", host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
 	header_body.add_child(header_margin)
 	var header_row = HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 66)
@@ -3449,45 +3104,45 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	var left_block = HBoxContainer.new()
 	left_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_block.alignment = BoxContainer.ALIGNMENT_CENTER
-	left_block.add_theme_constant_override("separation", SKILL_DETAIL_LEFT_SEPARATION)
+	left_block.add_theme_constant_override("separation", host.SKILL_DETAIL_LEFT_SEPARATION)
 	left_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header_row.add_child(left_block)
 	detail_header_left_block = left_block
-	var summary_icon = SkillIconBadge.detail_icon(host, selected_skill_id)
+	var summary_icon = SkillIconBadge.detail_icon(host, host.selected_skill_id)
 	left_block.add_child(summary_icon)
 	var title_stack = VBoxContainer.new()
 	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	title_stack.add_theme_constant_override("separation", SKILL_DETAIL_TEXT_SEPARATION)
+	title_stack.add_theme_constant_override("separation", host.SKILL_DETAIL_TEXT_SEPARATION)
 	title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_block.add_child(title_stack)
-	var title = host._label(SkillState.skill_name(host.skill_defs, selected_skill_id), SkillState.skill_detail_title_font_size(selected_skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(SkillState.skill_name(host.skill_defs, host.selected_skill_id), SkillState.skill_detail_title_font_size(host.selected_skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if selected_skill_id in ["thieving", "fishing"]:
+	if host.selected_skill_id in ["thieving", "fishing"]:
 		var title_line = HBoxContainer.new()
 		title_line.alignment = BoxContainer.ALIGNMENT_BEGIN
 		title_line.add_theme_constant_override("separation", 22)
 		title_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		title_stack.add_child(title_line)
 		title_line.add_child(title)
-		if selected_skill_id == "fishing":
+		if host.selected_skill_id == "fishing":
 			title_line.add_child(_fishing_skill_info_button())
 		else:
 			title_line.add_child(_thieving_skill_info_button())
 	else:
 		title_stack.add_child(title)
-	var xp = SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
-	detail_xp_label = host._label(SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var xp = SkillState.xp_progress(host.skills, host.selected_skill_id, SkillState.host_skill_level(host, host.selected_skill_id))
+	detail_xp_label = host._label(SkillState.level_xp_text(host.skills, host.selected_skill_id, SkillState.host_skill_level(host, host.selected_skill_id)), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(detail_xp_label)
-	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
+	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(host.selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
 	title_stack.add_child(detail_xp_bar)
 
-	if boot_detail_card_yield:
+	if host.boot_detail_card_yield:
 		await host.get_tree().process_frame
 
 	detail_stamina_bar = null
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		detail_regen_circle = null
 		detail_regen_circle_host = null
 		detail_regen_circle_fade_group = null
@@ -3501,7 +3156,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		detail_fish_circle.z_as_relative = false
 		header_row.add_child(detail_fish_circle)
 		host._fishing_ui_surface()._attach_fishing_fish_circle_button(detail_fish_circle)
-		host._fishing_ui_surface()._set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+		host._fishing_ui_surface()._set_fish_circle_for_skill(detail_fish_circle, host.selected_skill_id, true)
 	else:
 		detail_fish_circle = null
 		detail_blue_guy_health_gauge = null
@@ -3515,13 +3170,13 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 		detail_regen_circle.modulate = Color.WHITE
-		detail_regen_circle.set_dark_mode(dark_mode_enabled)
+		detail_regen_circle.set_dark_mode(host.dark_mode_enabled)
 		detail_regen_circle.gui_input.connect(Callable(host._action_runtime(), "_on_stamina_gauge_input").bind("", detail_regen_circle))
 		detail_regen_circle_fade_group.add_child(detail_regen_circle)
 		detail_regen_circle_host.add_child(detail_regen_circle_fade_group)
 		header_row.add_child(detail_regen_circle_host)
-		detail_auto_eat_fish_button = host._fishing_ui_surface()._attach_auto_eat_fish_toggle(detail_regen_circle_host, selected_skill_id)
-		detail_regen_circle.sync_for_skill(host, selected_skill_id, true)
+		detail_auto_eat_fish_button = host._fishing_ui_surface()._attach_auto_eat_fish_toggle(detail_regen_circle_host, host.selected_skill_id)
+		detail_regen_circle.sync_for_skill(host, host.selected_skill_id, true)
 	host._tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
 	host._tutorial_overlay_surface()._apply_onboarding_fight_action_stats_visibility_all()
 	_sync_skill_detail_back_arrow_visibility()
@@ -3533,14 +3188,14 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		host._onboarding_runtime().call_deferred("_run_onboarding_stamina_tip_sequence")
 	elif host._onboarding_runtime()._onboarding_swipe_tip_sequence_resumable():
 		host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-	elif host._fishing_rework_active_for_skill(selected_skill_id):
+	elif host._fishing_rework_active_for_skill(host.selected_skill_id):
 		host._onboarding_runtime()._dismiss_skill_detail_tutorial_tips()
 
-	if boot_detail_card_yield:
+	if host.boot_detail_card_yield:
 		await host.get_tree().process_frame
 
 	var divider = Control.new()
-	divider.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
+	divider.custom_minimum_size = Vector2(0, host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 	divider.custom_minimum_size.x = content_width
 	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_child(divider)
@@ -3568,8 +3223,8 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	actions_scroll.clip_contents = true
 	actions_scroll.set_pull_resistance_enabled(true)
 	actions_scroll.pull_offset_changed.connect(_on_detail_actions_pull_offset_changed)
-	if not actions_scroll.user_scroll_direction.is_connected(_on_detail_actions_user_scroll_direction):
-		actions_scroll.user_scroll_direction.connect(_on_detail_actions_user_scroll_direction)
+	if not actions_scroll.user_scroll_direction.is_connected(host._on_detail_actions_user_scroll_direction):
+		actions_scroll.user_scroll_direction.connect(host._on_detail_actions_user_scroll_direction)
 	actions_clip.add_child(actions_scroll)
 	_build_detail_pull_tip_overlay(actions_clip)
 	var stack = VBoxContainer.new()
@@ -3579,23 +3234,23 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	actions_scroll.add_child(stack)
 	var scroll_top_spacer = Control.new()
 	scroll_top_spacer.name = "DetailActionsTopSpacer"
-	scroll_top_spacer.custom_minimum_size = Vector2(0, onboarding_first_module_top_spacer_height(selected_skill_id))
+	scroll_top_spacer.custom_minimum_size = Vector2(0, onboarding_first_module_top_spacer_height(host.selected_skill_id))
 	stack.add_child(scroll_top_spacer)
 	detail_actions_top_spacer = scroll_top_spacer
 
 	detail_lazy_stack = stack
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		host._fishing_ui_surface().render_area_modules_into_stack(stack, content_width)
-		if boot_detail_card_yield:
+		if host.boot_detail_card_yield:
 			await host.get_tree().process_frame
-		if _activity_start_inline_tip_available(selected_skill_id):
+		if _activity_start_inline_tip_available(host.selected_skill_id):
 			var start_note = host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Click an activity to start doing it.", "activity_start_tip_notes")
 			_detail_eager_add_activity_start_tip_below_content(stack, start_note, content_width, actions_width)
 			_fade_in_activity_start_tip_note(start_note)
 		elif host._onboarding_runtime()._skill_swipe_tip_available():
 			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 	else:
-		if boot_detail_card_yield:
+		if host.boot_detail_card_yield:
 			var boot_lazy_slots_created = await _render_detail_lazy_card_list_batched(
 				stack,
 				content_width,
@@ -3612,40 +3267,33 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 					stack,
 					content_width,
 					actions_width,
-					SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE
+					host.SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE
 				)
 				if not lazy_slots_created:
 					return
 			else:
 				_render_detail_lazy_card_list(stack, content_width, actions_width)
 			_append_detail_eager_trailing_tips(stack, content_width, actions_width)
-	if boot_detail_card_yield:
-		boot_detail_render_in_progress = false
-		if boot_detail_render_queue.is_empty():
-			boot_detail_scroll_locked = false
-			_append_detail_eager_trailing_tips(stack, content_width, actions_width)
-		else:
-			boot_detail_scroll_locked = true
-			actions_scroll.set_max_scroll_override(0)
-			actions_scroll.set_scroll_enabled_by_content(false)
-			call_deferred("_complete_boot_detail_cards_async")
-	if not (boot_detail_card_yield and not boot_detail_render_queue.is_empty()):
-		host._navigation_shell()._render_page_switch_module(stack, selected_skill_id, content_width, actions_width)
+	if host.boot_detail_card_yield:
+		host.boot_detail_render_in_progress = false
+		host.boot_detail_scroll_locked = false
+		_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+	host._navigation_shell()._render_page_switch_module(stack, host.selected_skill_id, content_width, actions_width)
 	var scroll_bottom_spacer = Control.new()
 	scroll_bottom_spacer.name = "DetailActionsBottomSpacer"
-	var bottom_pad = _detail_actions_bottom_scroll_pad(selected_skill_id)
+	var bottom_pad = _detail_actions_bottom_scroll_pad(host.selected_skill_id)
 	scroll_bottom_spacer.custom_minimum_size = Vector2(0, bottom_pad)
 	scroll_bottom_spacer.visible = bottom_pad > 1.0
 	stack.add_child(scroll_bottom_spacer)
 	detail_unlock_scroll_spacer = scroll_bottom_spacer
-	if boot_detail_card_yield:
+	if host.boot_detail_card_yield:
 		host.call_deferred("_finish_boot_skill_detail_extras")
 	else:
 		_build_detail_jump_arrows(actions_clip)
 		_add_skill_detail_shadow_overlay(_skill_detail_shadow_top_y())
 	if not strip_mode:
 		call_deferred("_sync_detail_actions_scroll_limit_deferred")
-		if restore_detail_scroll == DETAIL_RESTORE_SCROLL_BOTTOM:
+		if restore_detail_scroll == host.DETAIL_RESTORE_SCROLL_BOTTOM:
 			actions_scroll.drag_scroll_position = 10000000.0
 			actions_scroll.scroll_vertical = 10000000
 			call_deferred("_scroll_detail_actions_to_bottom_after_layout")
@@ -3731,7 +3379,10 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 	else:
 		for entry in _visible_detail_entries_for_skill(host.selected_skill_id):
 			var entry_data := entry as Dictionary
-			if str(entry_data.get("kind", "")) == "thieving_heist":
+			var entry_kind := str(entry_data.get("kind", ""))
+			if entry_kind == "tier_banner":
+				expected_action_ids.append(_tier_banner_key(host.selected_skill_id, int(entry_data.get("tier", 1))))
+			elif entry_kind == "thieving_heist":
 				expected_action_ids.append("heist:%s" % str((entry_data.get("heist", {}) as Dictionary).get("id", "")))
 			else:
 				expected_action_ids.append(str((entry_data.get("action", {}) as Dictionary).get("id", "")))
@@ -3755,7 +3406,7 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 			return true
 		for raw_track_id in expected_action_ids:
 			var track_id := str(raw_track_id)
-			if track_id.is_empty():
+			if track_id.is_empty() or track_id.begins_with("tier:"):
 				continue
 			var node: Control = host._app_lifecycle_runtime().valid_control_ref(detail_action_card_nodes.get(track_id))
 			if node == null or not node.is_inside_tree():
@@ -3870,11 +3521,11 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var build_plank_nodes = buildable_widgets.get("build_plank_nodes", [])
 
 	var border: ActivityCardBorder = null
-	if ACTION_CARD_FACE_BORDER_ENABLED and RecoveryModules.has_recovery(action) and not host._fighting_runtime().action_uses_diamond_combat_arena(action):
+	if host.ACTION_CARD_FACE_BORDER_ENABLED and RecoveryModules.has_recovery(action) and not host._fighting_runtime().action_uses_diamond_combat_arena(action):
 		border = ActivityCardBorder.new()
 		border.set_anchors_preset(Control.PRESET_FULL_RECT)
 		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		border.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX
+		border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		border.bottom_shape = "wide_u"
 		border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
 		border.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
@@ -5576,7 +5227,7 @@ func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
 	if not direct_hit.is_empty():
 		return direct_hit
 	_prune_invalid_action_cards()
-	for raw_card in action_cards.values():
+	for raw_card in host.action_cards.values():
 		var card := raw_card as Dictionary
 		var raw_host = card.get("pop", null)
 		var card_host: Control = host._app_lifecycle_runtime().valid_control_ref(raw_host)
@@ -5597,7 +5248,7 @@ func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
 			"host": card_host,
 			"module_key": str(card_host.get_meta("module_ui_key", ""))
 		}
-	for raw_root in [content_scroll, detail_lazy_stack]:
+	for raw_root in [host.content_scroll, detail_lazy_stack]:
 		var root: Control = host._app_lifecycle_runtime().valid_control_ref(raw_root)
 		var tree_hit := _module_action_circle_at_position_in_tree(root, event_position)
 		if not tree_hit.is_empty():
@@ -5607,7 +5258,7 @@ func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
 
 func _module_action_circle_at_direct_position(event_position: Vector2) -> Dictionary:
 	_prune_invalid_action_cards()
-	for raw_card in action_cards.values():
+	for raw_card in host.action_cards.values():
 		var card := raw_card as Dictionary
 		var raw_host = card.get("pop", null)
 		var card_host: Control = host._app_lifecycle_runtime().valid_control_ref(raw_host)
@@ -5628,7 +5279,7 @@ func _module_action_circle_at_direct_position(event_position: Vector2) -> Dictio
 			"host": card_host,
 			"module_key": str(card_host.get_meta("module_ui_key", ""))
 		}
-	for raw_root in [content_scroll, detail_lazy_stack]:
+	for raw_root in [host.content_scroll, detail_lazy_stack]:
 		var root: Control = host._app_lifecycle_runtime().valid_control_ref(raw_root)
 		var tree_hit := _module_action_circle_at_direct_position_in_tree(root, event_position)
 		if not tree_hit.is_empty():
@@ -5808,16 +5459,13 @@ func _position_module_collapse_badge(badge: Control) -> void:
 
 func _module_collapse_badge_style(pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_GOLD.darkened(0.08) if pressed else COLOR_GOLD
-	style.border_color = COLOR_INK
+	style.bg_color = host.COLOR_GOLD.darkened(0.08) if pressed else host.COLOR_GOLD
+	style.border_color = host.COLOR_INK
 	style.border_width_left = 8
 	style.border_width_top = 8
 	style.border_width_right = 8
 	style.border_width_bottom = 10
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_corner_radius_all(999)
 	style.shadow_color = Color(0, 0, 0, 0.30)
 	style.shadow_size = 9
 	style.shadow_offset = Vector2(4, 8)
@@ -5912,7 +5560,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	else:
 		depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), card_depth_offset, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
 		ThemeStyles.apply_activity_card_depth_action_theme(depth, skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
-		_apply_recovery_card_depth_shape(depth, action)
+		ActivityCardStyles.apply_recovery_card_depth_shape(depth, action)
 		if uses_flat_normal_card:
 			ActivityCardStyles.apply_normal_activity_card_depth(depth, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 			depth.visible = false
@@ -5957,7 +5605,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		card_root.add_child(body_connectors)
 		pop_card.set_meta("activity_card_connector_node_id", body_connectors.get_instance_id())
 	var bg = _action_card_background(skill_id, action)
-	_apply_recovery_card_background_shape(bg, action)
+	ActivityCardStyles.apply_recovery_card_background_shape(bg, action)
 	if uses_flat_normal_card:
 		bg.offset_left = 0.0
 		bg.offset_right = 0.0
@@ -6036,7 +5684,7 @@ func _attach_diamond_combat_arena_frame(pop_card: Control) -> _DiamondArenaFrame
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.z_index = 238
 	frame.fill_color = Color("#a01419")
-	frame.border_color = COLOR_INK
+	frame.border_color = host.COLOR_INK
 	frame.accent_color = Color("#ff0b42")
 	frame.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 	frame.accent_width = 6.0
@@ -6121,7 +5769,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	ActivityCardStyles.configure_activity_card_title(action_name_label)
-	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
 	action_name_label.set_meta("module_ui_title_label", true)
@@ -6137,11 +5785,11 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_panel.custom_minimum_size = Vector2(352, 134)
 		build_title_button_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		build_title_button_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		build_title_button_panel.add_theme_stylebox_override("panel", BuildableModuleOverlay.cta_style(BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), COLOR_INK, true))
+		build_title_button_panel.add_theme_stylebox_override("panel", BuildableModuleOverlay.cta_style(BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), host.COLOR_INK, true))
 		title_row.add_child(build_title_button_panel)
 		build_title_button_label = BuildableModuleOverlay.label(BuildableModules.label(action).to_upper(), 84, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, host.app_bold_font, host.app_font)
 		build_title_button_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-		build_title_button_label.add_theme_color_override("font_outline_color", COLOR_INK)
+		build_title_button_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 		build_title_button_label.add_theme_constant_override("outline_size", 24)
 		build_title_button_panel.add_child(build_title_button_label)
 	else:
@@ -6312,7 +5960,7 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 		art_panel.add_child(medal)
 		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
-		mastery_progress.border_color = COLOR_INK
+		mastery_progress.border_color = host.COLOR_INK
 		mastery_progress.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 		mastery_progress.easing_speed = 5.0
@@ -6359,7 +6007,7 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 			progress.bottom_radius = host.ACTION_CARD_FACE_RADIUS
 		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
 			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
-		_apply_recovery_progress_rail_shape(progress, action)
+		ActivityCardStyles.apply_recovery_progress_rail_shape(host, progress, action)
 		progress.z_index = 232
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(progress)
@@ -6378,7 +6026,7 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 
 func _detail_action_convergence_overlay(pop_card: Control, action: Dictionary) -> Dictionary:
 	if host._convergence_runtime()._is_convergence_action(action):
-		return ConvergenceBuildOverlay.build(pop_card, CONVERGENCE_BUILD_OVERLAY_COLOR, COLOR_INK, host.app_bold_font, host.app_font, host.MIN_MOBILE_BODY_FONT_SIZE)
+		return ConvergenceBuildOverlay.build(pop_card, CONVERGENCE_BUILD_OVERLAY_COLOR, host.COLOR_INK, host.app_bold_font, host.app_font, host.MIN_MOBILE_BODY_FONT_SIZE)
 	return {}
 
 
@@ -6439,15 +6087,15 @@ func _detail_action_buildable_overlay(pop_card: Control, skill_id: String, actio
 	var plank_textures := []
 	for texture_path in MaterialRuntime.BUILD_REQUIRED_PLANK_PIECE_TEXTURES:
 		plank_textures.append(host.visual_texture_cache._texture_or_visual_fallback(str(texture_path)))
-	return BuildableModuleOverlay.build(pop_card, str(action.get("name", "Module")), meta_text, BuildableModules.label(action).to_upper(), BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), COLOR_INK, host.app_bold_font, host.app_font, host.MIN_MOBILE_BODY_FONT_SIZE, plank_textures, cost, cost_icon_paths)
+	return BuildableModuleOverlay.build(pop_card, str(action.get("name", "Module")), meta_text, BuildableModules.label(action).to_upper(), BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), host.COLOR_INK, host.app_bold_font, host.app_font, host.MIN_MOBILE_BODY_FONT_SIZE, plank_textures, cost, cost_icon_paths)
 
 
 func _play_buildable_module_built_animation(skill_id: String, action: Dictionary, refresh_scroll: int) -> bool:
 	var action_id := str(action.get("id", ""))
 	var card_key: String = str(host._action_key(skill_id, action_id))
-	if card_key.is_empty() or not action_cards.has(card_key):
+	if card_key.is_empty() or not host.action_cards.has(card_key):
 		return false
-	var card := action_cards[card_key] as Dictionary
+	var card := host.action_cards[card_key] as Dictionary
 	var overlay: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("build_overlay"))
 	var plank_layer: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("build_plank_layer"))
 	var cta: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("build_cta"))
@@ -6559,8 +6207,8 @@ func _resolve_activity_unlock_card(skill_id: String, action_id: String) -> Dicti
 		if not fishing_method_card.is_empty():
 			return fishing_method_card
 	var key = host._action_key(skill_id, action_id)
-	if action_cards.has(key):
-		var card = action_cards[key] as Dictionary
+	if host.action_cards.has(key):
+		var card = host.action_cards[key] as Dictionary
 		if card != null and not card.is_empty():
 			return card
 	var preview_card = host._activity_unlock_ceremony_surface().activity_preview_card_for_action_id(action_id)
@@ -7511,7 +7159,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	var title: Label = host._label("TIER %s" % tier, 162 + mini(tier, 4) * 4, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 44)
 	if host.app_bold_font != null:
 		title.add_theme_font_override("font", host.app_bold_font)
@@ -7542,7 +7190,7 @@ func _refresh_mounted_tier_banners() -> void:
 		if old_banner == null:
 			continue
 		var entry_data: Dictionary = lazy_entry.get("entry", {}) as Dictionary
-		var skill_id := str(entry_data.get("skill_id", selected_skill_id))
+		var skill_id := str(entry_data.get("skill_id", host.selected_skill_id))
 		var tier := int(entry_data.get("tier", 1))
 		var counts := AchievementState.tier_medal_counts(host, skill_id, tier)
 		var counts_signature := "%s|%s|%s" % [int(counts.get("earned", 0)), int(counts.get("possible", 0)), str(counts.get("tiers", []))]
@@ -7554,7 +7202,7 @@ func _refresh_mounted_tier_banners() -> void:
 
 
 func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Callable, meta_key: String) -> Button:
-	var button := Button.new()
+	var button := TierBannerButton.new()
 	button.text = ""
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -7571,14 +7219,21 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.pressed.connect(callback)
+	button.pressed.connect(_on_tier_banner_hit_pressed.bind(callback, button))
 	return button
 
 
+func _on_tier_banner_hit_pressed(callback: Callable, button: TierBannerButton) -> void:
+	if not button.consume_tap():
+		return
+	if _detail_actions_scroll_suppresses_child_click():
+		return
+	if callback.is_valid():
+		callback.call()
+
+
 func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, counts: Dictionary) -> void:
-	var panel_position := Vector2(86.0, 560.0)
-	var panel_size := Vector2(maxf(1.0, root.custom_minimum_size.x - 172.0), _tier_banner_height(_tier_banner_key(skill_id, tier)) - 560.0)
-	root.add_child(_tier_banner_hit_button(panel_position, panel_size, Callable(self, "_toggle_tier_banner").bind(skill_id, tier), "tier_banner_panel_hit"))
+	# Keep the menu body available for scrolling; only the plaque toggles it.
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	panel.offset_left = 86.0
@@ -7611,7 +7266,7 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	var earned_medals := int(counts.get("earned", 0))
 	var possible_medals := int(counts.get("possible", 0))
 	var completion := 0.0 if possible_medals <= 0 else float(earned_medals) / float(possible_medals) * 100.0
-	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 62, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7628,10 +7283,7 @@ func _tier_banner_expanded_menu_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.TRANSPARENT
 	style.border_color = Color.TRANSPARENT
-	style.border_width_left = 0
-	style.border_width_right = 0
-	style.border_width_top = 0
-	style.border_width_bottom = 0
+	style.set_border_width_all(0)
 	style.corner_radius_top_left = 18
 	style.corner_radius_top_right = 18
 	style.corner_radius_bottom_left = 26
@@ -7687,7 +7339,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	medal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal)
-	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal_name)
 	var progress_stack := VBoxContainer.new()
@@ -7696,7 +7348,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	progress_stack.add_theme_constant_override("separation", 14)
 	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(progress_stack)
-	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	progress_stack.add_child(requirement)
@@ -7719,14 +7371,14 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 	bar.offset_top = 0
 	bar.offset_bottom = 0
 	bar.track_color = accent.darkened(0.55)
-	bar.border_color = COLOR_INK
+	bar.border_color = host.COLOR_INK
 	bar.border_width = 12.0
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(bar)
 	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	label.add_theme_constant_override("outline_size", 16)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.z_index = 2
@@ -7741,7 +7393,7 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = accent.darkened(0.10)
-	style.border_color = COLOR_INK
+	style.border_color = host.COLOR_INK
 	style.set_border_width_all(10)
 	style.set_corner_radius_all(42)
 	style.shadow_color = Color(0, 0, 0, 0.24)
@@ -7758,7 +7410,7 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	reward.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(reward)
 	var reward_header: Label = host._label("REWARD", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	reward_header.add_theme_color_override("font_outline_color", COLOR_INK)
+	reward_header.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	reward_header.add_theme_constant_override("outline_size", 12)
 	reward_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(reward_header)
@@ -7766,13 +7418,13 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var main_text := str(parts[0]) if parts.size() > 0 else reward_text
 	var detail_text := str(parts[1]) if parts.size() > 1 else ""
 	var main: Label = host._label(main_text, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	main.add_theme_color_override("font_outline_color", COLOR_INK)
+	main.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	main.add_theme_constant_override("outline_size", 16)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
 	if not detail_text.is_empty():
 		var detail: Label = host._label(detail_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		detail.add_theme_color_override("font_outline_color", COLOR_INK)
+		detail.add_theme_color_override("font_outline_color", host.COLOR_INK)
 		detail.add_theme_constant_override("outline_size", 10)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward.add_child(detail)
@@ -7830,23 +7482,23 @@ func _detail_lazy_viewport_height() -> float:
 func _detail_lazy_pinned_track_ids() -> Dictionary:
 	var pinned = {}
 	var fishing_ui = host._fishing_ui_surface()
-	if selected_skill_id != "fishing" and not fishing_ui.fishing_unlock_visible_mount_ids.is_empty():
+	if host.selected_skill_id != "fishing" and not fishing_ui.fishing_unlock_visible_mount_ids.is_empty():
 		fishing_ui.fishing_unlock_visible_mount_ids.clear()
-	if selected_skill_id != "fishing" and not fishing_ui.fishing_unlock_preview_fade_marker_ids.is_empty():
+	if host.selected_skill_id != "fishing" and not fishing_ui.fishing_unlock_preview_fade_marker_ids.is_empty():
 		fishing_ui.fishing_unlock_preview_fade_marker_ids.clear()
-	if host.running_skill_id == selected_skill_id and not host.running_action_id.is_empty():
+	if host.running_skill_id == host.selected_skill_id and not host.running_action_id.is_empty():
 		pinned[host.running_action_id] = true
 	var temporary_events = host._temporary_event_runtime()
-	if temporary_events.event_running_skill_id == selected_skill_id and not temporary_events.event_running_action_id.is_empty():
+	if temporary_events.event_running_skill_id == host.selected_skill_id and not temporary_events.event_running_action_id.is_empty():
 		pinned[temporary_events.event_running_action_id] = true
-	if selected_skill_id == "thieving":
+	if host.selected_skill_id == "thieving":
 		for raw_action_id in host.thieving_state.action_jails.keys():
 			var jailed_action_id = str(raw_action_id)
 			if jailed_action_id.is_empty() or host._thieving_surface()._thieving_action_jail_remaining(jailed_action_id) <= 0:
 				continue
 			pinned[jailed_action_id] = true
 	if not host._activity_unlock_runtime().pending_readiness_pages().is_empty():
-		for raw_action_id in host._activity_unlock_runtime().pending_readiness_action_ids(selected_skill_id):
+		for raw_action_id in host._activity_unlock_runtime().pending_readiness_action_ids(host.selected_skill_id):
 			var pending_action_id = str(raw_action_id)
 			if not pending_action_id.is_empty():
 				pinned[pending_action_id] = true
@@ -7856,7 +7508,7 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 		var ceremony_parts = host._activity_unlock_ceremony_surface().ceremony_action_key.split(":")
 		if ceremony_parts.size() >= 2:
 			pinned[str(ceremony_parts[1])] = true
-	if selected_skill_id == "fishing":
+	if host.selected_skill_id == "fishing":
 		for raw_mount_id in fishing_ui.fishing_unlock_visible_mount_ids:
 			var queued_mount_id = str(raw_mount_id)
 			if not queued_mount_id.is_empty():
@@ -7864,7 +7516,7 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 		var next_fishing_unlock_id = host._activity_unlock_runtime()._fishing_next_visible_auto_unlock_action_id()
 		if not next_fishing_unlock_id.is_empty():
 			pinned[next_fishing_unlock_id] = true
-	for raw_card in action_cards.values():
+	for raw_card in host.action_cards.values():
 		if typeof(raw_card) != TYPE_DICTIONARY:
 			continue
 		var card = raw_card as Dictionary
@@ -7878,9 +7530,9 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	var pending_heist_key = str(host.thieving_state.pending_trophy_reward_float.get("key", "")) if not host.thieving_state.pending_trophy_reward_float.is_empty() else ""
 	if pending_heist_key.begins_with("thieving_heist:"):
 		pinned["heist:%s" % pending_heist_key.substr("thieving_heist:".length())] = true
-	for preview_track_id in host.module_ui_runtime.preview_pinned_track_ids(selected_skill_id):
+	for preview_track_id in host.module_ui_runtime.preview_pinned_track_ids(host.selected_skill_id):
 		pinned[str(preview_track_id)] = true
-	var recent_track_id = host.module_ui_runtime.recent_pinned_track_id(selected_skill_id)
+	var recent_track_id = host.module_ui_runtime.recent_pinned_track_id(host.selected_skill_id)
 	if not recent_track_id.is_empty():
 		pinned[recent_track_id] = true
 	return pinned
@@ -7917,14 +7569,14 @@ func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
 			return DETAIL_LAZY_TIP_HEIGHT
 	var uses_diamond_arena: bool = bool(host._fighting_runtime().action_uses_diamond_combat_arena(action))
 	var depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
-	return ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y) + host._material_collection_surface().layout_height_for_action(selected_skill_id, action, host._action_runtime()._action_has_mat_rewards(action), host.running_skill_id, host.running_action_id)
+	return ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y) + host._material_collection_surface().layout_height_for_action(host.selected_skill_id, action, host._action_runtime()._action_has_mat_rewards(action), host.running_skill_id, host.running_action_id)
 
 
 func _detail_lazy_track_id_for_entry(entry_data: Dictionary) -> String:
 	if str(entry_data.get("kind", "")) == "beta_notice":
 		return "beta_notice"
 	if str(entry_data.get("kind", "")) == "tier_banner":
-		return "tier:%s:%s" % [str(entry_data.get("skill_id", selected_skill_id)), int(entry_data.get("tier", 1))]
+		return "tier:%s:%s" % [str(entry_data.get("skill_id", host.selected_skill_id)), int(entry_data.get("tier", 1))]
 	if str(entry_data.get("kind", "")) == "thieving_heist":
 		var heist = entry_data.get("heist", {}) as Dictionary
 		return "heist:%s" % str(heist.get("id", ""))
@@ -7933,15 +7585,15 @@ func _detail_lazy_track_id_for_entry(entry_data: Dictionary) -> String:
 
 
 func _detail_lazy_viewport_buffer_px() -> float:
-	if boot_detail_render_in_progress:
+	if host.boot_detail_render_in_progress:
 		return DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX
 	return DETAIL_LAZY_VIEWPORT_BUFFER_PX
 
 
 func _detail_lazy_unmount_buffer_px() -> float:
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX
 	return DETAIL_LAZY_UNMOUNT_BUFFER_PX
 
@@ -7993,7 +7645,7 @@ func _detail_lazy_should_mount_entry(lazy_entry: Dictionary, pinned: Dictionary,
 	if bool(lazy_entry.get("mounted", false)):
 		return false
 	var kind = str(lazy_entry.get("kind", ""))
-	var initial_force_count = _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id)
+	var initial_force_count = _detail_lazy_initial_force_mount_count_for_skill(host.selected_skill_id)
 	if kind in ["lock_tip", "activity_start_tip", "skill_swipe_tip"]:
 		return plan_index < initial_force_count
 	if _detail_lazy_entry_is_pinned(lazy_entry, pinned):
@@ -8008,7 +7660,7 @@ func _detail_lazy_should_mount_entry(lazy_entry: Dictionary, pinned: Dictionary,
 func _detail_lazy_mount_should_wait_for_scroll(lazy_entry: Dictionary) -> bool:
 	if not detail_scroll_visual_work_this_frame:
 		return false
-	if not host._fishing_rework_active_for_skill(selected_skill_id):
+	if not host._fishing_rework_active_for_skill(host.selected_skill_id):
 		return false
 	if lazy_entry.has("cached_root"):
 		return false
@@ -8383,22 +8035,22 @@ func _detail_lazy_refresh_after_page_ready(expected_token = -1):
 	detail_lazy_stack = stack
 	if detail_lazy_plan.is_empty():
 		detail_rendered_action_ids.clear()
-		detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(selected_skill_id) if host._fishing_rework_active_for_skill(selected_skill_id) else _build_detail_lazy_plan(selected_skill_id)
+		detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(host.selected_skill_id) if host._fishing_rework_active_for_skill(host.selected_skill_id) else _build_detail_lazy_plan(host.selected_skill_id)
 	var content_width = host._skill_content_width()
-	_detail_lazy_rebind_plan_to_existing_stack(stack, selected_skill_id, content_width, content_width)
+	_detail_lazy_rebind_plan_to_existing_stack(stack, host.selected_skill_id, content_width, content_width)
 	await host.get_tree().process_frame
 	if expected_token >= 0 and expected_token != detail_lazy_refresh_token:
 		return
 	if host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack) != stack or not is_instance_valid(stack):
 		return
-	var initial_force_count = _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id)
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	var initial_force_count = _detail_lazy_initial_force_mount_count_for_skill(host.selected_skill_id)
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		_sync_detail_lazy_visible_cards(true, initial_force_count)
 	else:
 		_sync_detail_lazy_visible_cards(true, -1)
-	if host._fishing_rework_active_for_skill(selected_skill_id):
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		_detail_lazy_mount_initial_window_sync(true, initial_force_count)
-	_queue_detail_lazy_settle_warm_mount(selected_skill_id)
+	_queue_detail_lazy_settle_warm_mount(host.selected_skill_id)
 
 
 func _detail_lazy_plan_and_signature_for_skill(skill_id: String) -> Dictionary:
@@ -8479,14 +8131,14 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 		return false
 	if not host._activity_unlock_ceremony_surface().activity_preview_card_for_action_id(action_id, false).is_empty():
 		return true
-	if current_screen != "skill" or selected_skill_id.is_empty():
+	if host.current_screen != "skill" or host.selected_skill_id.is_empty():
 		return false
 	var stack = host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack)
 	if stack == null:
 		return false
 	if detail_lazy_plan.is_empty() or not host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(stack):
 		return false
-	var plan_data = _detail_lazy_plan_and_signature_for_skill(selected_skill_id)
+	var plan_data = _detail_lazy_plan_and_signature_for_skill(host.selected_skill_id)
 	var new_plan = plan_data.get("plan", []) as Array
 	var new_signature = plan_data.get("signature", []) as Array
 	var preview_index = _detail_lazy_find_action_plan_index(new_plan, action_id)
@@ -8503,13 +8155,13 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	var content_width = host._skill_content_width()
 	var actions_width = content_width
 	var layout_snapshot = _capture_detail_module_layout_snapshot()
-	_detail_lazy_create_slot_for_entry(stack, selected_skill_id, preview_entry, content_width, actions_width)
+	_detail_lazy_create_slot_for_entry(stack, host.selected_skill_id, preview_entry, content_width, actions_width)
 	var preview_host = host._app_lifecycle_runtime().valid_control_ref(preview_entry.get("stack_host"))
 	if preview_host == null:
 		return false
 	var insert_index = _detail_lazy_stack_insert_index_for_plan_index(stack, preview_index)
 	stack.move_child(preview_host, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
-	if not _detail_lazy_mount_item(preview_entry, selected_skill_id, content_width, actions_width, false):
+	if not _detail_lazy_mount_item(preview_entry, host.selected_skill_id, content_width, actions_width, false):
 		_detail_lazy_remove_unmounted_inserted_host(preview_entry)
 		return false
 	_detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan, action_id)
@@ -8539,7 +8191,7 @@ func _detail_lazy_remove_unmounted_inserted_host(inserted_entry: Dictionary) -> 
 	var track_id = str(inserted_entry.get("track_id", ""))
 	if not track_id.is_empty():
 		detail_action_card_nodes.erase(track_id)
-		_discard_action_card_key(host._action_key(selected_skill_id, track_id))
+		_discard_action_card_key(host._action_key(host.selected_skill_id, track_id))
 	var stack_host = host._app_lifecycle_runtime().valid_control_ref(inserted_entry.get("stack_host"))
 	if stack_host == null or not is_instance_valid(stack_host):
 		return
@@ -8564,9 +8216,9 @@ func _detail_lazy_reorder_existing_hosts_for_plan(stack: VBoxContainer, plan: Ar
 
 
 func _try_refresh_detail_module_order_in_place() -> bool:
-	if current_screen != "skill" or selected_skill_id.is_empty():
+	if host.current_screen != "skill" or host.selected_skill_id.is_empty():
 		return false
-	if host._navigation_shell().screen_render_in_progress or boot_detail_render_in_progress or host._skill_swipe_activity_surface()._skill_swipe_navigation_blocks_detail_refresh():
+	if host._navigation_shell().screen_render_in_progress or host.boot_detail_render_in_progress or host._skill_swipe_activity_surface()._skill_swipe_navigation_blocks_detail_refresh():
 		return false
 	if host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize or host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 		return false
@@ -8580,7 +8232,7 @@ func _try_refresh_detail_module_order_in_place() -> bool:
 	var layout_snapshot = _capture_detail_module_layout_snapshot()
 	if layout_snapshot.is_empty():
 		return false
-	var plan_data = _detail_lazy_plan_and_signature_for_skill(selected_skill_id)
+	var plan_data = _detail_lazy_plan_and_signature_for_skill(host.selected_skill_id)
 	var new_plan = plan_data.get("plan", []) as Array
 	if new_plan.is_empty():
 		return false
@@ -8602,9 +8254,9 @@ func _try_refresh_detail_module_order_in_place() -> bool:
 		var stack_host = host._app_lifecycle_runtime().valid_control_ref(new_entry.get("stack_host"))
 		if stack_host != null and is_instance_valid(stack_host):
 			continue
-		_detail_lazy_create_slot_for_entry(stack, selected_skill_id, new_entry, content_width, actions_width)
+		_detail_lazy_create_slot_for_entry(stack, host.selected_skill_id, new_entry, content_width, actions_width)
 		if _detail_lazy_should_mount_entry(new_entry, _detail_lazy_pinned_track_ids(), plan_index):
-			_detail_lazy_mount_item(new_entry, selected_skill_id, content_width, actions_width, false)
+			_detail_lazy_mount_item(new_entry, host.selected_skill_id, content_width, actions_width, false)
 	for raw_old_entry in detail_lazy_plan:
 		var old_entry = raw_old_entry as Dictionary
 		var old_track_id = str(old_entry.get("track_id", ""))
@@ -8685,11 +8337,11 @@ func _detail_lazy_idle_warm_mount_can_mount(skill_id: String, lazy_entry: Dictio
 		card_cost = 1 + (lazy_entry.get("method_ids", []) as Array).size()
 	elif kind in ["action", "passive", "heist"]:
 		card_cost = 1
-	return action_cards.size() + card_cost <= host.FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS
+	return host.action_cards.size() + card_cost <= host.FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS
 
 
 func _repair_blank_detail_lazy_stack() -> bool:
-	if current_screen != "skill":
+	if host.current_screen != "skill":
 		return false
 	if detail_lazy_plan.is_empty():
 		return false
@@ -8712,15 +8364,15 @@ func _repair_blank_detail_lazy_stack() -> bool:
 		control.queue_free()
 	detail_lazy_stack = stack
 	detail_action_card_nodes.clear()
-	for raw_key in action_cards.keys():
+	for raw_key in host.action_cards.keys():
 		var key = str(raw_key)
-		if key.begins_with("%s:" % selected_skill_id) or (selected_skill_id == "thieving" and key.begins_with("thieving_heist:")):
+		if key.begins_with("%s:" % host.selected_skill_id) or (host.selected_skill_id == "thieving" and key.begins_with("thieving_heist:")):
 			_discard_action_card_key(key)
 	detail_rendered_action_ids.clear()
-	detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(selected_skill_id) if host._fishing_rework_active_for_skill(selected_skill_id) else _build_detail_lazy_plan(selected_skill_id)
+	detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(host.selected_skill_id) if host._fishing_rework_active_for_skill(host.selected_skill_id) else _build_detail_lazy_plan(host.selected_skill_id)
 	var content_width = host._skill_content_width()
-	_detail_lazy_create_slots(stack, selected_skill_id, content_width, content_width)
-	_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id))
+	_detail_lazy_create_slots(stack, host.selected_skill_id, content_width, content_width)
+	_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(host.selected_skill_id))
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	if had_bottom_spacer and bottom_spacer != null and is_instance_valid(bottom_spacer):
 		stack.add_child(bottom_spacer)
@@ -8728,7 +8380,7 @@ func _repair_blank_detail_lazy_stack() -> bool:
 
 
 func _maybe_repair_blank_detail_lazy_stack() -> void:
-	if current_screen != "skill" or detail_lazy_plan.is_empty():
+	if host.current_screen != "skill" or detail_lazy_plan.is_empty():
 		return
 	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition() or host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
 		return
@@ -8786,7 +8438,7 @@ func _detail_lazy_create_slots_batched(
 	var created_since_yield := 0
 	var batch_limit := maxi(1, batch_size)
 	for lazy_entry in detail_lazy_plan:
-		if current_screen != "skill" or selected_skill_id != skill_id:
+		if host.current_screen != "skill" or host.selected_skill_id != skill_id:
 			return false
 		if stack == null or not is_instance_valid(stack):
 			return false
@@ -8906,7 +8558,7 @@ func _detail_eager_add_smooth_tutorial_tip_after_action(action_id: String, note:
 func _detail_eager_add_skill_swipe_tip_after_anchor(stack: VBoxContainer, note: Control, content_width: float, actions_width: float) -> Control:
 	if stack == null or not is_instance_valid(stack) or note == null or not is_instance_valid(note):
 		return null
-	var anchor_id := _skill_swipe_tip_anchor_track_id(selected_skill_id)
+	var anchor_id := _skill_swipe_tip_anchor_track_id(host.selected_skill_id)
 	if not anchor_id.is_empty():
 		var anchored_entry := _detail_eager_add_smooth_tutorial_tip_after_action(anchor_id, note, content_width, actions_width, "skill_swipe_tip_notes")
 		if anchored_entry != null and is_instance_valid(anchored_entry):
@@ -8955,7 +8607,7 @@ func _tutorial_note_group_has_node_in_stack(group_name: String, stack: VBoxConta
 func _append_detail_eager_trailing_tips(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
 	if host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active():
 		return
-	if _activity_start_inline_tip_available(selected_skill_id):
+	if _activity_start_inline_tip_available(host.selected_skill_id):
 		if _tutorial_note_group_has_node_in_stack("activity_start_tip_notes", stack):
 			return
 		var note: Control = host._tutorial_overlay_surface()._bottom_tutorial_tip_note(content_width, "Click an activity to start doing it.", "activity_start_tip_notes")
@@ -8965,7 +8617,7 @@ func _append_detail_eager_trailing_tips(stack: VBoxContainer, content_width: flo
 		host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 
 
-func _activity_start_inline_tip_available(skill_id: String = selected_skill_id) -> bool:
+func _activity_start_inline_tip_available(skill_id: String = host.selected_skill_id) -> bool:
 	if host._onboarding_runtime().activity_start_tip_seen:
 		return false
 	if not host._onboarding_runtime()._skill_detail_shows_tutorial_tips(skill_id):
@@ -9375,7 +9027,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 		return false
 	lazy_entry["mounted"] = true
 	host._skill_swipe_activity_surface()._mark_detail_lazy_module_mounted(host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host")))
-	if fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
+	if fade_in and fade_allowed and fade_target != null and not host.boot_detail_render_in_progress:
 		_play_detail_lazy_fade_in(fade_target)
 	if trace_mount:
 		var mount_us = Time.get_ticks_usec() - trace_started_usec
@@ -9403,7 +9055,7 @@ func _detail_lazy_mount_plain_ablation_item(lazy_entry: Dictionary, content_widt
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6e1"), 16, 8, false))
-	var label = host._label("%s %s" % [kind, track_id], 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var label = host._label("%s %s" % [kind, track_id], 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.custom_minimum_size = Vector2(actions_width, module_height)
 	panel.add_child(label)
@@ -9428,7 +9080,7 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 	for plan_index in range(detail_lazy_plan.size()):
 		var lazy_entry = detail_lazy_plan[plan_index] as Dictionary
 		var cached_visible_fishing_entry = (
-			host._fishing_rework_active_for_skill(selected_skill_id)
+			host._fishing_rework_active_for_skill(host.selected_skill_id)
 			and detail_scroll_visual_work_this_frame
 			and lazy_entry.has("cached_root")
 			and _detail_lazy_entry_in_viewport(lazy_entry)
@@ -9439,7 +9091,7 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 			continue
 		var had_cached_root = lazy_entry.has("cached_root")
 		var fade_in = (not instant) and not detail_scroll_visual_work_this_frame
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, fade_in):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, fade_in):
 			if not (cached_visible_fishing_entry and had_cached_root):
 				mounted_count += 1
 	detail_lazy_mount_trace_context = previous_mount_context
@@ -9460,28 +9112,9 @@ func _sync_detail_lazy_next_cards(instant: bool, max_mounts: int = 1) -> int:
 		var lazy_entry = raw_lazy_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			continue
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
-
-
-func _schedule_proxy_skill_detail_full_refresh(skill_id: String) -> void:
-	if skill_id.is_empty():
-		return
-	call_deferred("_proxy_skill_detail_full_refresh_after_frames", skill_id, host.main_process_frame_index + host.SKILL_SWIPE_PROXY_FULL_REFRESH_DELAY_FRAMES)
-
-
-func _proxy_skill_detail_full_refresh_after_frames(skill_id: String, ready_frame: int) -> void:
-	while host.main_process_frame_index < ready_frame:
-		if host.current_screen != "skill" or host.selected_skill_id != skill_id:
-			return
-		await host.get_tree().process_frame
-	if host.current_screen != "skill" or host.selected_skill_id != skill_id:
-		return
-	if host._skill_swipe_activity_surface().skill_swipe_tracking or host._skill_swipe_activity_surface().skill_swipe_animating or host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize:
-		call_deferred("_proxy_skill_detail_full_refresh_after_frames", skill_id, host.main_process_frame_index + 60)
-		return
-	_refresh_visible_skill_detail_action_list(-1, skill_id, true)
 
 
 func _detail_lazy_entry_far_from_viewport(lazy_entry: Dictionary) -> bool:
@@ -9584,11 +9217,11 @@ func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content
 func _prune_detail_lazy_far_cards(max_unmounts: int = 2) -> int:
 	if not DETAIL_LAZY_UNMOUNT_ENABLED:
 		return 0
-	if detail_lazy_plan.is_empty() or host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack) == null or boot_detail_render_in_progress:
+	if detail_lazy_plan.is_empty() or host._app_lifecycle_runtime().valid_control_ref(detail_lazy_stack) == null or host.boot_detail_render_in_progress:
 		return 0
 	if not module_ui_pending_pin_scroll_anchor.is_empty():
 		return 0
-	if not host.module_ui_runtime.recent_pinned_track_id(selected_skill_id).is_empty():
+	if not host.module_ui_runtime.recent_pinned_track_id(host.selected_skill_id).is_empty():
 		return 0
 	var pinned = _detail_lazy_pinned_track_ids()
 	var content_width = host._skill_content_width()
@@ -9599,7 +9232,7 @@ func _prune_detail_lazy_far_cards(max_unmounts: int = 2) -> int:
 		var lazy_entry = raw_lazy_entry as Dictionary
 		if not _detail_lazy_can_unmount_entry(lazy_entry, pinned):
 			continue
-		if _detail_lazy_unmount_item(lazy_entry, selected_skill_id, content_width):
+		if _detail_lazy_unmount_item(lazy_entry, host.selected_skill_id, content_width):
 			unmounted_count += 1
 	return unmounted_count
 
@@ -9611,12 +9244,12 @@ func _detail_lazy_mount_all_sync(instant := true) -> int:
 			continue
 		var content_width = host._skill_content_width()
 		var actions_width = content_width
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
 func _detail_lazy_mount_thieving_heists_sync(instant := true) -> int:
-	if selected_skill_id != "thieving":
+	if host.selected_skill_id != "thieving":
 		return 0
 	var mounted_count := 0
 	var content_width: float = host._skill_content_width()
@@ -9627,7 +9260,7 @@ func _detail_lazy_mount_thieving_heists_sync(instant := true) -> int:
 			continue
 		if str(lazy_entry.get("kind", "")) != "heist":
 			continue
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
@@ -9658,7 +9291,7 @@ func _detail_lazy_mount_initial_window_sync(instant := true, mount_count: int = 
 			continue
 		var content_width = host._skill_content_width()
 		var actions_width = content_width
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	detail_lazy_mount_trace_context = previous_mount_context
 	return mounted_count
@@ -9691,7 +9324,7 @@ func _replace_swipe_preview_stack_for_finalize(actions_scroll: MobileScrollConta
 func _free_retired_swipe_preview_stack_batched(stack: VBoxContainer, children: Array, start_index: int) -> void:
 	if stack == null or not is_instance_valid(stack):
 		return
-	var end_index := mini(children.size(), start_index + maxi(1, SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE))
+	var end_index := mini(children.size(), start_index + maxi(1, host.SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE))
 	for index in range(start_index, end_index):
 		var child := children[index] as Node
 		if child != null and is_instance_valid(child):
@@ -9713,7 +9346,7 @@ func _mount_swipe_finalized_lazy_cards_after_frame(target_skill_id: String, toke
 
 
 func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, mounted_total: int) -> void:
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		skill_swipe_finalized_lazy_mount_pending = false
 		return
 	if host._skill_swipe_activity_surface().skill_swipe_queued_offset != 0:
@@ -9765,18 +9398,18 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(blank_restore_scroll)
 			skill_swipe_finalized_lazy_mount_pending = false
 		return
-	if mounted > 0 and next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
+	if mounted > 0 and next_total < host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
-	if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT and not host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(detail_lazy_stack):
+	if next_total < host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT and not host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(detail_lazy_stack):
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
-	if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
+	if next_total < host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
 	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
 	if not host._ensure_finalized_skill_detail_presentable(target_skill_id):
-		if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
+		if next_total < host.SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 			_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		else:
 			var restore_scroll := -1
@@ -9795,13 +9428,13 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_scroll: int, target_skill_id: String, token: int) -> void:
 	var trace_finalize = OS.get_environment("IDLE_ELITE_TRACE_SWIPE_FINALIZE") == "1"
 	var trace_start = Time.get_ticks_usec()
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
-	if skills_content == null or skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
+	if host.skills_content == null or skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=missing_page us=%s" % str(Time.get_ticks_usec() - trace_start))
 		skill_swipe_pending_full_finalize = false
-		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
+		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
 	var preview_page = skill_swipe_page
 	var preview_scroll = preview_state.get("actions_scroll") as MobileScrollContainer
@@ -9811,14 +9444,14 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=missing_scroll us=%s" % str(Time.get_ticks_usec() - trace_start))
 		skill_swipe_pending_full_finalize = false
-		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
+		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
 	var stack = host._find_skill_preview_stack(preview_page) as VBoxContainer
 	if stack == null or not is_instance_valid(stack):
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=missing_stack us=%s" % str(Time.get_ticks_usec() - trace_start))
 		skill_swipe_pending_full_finalize = false
-		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
+		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
 	if trace_finalize:
 		print("SWIPE_FINALIZE_TRACE phase=resolved us=%s children=%s" % [str(Time.get_ticks_usec() - trace_start), str(stack.get_child_count())])
@@ -9827,7 +9460,7 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	stack.visible = false
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	await host.get_tree().process_frame
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
 	detail_actions_scroll = preview_scroll
 	var actions_parent = _ensure_skill_detail_actions_clip_wrapper(preview_page, detail_actions_scroll, host._skill_content_width())
@@ -9840,10 +9473,10 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	host._reward_feedback_surface()._clear_action_crit_tweens()
 	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
 	host._activity_unlock_ceremony_surface().clear_visual_scroll_tween()
-	for raw_key in action_card_keys.duplicate():
+	for raw_key in host.action_card_keys.duplicate():
 		_discard_action_card_key(str(raw_key))
-	action_cards.clear()
-	action_card_keys.clear()
+	host.action_cards.clear()
+	host.action_card_keys.clear()
 	detail_action_card_nodes.clear()
 	detail_rendered_action_ids.clear()
 	_clear_detail_lazy_cache_bin()
@@ -9852,17 +9485,17 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	var content_width = host._skill_content_width()
 	var actions_width = content_width
 	await host.get_tree().process_frame
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
 	var retired_preview_stack = stack
 	stack = _replace_swipe_preview_stack_for_finalize(preview_scroll, stack, actions_width)
 	if stack == null or not is_instance_valid(stack):
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=replace_stack_failed us=%s" % str(Time.get_ticks_usec() - trace_start))
-		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
+		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
 	detail_lazy_stack = stack
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
 	call_deferred(
 		"_free_retired_swipe_preview_stack_batched",
@@ -9875,49 +9508,49 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 
 	var top_spacer = Control.new()
 	top_spacer.name = "DetailActionsTopSpacer"
-	top_spacer.custom_minimum_size = Vector2(0, onboarding_first_module_top_spacer_height(selected_skill_id))
+	top_spacer.custom_minimum_size = Vector2(0, onboarding_first_module_top_spacer_height(host.selected_skill_id))
 	top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(top_spacer)
 	detail_actions_top_spacer = top_spacer
 	await host.get_tree().process_frame
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
-	if host._fishing_rework_active_for_skill(selected_skill_id):
-		detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(selected_skill_id)
+	if host._fishing_rework_active_for_skill(host.selected_skill_id):
+		detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(host.selected_skill_id)
 	else:
-		detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
+		detail_lazy_plan = _build_detail_lazy_plan(host.selected_skill_id)
 	host._skill_swipe_activity_surface()._apply_swipe_preview_real_card_cacoe_to_lazy_plan(preview_state)
-	host._skill_swipe_activity_surface()._apply_global_swipe_real_card_cacoe_to_lazy_plan(selected_skill_id)
+	host._skill_swipe_activity_surface()._apply_global_swipe_real_card_cacoe_to_lazy_plan(host.selected_skill_id)
 	var slots_created = await _detail_lazy_create_slots_batched(
 		stack,
-		selected_skill_id,
+		host.selected_skill_id,
 		content_width,
 		actions_width,
-		SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE
+		host.SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE
 	)
 	if not slots_created:
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=slots_failed us=%s" % str(Time.get_ticks_usec() - trace_start))
-		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
+		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
-	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+	if token != skill_swipe_lazy_finalize_token or host.current_screen != "skill" or host.selected_skill_id != target_skill_id:
 		return
 	_detail_lazy_mount_thieving_heists_sync(true)
-	_queue_skill_detail_and_swipe_texture_prewarm(selected_skill_id)
+	_queue_skill_detail_and_swipe_texture_prewarm(host.selected_skill_id)
 	skill_swipe_pending_full_finalize = false
 	if trace_finalize:
 		print("SWIPE_FINALIZE_TRACE phase=slots us=%s plan=%s children=%s" % [str(Time.get_ticks_usec() - trace_start), str(detail_lazy_plan.size()), str(stack.get_child_count())])
 
 	var bottom_spacer = Control.new()
 	bottom_spacer.name = "DetailActionsBottomSpacer"
-	var bottom_pad = _detail_actions_bottom_scroll_pad(selected_skill_id)
+	var bottom_pad = _detail_actions_bottom_scroll_pad(host.selected_skill_id)
 	bottom_spacer.custom_minimum_size = Vector2(0, bottom_pad)
 	bottom_spacer.visible = bottom_pad > 1.0
 	bottom_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(bottom_spacer)
 	detail_unlock_scroll_spacer = bottom_spacer
 
-	var restore_scroll = 0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll)
+	var restore_scroll = 0 if host.selected_skill_id == "thieving" else maxi(0, preserve_scroll)
 	if preserve_scroll >= 0:
 		detail_actions_scroll.drag_scroll_position = float(restore_scroll)
 		detail_actions_scroll.scroll_vertical = restore_scroll
@@ -9929,21 +9562,21 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 		_add_skill_detail_shadow_overlay(_skill_detail_shadow_top_y())
 	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
 	skill_swipe_finalized_lazy_mount_pending = true
-	_schedule_mount_swipe_finalized_lazy_cards(selected_skill_id, token, 0)
+	_schedule_mount_swipe_finalized_lazy_cards(host.selected_skill_id, token, 0)
 	host._skill_swipe_activity_surface().call_deferred("_apply_pending_swipe_resume_scroll", target_skill_id)
 	if trace_finalize:
 		print("SWIPE_FINALIZE_TRACE phase=done us=%s" % str(Time.get_ticks_usec() - trace_start))
 
 
 func _add_skill_detail_shadow_overlay(top_y: float) -> void:
-	if skills_content == null:
+	if host.skills_content == null:
 		return
 	detail_shelf_shadow_alpha = _skill_detail_shadow_target_alpha()
-	detail_shelf_shadow_overlay = _add_skill_detail_shadow_overlay_to(skills_content, top_y, detail_shelf_shadow_alpha)
+	detail_shelf_shadow_overlay = _add_skill_detail_shadow_overlay_to(host.skills_content, top_y, detail_shelf_shadow_alpha)
 
 
 func _skill_detail_shadow_top_y() -> float:
-	return float(SKILL_DETAIL_HEADER_HEIGHT + SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
+	return float(host.SKILL_DETAIL_HEADER_HEIGHT + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 
 
 func _add_skill_detail_shadow_overlay_to(parent: Control, top_y: float, initial_alpha := -1.0, bottom_y := -1.0, shadow_name := "SkillDetailFixedShelfShadow", shadow_z_index := 500) -> Control:
@@ -9967,17 +9600,17 @@ func _add_skill_detail_shadow_overlay_to(parent: Control, top_y: float, initial_
 
 
 func _skill_detail_shadow_target_alpha() -> float:
-	if current_screen == "menu":
-		if content_scroll == null or not is_instance_valid(content_scroll):
+	if host.current_screen == "menu":
+		if host.content_scroll == null or not is_instance_valid(host.content_scroll):
 			return 0.0
-		var menu_scroll_amount := float(content_scroll.scroll_vertical)
+		var menu_scroll_amount := float(host.content_scroll.scroll_vertical)
 		return clampf(menu_scroll_amount / host.SKILL_DETAIL_SHADOW_FADE_SCROLL, 0.0, 1.0)
-	if current_screen == "pinned":
-		if content_scroll == null or not is_instance_valid(content_scroll):
+	if host.current_screen == "pinned":
+		if host.content_scroll == null or not is_instance_valid(host.content_scroll):
 			return 0.0
-		var pinned_scroll_amount := maxf(float(content_scroll.scroll_vertical), float(content_scroll.get("drag_scroll_position")))
+		var pinned_scroll_amount := maxf(float(host.content_scroll.scroll_vertical), float(host.content_scroll.get("drag_scroll_position")))
 		return clampf(pinned_scroll_amount / host.SKILL_DETAIL_SHADOW_FADE_SCROLL, 0.0, 1.0)
-	if current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+	if host.current_screen != "skill" or detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return 0.0
 	if onboarding_first_module_center_active():
 		return 0.0
@@ -10023,20 +9656,6 @@ func _build_detail_jump_arrows(parent: Control) -> void:
 	detail_jump_bottom_button = _activity_jump_button(ACTIVITY_JUMP_BOTTOM_TEXTURE, false)
 	parent.add_child(detail_jump_top_button)
 	parent.add_child(detail_jump_bottom_button)
-
-
-func _navigation_detail_back_state() -> Dictionary:
-	return {
-		"detail_back_button": detail_back_button,
-		"detail_back_press_active": detail_back_press_active,
-		"detail_back_press_touch_index": detail_back_press_touch_index,
-	}
-
-
-func _apply_navigation_detail_back_state(state: Dictionary) -> void:
-	detail_back_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_back_button"))
-	detail_back_press_active = bool(state.get("detail_back_press_active", false))
-	detail_back_press_touch_index = int(state.get("detail_back_press_touch_index", -1))
 
 
 func _set_detail_back_button(back_button: BaseButton) -> void:
@@ -10445,7 +10064,7 @@ func _sync_detail_lazy_cards_for_scroll_window(target_scroll_y: float, viewport_
 			continue
 		if not _detail_lazy_entry_intersects_scroll_window(lazy_entry, target_scroll_y, viewport_buffer):
 			continue
-		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, false):
+		if _detail_lazy_mount_item(lazy_entry, host.selected_skill_id, content_width, actions_width, false):
 			mounted_count += 1
 	detail_lazy_mount_trace_context = previous_mount_context
 	if mounted_count > 0:
@@ -10574,7 +10193,7 @@ func _module_list_transition_key_for_control(control: Control) -> String:
 
 
 func _capture_detail_module_layout_snapshot() -> Dictionary:
-	if current_screen != "skill":
+	if host.current_screen != "skill":
 		return {}
 	var stack := _detail_actions_stack() as VBoxContainer
 	if stack == null or not is_instance_valid(stack):
@@ -10685,10 +10304,10 @@ func _first_control_with_bool_meta(control: Control, meta_key: String) -> Contro
 
 
 func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
-	if snapshot.is_empty() or current_screen != "skill":
+	if snapshot.is_empty() or host.current_screen != "skill":
 		return
 	await host.get_tree().process_frame
-	if current_screen != "skill":
+	if host.current_screen != "skill":
 		return
 	var stack = _detail_actions_stack() as VBoxContainer
 	if stack == null or not is_instance_valid(stack):
@@ -10726,9 +10345,9 @@ func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
 			var new_rect = control.get_global_rect()
 			var delta = old_rect.position - new_rect.position
 			var height_delta = old_rect.size.y - new_rect.size.y
-			if delta.length() >= MODULE_LIST_TRANSITION_MIN_MOVE:
+			if delta.length() >= host.MODULE_LIST_TRANSITION_MIN_MOVE:
 				control.position = final_position + delta
-				tween.tween_property(control, "position", final_position, MODULE_LIST_TRANSITION_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+				tween.tween_property(control, "position", final_position, host.MODULE_LIST_TRANSITION_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 				animated_count += 1
 			if height_delta > 8.0 and ModuleUiRuntime.normalize(module_key) == module_ui_animating_collapse_key and (
 				_control_tree_has_named_descendant(control, "CollapsedModuleRow")
@@ -10758,19 +10377,19 @@ func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
 				animated_count += 1
 			elif absf(height_delta) > 8.0:
 				control.modulate.a = minf(control.modulate.a, 0.72)
-				tween.tween_property(control, "modulate:a", 1.0, MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				tween.tween_property(control, "modulate:a", 1.0, host.MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 				animated_count += 1
 		else:
-			control.position = final_position + Vector2(0.0, MODULE_LIST_TRANSITION_NEW_OFFSET_Y)
+			control.position = final_position + Vector2(0.0, host.MODULE_LIST_TRANSITION_NEW_OFFSET_Y)
 			control.scale = final_scale * DETAIL_LAZY_SCALE_IN_AMOUNT
 			control.modulate.a = 0.0
-			tween.tween_property(control, "position", final_position, MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			tween.tween_property(control, "scale", final_scale, MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			tween.tween_property(control, "modulate:a", 1.0, MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tween.tween_property(control, "position", final_position, host.MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.tween_property(control, "scale", final_scale, host.MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.tween_property(control, "modulate:a", 1.0, host.MODULE_LIST_TRANSITION_NEW_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			animated_count += 1
 		tween.set_parallel(false)
 		tween.tween_callback(_finish_module_list_transition.bind(control.get_instance_id(), final_position, final_scale, final_minimum_size, final_clip_contents))
 		if ModuleUiRuntime.normalize(module_key) == module_ui_animating_collapse_key:
 			tween.tween_callback(_clear_module_ui_animating_collapse_key.bind(module_key))
 	if animated_count > 0:
-		_hold_skill_detail_layout_refresh(MODULE_LIST_TRANSITION_SECONDS + 0.08)
+		_hold_skill_detail_layout_refresh(host.MODULE_LIST_TRANSITION_SECONDS + 0.08)

@@ -80,7 +80,7 @@ static func skill_name(skill_defs: Array, skill_id: String) -> String:
 
 static func skill_short_code(skill_defs: Array, skill_id: String) -> String:
 	if SKILL_SHORT_CODES.has(skill_id):
-		return str(SKILL_SHORT_CODES[skill_id])
+		return str(SKILL_SHORT_CODES.get(skill_id))
 	var skill_display_name := skill_name(skill_defs, skill_id).strip_edges()
 	if skill_display_name.is_empty():
 		return "XP"
@@ -88,9 +88,7 @@ static func skill_short_code(skill_defs: Array, skill_id: String) -> String:
 
 
 static func skill_detail_title_font_size(skill_id: String, default_size: int, woodcutting_size: int) -> int:
-	if skill_id == "woodcutting":
-		return woodcutting_size
-	return default_size
+	return woodcutting_size if skill_id == "woodcutting" else default_size
 
 
 static func skills_for_save(skill_defs: Array, skills: Dictionary) -> Dictionary:
@@ -101,9 +99,7 @@ static func skills_for_save(skill_defs: Array, skills: Dictionary) -> Dictionary
 		if skill_id.is_empty():
 			continue
 		var skill_state = skills.get(skill_id, {})
-		var xp := 0
-		if typeof(skill_state) == TYPE_DICTIONARY:
-			xp = maxi(0, int((skill_state as Dictionary).get("xp", 0)))
+		var xp := maxi(0, int((skill_state as Dictionary).get("xp", 0))) if typeof(skill_state) == TYPE_DICTIONARY else 0
 		normalized[skill_id] = {
 			"xp": xp,
 			"level": skill_level_for_xp(xp)
@@ -131,10 +127,7 @@ static func stamina_for_save(skill_defs: Array, stamina: Dictionary, max_stamina
 static func stamina_bank_for_save(skill_defs: Array, stamina: Dictionary, stamina_bank: Dictionary, max_stamina: Callable) -> Dictionary:
 	var normalized := {}
 	for skill_id in _skill_ids(skill_defs):
-		if stamina_value(stamina, skill_id, max_stamina) >= float(max_stamina.call(skill_id)) - 0.0001:
-			normalized[skill_id] = 0.0
-		else:
-			normalized[skill_id] = clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
+		normalized[skill_id] = 0.0 if stamina_value(stamina, skill_id, max_stamina) >= float(max_stamina.call(skill_id)) - 0.0001 else clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
 	return normalized
 
 
@@ -157,9 +150,7 @@ static func host_stamina_int(skill_id: String, host) -> int:
 
 static func stamina_fraction(stamina: Dictionary, skill_id: String, max_stamina: Callable) -> float:
 	var value := stamina_value(stamina, skill_id, max_stamina)
-	if value >= float(max_stamina.call(skill_id)) - 0.0001:
-		return 1.0
-	return clampf(value - floorf(value), 0.0, 1.0)
+	return 1.0 if value >= float(max_stamina.call(skill_id)) - 0.0001 else clampf(value - floorf(value), 0.0, 1.0)
 
 
 static func stamina_regen_fraction(stamina: Dictionary, stamina_bank: Dictionary, skill_id: String, max_stamina: Callable) -> float:
@@ -301,8 +292,7 @@ static func recalculate_level(host, skill_id: String, apply_unlocks := true) -> 
 static func _skill_ids(skill_defs: Array) -> Array:
 	var ids := []
 	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if not skill_id.is_empty():
 			ids.append(skill_id)
 	return ids

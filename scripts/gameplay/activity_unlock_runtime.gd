@@ -20,12 +20,8 @@ func _init(host_ref) -> void:
 
 func merge_ready_ids(existing_ids: Variant, incoming_ids: Array) -> Array:
 	var merged := []
-	if typeof(existing_ids) == TYPE_ARRAY:
-		for raw_action_id in existing_ids:
-			var action_id := str(raw_action_id)
-			if not action_id.is_empty() and not merged.has(action_id):
-				merged.append(action_id)
-	for raw_action_id in incoming_ids:
+	var combined_ids: Array = (existing_ids as Array if typeof(existing_ids) == TYPE_ARRAY else []) + incoming_ids
+	for raw_action_id in combined_ids:
 		var action_id := str(raw_action_id)
 		if not action_id.is_empty() and not merged.has(action_id):
 			merged.append(action_id)
@@ -164,9 +160,7 @@ func _queue_activity_unlock_readiness(trigger_skill_id: String, old_level: int, 
 
 
 func _auto_unlock_nonvisible_ready_lockpads(ready_by_skill: Dictionary) -> Dictionary:
-	if not host.auto_unlock_lockpads_enabled:
-		return ready_by_skill
-	if host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
 		return ready_by_skill
 	var visible_ready_by_skill := {}
 	for raw_owner_skill_id in ready_by_skill.keys():
@@ -210,9 +204,7 @@ func _ready_lockpads_for_current_state() -> Dictionary:
 
 
 func _auto_unlock_retroactive_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled:
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
 		return
 	var ready_by_skill := _ready_lockpads_for_current_state()
 	if ready_by_skill.is_empty():
@@ -222,22 +214,14 @@ func _auto_unlock_retroactive_lockpads() -> void:
 
 
 func _run_startup_auto_unlock_lockpads() -> void:
-	if not host.startup_initialized or not host.auto_unlock_lockpads_enabled:
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
+	if not host.startup_initialized or not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
 		return
 	_auto_unlock_retroactive_lockpads()
 	_auto_unlock_pending_lockpads()
 
 
 func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
-	if not host.auto_unlock_lockpads_enabled:
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
-		return
-	if host.current_screen != "skill" or skill_id != host.selected_skill_id:
-		return
-	if host._activity_unlock_ceremony_surface().ceremony_count > 0:
+	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active() or host.current_screen != "skill" or skill_id != host.selected_skill_id or host._activity_unlock_ceremony_surface().ceremony_count > 0:
 		return
 	if host._fishing_rework_active_for_skill(skill_id):
 		if _auto_unlock_visible_fishing_location_lockpad():
@@ -250,21 +234,14 @@ func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
 		if action_id.is_empty():
 			continue
 		var action: Dictionary = host._action_data(skill_id, action_id)
-		if action.is_empty():
-			clear_pending_readiness_action(skill_id, action_id)
-			continue
-		if _is_action_unlocked(skill_id, action):
+		if action.is_empty() or _is_action_unlocked(skill_id, action):
 			clear_pending_readiness_action(skill_id, action_id)
 			continue
 		if not _can_unlock_action(skill_id, action):
 			continue
 		var card: Dictionary = host._skill_detail_surface()._resolve_activity_unlock_card(skill_id, action_id)
 		if card.is_empty():
-			if _auto_finalize_ready_lockpad(skill_id, action_id):
-				clear_pending_readiness_action(skill_id, action_id)
-				host.call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
-				return
-			if _auto_unlock_ready_requirement_lockpads_nonvisible(skill_id, action_id):
+			if _auto_finalize_ready_lockpad(skill_id, action_id) or _auto_unlock_ready_requirement_lockpads_nonvisible(skill_id, action_id):
 				clear_pending_readiness_action(skill_id, action_id)
 				host.call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 				return
@@ -319,33 +296,28 @@ func _fishing_next_visible_auto_unlock_action_id() -> String:
 		var area_id := str(area_def.get("id", ""))
 		for raw_location in host.fishing_runtime.locations_for_area(area_id, FishingState.FISHING_LOCATION_DEFS):
 			var location := raw_location as Dictionary
+			var candidate_render_order := render_order
+			render_order += 1
 			if host.fishing_runtime.location_is_unlocked(host, area_id, location, FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS):
-				render_order += 1
 				continue
 			if not host.fishing_runtime.location_should_show(host, area_id, location, FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS):
-				render_order += 1
 				continue
 			var action_id: String = host.fishing_runtime.location_action_id(area_id, str(location.get("id", "")), FishingState.FISHING_TOOL_LOCATION_ACTIONS)
 			if action_id.is_empty():
-				render_order += 1
 				continue
 			var action: Dictionary = host._action_data("fishing", action_id)
 			if action.is_empty() or not _can_unlock_action("fishing", action):
-				render_order += 1
 				continue
 			var unlock_level := int(action.get("unlock", location.get("unlock", 1)))
-			if unlock_level < best_unlock or (unlock_level == best_unlock and render_order < best_render_order):
+			if unlock_level < best_unlock or (unlock_level == best_unlock and candidate_render_order < best_render_order):
 				best_unlock = unlock_level
-				best_render_order = render_order
+				best_render_order = candidate_render_order
 				best_action_id = action_id
-			render_order += 1
 	return best_action_id
 
 
 func _auto_unlock_pending_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled:
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled or host._onboarding_runtime()._onboarding_path_active():
 		return
 	var pages := pending_readiness_pages()
 	for raw_skill_id in pages.keys():
@@ -436,9 +408,7 @@ func _schedule_auto_unlock_pending_lockpads_after_delay(delay_seconds: float) ->
 
 
 func _schedule_auto_unlock_pending_lockpads() -> void:
-	if not host.auto_unlock_lockpads_enabled or pending_readiness_pages().is_empty():
-		return
-	if host._onboarding_runtime()._onboarding_path_active():
+	if not host.auto_unlock_lockpads_enabled or pending_readiness_pages().is_empty() or host._onboarding_runtime()._onboarding_path_active():
 		return
 	call_deferred("_auto_unlock_pending_lockpads")
 
@@ -503,12 +473,8 @@ func _ready_actions_for_level_gain(skill_id: String, old_level: int, new_level: 
 		var owner_skill_id := str(raw_owner_skill_id)
 		for raw_action in host.actions_by_skill.get(owner_skill_id, []):
 			var action := raw_action as Dictionary
-			if action.is_empty():
-				continue
 			var action_id := str(action.get("id", ""))
-			if action_id.is_empty():
-				continue
-			if _is_action_unlocked(owner_skill_id, action):
+			if action.is_empty() or action_id.is_empty() or _is_action_unlocked(owner_skill_id, action):
 				continue
 			if not _action_requirements_crossed_by_level_gain(skill_id, owner_skill_id, action, old_level, new_level):
 				continue
@@ -566,8 +532,6 @@ func _is_action_unlocked(skill_id: String, action: Dictionary) -> bool:
 	var action_id := str(action.get("id", ""))
 	if action_id.is_empty():
 		return false
-	if host._passive_modules_runtime().is_passive_action(action):
-		return _manual_activity_unlock_flag_is_trusted(skill_id, action_id) and _can_unlock_action(skill_id, action)
 	return _manual_activity_unlock_flag_is_trusted(skill_id, action_id) and _can_unlock_action(skill_id, action)
 
 
@@ -660,9 +624,7 @@ func _action_blocks_owner_skill_progression(skill_id: String, action: Dictionary
 
 
 func _manual_activity_unlock_flag_is_trusted(skill_id: String, action_id: String) -> bool:
-	if not bool(manual_activity_unlocks.get(host._action_key(skill_id, action_id), false)):
-		return false
-	return _manual_activity_unlocks_are_trusted()
+	return bool(manual_activity_unlocks.get(host._action_key(skill_id, action_id), false)) and _manual_activity_unlocks_are_trusted()
 
 
 func _manual_activity_unlocks_are_trusted() -> bool:
@@ -692,9 +654,7 @@ func _manual_activity_unlocks_have_bulk_corruption() -> bool:
 		var action := action_ref.get("action", {}) as Dictionary
 		if not _action_requirements_met(skill_id, action):
 			impossible_count += 1
-	if manual_count < 50:
-		return false
-	return impossible_count >= maxi(12, int(float(manual_count) * 0.45))
+	return manual_count >= 50 and impossible_count >= maxi(12, int(float(manual_count) * 0.45))
 
 
 func _repair_runtime_manual_activity_unlock_trust() -> void:
@@ -774,8 +734,6 @@ func _action_requirements_met(owner_skill_id: String, action: Dictionary) -> boo
 
 
 func _action_requirements_met_from_requirements(requirements: Array) -> bool:
-	if requirements.is_empty():
-		return true
 	for raw_requirement in requirements:
 		if typeof(raw_requirement) != TYPE_DICTIONARY:
 			return false
@@ -848,10 +806,7 @@ func _action_uses_legacy_single_skill_requirement(skill_id: String, action: Dict
 	if requirements.size() != 1:
 		return false
 	var requirement := requirements[0] as Dictionary
-	return (
-		str(requirement.get("skill", skill_id)) == skill_id
-		and int(requirement.get("level", action.get("unlock", 1))) == int(action.get("unlock", 1))
-	)
+	return str(requirement.get("skill", skill_id)) == skill_id and int(requirement.get("level", action.get("unlock", 1))) == int(action.get("unlock", 1))
 
 
 func _mark_action_manually_unlocked(skill_id: String, action_id: String) -> void:
@@ -872,7 +827,7 @@ func _queue_manual_activity_unlock_for_ceremony(card: Dictionary, skill_id: Stri
 
 
 func _finalize_manual_activity_unlock(skill_id: String, action_id: String, save_reason := "activity unlock") -> bool:
-	if skill_id.is_empty() or action_id.is_empty():
+	if skill_id.is_empty() or action_id.is_empty() or host._action_data(skill_id, action_id).is_empty():
 		return false
 	_mark_action_manually_unlocked(skill_id, action_id)
 	if host.current_screen == "skill" and host._fishing_rework_active_for_skill(skill_id) and host.selected_skill_id == skill_id:
@@ -908,53 +863,35 @@ func _clear_activity_requirement_manual_unlocks(skill_id: String, action_id: Str
 
 
 func _restore_manual_activity_unlocks(loaded_manual_unlocks: Variant) -> void:
-	manual_activity_unlocks.clear()
-	_invalidate_manual_activity_unlock_trust()
-	if typeof(loaded_manual_unlocks) != TYPE_DICTIONARY:
-		return
-	for raw_key in (loaded_manual_unlocks as Dictionary).keys():
-		if not bool((loaded_manual_unlocks as Dictionary).get(raw_key, false)):
-			continue
-		var key := _canonical_manual_activity_unlock_key(str(raw_key))
-		if not key.is_empty():
-			manual_activity_unlocks[key] = true
+	manual_activity_unlocks = _normalized_manual_unlock_flags(loaded_manual_unlocks, Callable(self, "_canonical_manual_activity_unlock_key"))
 	_invalidate_manual_activity_unlock_trust()
 
 
 func _manual_activity_unlocks_for_save() -> Dictionary:
 	if not _manual_activity_unlocks_are_trusted():
 		return {}
-	var normalized := {}
-	for raw_key in manual_activity_unlocks.keys():
-		if not bool(manual_activity_unlocks.get(raw_key, false)):
-			continue
-		var key := _canonical_manual_activity_unlock_key(str(raw_key))
-		if not key.is_empty():
-			normalized[key] = true
-	return normalized
+	return _normalized_manual_unlock_flags(manual_activity_unlocks, Callable(self, "_canonical_manual_activity_unlock_key"))
 
 
 func _manual_activity_requirement_unlocks_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_key in manual_activity_requirement_unlocks.keys():
-		if not bool(manual_activity_requirement_unlocks.get(raw_key, false)):
-			continue
-		var key := _canonical_manual_activity_requirement_unlock_key(str(raw_key))
-		if not key.is_empty():
-			normalized[key] = true
-	return normalized
+	return _normalized_manual_unlock_flags(manual_activity_requirement_unlocks, Callable(self, "_canonical_manual_activity_requirement_unlock_key"))
 
 
 func _restore_manual_activity_requirement_unlocks(loaded_requirement_unlocks: Variant) -> void:
-	manual_activity_requirement_unlocks.clear()
-	if typeof(loaded_requirement_unlocks) != TYPE_DICTIONARY:
-		return
-	for raw_key in (loaded_requirement_unlocks as Dictionary).keys():
-		if not bool((loaded_requirement_unlocks as Dictionary).get(raw_key, false)):
+	manual_activity_requirement_unlocks = _normalized_manual_unlock_flags(loaded_requirement_unlocks, Callable(self, "_canonical_manual_activity_requirement_unlock_key"))
+
+
+func _normalized_manual_unlock_flags(source: Variant, canonicalize: Callable) -> Dictionary:
+	var normalized := {}
+	if typeof(source) != TYPE_DICTIONARY:
+		return normalized
+	for raw_key in (source as Dictionary).keys():
+		if not bool((source as Dictionary).get(raw_key, false)):
 			continue
-		var key := _canonical_manual_activity_requirement_unlock_key(str(raw_key))
+		var key := str(canonicalize.call(str(raw_key)))
 		if not key.is_empty():
-			manual_activity_requirement_unlocks[key] = true
+			normalized[key] = true
+	return normalized
 
 
 func _mark_activity_requirement_manually_unlocked(skill_id: String, action: Dictionary, requirement_index: int) -> bool:

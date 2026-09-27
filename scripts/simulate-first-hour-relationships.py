@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seeded first-hour model for Idle Elite's early relationship plan."""
+
 
 from __future__ import annotations
 

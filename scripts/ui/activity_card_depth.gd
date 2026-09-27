@@ -1,7 +1,6 @@
 extends Control
 
 const DEFAULT_RADIUS := 66.0
-const FAST_DEPTH_SHAPE_ENABLED := true
 const OUTLINE_ARC_SEGMENTS := 20
 
 var depth_offset := Vector2(36.0, 40.0)
@@ -61,14 +60,7 @@ func _draw() -> void:
 		clampf(face_offset.y, 0.0, depth_offset.y)
 	)
 	var back := depth_offset
-	if FAST_DEPTH_SHAPE_ENABLED:
-		_draw_fast_depth(face_size, front, back)
-		return
-	_draw_back_plate(face_size, back)
-	var perimeter := _rounded_rect_points(Rect2(Vector2.ZERO, face_size), 18)
-	_draw_extruded_faces(perimeter, front, back, face_size)
-	_draw_back_plate_outline(face_size, back)
-	_draw_extruded_outline(perimeter, front, back, face_size)
+	_draw_fast_depth(face_size, front, back)
 
 func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	if not draw_lip_lines:
@@ -288,103 +280,6 @@ func _wide_u_back_outline_points(rect: Rect2, width: float) -> PackedVector2Arra
 		_append_unique_point(points, points[0])
 	return points
 
-func _draw_back_plate(face_size: Vector2, back: Vector2) -> void:
-	var style := _rounded_body_style(back_color, lip_color, 0, face_size)
-	draw_style_box(style, Rect2(back, face_size))
-
-func _draw_back_plate_outline(face_size: Vector2, back: Vector2) -> void:
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 12.0)
-
-func _draw_extruded_faces(perimeter: PackedVector2Array, front: Vector2, back: Vector2, face_size: Vector2) -> void:
-	var travel := back - front
-	if travel.length_squared() <= 1.0 or perimeter.size() < 2:
-		return
-	var front_overlap := minf(2.0, maxf(0.0, travel.length() * 0.04))
-	for i in range(perimeter.size()):
-		var p0 := perimeter[i]
-		var p1 := perimeter[(i + 1) % perimeter.size()]
-		var normal := _edge_outward_normal(p0, p1)
-		if not _depth_edge_visible(normal, travel, p0, p1, face_size):
-			continue
-		var tucked_front := -normal * front_overlap
-		var face := PackedVector2Array([
-			front + p0 + tucked_front,
-			front + p1 + tucked_front,
-			_depth_back_point(p1, front, back, face_size),
-			_depth_back_point(p0, front, back, face_size),
-		])
-		draw_polygon(face, PackedColorArray([_depth_face_color(normal)]))
-
-func _draw_extruded_outline(perimeter: PackedVector2Array, front: Vector2, back: Vector2, face_size: Vector2) -> void:
-	var travel := back - front
-	if travel.length_squared() <= 1.0 or perimeter.size() < 2:
-		return
-	var visible := []
-	for i in range(perimeter.size()):
-		var p0 := perimeter[i]
-		var p1 := perimeter[(i + 1) % perimeter.size()]
-		visible.append(_depth_edge_visible(_edge_outward_normal(p0, p1), travel, p0, p1, face_size))
-	var current_path := PackedVector2Array()
-	for i in range(perimeter.size()):
-		var p0 := perimeter[i]
-		var p1 := perimeter[(i + 1) % perimeter.size()]
-		if bool(visible[i]):
-			if current_path.is_empty():
-				current_path.append(_depth_back_point(p0, front, back, face_size))
-			current_path.append(_depth_back_point(p1, front, back, face_size))
-			var next_index := (i + 1) % perimeter.size()
-			if not bool(visible[next_index]):
-				_draw_visible_outline_path(current_path)
-				current_path = PackedVector2Array()
-		elif not current_path.is_empty():
-			_draw_visible_outline_path(current_path)
-			current_path = PackedVector2Array()
-	if not current_path.is_empty():
-		_draw_visible_outline_path(current_path)
-
-func _draw_visible_outline_path(path: PackedVector2Array) -> void:
-	if path.size() < 2:
-		return
-	draw_polyline(path, lip_color, 12.0, true)
-
-func _edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
-	var edge := p1 - p0
-	if edge.length_squared() <= 0.001:
-		return Vector2.ZERO
-	return Vector2(edge.y, -edge.x).normalized()
-
-func _depth_edge_visible(normal: Vector2, travel: Vector2, _p0: Vector2, _p1: Vector2, _face_size: Vector2) -> bool:
-	if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
-		return false
-	return normal.x > 0.08 or normal.y > 0.56
-
-func _depth_back_point(point: Vector2, _front: Vector2, back: Vector2, _face_size: Vector2) -> Vector2:
-	return back + point
-
-func _depth_face_color(normal: Vector2) -> Color:
-	var positive_x := maxf(0.0, normal.x)
-	var positive_y := maxf(0.0, normal.y)
-	var bottom_weight := positive_y / maxf(0.001, positive_x + positive_y)
-	return side_color.lerp(bottom_color, bottom_weight)
-
-func _rounded_rect_points(rect: Rect2, corner_segments: int) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
-	var left := rect.position.x
-	var right := rect.position.x + rect.size.x
-	var top := rect.position.y
-	var bottom := rect.position.y + rect.size.y
-	_append_unique_point(points, Vector2(left + r, top))
-	_append_unique_point(points, Vector2(right - r, top))
-	_append_arc_points(points, Vector2(right - r, top + r), r, -PI * 0.5, 0.0, corner_segments)
-	_append_unique_point(points, Vector2(right, bottom - r))
-	_append_arc_points(points, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, corner_segments)
-	_append_unique_point(points, Vector2(left + r, bottom))
-	_append_arc_points(points, Vector2(left + r, bottom - r), r, PI * 0.5, PI, corner_segments)
-	_append_unique_point(points, Vector2(left, top + r))
-	_append_arc_points(points, Vector2(left + r, top + r), r, PI, PI * 1.5, corner_segments)
-	return points
-
 func _append_arc_points(points: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float, segments: int) -> void:
 	var safe_segments := maxi(1, segments)
 	for i in range(safe_segments + 1):
@@ -396,16 +291,6 @@ func _append_unique_point(points: PackedVector2Array, point: Vector2) -> void:
 	if not points.is_empty() and points[points.size() - 1].distance_squared_to(point) <= 0.01:
 		return
 	points.append(point)
-
-func _rounded_body_style(fill: Color, border: Color, border_width: int, face_size: Vector2) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill
-	style.border_color = border
-	if border_width > 0:
-		style.set_border_width_all(border_width)
-	var corner := int(round(minf(radius, minf(face_size.x, face_size.y) * 0.5)))
-	style.set_corner_radius_all(corner)
-	return style
 
 func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float, draw_bottom := true) -> void:
 	var half := width * 0.5

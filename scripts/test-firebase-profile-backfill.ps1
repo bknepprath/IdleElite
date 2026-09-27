@@ -127,9 +127,9 @@ try {
     Assert-BackfillTest ($invalidText -notmatch [regex]::Escape($orphanUid)) "Refusal output must not expose the orphan profile UID."
 
     Write-Output "firebase-profile-backfill-fixtures-ok"
-    # The last fixture intentionally launches a child PowerShell process that
-    # exits nonzero. Do not leak that expected native exit code to callers after
-    # every assertion above has passed.
+
+
+
     $global:LASTEXITCODE = 0
 } finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue

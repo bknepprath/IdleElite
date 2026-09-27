@@ -21,6 +21,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -60,7 +62,7 @@ func _run() -> void:
 		await _wait_test_frame()
 
 	scene.call("_navigation_shell").call("_select_skill", "build")
-	var circle := await _wait_for_regen_circle(scene, "build")
+	var circle := await TestHelpers.wait_for_regen_circle(self, SETTLE_FRAMES, scene, "build")
 	if circle == null:
 		_fail("build stamina gauge did not become ready")
 		return
@@ -134,17 +136,6 @@ func _run() -> void:
 	quit(0)
 
 
-func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
-	for _frame in range(SETTLE_FRAMES * 3):
-		await _wait_test_frame()
-		if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
-			continue
-		var circle := scene._skill_detail_surface().detail_regen_circle as Control
-		if circle != null and circle.is_inside_tree() and circle.visible:
-			return circle
-	return null
-
-
 func _is_white_rgb(color: Color) -> bool:
 	return color.r >= 0.98 and color.g >= 0.98 and color.b >= 0.98
 
@@ -207,9 +198,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			_truthy(scene.get("startup_initialized"))
-			and not _truthy(scene.get("boot_detail_render_in_progress"))
-			and not _truthy(scene.get("boot_detail_scroll_locked"))
+			TestHelpers.truthy_approx(scene.get("startup_initialized"))
+			and not TestHelpers.truthy_approx(scene.get("boot_detail_render_in_progress"))
+			and not TestHelpers.truthy_approx(scene.get("boot_detail_scroll_locked"))
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -219,20 +210,6 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 func _wait_test_frame() -> void:
 	await process_frame
 	await create_timer(TEST_FRAME_SECONDS, true, false, true).timeout
-
-
-func _truthy(value: Variant) -> bool:
-	match typeof(value):
-		TYPE_BOOL:
-			return value
-		TYPE_INT:
-			return int(value) != 0
-		TYPE_FLOAT:
-			return not is_zero_approx(float(value))
-		TYPE_STRING:
-			return not str(value).is_empty()
-		_:
-			return value != null
 
 
 func _fail(message: String) -> void:

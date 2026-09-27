@@ -69,9 +69,7 @@ const GLOBAL_MEDAL_BUFFS := [
 
 
 static func medal_name(level: int) -> String:
-	if level <= 0:
-		return "Unranked"
-	return str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
+	return "Unranked" if level <= 0 else str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
 
 
 static func xp_reward(_action: Dictionary) -> float:
@@ -79,9 +77,7 @@ static func xp_reward(_action: Dictionary) -> float:
 
 
 static func action_has_mastery(host, action: Dictionary) -> bool:
-	if action.is_empty():
-		return false
-	return not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
+	return not action.is_empty() and not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
 
 
 static func reward_for_action(host, skill_id: String, action_id: String, action: Dictionary) -> float:
@@ -148,10 +144,8 @@ static func progress_pct(mastery: Dictionary, key: String, max_level: int) -> fl
 
 
 static func would_reward_level_up(mastery: Dictionary, key: String, amount: float, max_level: int) -> bool:
-	if amount <= 0.0:
-		return false
 	var current_level := level(mastery, key)
-	if current_level >= max_level:
+	if amount <= 0.0 or current_level >= max_level:
 		return false
 	var xp_total := float(mastery.get(key, {}).get("xp", 0))
 	return xp_total + amount >= float(xp_for_level(current_level + 1))

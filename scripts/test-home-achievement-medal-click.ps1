@@ -29,6 +29,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const AchievementPresentation := preload("res://scripts/achievements/presentation.gd")
 const MasteryState := preload("res://scripts/progression/mastery_state.gd")
@@ -60,10 +62,10 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready_strict(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
-	if not await _wait_for_boot_hidden(scene):
+	if not await TestHelpers.wait_for_boot_hidden(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot splash did not hide before home achievement medal test")
 		return
 	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
@@ -146,31 +148,6 @@ func _check_elite_medal_geometry(icon: TextureRect) -> bool:
 	return true
 
 
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			scene.get("startup_initialized") == true
-			and scene.get("boot_detail_render_in_progress") != true
-			and scene.get("boot_detail_scroll_locked") != true
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
-
-
-func _wait_for_boot_hidden(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		var overlay := scene.get("boot_warmup_overlay") as Control
-		if scene.get("boot_warmup_active") != true and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
-			return true
-	return false
-
-
 func _wait_for_home_medals(scene: Node) -> bool:
 	for _frame in range(240):
 		scene.call("_update_ui", 0.016, false)
@@ -234,12 +211,12 @@ func _click_icon_expect_home_popover(scene: Node, icon: TextureRect, home_page: 
 		_fail("%s missing achievement_medal_level metadata" % context)
 		return false
 	var click_point := icon.get_global_rect().get_center()
-	var press_event := _mouse_button_event(click_point, true)
+	var press_event := TestHelpers.mouse_button_event(click_point, true)
 	scene.call("_input", press_event)
 	if _single_visible_medal_popover(scene, false) == null:
 		(scene.call("_achievement_overlay_surface") as Object).call("_route_achievement_medal_press", press_event)
 	await process_frame
-	scene.call("_input", _mouse_button_event(click_point, false))
+	scene.call("_input", TestHelpers.mouse_button_event(click_point, false))
 	for _frame in range(8):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -254,15 +231,6 @@ func _click_icon_expect_home_popover(scene: Node, icon: TextureRect, home_page: 
 		_fail("%s popover global rect was invalid" % context)
 		return false
 	return true
-
-
-func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
-	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = pressed
-	event.position = point
-	event.global_position = point
-	return event
 
 
 func _capture_if_possible() -> bool:

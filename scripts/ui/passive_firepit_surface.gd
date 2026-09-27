@@ -846,16 +846,7 @@ func _route_passive_module_button_input_by_position(event: InputEvent) -> bool:
 
 
 func _passive_button_global_event_position(event: InputEvent) -> Vector2:
-	if event is InputEventMouseButton:
-		return (event as InputEventMouseButton).global_position
-	if event is InputEventMouseMotion:
-		return (event as InputEventMouseMotion).global_position
-	if event is InputEventScreenTouch:
-		return (event as InputEventScreenTouch).position
-	if event is InputEventScreenDrag:
-		return (event as InputEventScreenDrag).position
-	return Vector2.INF
-
+	return ModuleUiRuntime.press_event_position(event)
 
 func _passive_button_event_for_source(event: InputEvent, source: Control) -> InputEvent:
 	if source == null or not is_instance_valid(source):
@@ -1635,10 +1626,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 	bg_underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg_underlay.z_index = 149
 	var underlay_style = host._surface_style(Color("#8d5f3a"), 66, 0, false)
-	underlay_style.border_width_left = 0
-	underlay_style.border_width_right = 0
-	underlay_style.border_width_top = 0
-	underlay_style.border_width_bottom = 0
+	underlay_style.set_border_width_all(0)
 	bg_underlay.add_theme_stylebox_override("panel", underlay_style)
 	pop_card.add_child(bg_underlay)
 

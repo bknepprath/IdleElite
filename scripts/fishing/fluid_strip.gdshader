@@ -3,7 +3,6 @@ render_mode unshaded;
 
 uniform vec4 fluid_color : source_color = vec4(0.239, 0.722, 0.851, 1.0);
 uniform vec4 fluid_deep : source_color = vec4(0.165, 0.561, 0.722, 1.0);
-uniform float reveal_success = 0.0;
 uniform float foam_scroll = 0.0;
 uniform vec2 strip_size = vec2(1.0, 1.0);
 uniform float corner_radius = 66.0;

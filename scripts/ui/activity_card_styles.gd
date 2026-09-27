@@ -1,5 +1,9 @@
 extends RefCounted
 
+const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
+const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
+
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 
@@ -740,43 +744,6 @@ static func activity_card_face_skin(fill_color: Color, radius: float, cache: Dic
 	return style
 
 
-static func activity_card_face_outline_skin(radius: float, cache: Dictionary, ink: Color, blue: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
-	return activity_card_face_skin(Color(0, 0, 0, 0), radius, cache, ink, blue, can_create, create_texture, fallback_texture)
-
-
-static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
-	var key := "activity_art_outline:%s:%s" % [radius, ink.to_html(true)]
-	if cache.has(key):
-		return cache[key] as StyleBoxTexture
-	var style := StyleBoxTexture.new()
-	if can_create.call():
-		var final_size := Vector2i(160, 104)
-		var supersample := 4.0
-		var texture_size := Vector2i(int(final_size.x * supersample), int(final_size.y * supersample))
-		var border := 4.0 * supersample
-		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
-		var inner := outer.grow(-border)
-		var outer_radius := minf(radius * supersample, 44.0 * supersample)
-		var inner_radius := maxf(1.0, outer_radius - border)
-		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
-		image.fill(Color(0, 0, 0, 0))
-		for y in range(texture_size.y):
-			for x in range(texture_size.x):
-				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
-				if PaperButtonStyles.contains(point, outer, outer_radius) and not PaperButtonStyles.contains(point, inner, inner_radius):
-					image.set_pixel(x, y, ink)
-		image.resize(final_size.x, final_size.y, Image.INTERPOLATE_LANCZOS)
-		style.texture = create_texture.call(image)
-	else:
-		style.texture = fallback_texture.call()
-	style.texture_margin_left = 28
-	style.texture_margin_right = 28
-	style.texture_margin_top = 28
-	style.texture_margin_bottom = 28
-	cache[key] = style
-	return style
-
-
 static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2, radius: float, gutter: float) -> ActivityCardDepth:
 	var depth := ActivityCardDepth.new()
 	depth.depth_offset = depth_offset
@@ -823,10 +790,7 @@ static func normal_activity_card_bottom_base(radius: float, ink: Color, theme_co
 	style.border_width_top = 0
 	style.border_width_right = int(ACTION_CARD_STROKE_WIDTH)
 	style.border_width_bottom = int(ACTION_CARD_STROKE_WIDTH)
-	style.corner_radius_top_left = int(round(radius))
-	style.corner_radius_top_right = int(round(radius))
-	style.corner_radius_bottom_left = int(round(radius))
-	style.corner_radius_bottom_right = int(round(radius))
+	style.set_corner_radius_all(int(round(radius)))
 	style.anti_aliasing = true
 	style.anti_aliasing_size = 1.25
 	return style
@@ -1044,3 +1008,37 @@ static func button_face(fill: Color, radius: float) -> StyleBoxFlat:
 	style.anti_aliasing = true
 	style.anti_aliasing_size = 1.25
 	return style
+
+static func apply_recovery_progress_rail_shape(host, bar: ActivityProgressRail, action: Dictionary) -> void:
+	if bar == null or not RecoveryModules.has_recovery(action):
+		return
+	bar.offset_top = -RECOVERY_WIDE_U_RAIL_HEIGHT
+	bar.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
+	bar.bottom_radius = host.ACTION_CARD_FACE_RADIUS
+	bar.bottom_shape = "wide_u"
+	bar.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	bar.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
+	bar.queue_redraw()
+	bar._queue_opportunity_overlay_redraw()
+
+
+static func apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictionary) -> void:
+	if depth == null or not RecoveryModules.has_recovery(action):
+		return
+	depth.bottom_shape = "wide_u"
+	depth.draw_lip_lines = true
+	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	depth.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
+	depth.queue_redraw()
+
+
+static func apply_recovery_card_background_shape(bg: Control, action: Dictionary) -> void:
+	if bg == null or not RecoveryModules.has_recovery(action):
+		return
+	var rounded_bg := bg as RoundedTextureRect
+	if rounded_bg == null:
+		return
+	rounded_bg.bottom_shape = "wide_u"
+	rounded_bg.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	rounded_bg.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
+	rounded_bg.queue_redraw()

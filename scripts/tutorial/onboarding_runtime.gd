@@ -625,14 +625,6 @@ func _onboarding_mastery_rewards_allowed(skill_id: String) -> bool:
 	return true
 
 
-func _onboarding_mastery_feedback_allowed(anchor: Control) -> bool:
-	if anchor == null or not is_instance_valid(anchor):
-		return false
-	if anchor.modulate.a <= 0.01:
-		return false
-	return true
-
-
 func _onboarding_path_active() -> bool:
 	return false
 

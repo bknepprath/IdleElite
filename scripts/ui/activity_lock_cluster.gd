@@ -221,13 +221,7 @@ func _input_pressed(event: InputEvent) -> bool:
 
 
 func _input_released(event: InputEvent) -> bool:
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		return mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed
-	if event is InputEventScreenTouch:
-		return not (event as InputEventScreenTouch).pressed
-	return false
-
+	return ModuleUiRuntime.press_event_is_release(event)
 
 func _set_ready_pulse(active: bool) -> void:
 	if ready_pulse_active == active:

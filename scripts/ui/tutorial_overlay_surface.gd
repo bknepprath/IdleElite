@@ -13,7 +13,6 @@ const ACTIVITY_START_HIGHLIGHT_GAP := 26.0
 const ACTIVITY_START_HIGHLIGHT_RING_THICKNESS := 18.0
 const ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD := 22.0
 const ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS := 12
-const ACTIVITY_START_HIGHLIGHT_BORDER_COLOR := Color("#ffd84a")
 const ONBOARDING_MASTERY_OVERLAY_TIP_GAP := 47.0
 const ONBOARDING_MASTERY_TIP_ABOVE_CARD_GAP := 112.0
 const ONBOARDING_MEDAL_TIP_LINGER_SECONDS := 3.0
@@ -1569,23 +1568,6 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	root.visible = false
 	call_deferred("show_blocking_tip", text, group_name, target)
 	return root
-
-
-func _stamina_gauge_tip_label_position() -> Vector2:
-	if (
-		host._skill_detail_surface().detail_regen_circle != null
-		and is_instance_valid(host._skill_detail_surface().detail_regen_circle)
-		and host._skill_detail_surface().detail_header_body != null
-		and is_instance_valid(host._skill_detail_surface().detail_header_body)
-	):
-		var circle_rect: Rect2 = host._skill_detail_surface().detail_regen_circle.get_global_rect()
-		var body_rect: Rect2 = host._skill_detail_surface().detail_header_body.get_global_rect()
-		var label_width: float = host.ONBOARDING_STAMINA_TIP_LABEL_WIDTH
-		var gap := 16.0
-		var local_x := circle_rect.position.x - body_rect.position.x - label_width - gap
-		var local_y := circle_rect.position.y - body_rect.position.y - 52.0
-		return Vector2(local_x, local_y)
-	return Vector2(620, 520)
 
 
 func _add_stamina_cost_tip(parent: Control, fade_in := false) -> void:

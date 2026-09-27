@@ -32,6 +32,7 @@ func _run() -> void:
 	_check_semantic_and_future_rejection()
 	_check_quarantine_preserves_originals()
 	_check_fail_closed_boot_selection()
+	_check_missing_payloads_with_save_history()
 	_check_recovery_candidate_snapshotted()
 	_check_identity_regression_and_candidate_selection()
 	_check_boot_grafts_identity_without_rolling_back_gameplay()
@@ -169,8 +170,8 @@ func _check_code38_rollback_decoder() -> void:
 	}
 	_expect(SaveRuntime.write_text(path, SaveRuntime.encoded_payload(payload)), "Rollback-compatible envelope fixture should be writable.")
 
-	# Frozen copy of production code38's decoder: it parses the complete outer
-	# dictionary and knows nothing about save envelopes.
+
+
 	var code38_payload := _code38_load_dictionary(path)
 	_expect(str(code38_payload.get("leaderboard_display_name", "")) == "RollbackKeeper", "The pre-migration reader must see the exact username in a migrated save.")
 	_expect(str(code38_payload.get("leaderboard_name_key", "")) == "rollbackkeeper", "The pre-migration reader must see the exact claimed-name key in a migrated save.")
@@ -217,8 +218,8 @@ func _json_values_equal(left: Variant, right: Variant) -> bool:
 	var left_type := typeof(left)
 	var right_type := typeof(right)
 	if left_type in [TYPE_INT, TYPE_FLOAT] and right_type in [TYPE_INT, TYPE_FLOAT]:
-		# Godot's JSON decoder represents JSON numbers as floats. Integer and float
-		# Variants with the same JSON value are therefore equivalent on disk.
+
+
 		return float(left) == float(right)
 	if left_type != right_type:
 		return false
@@ -346,6 +347,22 @@ func _check_recovery_candidate_snapshotted() -> void:
 	_expect(bool(boot_result.get("recovered", false)), "A valid interrupted-write temp should be selected for recovery.")
 	_expect(_revision_at(SaveRuntime.SAVE_RECOVERY_SNAPSHOT_PATH) == 9, "The selected temp candidate must be snapshotted before any later write can reuse the temp path.")
 	_cleanup_global_save_family()
+
+
+func _check_missing_payloads_with_save_history() -> void:
+	_cleanup_global_save_family()
+	_remove(SaveRuntime.SAVE_JOURNAL_PATH)
+	_remove(SaveRuntime.SAVE_JOURNAL_TEMP_PATH)
+	var runtime := SaveRuntime.new(SaveHostStub.new())
+	var fresh := runtime._boot_save_dictionary()
+	_expect(str(fresh.get("error", "")).is_empty(), "A genuinely fresh directory must remain eligible for initial save creation.")
+	for path in [SaveRuntime.SAVE_JOURNAL_PATH, SaveRuntime.SAVE_JOURNAL_TEMP_PATH]:
+		_expect(SaveRuntime.write_text(path, "[]"), "The surviving history fixture must be writable.")
+		var existing := runtime._boot_save_dictionary()
+		_expect(not str(existing.get("error", "")).is_empty(), "Missing payloads with surviving save history must require recovery instead of a new account.")
+		_expect(runtime._any_local_save_file_exists(), "Initial-save creation must also respect surviving save history.")
+		_expect(SaveRuntime.read_text(path) == "[]", "Boot must preserve surviving save-history evidence.")
+		_remove(path)
 
 
 func _check_identity_regression_and_candidate_selection() -> void:
@@ -524,6 +541,8 @@ func _check_canonical_aliases_do_not_regress() -> void:
 	var canonical_comparison := SaveStateNormalizers.payload_with_canonical_action_keys(canonical, aliases)
 	_expect(not SaveStateNormalizers.payload_regresses_game_progress(legacy_comparison, canonical_comparison, [{"id": "fight"}]), "Canonicalizing historical action IDs must not look like lost mastery, unlocks, or buildables.")
 	_expect(SaveRuntime.should_replace_best_save(legacy, canonical, [{"id": "fight"}], aliases), "A canonicalized newer save should outrank its alias-keyed v1 source.")
+	var malformed_requirement := SaveStateNormalizers.payload_with_canonical_action_keys({"manual_activity_requirement_unlocks": {"build:roof-the-roofless:build:4:extra": true}}, aliases)
+	_expect((malformed_requirement.get("manual_activity_requirement_unlocks", {}) as Dictionary).is_empty(), "Requirement unlock normalization must reject keys with extra segments.")
 	var action_lookup := func(_skill_id: String, action_id: String) -> Dictionary:
 		if action_id in ["duel-leaning-fence-post", "duel-fence-post"]:
 			return {"id": "duel-fence-post", "build": {"cost": {"softwood": 1}}}
@@ -683,9 +702,9 @@ func _check_vetted_repair_capabilities_are_scoped() -> void:
 	identity_repaired["leaderboard_auth_recovery_required"] = true
 	identity_repaired["leaderboard_auth_recovery_reason"] = "Saved online identity needs recovery."
 	_expect(not identity_runtime.call("_save_payload_can_replace_existing_save", identity_repaired), "Identity normalization must require its one-shot capability.")
-	# Production records the repair capability before profile restore normalizes the
-	# inconsistent trust flags. The expected pre-restore payload therefore still
-	# contains the damaged flags while the eventual save contains the safe result.
+
+
+
 	identity_runtime.call("_allow_next_vetted_identity_repair_save", persisted_inconsistent, persisted_inconsistent)
 	_expect(identity_runtime.call("_save_payload_can_replace_existing_save", identity_repaired), "A vetted post-restore identity normalization should preserve gameplay and stable account anchors even when its pre-restore expectation still has damaged trust flags.")
 	_expect(SaveRuntime.should_replace_best_save(persisted_inconsistent, identity_repaired, [{"id": "fight"}]), "A newer vetted identity normalization must outrank its inconsistent same-UID source during recovery selection.")

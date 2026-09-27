@@ -58,9 +58,9 @@ function Test-JsonIntegerInRange {
 function Get-ClientNameKey {
     param([AllowEmptyString()][string]$DisplayName)
 
-    # Conservative PowerShell equivalent of LeaderboardProfile.make_name_key.
-    # .NET counts UTF-16 units, so a non-BMP name near the limit is rejected
-    # instead of risking a key that the Godot client would derive differently.
+
+
+
     $clean = $DisplayName.Trim()
     $clean = $clean.Replace("`n", " ").Replace("`r", " ").Replace("`t", " ")
     while ($clean.Contains("  ")) {

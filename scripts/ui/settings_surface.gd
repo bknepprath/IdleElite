@@ -353,10 +353,7 @@ func style_audio_slider(slider: HSlider) -> void:
 		slider.add_theme_icon_override("grabber_highlight", grabber_highlight)
 	var track := StyleBoxFlat.new()
 	track.bg_color = host.COLOR_INK
-	track.corner_radius_top_left = 7
-	track.corner_radius_top_right = 7
-	track.corner_radius_bottom_left = 7
-	track.corner_radius_bottom_right = 7
+	track.set_corner_radius_all(7)
 	track.content_margin_top = 9
 	track.content_margin_bottom = 9
 	slider.add_theme_stylebox_override("slider", track)

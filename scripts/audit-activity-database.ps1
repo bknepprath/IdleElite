@@ -386,7 +386,7 @@ foreach ($skill in $skills) {
         if ($isLinearAction -and $unlock -lt $lastUnlock) {
             Add-Finding $warnings "$label unlock level drops from $lastUnlock to $unlock."
         }
-        # Recovery, combat, and fishing methods have their own reward and timing curves.
+
         if ($skillId -ne "fishing" -and $isLinearAction) {
             if ($stamina -lt $lastStamina) {
                 Add-Finding $warnings "$label stamina drops from $lastStamina to $stamina."

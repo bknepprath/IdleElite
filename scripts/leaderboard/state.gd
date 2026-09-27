@@ -135,10 +135,7 @@ func skill_level_for_category(category_id: String) -> int:
 
 
 func total_xp_for_category(category_id: String) -> int:
-	var valid_id := valid_category_id(category_id)
-	if valid_id == CATEGORY_TOTAL_LEVEL:
-		return score()
-	return 0
+	return score() if valid_category_id(category_id) == CATEGORY_TOTAL_LEVEL else 0
 
 
 func skill_level_from_total_xp(total_xp: int) -> int:
@@ -150,9 +147,7 @@ func skill_level_from_total_xp(total_xp: int) -> int:
 
 
 func queued_score() -> int:
-	if host.god_mode_save_tainted:
-		return 0
-	return maxi(0, score() - last_submitted_score)
+	return 0 if host.god_mode_save_tainted else maxi(0, score() - last_submitted_score)
 
 
 func has_pending_category_score() -> bool:
@@ -171,9 +166,7 @@ func has_pending_category_score() -> bool:
 
 
 func repair_publish_due() -> bool:
-	if repair_publish_version >= REPAIR_PUBLISH_VERSION:
-		return false
-	if not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
+	if repair_publish_version >= REPAIR_PUBLISH_VERSION or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
 		return false
 	for raw_category in categories():
 		var category := raw_category as Dictionary
@@ -252,7 +245,7 @@ func fetch_retry_unix_by_category_for_save() -> Dictionary:
 
 
 func restore_fetch_metadata_from_save(data: Dictionary) -> void:
-	# Successful rows are not saved, so successful fetch timestamps intentionally reset on launch.
+
 	fetch_unix_by_category.clear()
 	restore_fetch_retry_unix_by_category_from_save(data.get("leaderboard_fetch_retry_unix_by_category", {}))
 

@@ -37,6 +37,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 func _init() -> void:
@@ -65,7 +67,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_startup(self, scene):
 		_fail("main scene did not become capture-ready")
 		return
 	var fight := scene.skills["fight"] as Dictionary
@@ -108,14 +110,6 @@ func _run() -> void:
 	])
 	scene.queue_free()
 	quit(0)
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _i in range(240):
-		if bool(scene.get("startup_initialized")):
-			return true
-		await process_frame
-	return false
 
 
 func _hide_boot_overlay_for_capture(scene: Node) -> void:

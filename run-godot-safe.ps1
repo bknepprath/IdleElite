@@ -77,11 +77,47 @@ function Get-ChildProcessIds {
 }
 
 $godotArgs = @($args)
+$allow4kReferenceCapture = $false
+if ($godotArgs -contains "--allow-4k-reference-capture") {
+    $allow4kReferenceCapture = $true
+    $godotArgs = @($godotArgs | Where-Object { $_ -ne "--allow-4k-reference-capture" })
+}
 $visibleGame = $false
 if ($godotArgs -contains "--visible-game") {
     $visibleGame = $true
     $godotArgs = @($godotArgs | Where-Object { $_ -ne "--visible-game" })
 }
+if ($allow4kReferenceCapture -and -not $visibleGame) {
+    throw "--allow-4k-reference-capture requires --visible-game."
+}
+
+$idleEliteLaunchProjectRoot = (Get-Location).Path
+for ($argumentIndex = 0; $argumentIndex -lt $godotArgs.Count; $argumentIndex++) {
+    if ($godotArgs[$argumentIndex] -eq "--path") {
+        if ($argumentIndex + 1 -ge $godotArgs.Count) {
+            throw "--path requires a project directory."
+        }
+        $idleEliteLaunchProjectRoot = [System.IO.Path]::GetFullPath($godotArgs[$argumentIndex + 1])
+        break
+    }
+    if ($godotArgs[$argumentIndex] -like "--path=*") {
+        $idleEliteLaunchProjectRoot = [System.IO.Path]::GetFullPath($godotArgs[$argumentIndex].Substring(7))
+        break
+    }
+}
+
+$idleEliteLaunchProjectSettingsPath = Join-Path $idleEliteLaunchProjectRoot "project.godot"
+if (Test-Path -LiteralPath $idleEliteLaunchProjectSettingsPath) {
+    $idleEliteLaunchProjectSettings = Get-Content -Raw -LiteralPath $idleEliteLaunchProjectSettingsPath
+    $idleEliteLaunchIsArchived4k = (
+        $idleEliteLaunchProjectSettings -match '(?m)^window/size/viewport_width=2160\r?$' -and
+        $idleEliteLaunchProjectSettings -match '(?m)^window/size/viewport_height=3840\r?$'
+    )
+    if ($idleEliteLaunchIsArchived4k -and -not $allow4kReferenceCapture) {
+        throw "Refusing to launch the archived 2160 x 3840 Idle Elite project. Use --allow-4k-reference-capture with --visible-game only for side-by-side image capture; all gameplay testing and validation must use a native 1080 x 1920 worktree."
+    }
+}
+
 if ($visibleGame -and $godotArgs -contains "--headless") {
     throw "--visible-game cannot be combined with --headless."
 }
@@ -285,9 +321,9 @@ $newUnattributedIds = @(
         Sort-Object -Unique
 )
 if ($newUnattributedIds.Count -gt 0) {
-    # Godot can briefly hand off to a second process after the original launcher
-    # exits. Wait for that process to close before another validation reuses the
-    # same user-data/log directory. Never terminate an unattributed process.
+
+
+
     $unattributedStillRunning = @($newUnattributedIds)
     for ($attempt = 1; $attempt -le 50 -and $unattributedStillRunning.Count -gt 0; $attempt++) {
         Start-Sleep -Milliseconds 100

@@ -74,13 +74,6 @@ func valid_texture_rect_ref(value) -> TextureRect:
 	return control as TextureRect
 
 
-func valid_texture_progress_ref(value) -> TextureProgressBar:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureProgressBar
-
-
 func valid_label_ref(value) -> Label:
 	var control := valid_control_ref(value)
 	if control == null:
@@ -308,7 +301,6 @@ func _prepare_for_shutdown() -> void:
 	_kill_action_card_shutdown_tweens()
 	if host.achievement_overlay_surface != null:
 		host.achievement_overlay_surface.invalidate_home_page()
-	host._skill_swipe_activity_surface()._cancel_preview_prewarm()
 	host._skill_swipe_activity_surface().preview_module_reveal_token += 1
 	host.app_boot_warmup_runtime = null
 	clear_lazy_overlay_registry()

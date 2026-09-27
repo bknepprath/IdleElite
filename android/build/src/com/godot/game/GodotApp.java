@@ -54,10 +54,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Template activity for Godot Android builds.
- * Feel free to extend and modify this class for your custom logic.
- */
+
+
+
+
 public class GodotApp extends GodotActivity {
 	private static final String TAG = "IdleEliteCrash";
 	private static final String PENDING_CRASH_REPORT_FILE = "pending-crash-report.json";
@@ -68,7 +68,7 @@ public class GodotApp extends GodotActivity {
 	private final List<String> diagnosticEvents = new ArrayList<>();
 
 	static {
-		// .NET libraries.
+
 		if (BuildConfig.FLAVOR.equals("mono")) {
 			try {
 				Log.v("GODOT", "Loading System.Security.Cryptography.Native.Android library");

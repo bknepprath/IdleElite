@@ -21,6 +21,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 90
 const FINALIZE_WAIT_FRAMES := 360
@@ -44,7 +46,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 
@@ -125,10 +127,10 @@ func _selected_skill_ready(scene: Node, skill_id: String) -> bool:
 		return false
 	if bool(scene.get("screen_render_in_progress")):
 		return false
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := TestHelpers.valid_control(scene.get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return false
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or not scroll.visible or not scroll.is_visible_in_tree():
 		return false
 	var counts := _counts(scene)
@@ -158,24 +160,24 @@ func _first_swipe_page_ready(scene: Node, target_skill_id: String) -> bool:
 		return false
 	if bool(scene.get("skill_swipe_pending_full_finalize")):
 		return false
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := TestHelpers.valid_control(scene.get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return false
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null:
 		return false
 	if not scroll.visible or not scroll.is_visible_in_tree():
 		return false
-	var parent := _valid_control(scroll.get_parent())
+	var parent := TestHelpers.valid_control(scroll.get_parent())
 	if parent == null or not parent.clip_contents or not parent.visible or not parent.is_visible_in_tree():
 		return false
-	var content := _valid_control(scene.get("skills_content"))
+	var content := TestHelpers.valid_control(scene.get("skills_content"))
 	if content != null and content.size.y > 1.0 and scroll.size.y / content.size.y < 0.68:
 		return false
 	var cards := scene.get("action_cards") as Dictionary
 	if cards == null or cards.size() <= 0:
 		return false
-	if _valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
+	if TestHelpers.valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
 		return false
 	if _detail_header_gauge_slot_count(scene) != 1:
 		return false
@@ -190,7 +192,7 @@ func _first_swipe_page_ready(scene: Node, target_skill_id: String) -> bool:
 func _first_swipe_transition_settled(scene: Node, target_skill_id: String) -> bool:
 	if not _first_swipe_page_ready(scene, target_skill_id):
 		return false
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := TestHelpers.valid_control(scene.get("skill_swipe_handoff_cover"))
 	if cover == null:
 		return true
 	return (not cover.visible) or cover.modulate.a <= 0.05
@@ -201,7 +203,7 @@ func _first_swipe_transition_violation(scene: Node, frame_index: int) -> Diction
 		return {}
 	if not _first_swipe_target_incomplete(scene):
 		return {}
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := TestHelpers.valid_control(scene.get("skill_swipe_handoff_cover"))
 	var cover_alpha := 0.0
 	var cover_visible := false
 	var cover_cream := false
@@ -224,10 +226,10 @@ func _first_swipe_transition_violation(scene: Node, frame_index: int) -> Diction
 func _first_swipe_target_incomplete(scene: Node) -> bool:
 	if bool(scene.get("skill_swipe_pending_full_finalize")):
 		return true
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null:
 		return true
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := TestHelpers.valid_control(scene.get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return true
 	if not scroll.visible or not scroll.is_visible_in_tree():
@@ -240,7 +242,7 @@ func _first_swipe_target_incomplete(scene: Node) -> bool:
 		return true
 	if int(counts.get("visible_placeholders", 0)) > 0:
 		return true
-	if _valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
+	if TestHelpers.valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
 		return true
 	if _detail_header_gauge_slot_count(scene) != 1:
 		return true
@@ -249,12 +251,12 @@ func _first_swipe_target_incomplete(scene: Node) -> bool:
 
 func _state_summary(scene: Node) -> String:
 	var counts := _counts(scene)
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
-	var content := _valid_control(scene.get("skills_content"))
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
+	var content := TestHelpers.valid_control(scene.get("skills_content"))
+	var page := TestHelpers.valid_control(scene.get("skill_swipe_page"))
 	var stack := _detail_stack(scene)
 	var cards := scene.get("action_cards") as Dictionary
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := TestHelpers.valid_control(scene.get("skill_swipe_handoff_cover"))
 	var scroll_ratio := 0.0
 	if scroll != null and content != null and content.size.y > 1.0:
 		scroll_ratio = scroll.size.y / content.size.y
@@ -275,7 +277,7 @@ func _state_summary(scene: Node) -> String:
 		str(page != null and page.visible and page.is_visible_in_tree()),
 		str(scroll != null and scroll.visible and scroll.is_visible_in_tree()),
 		str(stack != null and stack.visible and stack.is_visible_in_tree()),
-		str(_valid_control(scene._skill_detail_surface().detail_regen_circle) != null),
+		str(TestHelpers.valid_control(scene._skill_detail_surface().detail_regen_circle) != null),
 		str(_detail_header_gauge_slot_count(scene)),
 		str(scroll != null),
 		scroll_ratio,
@@ -286,7 +288,7 @@ func _state_summary(scene: Node) -> String:
 
 func _counts(scene: Node) -> Dictionary:
 	var result := {"real": 0, "visible_placeholders": 0}
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or not scroll.visible or not scroll.is_visible_in_tree() or scroll.get_child_count() <= 0:
 		return result
 	var stack := _detail_stack(scene)
@@ -294,7 +296,7 @@ func _counts(scene: Node) -> Dictionary:
 		return result
 	var viewport_rect := scroll.get_global_rect()
 	for raw_child in stack.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null or child.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
 			continue
 		if _control_intersects_viewport(child, viewport_rect):
@@ -325,7 +327,7 @@ func _has_real_content(control: Control) -> bool:
 		return false
 	if bool(control.get_meta("detail_stack_entry_wrapper", false)):
 		for raw_child in control.get_children():
-			var child := _valid_control(raw_child)
+			var child := TestHelpers.valid_control(raw_child)
 			if child != null and not bool(child.get_meta("detail_lazy_placeholder", false)) and child.visible and child.modulate.a > 0.01:
 				return true
 		return false
@@ -333,14 +335,14 @@ func _has_real_content(control: Control) -> bool:
 
 
 func _detail_stack(scene: Node) -> Control:
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or scroll.get_child_count() <= 0:
 		return null
 	for raw_child in scroll.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child != null and child.visible and child.is_visible_in_tree():
 			return child
-	return _valid_control(scroll.get_child(0))
+	return TestHelpers.valid_control(scroll.get_child(0))
 
 
 func _placeholder_count(control: Control) -> int:
@@ -348,14 +350,14 @@ func _placeholder_count(control: Control) -> int:
 	if bool(control.get_meta("detail_lazy_placeholder", false)):
 		count += 1
 	for raw_child in control.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child != null:
 			count += _placeholder_count(child)
 	return count
 
 
 func _detail_header_gauge_slot_count(scene: Node) -> int:
-	var header_body := _valid_control(scene._skill_detail_surface().detail_header_body)
+	var header_body := TestHelpers.valid_control(scene._skill_detail_surface().detail_header_body)
 	if header_body == null:
 		return 0
 	var row := _find_first_descendant_of_class(header_body, "HBoxContainer")
@@ -363,7 +365,7 @@ func _detail_header_gauge_slot_count(scene: Node) -> int:
 		return 0
 	var count := 0
 	for raw_child in row.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null or not child.visible:
 			continue
 		if bool(child.size_flags_horizontal & Control.SIZE_EXPAND):
@@ -379,7 +381,7 @@ func _find_first_descendant_of_class(root_node: Control, target_class_name: Stri
 	if root_node == null:
 		return null
 	for raw_child in root_node.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null:
 			continue
 		if child.get_class() == target_class_name:
@@ -388,30 +390,6 @@ func _find_first_descendant_of_class(root_node: Control, target_class_name: Stri
 		if nested != null:
 			return nested
 	return null
-
-
-func _valid_control(value: Variant) -> Control:
-	if value == null:
-		return null
-	if not is_instance_valid(value):
-		return null
-	return value as Control
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _expect(condition: bool, message: String) -> void:

@@ -88,6 +88,8 @@ var cloud_save_history_checked := false
 var cloud_save_history_fetch_reason := ""
 var cloud_save_conflict_detected := false
 var cloud_save_remote_write_blocked := false
+var cloud_save_request_uid := ""
+var auth_identity_save_pending := false
 var chat_stream_connected := false
 var chat_stream_connecting := false
 var chat_stream_request_sent := false
@@ -203,6 +205,10 @@ func reset_cloud_save_state() -> void:
 	cloud_save_remote_write_blocked = false
 
 
+func _cloud_save_request_matches_current_identity() -> bool:
+	return not cloud_save_request_uid.is_empty() and cloud_save_request_uid == LeaderboardProfile.sanitize_player_id(app.leaderboard_profile.player_id)
+
+
 func reset_chat_runtime_state() -> void:
 	chat_stream_connected = false
 	chat_stream_connecting = false
@@ -228,6 +234,7 @@ func reset_chat_runtime_state() -> void:
 
 
 func reset_leaderboard_runtime_state() -> void:
+	auth_identity_save_pending = false
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
 	leaderboard_auth_id_token = ""
@@ -310,8 +317,8 @@ func restore_auth_identity_metadata_from_save(data: Dictionary) -> void:
 		saved_bound_uid,
 		leaderboard_auth_provider
 	)
-	# Legacy web builds created p+32 ids without Firebase Auth. Do not turn that
-	# public local id into a canonical Auth binding during restore.
+
+
 	if saved_bound_uid.is_empty() and not saved_legacy_authless and (
 		not leaderboard_auth_refresh_token.is_empty()
 		or saved_profile_claimed
@@ -332,7 +339,6 @@ func restore_auth_identity_metadata_from_save(data: Dictionary) -> void:
 	var hint_is_valid := (
 		not raw_hint_key.is_empty()
 		and not LeaderboardProfile.is_guest_display_name(raw_hint_display, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
-		and not LeaderboardProfile.is_default_display_name(raw_hint_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 		and LeaderboardProfile.make_name_key(raw_hint_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) == raw_hint_key
 	)
 	var legacy_transition_state_present := leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required
@@ -444,7 +450,6 @@ func _legacy_name_hint_valid() -> bool:
 	return (
 		not name_key.is_empty()
 		and not LeaderboardProfile.is_guest_display_name(display_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
-		and not LeaderboardProfile.is_default_display_name(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 		and LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) == name_key
 	)
 
@@ -455,7 +460,6 @@ func _capture_current_profile_as_legacy_name_hint() -> void:
 	if (
 		not name_key.is_empty()
 		and not LeaderboardProfile.is_guest_display_name(display_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
-		and not LeaderboardProfile.is_default_display_name(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 		and LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) == name_key
 	):
 		leaderboard_legacy_name_hint_display = display_name
@@ -504,6 +508,7 @@ func _deleted_auth_google_transition_eligible() -> bool:
 	return (
 		leaderboard_auth_recovery_required
 		and IdentitySafety.deleted_uid_transition_failure_code_valid(leaderboard_auth_definitive_failure_code)
+		and leaderboard_auth_provider == "google"
 		and not leaderboard_auth_refresh_token.is_empty()
 		and not player_uid.is_empty()
 		and not IdentitySafety.is_local_placeholder_player_id(player_uid)
@@ -524,7 +529,6 @@ func deleted_auth_google_transition_required() -> bool:
 
 
 func prepare_profile_recovery_on_open() -> void:
-	ensure_leaderboard_http()
 	if not _save_restore_complete() or leaderboard_name_transfer_required:
 		return
 	if not leaderboard_auth_recovery_required and LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
@@ -635,72 +639,35 @@ func ensure_leaderboard_http() -> void:
 
 
 func _build_leaderboard_http() -> void:
-	leaderboard_auth_request = HTTPRequest.new()
-	leaderboard_auth_request.timeout = 15.0
-	leaderboard_auth_request.request_completed.connect(_on_leaderboard_auth_completed)
-	add_child(leaderboard_auth_request)
-	google_auth_exchange_request = HTTPRequest.new()
-	google_auth_exchange_request.timeout = 15.0
-	google_auth_exchange_request.request_completed.connect(_on_google_auth_exchange_completed)
-	add_child(google_auth_exchange_request)
-	cloud_save_fetch_request = HTTPRequest.new()
-	cloud_save_fetch_request.timeout = 15.0
-	cloud_save_fetch_request.request_completed.connect(_on_cloud_save_fetch_completed)
-	add_child(cloud_save_fetch_request)
-	cloud_save_upload_request = HTTPRequest.new()
-	cloud_save_upload_request.timeout = 15.0
-	cloud_save_upload_request.request_completed.connect(_on_cloud_save_upload_completed)
-	add_child(cloud_save_upload_request)
-	cloud_save_history_request = HTTPRequest.new()
-	cloud_save_history_request.timeout = 15.0
-	cloud_save_history_request.request_completed.connect(_on_cloud_save_history_completed)
-	add_child(cloud_save_history_request)
-	cloud_save_history_fetch_request = HTTPRequest.new()
-	cloud_save_history_fetch_request.timeout = 15.0
-	cloud_save_history_fetch_request.request_completed.connect(_on_cloud_save_history_fetch_completed)
-	add_child(cloud_save_history_fetch_request)
-	leaderboard_fetch_request = HTTPRequest.new()
-	leaderboard_fetch_request.timeout = 15.0
-	leaderboard_fetch_request.request_completed.connect(_on_leaderboard_fetch_completed)
-	add_child(leaderboard_fetch_request)
-	leaderboard_total_xp_fetch_request = HTTPRequest.new()
-	leaderboard_total_xp_fetch_request.timeout = 15.0
-	leaderboard_total_xp_fetch_request.request_completed.connect(_on_leaderboard_total_xp_fetch_completed)
-	add_child(leaderboard_total_xp_fetch_request)
-	leaderboard_submit_request = HTTPRequest.new()
-	leaderboard_submit_request.timeout = 15.0
-	leaderboard_submit_request.request_completed.connect(_on_leaderboard_submit_completed)
-	add_child(leaderboard_submit_request)
-	leaderboard_name_claim_request = HTTPRequest.new()
-	leaderboard_name_claim_request.timeout = 15.0
-	leaderboard_name_claim_request.request_completed.connect(_on_leaderboard_name_claim_completed)
-	add_child(leaderboard_name_claim_request)
-	leaderboard_name_recovery_request = HTTPRequest.new()
-	leaderboard_name_recovery_request.timeout = 15.0
-	leaderboard_name_recovery_request.request_completed.connect(_on_leaderboard_name_recovery_completed)
-	add_child(leaderboard_name_recovery_request)
-	profile_reference_update_request = HTTPRequest.new()
-	profile_reference_update_request.timeout = 15.0
-	profile_reference_update_request.request_completed.connect(_on_profile_reference_update_completed)
-	add_child(profile_reference_update_request)
-	profile_recovery_fetch_request = HTTPRequest.new()
-	profile_recovery_fetch_request.timeout = 15.0
-	profile_recovery_fetch_request.request_completed.connect(_on_profile_recovery_fetch_completed)
-	add_child(profile_recovery_fetch_request)
+	leaderboard_auth_request = _http_request(_on_leaderboard_auth_completed)
+	google_auth_exchange_request = _http_request(_on_google_auth_exchange_completed)
+	cloud_save_fetch_request = _http_request(_on_cloud_save_fetch_completed)
+	cloud_save_upload_request = _http_request(_on_cloud_save_upload_completed)
+	cloud_save_history_request = _http_request(_on_cloud_save_history_completed)
+	cloud_save_history_fetch_request = _http_request(_on_cloud_save_history_fetch_completed)
+	leaderboard_fetch_request = _http_request(_on_leaderboard_fetch_completed)
+	leaderboard_total_xp_fetch_request = _http_request(_on_leaderboard_total_xp_fetch_completed)
+	leaderboard_submit_request = _http_request(_on_leaderboard_submit_completed)
+	leaderboard_name_claim_request = _http_request(_on_leaderboard_name_claim_completed)
+	leaderboard_name_recovery_request = _http_request(_on_leaderboard_name_recovery_completed)
+	profile_reference_update_request = _http_request(_on_profile_reference_update_completed)
+	profile_recovery_fetch_request = _http_request(_on_profile_recovery_fetch_completed)
 	chat_stream_client = HTTPClient.new()
-	chat_fetch_request = HTTPRequest.new()
-	chat_fetch_request.timeout = 15.0
-	chat_fetch_request.request_completed.connect(_on_chat_fetch_completed)
-	add_child(chat_fetch_request)
-	chat_send_request = HTTPRequest.new()
-	chat_send_request.timeout = 15.0
-	chat_send_request.request_completed.connect(_on_chat_send_completed)
-	add_child(chat_send_request)
+	chat_fetch_request = _http_request(_on_chat_fetch_completed)
+	chat_send_request = _http_request(_on_chat_send_completed)
 	chat_stream_poll_timer = Timer.new()
 	chat_stream_poll_timer.wait_time = app.CHAT_STREAM_POLL_INTERVAL_SECONDS
 	chat_stream_poll_timer.autostart = false
 	chat_stream_poll_timer.timeout.connect(_process_chat_live_sync.bind(app.CHAT_STREAM_POLL_INTERVAL_SECONDS))
 	add_child(chat_stream_poll_timer)
+
+
+func _http_request(completed: Callable) -> HTTPRequest:
+	var request := HTTPRequest.new()
+	request.timeout = 15.0
+	request.request_completed.connect(completed)
+	add_child(request)
+	return request
 
 
 func _leaderboard_firebase_enabled() -> bool:
@@ -844,9 +811,9 @@ func _firebase_server_timestamp() -> Dictionary:
 
 
 func _leaderboard_web_authless_writes_enabled() -> bool:
-	# Public reads remain available, but every mutation must be attributable to a
-	# Firebase UID. Realtime Database rules cannot distinguish an itch client
-	# from an arbitrary unauthenticated REST caller.
+
+
+
 	return false
 
 
@@ -872,6 +839,7 @@ func _leaderboard_auth_ready() -> bool:
 	var bound_uid := LeaderboardProfile.sanitize_player_id(leaderboard_auth_bound_uid)
 	return (
 		not leaderboard_auth_recovery_required
+		and not auth_identity_save_pending
 		and not leaderboard_auth_id_token.is_empty()
 		and not player_uid.is_empty()
 		and player_uid == bound_uid
@@ -913,7 +881,6 @@ func _leaderboard_auth_retry_wait_seconds() -> int:
 
 
 func _leaderboard_note_auth_failure(message: String, definitive_identity_failure = false, definitive_failure_code := "") -> void:
-	var leaderboard_state = app.leaderboard_state
 	if definitive_identity_failure:
 		_set_auth_recovery_required(message, definitive_failure_code)
 		if not google_auth_pending_id_token.is_empty():
@@ -922,7 +889,7 @@ func _leaderboard_note_auth_failure(message: String, definitive_identity_failure
 		return
 	leaderboard_auth_last_error_class = "transient"
 	_record_auth_diagnostic("auth_transient_failure", message)
-	leaderboard_state.status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS))]
+	app.leaderboard_state.status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS))]
 	leaderboard_auth_retry_after_unix = app._unix_now() + LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS
 	if _save_restore_complete():
 		app._mark_save_dirty("leaderboard auth retry")
@@ -970,11 +937,18 @@ func _leaderboard_ensure_auth() -> bool:
 	if not _leaderboard_firebase_enabled():
 		app.leaderboard_state.status_message = "Online services are not connected yet."
 		return false
-	if _leaderboard_auth_ready():
-		return true
 	if not _save_restore_complete():
 		app.leaderboard_state.status_message = "Online login is waiting for save recovery."
 		return false
+	if auth_identity_save_pending:
+		if _leaderboard_auth_retry_wait_seconds() > 0:
+			return false
+		if not _save_identity_state("retry authenticated identity persistence"):
+			leaderboard_auth_retry_after_unix = app._unix_now() + 15
+			return false
+		auth_identity_save_pending = false
+	if _leaderboard_auth_ready():
+		return true
 	if leaderboard_auth_recovery_required:
 		if _recovery_profile_read_ready():
 			var recovery_retry_wait := _leaderboard_auth_retry_wait_seconds()
@@ -1031,14 +1005,6 @@ func _leaderboard_ensure_auth() -> bool:
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
 	_leaderboard_note_auth_failure("Online login failed to start.")
-	return false
-
-
-func _leaderboard_retry_chat_auth_without_refresh() -> bool:
-	if chat_pending_send_after_auth.is_empty() or leaderboard_auth_refresh_token.is_empty():
-		return false
-	_set_auth_recovery_required("The saved online login could not be verified.")
-	app._profile_chat_overlay_surface()._render_chat_if_visible()
 	return false
 
 
@@ -1124,9 +1090,9 @@ func _friendly_google_auth_failure_message(detail: String) -> String:
 	if clean_detail.is_empty():
 		return "Google sign-in was cancelled."
 	var lower_detail = clean_detail.to_lower()
-	if lower_detail.contains("cancel") or lower_detail.contains("canceled") or lower_detail.contains("cancelled"):
+	if lower_detail.contains("cancel"):
 		return "Google sign-in was cancelled."
-	if lower_detail.contains("no credentials") or lower_detail.contains("no credential"):
+	if lower_detail.contains("no credential"):
 		return "No Google account was selected. Try Connect Google again."
 	if lower_detail.contains("network") or lower_detail.contains("timeout"):
 		return "Google sign-in needs an internet connection. Try again in a moment."
@@ -1194,8 +1160,8 @@ func _start_google_firebase_exchange(link_existing_identity: bool, requested_int
 		"returnSecureToken": true
 	}
 	if intent == "recover_same_uid":
-		# Recovery must never create a different Firebase account merely because
-		# the wrong Google account was selected.
+
+
 		body["autoCreate"] = false
 	if link_existing_identity and not leaderboard_auth_id_token.strip_edges().is_empty():
 		body["idToken"] = leaderboard_auth_id_token.strip_edges()
@@ -1306,8 +1272,8 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 			var deleted_source_uid: String = leaderboard_legacy_authless_old_uid if leaderboard_deleted_auth_transition_pending else current_uid
 			uid_transition_allowed = _deleted_auth_google_transition_eligible() and local_id != deleted_source_uid
 		"google_sign_in":
-			# Compatibility for direct tests/older callers: only a genuinely fresh
-			# install may accept an arbitrary Google UID.
+
+
 			uid_transition_allowed = (
 				(_anonymous_signup_allowed() and IdentitySafety.is_local_placeholder_player_id(current_uid))
 				or (not expected_uid.is_empty() and local_id == expected_uid)
@@ -1375,16 +1341,13 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 			leaderboard_name_transfer_required = _legacy_name_hint_valid()
 			leaderboard_legacy_username_recovery_required = not leaderboard_name_transfer_required
 		leaderboard_deleted_auth_transition_pending = deleted_auth_transition
-	if recovery_refresh:
-		leaderboard_auth_last_transition_outcome = "refresh_recovery_pending_profile"
-	elif deleted_auth_transition:
-		leaderboard_auth_last_transition_outcome = "deleted_auth_google_pending_recovery"
-	elif legacy_authless_transition:
-		leaderboard_auth_last_transition_outcome = "legacy_authless_google_pending_recovery"
-	elif fresh_google_identity:
-		leaderboard_auth_last_transition_outcome = "fresh_google_identity"
-	else:
-		leaderboard_auth_last_transition_outcome = "%s_same_identity" % mode
+	leaderboard_auth_last_transition_outcome = (
+		"refresh_recovery_pending_profile" if recovery_refresh else
+		"deleted_auth_google_pending_recovery" if deleted_auth_transition else
+		"legacy_authless_google_pending_recovery" if legacy_authless_transition else
+		"fresh_google_identity" if fresh_google_identity else
+		"%s_same_identity" % mode
+	)
 	app.leaderboard_profile.player_id = local_id
 	if recovery_refresh:
 		profile_recovery_lookup_gate = true
@@ -1392,18 +1355,16 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 	elif (not protected_identity_transition or leaderboard_legacy_username_recovery_required) and mode != "sign_up" and not LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
 		profile_recovery_lookup_gate = true
 		profile_recovery_lookup_conclusive_missing = false
-	if recovery_refresh:
-		app.leaderboard_state.status_message = "Verifying the saved username for this account..."
-	elif leaderboard_name_transfer_required:
-		app.leaderboard_state.status_message = "Username transfer needs support approval."
-	elif leaderboard_legacy_username_recovery_required:
-		app.leaderboard_state.status_message = "Google connected. Username recovery needs support."
-	else:
-		app.leaderboard_state.status_message = "Online login ready."
+	app.leaderboard_state.status_message = (
+		"Verifying the saved username for this account..." if recovery_refresh else
+		"Username transfer needs support approval." if leaderboard_name_transfer_required else
+		"Google connected. Username recovery needs support." if leaderboard_legacy_username_recovery_required else
+		"Online login ready."
+	)
 	_record_auth_diagnostic("auth_applied", leaderboard_auth_last_transition_outcome)
 	if protected_identity_transition:
-		# Persist the preserved source id and pending-transfer marker atomically
-		# with the Google UID before any server profile operation is allowed.
+
+
 		app._save_runtime().allow_next_identity_transition_save(current_uid, local_id)
 		if not _save_identity_state("deleted account Google transition" if deleted_auth_transition else "legacy authless Google transition"):
 			leaderboard_auth_id_token = str(previous_auth_state.get("id_token", ""))
@@ -1433,13 +1394,21 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 			app._save_runtime().cancel_next_identity_transition_save()
 			return false
 	else:
-		_save_identity_state("online identity authenticated")
+
+
+		auth_identity_save_pending = true
+		if not _save_identity_state("online identity authenticated"):
+			leaderboard_auth_retry_after_unix = app._unix_now() + 15
+			leaderboard_auth_last_error_class = "local_save_failure"
+			return false
+		auth_identity_save_pending = false
 	return true
 
 
 func _cloud_save_account_ready() -> bool:
 	return (
 		_save_restore_complete()
+		and _leaderboard_firebase_enabled()
 		and _leaderboard_auth_ready()
 		and leaderboard_auth_provider == "google"
 		and not leaderboard_name_transfer_required
@@ -1571,6 +1540,8 @@ func _cloud_save_archival_record(record: Dictionary, payload: Dictionary) -> Dic
 func _cloud_save_payload_conflicts_with_local(remote_payload: Dictionary) -> bool:
 	var local_payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
 	var comparison_payload: Dictionary = IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
+	local_payload = SaveStateNormalizers.payload_with_canonical_action_keys(local_payload, app.FISHING_ACTION_ID_ALIASES)
+	comparison_payload = SaveStateNormalizers.payload_with_canonical_action_keys(comparison_payload, app.FISHING_ACTION_ID_ALIASES)
 	return (
 		SaveStateNormalizers.payload_regresses_game_progress(local_payload, comparison_payload, app.skill_defs)
 		and SaveStateNormalizers.payload_regresses_game_progress(comparison_payload, local_payload, app.skill_defs)
@@ -1595,7 +1566,10 @@ func _apply_cloud_save_candidate(remote_payload: Dictionary, revision: int, sour
 	var local_xp: int = int(app._save_runtime()._save_total_skill_xp_evidence(app._save_runtime()._save_payload(app._unix_now())))
 	if _cloud_save_payload_should_replace_local(cloud_save_last_remote_payload):
 		cloud_save_dirty = false
-		_restore_cloud_save_payload(cloud_save_last_remote_payload)
+		if not _restore_cloud_save_payload(cloud_save_last_remote_payload):
+			cloud_save_dirty = true
+			cloud_save_status_message = "Save failed."
+			return
 		cloud_save_status_message = "%s save restored. Remote XP: %s." % ["Backup" if source_label == "history" else "Cloud", GameFormatting.compact_number(float(remote_xp), 4)]
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		return
@@ -1638,6 +1612,8 @@ func _fetch_cloud_save() -> void:
 		cloud_save_fetch_in_flight = false
 		cloud_save_status_message = "Cloud save check failed: %s" % error_string(err)
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+	else:
+		cloud_save_request_uid = LeaderboardProfile.sanitize_player_id(app.leaderboard_profile.player_id)
 
 
 func _upload_cloud_save(force = true) -> void:
@@ -1715,14 +1691,17 @@ func _start_cloud_save_put() -> void:
 
 
 func _on_cloud_save_fetch_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	if not _cloud_save_request_matches_current_identity():
+		return
 	cloud_save_fetch_in_flight = false
 	cloud_save_last_fetch_unix = app._unix_now()
 	if result != HTTPRequest.RESULT_SUCCESS:
 		cloud_save_status_message = "Cloud save check failed."
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		return
+	var raw_body := body.get_string_from_utf8().strip_edges()
 	cloud_save_remote_etag = _firebase_response_etag(headers)
-	if cloud_save_remote_etag.is_empty() and (response_code == 404 or body.get_string_from_utf8().strip_edges() == "null"):
+	if cloud_save_remote_etag.is_empty() and (response_code == 404 or raw_body == "null"):
 		cloud_save_remote_etag = "null_etag"
 	if response_code == 404:
 		cloud_save_remote_revision = 0
@@ -1732,8 +1711,8 @@ func _on_cloud_save_fetch_completed(result: int, response_code: int, headers: Pa
 		cloud_save_status_message = "Cloud save check returned HTTP %s." % response_code
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		return
-	var parsed = _parse_json_silent(body.get_string_from_utf8())
-	if parsed == null:
+	var parsed = _parse_json_silent(raw_body)
+	if parsed == null and raw_body == "null":
 		if cloud_save_remote_etag.is_empty():
 			cloud_save_remote_etag = "null_etag"
 		cloud_save_remote_revision = 0
@@ -1913,29 +1892,24 @@ func _fetch_cloud_save_history(reason: String) -> void:
 		cloud_save_history_checked = true
 		cloud_save_status_message = "Cloud save backup check failed. The device save was preserved."
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+	else:
+		cloud_save_request_uid = LeaderboardProfile.sanitize_player_id(app.leaderboard_profile.player_id)
 
 
 func _on_cloud_save_history_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if not _cloud_save_request_matches_current_identity():
+		return
 	cloud_save_history_fetch_in_flight = false
 	cloud_save_history_checked = true
 	var reason := cloud_save_history_fetch_reason
 	cloud_save_history_fetch_reason = ""
 	if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-		if reason == "current_missing":
-			_handle_missing_current_cloud_save()
-		else:
-			cloud_save_remote_checked = false
-			cloud_save_status_message = "Cloud save was invalid and backup recovery failed. The device save was preserved."
-			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_finish_cloud_history_without_backup(reason)
 		return
-	var parsed = _parse_json_silent(body.get_string_from_utf8())
+	var raw_body := body.get_string_from_utf8()
+	var parsed = _parse_json_silent(raw_body)
 	if parsed == null or typeof(parsed) != TYPE_DICTIONARY:
-		if reason == "current_missing":
-			_handle_missing_current_cloud_save()
-		else:
-			cloud_save_remote_checked = false
-			cloud_save_status_message = "Cloud save was invalid and no valid backup was found. The device save was preserved."
-			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_finish_cloud_history_without_backup(reason, parsed == null and raw_body == "null")
 		return
 	var best_payload := {}
 	var best_comparison := {}
@@ -1955,14 +1929,18 @@ func _on_cloud_save_history_fetch_completed(result: int, response_code: int, _he
 			best_comparison = comparison
 			best_revision = maxi(0, int(record.get("revision", 0)))
 	if best_payload.is_empty():
-		if reason == "current_missing":
-			_handle_missing_current_cloud_save()
-		else:
-			cloud_save_remote_checked = false
-			cloud_save_status_message = "Cloud save was invalid and no valid backup was found. The device save was preserved."
-			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_finish_cloud_history_without_backup(reason, (parsed as Dictionary).is_empty())
 		return
 	_apply_cloud_save_candidate(best_payload, maxi(cloud_save_remote_revision, best_revision), "history")
+
+
+func _finish_cloud_history_without_backup(reason: String, conclusively_empty := false) -> void:
+	if reason == "current_missing" and conclusively_empty:
+		_handle_missing_current_cloud_save()
+		return
+	cloud_save_remote_checked = false
+	cloud_save_status_message = "Cloud save was invalid and no valid backup was found. The device save was preserved."
+	app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 
 
 func _process_cloud_save_sync() -> void:
@@ -1981,7 +1959,7 @@ func _process_cloud_save_sync() -> void:
 func _cloud_save_payload_should_replace_local(remote_payload: Dictionary) -> bool:
 	var local_payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
 	var comparison_payload: Dictionary = IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
-	return SaveRuntime.should_replace_best_save(local_payload, comparison_payload, app.skill_defs)
+	return SaveRuntime.should_replace_best_save(local_payload, comparison_payload, app.skill_defs, app.FISHING_ACTION_ID_ALIASES)
 
 
 func _maybe_recover_profile_from_legacy_cloud_payload(remote_payload: Dictionary) -> void:
@@ -1993,7 +1971,7 @@ func _maybe_recover_profile_from_legacy_cloud_payload(remote_payload: Dictionary
 		return
 	var display_name := LeaderboardProfile.sanitize_display_name(str(remote_payload.get("leaderboard_display_name", "")), app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 	var name_key := LeaderboardProfile.sanitize_name_key(str(remote_payload.get("leaderboard_name_key", "")), app.PROFILE_NAME_KEY_MAX_CHARS)
-	if name_key.is_empty() or LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != name_key:
+	if name_key.is_empty() or LeaderboardProfile.is_guest_display_name(display_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS) or LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != name_key:
 		return
 	app.leaderboard_profile.display_name = display_name
 	app.leaderboard_profile.name_key = name_key
@@ -2006,72 +1984,37 @@ func _maybe_recover_profile_from_legacy_cloud_payload(remote_payload: Dictionary
 	_refresh_profile_references()
 
 
-func _restore_cloud_save_payload(remote_payload: Dictionary) -> void:
+func _restore_cloud_save_payload(remote_payload: Dictionary) -> bool:
 	if not _save_restore_complete():
-		return
-	var auth_id_token: String = leaderboard_auth_id_token
-	var auth_refresh_token: String = leaderboard_auth_refresh_token
-	var auth_expires_unix: int = leaderboard_auth_expires_unix
-	var auth_bound_uid: String = leaderboard_auth_bound_uid
-	var auth_definitive_failure_code: String = leaderboard_auth_definitive_failure_code
-	var player_id: String = app.leaderboard_profile.player_id
-	var display_name: String = app.leaderboard_profile.display_name
-	var name_key: String = app.leaderboard_profile.name_key
-	var profile_claimed: bool = app.leaderboard_profile.profile_claimed
-	var name_claim_verified: bool = app.leaderboard_profile.name_claim_verified
-	var avatar_index: int = app.leaderboard_profile.avatar_index
-	var legacy_old_uid: String = leaderboard_legacy_authless_old_uid
-	var deleted_auth_transition_pending: bool = leaderboard_deleted_auth_transition_pending
-	var name_transfer_required: bool = leaderboard_name_transfer_required
-	var legacy_username_recovery_required: bool = leaderboard_legacy_username_recovery_required
-	var legacy_name_hint_display: String = leaderboard_legacy_name_hint_display
-	var legacy_name_hint_key: String = leaderboard_legacy_name_hint_key
-	var restored_payload := remote_payload.duplicate(true)
-	restored_payload["leaderboard_player_id"] = player_id
-	restored_payload["leaderboard_display_name"] = display_name
-	restored_payload["leaderboard_name_key"] = name_key
-	restored_payload["leaderboard_profile_claimed"] = profile_claimed
-	restored_payload["leaderboard_name_claim_verified"] = name_claim_verified
-	restored_payload["leaderboard_avatar_index"] = avatar_index
-	restored_payload["leaderboard_auth_provider"] = "google"
-	restored_payload["leaderboard_auth_refresh_token"] = auth_refresh_token
-	restored_payload["leaderboard_auth_bound_uid"] = auth_bound_uid
-	restored_payload["leaderboard_auth_recovery_required"] = false
-	restored_payload["leaderboard_auth_recovery_reason"] = ""
-	restored_payload["leaderboard_auth_definitive_failure_code"] = auth_definitive_failure_code
-	restored_payload["leaderboard_auth_retry_after_unix"] = 0
-	restored_payload["leaderboard_legacy_authless_old_uid"] = legacy_old_uid
-	restored_payload["leaderboard_deleted_auth_transition_pending"] = deleted_auth_transition_pending
-	restored_payload["leaderboard_name_transfer_required"] = name_transfer_required
-	restored_payload["leaderboard_legacy_username_recovery_required"] = legacy_username_recovery_required
-	restored_payload["leaderboard_legacy_name_hint_display"] = legacy_name_hint_display
-	restored_payload["leaderboard_legacy_name_hint_key"] = legacy_name_hint_key
+		return false
 	var save_runtime = app._save_runtime()
+	var local_payload: Dictionary = save_runtime._save_payload(app._unix_now())
+	var restored_payload := IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
+
+	if not save_runtime._preserve_payload_as_recovery_snapshot(local_payload):
+		return false
+	var auth_id_token := leaderboard_auth_id_token
+	var auth_expires_unix := leaderboard_auth_expires_unix
+	var pending_refresh_token := leaderboard_auth_recovery_pending_refresh_token
+	app.save_restore_complete = false
 	save_runtime._clear_pending_save_restore_work()
-	save_runtime._init_state()
+
+	save_runtime._init_state(false)
 	save_runtime._load_game_core(restored_payload)
 	save_runtime.pending_save_restore_data = restored_payload
+	save_runtime.pending_save_has_achievement_toast_seen_ids = restored_payload.has("achievement_toast_seen_ids")
 	save_runtime._restore_boot_render_save_fields(restored_payload)
 	save_runtime._load_game_secondary_restore()
-	save_runtime._apply_post_load_simulation()
+	if not _save_restore_complete() or not save_runtime.pending_save_restore_data.is_empty():
+		app.save_restore_complete = false
+		return false
 	leaderboard_auth_id_token = auth_id_token
-	leaderboard_auth_refresh_token = auth_refresh_token
 	leaderboard_auth_expires_unix = auth_expires_unix
-	leaderboard_auth_provider = "google"
-	leaderboard_auth_bound_uid = auth_bound_uid
-	leaderboard_auth_recovery_required = false
-	leaderboard_auth_recovery_reason = ""
-	leaderboard_auth_definitive_failure_code = auth_definitive_failure_code
-	leaderboard_legacy_authless_old_uid = legacy_old_uid
-	leaderboard_deleted_auth_transition_pending = deleted_auth_transition_pending
-	leaderboard_name_transfer_required = name_transfer_required
-	leaderboard_legacy_username_recovery_required = legacy_username_recovery_required
-	leaderboard_legacy_name_hint_display = legacy_name_hint_display
-	leaderboard_legacy_name_hint_key = legacy_name_hint_key
-	app.leaderboard_profile.player_id = player_id
-	cloud_save_remote_checked = true
-	_save_identity_state("cloud save restored")
+	leaderboard_auth_recovery_pending_refresh_token = pending_refresh_token
+	save_runtime._apply_post_load_simulation()
+	var persisted := _save_identity_state("cloud save restored")
 	app._update_ui(0.0, true)
+	return persisted
 
 
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh = false) -> void:
@@ -2200,8 +2143,6 @@ func _leaderboard_submit_scores() -> void:
 	for raw_category in leaderboard_state.categories():
 		var category = raw_category as Dictionary
 		var category_id = leaderboard_state.valid_category_id(str(category.get("id", "")))
-		if category_id.is_empty():
-			continue
 		var score = maxi(0, leaderboard_state.score_for_category(category_id))
 		var last_score = int(app.leaderboard_state.last_submitted_scores_by_category.get(category_id, 0))
 		if score <= 0:
@@ -2495,7 +2436,7 @@ func complete_legacy_username_recovery(display_name: String) -> void:
 		return
 	var clean_name := LeaderboardProfile.sanitize_display_name(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 	var name_key := LeaderboardProfile.make_name_key(clean_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS)
-	if name_key.is_empty() or LeaderboardProfile.is_guest_display_name(clean_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS) or LeaderboardProfile.is_default_display_name(clean_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS):
+	if name_key.is_empty() or LeaderboardProfile.is_guest_display_name(clean_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS):
 		app._profile_chat_overlay_surface()._set_profile_status_text("Enter the username approved by support.")
 		return
 	leaderboard_name_recovery_pending_display = clean_name
@@ -2558,9 +2499,9 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		return
 	var raw_body := body.get_string_from_utf8().strip_edges()
 	var parsed = _parse_json_silent(raw_body)
-	# Realtime Database returns a successful JSON null for an absent node. A 404
-	# can also mean a wrong database URL or endpoint and must not unlock a new
-	# claim over a possibly existing canonical profile.
+
+
+
 	var record_is_conclusively_missing := response_code >= 200 and response_code < 300 and raw_body == "null"
 	if record_is_conclusively_missing:
 		if recovery_refresh_verification:
@@ -2592,7 +2533,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 	var record_uid := LeaderboardProfile.sanitize_player_id(str(record.get("uid", "")))
 	var display_name := LeaderboardProfile.sanitize_display_name(str(record.get("display_name", "")), app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 	var name_key := LeaderboardProfile.sanitize_name_key(str(record.get("name_key", "")), app.PROFILE_NAME_KEY_MAX_CHARS)
-	if record_uid != app.leaderboard_profile.player_id or name_key.is_empty() or LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != name_key:
+	if record_uid != app.leaderboard_profile.player_id or name_key.is_empty() or LeaderboardProfile.is_guest_display_name(display_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS) or LeaderboardProfile.make_name_key(display_name, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != name_key:
 		if recovery_refresh_verification:
 			_note_recovery_profile_verification_failure("Saved username data needs support review.")
 		elif profile_recovery_blocks_username_edit():
@@ -2686,7 +2627,7 @@ func _attempt_leaderboard_name_recovery() -> bool:
 		elif LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
 			recovery_display = app.leaderboard_profile.display_name
 			recovery_name_key = app.leaderboard_profile.name_key
-	if recovery_name_key.is_empty() or LeaderboardProfile.make_name_key(recovery_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != recovery_name_key:
+	if recovery_name_key.is_empty() or LeaderboardProfile.is_guest_display_name(recovery_display, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS) or LeaderboardProfile.make_name_key(recovery_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) != recovery_name_key:
 		return false
 	if not _leaderboard_write_ready():
 		return false
@@ -3172,6 +3113,9 @@ func _on_chat_send_completed(result: int, response_code: int, _headers: PackedSt
 	if response_code < 200 or response_code >= 300:
 		_chat_remove_row(chat_pending_send_message_id)
 		_chat_restore_failed_send()
+		if response_code == 401:
+			leaderboard_auth_id_token = ""
+			leaderboard_auth_expires_unix = 0
 		var detail = _firebase_error_detail(body)
 		if response_code == 401 or response_code == 403:
 			var rejection_message = "Online chat rejected this message. Please try again later."
@@ -3467,11 +3411,13 @@ func _firebase_stream_target(url: String) -> Dictionary:
 
 
 func _chat_note_send_failure(message: String) -> void:
+	chat_last_send_unix = app._unix_now()
 	chat_status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(app.CHAT_SEND_INTERVAL_SECONDS))]
 	app._mark_save_dirty("chat send retry")
 
 
 func _chat_note_send_rejected(message: String) -> void:
+	chat_last_send_unix = app._unix_now()
 	chat_status_message = message
 	app._mark_save_dirty("chat send rejected")
 
@@ -3577,8 +3523,6 @@ func _profile_reference_updates() -> Dictionary:
 	for raw_category in leaderboard_state.categories():
 		var category = raw_category as Dictionary
 		var category_id = leaderboard_state.valid_category_id(str(category.get("id", "")))
-		if category_id.is_empty():
-			continue
 		var score = int(app.leaderboard_state.last_submitted_scores_by_category.get(category_id, 0))
 		for row in leaderboard_state.rows_for_category(category_id):
 			var row_data = row as Dictionary

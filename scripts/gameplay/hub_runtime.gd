@@ -117,13 +117,14 @@ func ensure_module_state(module_id: String) -> Dictionary:
 
 func sync_trophy_level_from_thieving() -> void:
 	var tier := best_trophy_tier()
-	if tier > 0:
+	if tier > 0 or hub_modules.has("trophy"):
 		var state := ensure_module_state("trophy")
 		if int(state.get("level", 0)) < tier:
 			state["level"] = tier
+		if bool(state.get("building", false)):
 			state["building"] = false
 			state["build_started_unix_msec"] = 0
-			hub_modules["trophy"] = state
+		hub_modules["trophy"] = state
 	if hub_selected_module_id == "trophy":
 		host._hub_surface().hub_detail_open = true
 
@@ -193,9 +194,9 @@ func sync_missions() -> bool:
 		if mission.is_empty():
 			changed = true
 			continue
+		if mission != raw_mission:
+			changed = true
 		cleaned.append(mission)
-	if cleaned.size() != hub_missions.size():
-		changed = true
 	hub_missions = cleaned
 	var slots := mission_slot_count()
 	while hub_missions.size() > slots:
@@ -248,7 +249,6 @@ func roll_mission() -> Dictionary:
 		"target": target,
 		"remaining": target,
 		"assigned_unix": host._unix_now(),
-		"level": mission_level()
 	}
 
 
@@ -281,10 +281,7 @@ func mission_slot_count() -> int:
 
 
 func mission_max_slot_count() -> int:
-	var max_slots := 0
-	for raw_count in HUB_MISSION_SLOT_COUNT_BY_LEVEL:
-		max_slots = maxi(max_slots, int(raw_count))
-	return max_slots
+	return int(HUB_MISSION_SLOT_COUNT_BY_LEVEL.max())
 
 
 func mission_required_level_for_slot(slot_index: int) -> int:
@@ -406,12 +403,12 @@ func can_afford_module(module_id: String) -> bool:
 		return false
 	var cost := int((HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", [])[level])
 	if module_id == "pond":
-		return host.fishing_runtime.fish_currency >= float(cost)
+		return host.fishing_runtime.fish_currency + 0.0001 >= float(cost)
 	var wood_currency := module_wood_currency_for_level(module_id, level)
 	if module_id == "garden":
 		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
-		return host.material_runtime.amount(wood_currency) >= float(cost) and host.fishing_runtime.fish_currency >= float(int(fish_costs[level]))
-	return host.material_runtime.amount(wood_currency) >= float(cost)
+		return host.material_runtime.amount(wood_currency) + 0.0001 >= float(cost) and host.fishing_runtime.fish_currency + 0.0001 >= float(int(fish_costs[level]))
+	return host.material_runtime.amount(wood_currency) + 0.0001 >= float(cost)
 
 
 func module_next_unlock_level(module_id: String) -> int:
@@ -460,13 +457,11 @@ func upgrade_module(module_id: String) -> Dictionary:
 
 
 func barn_failure_factor() -> float:
-	var level := clampi(module_level("barn"), 0, HUB_MODULE_MAX_LEVEL)
-	return float(HUB_BARN_FAILURE_GAP_FACTORS[level])
+	return float(HUB_BARN_FAILURE_GAP_FACTORS[clampi(module_level("barn"), 0, HUB_MODULE_MAX_LEVEL)])
 
 
 func pond_regen_bonus() -> float:
-	var level := clampi(module_level("pond"), 0, HUB_MODULE_MAX_LEVEL)
-	return float(HUB_POND_REGEN_BONUS_BY_LEVEL[level])
+	return float(HUB_POND_REGEN_BONUS_BY_LEVEL[clampi(module_level("pond"), 0, HUB_MODULE_MAX_LEVEL)])
 
 
 func offline_cap_seconds() -> int:

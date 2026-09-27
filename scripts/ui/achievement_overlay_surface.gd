@@ -475,10 +475,7 @@ func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 func _offline_summary_info_style() -> StyleBoxFlat:
 	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 24, 14, false)
 	style.border_color = Color(0, 0, 0, 0)
-	style.border_width_left = 0
-	style.border_width_right = 0
-	style.border_width_top = 0
-	style.border_width_bottom = 0
+	style.set_border_width_all(0)
 	style.shadow_color = Color(0, 0, 0, 0)
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
@@ -505,10 +502,7 @@ func _offline_summary_stat_card(title: String, value: String, accent: Color, ico
 func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:
 	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 26, 16, false)
 	style.border_color = Color(accent.r, accent.g, accent.b, 0.34)
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
+	style.set_border_width_all(8)
 	style.shadow_color = Color(0, 0, 0, 0)
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO

@@ -25,6 +25,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const ModuleUiRuntime := preload("res://scripts/module_ui/runtime.gd")
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
@@ -76,7 +78,7 @@ func _run() -> void:
 	await _assert_queue_active_shelf_fish_controls(scene, build_key)
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
-	_assert(_truthy(scene.call("_performance_runtime").call("_skill_detail_needs_high_frequency_ui_update")), "queue page should keep visible stamina gauges on frame refresh even while idle")
+	_assert(TestHelpers.truthy_approx(scene.call("_performance_runtime").call("_skill_detail_needs_high_frequency_ui_update")), "queue page should keep visible stamina gauges on frame refresh even while idle")
 	_assert_queue_page_clear_button(scene, build_key, fight_key)
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	scene.set("current_screen", "queue")
@@ -108,14 +110,14 @@ func _run() -> void:
 	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 	await _assert_queue_selection_toggles_rendered_cards(scene, build_key)
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("remove_activity_from_queue", build_key)), "remove should succeed")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("remove_activity_from_queue", build_key)), "remove should succeed")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fight_key], "remove should renumber by list order")
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("add_activity_to_queue", build_key)), "add should append")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("add_activity_to_queue", build_key)), "add should append")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fight_key, build_key], "add should append to end")
 
 	var passive_key := _first_passive_action_key(scene, "woodcutting")
 	if not passive_key.is_empty():
-		_assert(not _truthy(scene.call("_activity_queue_runtime").call("add_activity_to_queue", passive_key)), "passive action should not be queueable")
+		_assert(not TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("add_activity_to_queue", passive_key)), "passive action should not be queueable")
 
 	var saved_queue := scene.call("_activity_queue_runtime").call("_activity_queue_for_save") as Array
 	var payload := scene.call("_save_runtime").call("_save_payload", int(scene.call("_unix_now"))) as Dictionary
@@ -132,32 +134,32 @@ func _run() -> void:
 	_set_skill_stamina(scene, "fight", float(SkillState.max_stamina(scene, "fight")))
 	_set_fish_currency(scene, 5.0)
 	scene.get("fishing_runtime").call("set_auto_eat_fish_enabled_for_skill", scene, "build", true)
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start from first runnable entry")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start from first runnable entry")
 	_assert(str(scene.get("running_skill_id")) == "fight", "queue should skip low-stamina first entry")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == fight_key, "queue attempt key should be skipped-to entry")
 	_assert(absf(_fish_currency(scene) - 5.0) < 0.001, "queue should not auto-eat fish while skipping low-stamina entries")
 	_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
 	_set_skill_stamina(scene, "fight", 0.0)
 	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
-	_assert(_truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "queue should keep running after wrapping to an earlier runnable entry")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "queue should keep running after wrapping to an earlier runnable entry")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == build_key, "queue should loop back to first entry after the last entry runs low")
 	_assert(str(scene.get("running_skill_id")) == "build", "queue wrap should start the recovered first skill")
 	_set_skill_stamina(scene, "build", 0.0)
 	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
-	_assert(not _truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "queue should stop gracefully if a full loop has no runnable entries")
+	_assert(not TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "queue should stop gracefully if a full loop has no runnable entries")
 	_assert(str(scene.get("running_skill_id")).is_empty(), "queue exhaustion should clear running action")
 
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
 	_set_skill_stamina(scene, "fight", float(SkillState.max_stamina(scene, "fight")))
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fight_key)), "queue should start from selected second entry")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fight_key)), "queue should start from selected second entry")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == fight_key, "selected second queue entry should be attempted first")
 	_assert(str(scene.get("running_skill_id")) == "fight", "selected second queue entry should start its skill")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start build entry")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start build entry")
 	var fight_target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", fight_key) as Dictionary
-	_assert(_truthy(scene.call("_action_runtime").call("_start_action", "fight", str(fight_target.get("action_id", "")), true, false, false)), "manual action should start")
-	_assert(not _truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "manual non-queue start should stop queue mode")
+	_assert(TestHelpers.truthy_approx(scene.call("_action_runtime").call("_start_action", "fight", str(fight_target.get("action_id", "")), true, false, false)), "manual action should start")
+	_assert(not TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "manual non-queue start should stop queue mode")
 
 	var recovery_key := _first_queueable_recovery_action_key(scene)
 	if recovery_key.is_empty():
@@ -172,7 +174,7 @@ func _run() -> void:
 	_set_skill_stamina(scene, recovery_skill_id, maxf(0.0, float(SkillState.max_stamina(scene, recovery_skill_id)) - 2.0))
 	var recovery_target_skill_id := _recovery_target_skill_id(scene, recovery_skill_id, recovery_action)
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [recovery_key, recovery_next_key])
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should start a recovery entry while its target skill is not full")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should start a recovery entry while its target skill is not full")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == recovery_key, "queue should keep recovery active while target stamina is not full")
 	_set_skill_stamina(scene, recovery_target_skill_id, float(SkillState.max_stamina(scene, recovery_target_skill_id)))
 	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
@@ -180,7 +182,7 @@ func _run() -> void:
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 	_set_all_stamina_full(scene)
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [recovery_key, recovery_next_key])
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should skip full recovery entry to the next task")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should skip full recovery entry to the next task")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == recovery_next_key, "full recovery target should make queue start the next task")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
@@ -190,10 +192,10 @@ func _run() -> void:
 		await _assert_fishing_area_tap_adds_queue_entry(scene, fishing_area_key)
 		scene.call("_activity_queue_runtime").call("set_activity_queue", [fishing_area_key, build_key])
 		_set_skill_stamina(scene, "fishing", 0.0)
-		_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fishing_area_key)), "fishing queue entry should start")
+		_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fishing_area_key)), "fishing queue entry should start")
 		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing queue entry should run as fishing")
 		scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
-		_assert(_truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "fishing should not advance because of stamina")
+		_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "fishing should not advance because of stamina")
 		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing should keep running and block later queue entries")
 
 	if _failed:
@@ -219,6 +221,7 @@ func _prepare_state(scene: Node) -> void:
 	if scene.has_method("_achievement_overlay_surface"):
 		scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
 	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_onboarding_runtime").set("tutorial_active", false)
 	scene.call("_test_state_runtime")._god_mode_max_skills_state()
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	for raw_skill_id in scene.skills.keys():
@@ -262,7 +265,7 @@ func _assert_queue_utility_button(scene: Node) -> void:
 	_assert(navigation_shell != null, "navigation shell should exist")
 	var queue_button := navigation_shell.get("queue_utility_tab") as Button
 	_assert(queue_button != null and is_instance_valid(queue_button), "queue utility button should exist")
-	_assert(_truthy(queue_button.get_meta("module_utility_nav_button", false)), "queue utility button should use nav button styling")
+	_assert(TestHelpers.truthy_approx(queue_button.get_meta("module_utility_nav_button", false)), "queue utility button should use nav button styling")
 	var row := navigation_shell.get("module_utility_buttons_row") as HBoxContainer
 	_assert(row != null and is_instance_valid(row), "module utility button row should exist")
 	_assert(row.get_child_count() == 4, "module utility row should contain four module buttons")
@@ -292,9 +295,9 @@ func _assert_queue_utility_button_opens_queue(scene: Node) -> void:
 		await process_frame
 	_assert(str(scene.get("current_screen")) == "queue", "queue utility button should open the Queue page")
 	var module_utility_row := navigation_shell.get("module_utility_row") as Control
-	_assert(_truthy(scene.call("_profile_chat_overlay_surface").call("_chat_strip_visible_on_current_screen")), "queue page should reserve bottom chrome")
+	_assert(TestHelpers.truthy_approx(scene.call("_profile_chat_overlay_surface").call("_chat_strip_visible_on_current_screen")), "queue page should reserve bottom chrome")
 	_assert(module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.visible, "queue page should keep module utility buttons visible")
-	_assert(_truthy(queue_button.get_meta("activity_button_shell_active", false)), "queue utility button should show active state on Queue page")
+	_assert(TestHelpers.truthy_approx(queue_button.get_meta("activity_button_shell_active", false)), "queue utility button should show active state on Queue page")
 	queue_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
@@ -337,7 +340,7 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	var action_id := str(target.get("action_id", ""))
 	_assert(not skill_id.is_empty() and not action_id.is_empty(), "queue active shelf fish control test should resolve a queued action")
 	_set_skill_stamina(scene, skill_id, float(SkillState.max_stamina(scene, skill_id)))
-	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
 	_assert(str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id, "queue active shelf fish control test should run the expected action")
 	scene.get("fishing_runtime").set("fish_currency_ever_earned", true)
 	_set_fish_currency(scene, 2.0)
@@ -357,7 +360,7 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	_assert(str(toggle.get_meta("auto_eat_skill_id", "")) == skill_id, "queue Auto Fish Eat toggle should target the active queue skill")
 	scene.get("fishing_runtime").call("set_auto_eat_fish_enabled_for_skill", scene, skill_id, false)
 	toggle.emit_signal("pressed")
-	_assert(_truthy(scene.get("fishing_runtime").call("auto_eat_fish_enabled_for_skill", scene, skill_id)), "queue Auto Fish Eat toggle should flip the active skill setting")
+	_assert(TestHelpers.truthy_approx(scene.get("fishing_runtime").call("auto_eat_fish_enabled_for_skill", scene, skill_id)), "queue Auto Fish Eat toggle should flip the active skill setting")
 	var max_stamina := float(SkillState.max_stamina(scene, skill_id))
 	_set_skill_stamina(scene, skill_id, maxf(0.0, max_stamina - 2.0))
 	var before_stamina := float(SkillState.host_stamina_value(skill_id, scene))
@@ -379,7 +382,7 @@ func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 	set_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
-	_assert(_truthy(scene.get("queue_selection_mode")), "Set Queue should enter queue selection mode")
+	_assert(TestHelpers.truthy_approx(scene.get("queue_selection_mode")), "Set Queue should enter queue selection mode")
 	_assert(str(scene.get("current_screen")) == "menu", "Set Queue should open the skills page for queue selection")
 	_assert(_find_named(scene, "QueueSelectionBanner") != null, "Set Queue should keep queue selection banner visible")
 	_assert(_find_button_with_text(scene, "FINISH QUEUE") == null, "queue selection banner should not render a Finish Queue button")
@@ -390,7 +393,7 @@ func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 	queue_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
-	_assert(not _truthy(scene.get("queue_selection_mode")), "pressing Queue utility should finish queue selection")
+	_assert(not TestHelpers.truthy_approx(scene.get("queue_selection_mode")), "pressing Queue utility should finish queue selection")
 	_assert(str(scene.get("current_screen")) == "queue", "pressing Queue utility during selection should return to Queue page")
 
 
@@ -422,16 +425,19 @@ func _assert_queue_page_card_can_start_queue(scene: Node, module_key: String) ->
 	_assert(str(scene.call("_skill_swipe_activity_surface").call("_activity_queue_module_key_for_card", card)) == str(module_key), "queue page card should resolve to queued module key")
 	var pop := card.get("pop", null) as Control
 	_assert(pop != null and is_instance_valid(pop), "queue page card should have a visible pop control")
+	pop.get_global_rect()
+	await process_frame
 	var press_position := pop.get_global_rect().get_center()
-	_assert(_truthy(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "queue page card should be inside the action viewport")
+	_assert(TestHelpers.truthy_approx(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "queue page card should be inside the action viewport")
+	scene.call("_tutorial_overlay_surface").call("_dismiss_blocking_tip")
 	scene.call("_input", _mouse_button_event(press_position, true))
-	var captured_press_key := str(scene.get("action_card_press_key"))
+	var captured_press_key := str(scene.call("_skill_detail_surface").get("action_card_press_key"))
 	_assert(not captured_press_key.is_empty(), "queue page card press should capture the normal action-card press key")
 	scene.call("_input", _mouse_button_event(press_position, false))
 	for _i in range(4):
 		await process_frame
-	_assert(_truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "pressing queue page card through normal input should enter queue runtime")
-	_assert(_truthy(scene.call("_performance_runtime").call("_skill_detail_needs_high_frequency_ui_update")), "queue page should use high-frequency live card updates while an action is running")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "pressing queue page card through normal input should enter queue runtime")
+	_assert(TestHelpers.truthy_approx(scene.call("_performance_runtime").call("_skill_detail_needs_high_frequency_ui_update")), "queue page should use high-frequency live card updates while an action is running")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 
@@ -453,16 +459,16 @@ func _assert_queue_page_mat_collection_expands(scene: Node, module_key: String) 
 	for _i in range(32):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
-	_assert(_truthy(scene.call("_activity_queue_runtime").get("activity_queue_running")), "material collection queue entry should start queue runtime")
+	_assert(TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").get("activity_queue_running")), "material collection queue entry should start queue runtime")
 	collection = card.get("mat_collection", {}) as Dictionary
-	_assert(_truthy(collection.get("visible", false)), "queue page material drawer should become visible while the collection action runs")
+	_assert(TestHelpers.truthy_approx(collection.get("visible", false)), "queue page material drawer should become visible while the collection action runs")
 	_assert(root.modulate.a > 0.05, "queue page material drawer should fade in while running")
 	_assert(entry.custom_minimum_size.y > initial_height + 100.0, "queue page material drawer should expand the module height")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 
 func _assert_queue_selection(scene: Node) -> void:
-	_assert(_truthy(scene.get("queue_selection_mode")), "queue selection mode should be active")
+	_assert(TestHelpers.truthy_approx(scene.get("queue_selection_mode")), "queue selection mode should be active")
 	_assert(_find_named(scene, "QueueSelectionBanner") != null, "queue selection should render banner")
 	_assert(_count_named(scene, "ActivityQueueNumberOverlay") >= 1, "queue selection should show order overlays for visible queued activities")
 
@@ -484,18 +490,18 @@ func _assert_queue_selection_toggles_rendered_cards(scene: Node, module_key: Str
 	var card := _registered_card_for_module_key(scene, module_key)
 	_assert(not card.is_empty(), "selection toggle test should find a rendered card")
 	var action_id := str(target.get("action_id", ""))
-	_assert(_truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false, false, false)), "selection toggle test should start active action")
+	_assert(TestHelpers.truthy_approx(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false, false, false)), "selection toggle test should start active action")
 	var pop := card.get("pop", null) as Control
 	_assert(pop != null and is_instance_valid(pop), "selection toggle test should have a pop control")
 	var press_position := pop.get_global_rect().get_center()
-	_assert(_truthy(scene.call("_input_routing_shell").call("_route_action_card_press", press_position, 12)), "selection mode should route press on active action")
-	_assert(_truthy(scene.call("_input_routing_shell").call("_route_action_card_release", _mouse_release(press_position))), "selection mode should route release on active action")
+	_assert(TestHelpers.truthy_approx(scene.call("_input_routing_shell").call("_route_action_card_press", press_position, 12)), "selection mode should route press on active action")
+	_assert(TestHelpers.truthy_approx(scene.call("_input_routing_shell").call("_route_action_card_release", _mouse_release(press_position))), "selection mode should route release on active action")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "selection mode tap should remove active queued card")
-	_assert(_truthy(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
+	_assert(TestHelpers.truthy_approx(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [module_key], "selection toggle should add active unqueued card")
-	_assert(_truthy(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
+	_assert(TestHelpers.truthy_approx(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "selection toggle should remove queued card")
-	_assert(_truthy(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should add an unqueued card")
+	_assert(TestHelpers.truthy_approx(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should add an unqueued card")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [module_key], "selection toggle should append unqueued card")
 	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 
@@ -568,7 +574,7 @@ func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: St
 		host = area_card.get("pop", null) as Control
 	_assert(host != null and is_instance_valid(host), "fishing queue tap test should have a tappable host")
 	var press_position := host.get_global_rect().get_center()
-	_assert(_truthy(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "fishing queue tap point should be inside the action viewport")
+	_assert(TestHelpers.truthy_approx(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "fishing queue tap point should be inside the action viewport")
 	scene.call("_input", _mouse_button_event(press_position, true))
 	scene.call("_input", _mouse_button_event(press_position, false))
 	for _i in range(8):
@@ -650,7 +656,7 @@ func _first_queueable_action_key(scene: Node, skill_id: String) -> String:
 			continue
 		var action_id := str(action.get("id", ""))
 		var key := str(ModuleUiRuntime.action(skill_id, action_id, scene.get("FISHING_ACTION_ID_ALIASES")))
-		if _truthy(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
+		if TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 			return key
 	return ""
 
@@ -661,11 +667,11 @@ func _first_queueable_mat_collection_action_key(scene: Node) -> String:
 		var skill_id := str(raw_skill_id)
 		for raw_action in actions_by_skill.get(raw_skill_id, []):
 			var action := raw_action as Dictionary
-			if action.is_empty() or not _truthy(scene.call("_action_runtime").call("_action_has_mat_rewards", action)):
+			if action.is_empty() or not TestHelpers.truthy_approx(scene.call("_action_runtime").call("_action_has_mat_rewards", action)):
 				continue
 			var action_id := str(action.get("id", ""))
 			var key := str(ModuleUiRuntime.action(skill_id, action_id, scene.get("FISHING_ACTION_ID_ALIASES")))
-			if _truthy(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
+			if TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 				return key
 	return ""
 
@@ -680,7 +686,7 @@ func _first_queueable_recovery_action_key(scene: Node) -> String:
 				continue
 			var action_id := str(action.get("id", ""))
 			var key := str(ModuleUiRuntime.action(skill_id, action_id, scene.get("FISHING_ACTION_ID_ALIASES")))
-			if _truthy(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
+			if TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 				return key
 	return ""
 
@@ -689,7 +695,7 @@ func _first_passive_action_key(scene: Node, skill_id: String) -> String:
 	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
 	for raw_action in actions_by_skill.get(skill_id, []):
 		var action := raw_action as Dictionary
-		if action.is_empty() or not _truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
+		if action.is_empty() or not TestHelpers.truthy_approx(scene.call("_passive_modules_runtime").is_passive_action(action)):
 			continue
 		return str(ModuleUiRuntime.action(skill_id, str(action.get("id", "")), scene.get("FISHING_ACTION_ID_ALIASES")))
 	return ""
@@ -699,7 +705,7 @@ func _first_queueable_fishing_area_key(scene: Node) -> String:
 	for raw_area_def in scene.call("_fishing_ui_surface").render_area_modules("fishing"):
 		var area_def := raw_area_def as Dictionary
 		var key := str(ModuleUiRuntime.fishing_area(scene.get("fishing_runtime").area_module_key("fishing", area_def)))
-		if _truthy(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
+		if TestHelpers.truthy_approx(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 			return key
 	return ""
 
@@ -749,20 +755,6 @@ func _assert(condition: bool, message: String) -> void:
 	if condition:
 		return
 	_fail(message)
-
-
-func _truthy(value: Variant) -> bool:
-	match typeof(value):
-		TYPE_BOOL:
-			return value
-		TYPE_INT:
-			return int(value) != 0
-		TYPE_FLOAT:
-			return not is_zero_approx(float(value))
-		TYPE_STRING:
-			return not str(value).is_empty()
-		_:
-			return value != null
 
 
 func _fail(message: String) -> void:

@@ -129,8 +129,8 @@ if ($null -ne $profiles) {
 }
 Assert-RecoveryCondition (-not $targetProfileExists) "The target Auth user already has a canonical profile and requires manual support review."
 
-# This is the only output containing raw identifiers. It is emitted only after
-# both restricted snapshots resolve uniquely and target conflicts are absent.
+
+
 [pscustomobject]@{
     status = "unique-match"
     target_uid = $targetUid

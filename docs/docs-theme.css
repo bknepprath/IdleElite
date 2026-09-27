@@ -1,4 +1,4 @@
-/* Shared dark theme for Idle Elite design docs */
+
 
 body.docs-theme-dark {
   color-scheme: dark;
@@ -20,7 +20,7 @@ body.docs-theme-dark {
     linear-gradient(145deg, #171512 0%, #211c17 54%, #11100e 100%);
 }
 
-/* Keep in-game UI mocks on their light palette */
+
 body.docs-theme-dark .phone,
 body.docs-theme-dark .canvas,
 body.docs-theme-dark .areas-col {
@@ -181,7 +181,7 @@ body.docs-theme-dark .doc-link {
   color: var(--ink);
 }
 
-/* PRD */
+
 body.docs-theme-dark .hero-copy {
   color: var(--muted);
 }
@@ -252,7 +252,7 @@ body.docs-theme-dark .asset-preview img {
   background: var(--panel-2);
 }
 
-/* Fishing brainstorm — light readable doc band; area mocks keep game palette */
+
 body.docs-theme-dark .page-shell {
   --ink: #171615;
   --paper: #f8f1e5;
@@ -310,7 +310,7 @@ body.docs-theme-dark .areas-col .unlock-rules {
   color: var(--ink);
 }
 
-/* Stamina gauge — aside panel only */
+
 body.docs-theme-dark .aside h1 {
   color: var(--ink);
 }
@@ -319,7 +319,7 @@ body.docs-theme-dark .aside p {
   color: var(--muted);
 }
 
-/* Shared docs banner: keep active and archived pages visually consistent. */
+
 .docs-bar {
   border-bottom: 1px solid rgba(247, 234, 215, 0.18);
   background: #191714;

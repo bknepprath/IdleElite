@@ -251,7 +251,7 @@ func _prepare_base_state() -> void:
 func _prepare_lock_state() -> bool:
 	_prepare_base_state()
 	var onboarding := scene.call("_onboarding_runtime") as Object
-	# Keep the live tip suppressed until the real level-2 lock card is mounted.
+
 	onboarding.lock_click_tip_seen = true
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fight")

@@ -29,7 +29,7 @@ func _can_create_image_textures() -> bool:
 func _create_image_texture(image: Image) -> Texture2D:
 	if image == null or image.is_empty():
 		return null
-	if DisplayServer.get_name() == "headless":
+	if not _can_create_image_textures():
 		return _placeholder_texture(Vector2i(image.get_width(), image.get_height()))
 	if not image.has_mipmaps() and image.get_width() > 1 and image.get_height() > 1:
 		image.generate_mipmaps()
@@ -54,7 +54,7 @@ func _atlas_texture(path: String, region: Rect2, filter_clip := false, fishing_a
 	]
 	if atlas_texture_cache.has(cache_key):
 		return atlas_texture_cache[cache_key] as Texture2D
-	if DisplayServer.get_name() == "headless":
+	if not _can_create_image_textures():
 		var headless_fallback := _visual_fallback_texture()
 		atlas_texture_cache[cache_key] = headless_fallback
 		return headless_fallback
@@ -95,7 +95,7 @@ func _visual_fallback_texture() -> Texture2D:
 	var cache_key := "__visual_fallback_texture__"
 	if texture_cache.has(cache_key):
 		return texture_cache[cache_key] as Texture2D
-	if DisplayServer.get_name() == "headless":
+	if not _can_create_image_textures():
 		var placeholder := _placeholder_texture(Vector2i(8, 8))
 		texture_cache[cache_key] = placeholder
 		return placeholder
@@ -177,7 +177,7 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		return fallback
 	if texture_cache.has(normalized):
 		return texture_cache[normalized] as Texture2D
-	if DisplayServer.get_name() == "headless" and not _headless_should_load_real_texture(normalized):
+	if not _can_create_image_textures():
 		var headless_fallback := _visual_fallback_texture()
 		texture_cache[normalized] = headless_fallback
 		return headless_fallback
@@ -202,7 +202,3 @@ func _path_is_fishing_visual(normalized_path: String) -> bool:
 		or lower_path.contains("/combo/fishing/")
 		or lower_path.contains("fish")
 	)
-
-
-func _headless_should_load_real_texture(normalized_path: String) -> bool:
-	return false

@@ -1,5 +1,7 @@
 extends Button
 
+const NumberReadout = preload("res://scripts/ui/number_readout.gd")
+
 signal wallet_pressed
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
@@ -12,8 +14,6 @@ const RING_ARC_SEGMENTS := 40
 const BEVEL_ARC_SEGMENTS := 32
 const CENTER_NUMBER_STROKE_SCALE := 36.0
 const CENTER_NUMBER_STROKE_MIN := 26
-const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
-const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
 
 var fish_count := 0.0
 var display_text := "0"
@@ -24,7 +24,6 @@ var readout_font: Font
 var currency_icon_texture: Texture2D
 var fish_icon: TextureRect
 var wallet_hit_button: Button
-var last_toggle_msec := 0
 var wallet_open := false
 var wallet_tool_ids: Array = []
 var wallet_tool_icons: Array = []
@@ -45,7 +44,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_load_readout_font()
+	readout_font = NumberReadout.load_font(readout_font)
 	currency_icon_texture = _fish_currency_icon_texture()
 	fish_icon = TextureRect.new()
 	fish_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -72,8 +71,6 @@ func _ready() -> void:
 	add_child(wallet_hit_button)
 	_layout_fish_icon()
 
-func _on_circle_pressed() -> void:
-	wallet_pressed.emit()
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -212,7 +209,7 @@ func _draw_center_content(center: Vector2, draw_scale: float, min_size: float) -
 	var stroke_size := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 	var text_center := center
 	_draw_currency_minnow_cluster(font, main_text, text_center, font_size, draw_scale)
-	_draw_stroked_number_with_decimal_suffix(font, main_text, suffix_text, text_center, font_size, Color.WHITE, stroke_size)
+	NumberReadout.draw_number(self, font, main_text, suffix_text, text_center, font_size, Color.WHITE, stroke_size)
 
 func _split_decimal_text(label_text: String) -> Dictionary:
 	var decimal_index := label_text.find(".")
@@ -262,17 +259,6 @@ func _draw_currency_minnow_cluster(_font: Font, _text: String, _text_center: Vec
 				)
 		y += row_height
 
-func _load_readout_font() -> void:
-	if ResourceLoader.exists("res://assets/fonts/Fredoka.ttf"):
-		var loaded := load("res://assets/fonts/Fredoka.ttf")
-		if loaded is Font:
-			var bold := FontVariation.new()
-			bold.base_font = loaded
-			bold.variation_embolden = 1.05
-			readout_font = bold
-	if readout_font == null:
-		readout_font = ThemeDB.fallback_font
-
 func _fit_font_size(font: Font, label_text: String, desired_size: int, minimum_size: int, max_width: float) -> int:
 	var fitted := desired_size
 	while fitted > minimum_size and font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
@@ -286,34 +272,6 @@ func _draw_stroked_text_centered(font: Font, label_text: String, center: Vector2
 	draw_string_outline(font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
 	draw_string(font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
 
-func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suffix_text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
-	var main_size := font.get_string_size(main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var main_baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var main_position := Vector2(center.x - main_size.x * 0.5, main_baseline)
-	draw_string_outline(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
-	draw_string(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
-	if suffix_text.is_empty():
-		return
-	var suffix_size := maxi(24, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
-	var suffix_stroke := maxi(6, int(round(float(stroke_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
-	var suffix_gap := maxf(4.0, float(font_size) * 0.075)
-	var suffix_baseline := center.y + (font.get_ascent(suffix_size) - font.get_descent(suffix_size)) * 0.5
-	var suffix_position := Vector2(main_position.x + main_size.x + suffix_gap, suffix_baseline)
-	var suffix_fill := fill_color
-	suffix_fill.a *= CENTER_DECIMAL_SUFFIX_ALPHA
-	var suffix_outline := Color("#171615", CENTER_DECIMAL_SUFFIX_ALPHA)
-	draw_string_outline(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_stroke, suffix_outline)
-	draw_string(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_fill)
-
-func configure_wallet(open: bool, tool_ids: Array, tool_icons: Array, unlocked_states: Array, equipped_tool_id: String) -> void:
-	wallet_open = open
-	wallet_tool_ids = tool_ids
-	wallet_tool_icons = tool_icons
-	wallet_unlocked_states = unlocked_states
-	wallet_equipped_tool_id = equipped_tool_id
-	_build_wallet_rects()
-	_rebuild_wallet_visual_children()
-	queue_redraw()
 
 func wallet_button_index_at(global_point: Vector2) -> int:
 	if not wallet_open:
@@ -325,11 +283,6 @@ func wallet_button_index_at(global_point: Vector2) -> int:
 			return index
 	return -1
 
-func wallet_button_center_global(index: int) -> Vector2:
-	if index < 0 or index >= wallet_button_rects.size():
-		return Vector2.ZERO
-	var rect := wallet_button_rects[index] as Rect2
-	return get_global_transform_with_canvas() * rect.get_center()
 
 func _build_wallet_rects() -> void:
 	wallet_button_rects.clear()
@@ -419,62 +372,14 @@ func _wallet_style(fill: Color, border: Color, border_width: float, radius: floa
 	style.bg_color = fill
 	style.border_color = border
 	var border_int := maxi(1, int(round(border_width)))
-	style.border_width_left = border_int
-	style.border_width_top = border_int
-	style.border_width_right = border_int
-	style.border_width_bottom = border_int
+	style.set_border_width_all(border_int)
 	var corner := maxi(1, int(round(radius)))
-	style.corner_radius_top_left = corner
-	style.corner_radius_top_right = corner
-	style.corner_radius_bottom_left = corner
-	style.corner_radius_bottom_right = corner
+	style.set_corner_radius_all(corner)
 	style.shadow_color = Color(0, 0, 0, 0.18)
 	style.shadow_size = 8
 	style.shadow_offset = Vector2(3, 5)
 	return style
 
-func _draw_wallet_menu(draw_scale: float) -> void:
-	_build_wallet_rects()
-	var count := wallet_button_rects.size()
-	if count <= 0:
-		return
-	var padding := 24.0 * draw_scale
-	var first := wallet_button_rects[0] as Rect2
-	var last := wallet_button_rects[count - 1] as Rect2
-	var panel_rect := Rect2(
-		Vector2(first.position.x - padding, first.position.y - padding),
-		Vector2(first.size.x + padding * 2.0, last.end.y - first.position.y + padding * 2.0)
-	)
-	_draw_wallet_pill(panel_rect, Color("#fff6df"), Color("#171615"), 10.0 * draw_scale)
-	for index in range(count):
-		var rect := wallet_button_rects[index] as Rect2
-		var tool_id := str(wallet_tool_ids[index])
-		var unlocked := bool(wallet_unlocked_states[index])
-		var equipped := tool_id == wallet_equipped_tool_id
-		var fill := Color("#32c5bd") if equipped else (Color("#ffffff") if unlocked else Color("#cfcac0"))
-		var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
-		_draw_wallet_pill(rect, fill, border, (8.0 if equipped else 5.0) * draw_scale)
-		var tool_icon := wallet_tool_icons[index] as Texture2D
-		if tool_icon != null:
-			var icon_rect := _fit_wallet_texture_rect(tool_icon, rect.grow(-18.0 * draw_scale))
-			draw_texture_rect(tool_icon, icon_rect, false, Color.WHITE if unlocked else Color(1, 1, 1, 0.42))
-
-func _draw_wallet_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
-	_draw_wallet_filled_pill(rect, border)
-	_draw_wallet_filled_pill(rect.grow(-border_width), fill)
-
-func _draw_wallet_filled_pill(rect: Rect2, color: Color) -> void:
-	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		return
-	var radius := minf(rect.size.x, rect.size.y) * 0.5
-	if rect.size.y >= rect.size.x:
-		draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
-	else:
-		draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
 
 func _fit_wallet_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
 	var texture_size := texture.get_size()

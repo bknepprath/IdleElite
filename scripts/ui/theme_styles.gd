@@ -314,14 +314,8 @@ static func surface_style(color: Color, radius: int, margin := 28, elevated := f
 	var style := StyleBoxFlat.new()
 	style.bg_color = surface_color(color, dark_mode_enabled, color_paper, color_dark_paper, color_panel, color_dark_panel, color_line, color_dark_line, color_dark_panel_alt)
 	style.border_color = Color(0, 0, 0, 0)
-	style.border_width_left = passive_border
-	style.border_width_right = passive_border
-	style.border_width_top = passive_border
-	style.border_width_bottom = passive_border
-	style.corner_radius_top_left = radius
-	style.corner_radius_top_right = radius
-	style.corner_radius_bottom_left = radius
-	style.corner_radius_bottom_right = radius
+	style.set_border_width_all(passive_border)
+	style.set_corner_radius_all(radius)
 	if elevated:
 		style.shadow_color = Color(0.0, 0.0, 0.0, 0.34 if dark_mode_enabled else 0.16)
 		style.shadow_size = 12

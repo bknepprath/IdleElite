@@ -25,5 +25,5 @@ Use this map before editing activity detail pages, action cards, mastery medals,
 
 - Keep activity-card construction, lazy render plans, and save payload changes in separate commits unless one change cannot work without the other.
 - When renaming locals, prefer domain names such as `lazy_entry`, `render_record`, `activity_def`, `action_id`, `module_key`, and `unlock_requirement`.
-- Run `.\scripts\check-activity-ui-boundary-contracts.ps1`, `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-save-normalization.ps1`, and the relevant skill-detail checks after edits in these areas.
+- Run `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-save-normalization.ps1`, and the relevant skill-detail checks after edits in these areas.
 - Do not rename save keys, action IDs, skill IDs, module UI keys, or generated activity data fields without compatibility handling.

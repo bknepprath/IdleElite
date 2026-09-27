@@ -26,13 +26,11 @@ func _convergence_config(action: Dictionary) -> Dictionary:
 
 
 func _convergence_requires_build(action: Dictionary) -> bool:
-	var config := _convergence_config(action)
-	return bool(config.get("build_required", true))
+	return bool(_convergence_config(action).get("build_required", true))
 
 
 func _convergence_bar_pattern(action: Dictionary) -> String:
-	var config := _convergence_config(action)
-	return str(config.get("bar_pattern", "loops"))
+	return str(_convergence_config(action).get("bar_pattern", "loops"))
 
 
 func _ensure_convergence_state(module_id: String) -> Dictionary:
@@ -61,6 +59,7 @@ func _ensure_convergence_state(module_id: String) -> Dictionary:
 	elif bool(state.get("building", false)) and _convergence_build_remaining(module_id) <= 0:
 		state["built"] = true
 		state["building"] = false
+		state["build_started_unix"] = 0
 	convergence_modules[module_id] = state
 	return state
 
@@ -74,8 +73,7 @@ func _process_convergence_modules() -> void:
 
 
 func _convergence_build_seconds(action: Dictionary) -> int:
-	var config := _convergence_config(action)
-	return maxi(1, int(config.get("build_seconds", 300)))
+	return maxi(1, int(_convergence_config(action).get("build_seconds", 300)))
 
 
 func _convergence_log_cost(action: Dictionary) -> int:
@@ -121,7 +119,7 @@ func _start_convergence_build(module_id: String) -> bool:
 		host._reward_feedback_surface()._set_result("%s building: %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_remaining(module_id))])
 		return false
 	var cost := _convergence_log_cost(action)
-	if host.material_runtime.amount("softwood") < float(cost):
+	if host.material_runtime.amount("softwood") + 0.0001 < float(cost):
 		host._reward_feedback_surface()._set_result("%s needs %s Softwood." % [str(action.get("name", "Shrine")), cost])
 		return false
 	host.material_runtime.spend_amount("softwood", float(cost))

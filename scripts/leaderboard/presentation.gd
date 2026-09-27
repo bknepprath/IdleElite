@@ -94,12 +94,6 @@ static func player_card(color: Color, pressed := false, ink_color := Color.BLACK
 static func rank_badge() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0)
-	style.border_color = Color(0, 0, 0, 0)
-	style.set_border_width_all(0)
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
 	return style
 
 
@@ -144,9 +138,7 @@ func _render_leaderboard_page() -> void:
 	stack.add_theme_constant_override("separation", 0)
 	host.content_scroll.add_child(stack)
 
-	var rows = host.leaderboard_state.rows()
-	var page_frame = _leaderboard_page_frame(rows)
-	stack.add_child(page_frame)
+	stack.add_child(_leaderboard_page_frame(host.leaderboard_state.rows()))
 	host.skills_content.add_child(_leaderboard_player_overlay())
 
 
@@ -198,8 +190,7 @@ func _leaderboard_frame_width() -> float:
 
 
 func _leaderboard_page_frame_height(row_count: int) -> float:
-	var content_height = 1040.0 + float(row_count) * 260.0 + float(BOTTOM_SCROLL_PAD) + PLAYER_OVERLAY_HEIGHT + 128.0
-	return maxf(content_height, host._current_canvas_size().y)
+	return maxf(1040.0 + float(row_count) * 260.0 + float(BOTTOM_SCROLL_PAD) + PLAYER_OVERLAY_HEIGHT + 128.0, host._current_canvas_size().y)
 
 
 func _leaderboard_player_overlay() -> Control:
@@ -336,9 +327,7 @@ func _leaderboard_player_card() -> Control:
 func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	var row := PanelContainer.new()
 	row.custom_minimum_size = Vector2(0, 244)
-	var fill := Color("#ececec")
-	if bool(row_data.get("is_player", false)):
-		fill = Color("#d8f5ff")
+	var fill := Color("#d8f5ff") if bool(row_data.get("is_player", false)) else Color("#ececec")
 	row.add_theme_stylebox_override("panel", host._surface_style(fill, 30, 22, false))
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -357,7 +346,7 @@ func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	name_label.custom_minimum_size = Vector2(0, 108)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_child(name_label)
-	var score_label = host._label(str(row_data.get("score_text", GameFormatting.compact_number(float(row_data.get("score", 0)), 4))), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
+	var score_label = host._label(str(row_data.get("score_text", "")) if row_data.has("score_text") else GameFormatting.compact_number(float(row_data.get("score", 0)), 4), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
 	score_label.custom_minimum_size = Vector2(0, 98)
 	score_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	score_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
@@ -468,9 +457,7 @@ static func submit_status_title(
 		return "Scores ready"
 	if submit_in_flight:
 		return "Updating..."
-	if last_submit_unix <= 0:
-		return "Scores ready"
-	if submit_ready:
+	if last_submit_unix <= 0 or submit_ready:
 		return "Scores ready"
 	return "Scores saved"
 

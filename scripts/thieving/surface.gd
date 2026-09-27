@@ -96,8 +96,6 @@ func clear_visual_caches() -> void:
 	thieving_heist_feather_shader = null
 	thieving_action_jail_material = null
 
-func _missing_host_call(method: String, args: Array = []):
-	return host.callv(method, args)
 func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview_only := false, card_key_override := "") -> Control:
 	var heist_id := str(heist.get("id", ""))
 	var card_root := Control.new()
@@ -1319,10 +1317,7 @@ func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
 func _thieving_trophy_soft_glow_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1.0, 0.91, 0.42, 0.20)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_corner_radius_all(999)
 	style.shadow_color = Color(1.0, 0.84, 0.26, 0.46)
 	style.shadow_size = 34
 	style.shadow_offset = Vector2.ZERO
@@ -1538,11 +1533,6 @@ func _action_key(skill_id: String, action_id: String) -> String:
 func _action_card_key(skill_id: String, action_id: String, visual_card_key := "") -> String:
 	return host._action_card_key(skill_id, action_id, visual_card_key)
 
-func _valid_texture_progress_ref(value) -> TextureProgressBar:
-	var control: Control = host._app_lifecycle_runtime().valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureProgressBar
 
 func _dim_action_card(card: Dictionary, dimmed: bool) -> void:
 	host._dim_action_card(card, dimmed)

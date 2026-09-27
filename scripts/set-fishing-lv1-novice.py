@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lv1 fishing opener on Beach: novice dip, 1 fish = 1 currency."""
+
 
 import json
 from pathlib import Path
@@ -40,7 +40,7 @@ for action in actions:
 actions.insert(0, NOVICE_OPENER.copy())
 fishing["actions"] = actions
 
-# Sort by unlock for clean audit
+
 fishing["actions"].sort(key=lambda a: (int(a.get("unlock", 0)), int(a.get("tier", 0)), a.get("id", "")))
 
 JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

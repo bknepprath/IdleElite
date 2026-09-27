@@ -33,5 +33,5 @@ Use this map before editing high-traffic shell UI in `scripts/main.gd`. The goal
 
 - Refactor one boundary at a time and keep behavior/visual changes out of naming or movement commits.
 - If a function crosses boundaries, leave a note in this map before moving it so the next agent understands the coupling.
-- Run `.\scripts\check-ui-boundary-contracts.ps1` after edits in these regions, then run the narrower Firebase, chat, or visual checks that match the boundary.
+- Run `.\scripts\check-ui-boundary-contracts.ps1` after bottom-navigation, swipe-cover, or fishing-offer routing edits; run the relevant Firebase, chat, or visual checks for other changes.
 - Avoid committing pre-existing feature work from the dirty tree as a boundary refactor. Stage only the files and hunks owned by the current package.

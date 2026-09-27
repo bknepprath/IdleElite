@@ -16,11 +16,13 @@ const IDENTITY_COMPARISON_KEYS := [
 	"leaderboard_name_key",
 	"leaderboard_profile_claimed",
 	"leaderboard_name_claim_verified",
+	"leaderboard_avatar_index",
 	"leaderboard_auth_provider",
 	"leaderboard_auth_refresh_token",
 	"leaderboard_auth_bound_uid",
 	"leaderboard_auth_recovery_required",
 	"leaderboard_auth_recovery_reason",
+	"leaderboard_auth_retry_after_unix",
 	"leaderboard_auth_definitive_failure_code",
 	"leaderboard_legacy_authless_old_uid",
 	"leaderboard_deleted_auth_transition_pending",
@@ -53,10 +55,10 @@ static func legacy_authless_google_transition_allowed(
 	return (
 		is_local_placeholder_player_id(clean_player_id)
 		and refresh_token.strip_edges().is_empty()
-		# Builds from the first hardened-auth rollout derived the old local p+32
-		# id as a bound UID before it could be distinguished from Firebase Auth.
-		# Treat that exact self-binding as legacy-authless too. A different bound
-		# UID is never eligible for this transition.
+
+
+
+
 		and (clean_bound_uid.is_empty() or clean_bound_uid == clean_player_id)
 		and auth_provider.strip_edges() != "google"
 	)
@@ -66,15 +68,15 @@ static func refresh_failure_code(response_code: int, firebase_detail: String) ->
 	if response_code == 429 or response_code >= 500 or response_code <= 0:
 		return ""
 	var detail := firebase_detail.strip_edges().to_upper()
-	# Secure Token normally reports revoked/deleted identities as a structured
-	# HTTP 400 error. A blanket 401/403 classification is unsafe: API-key
-	# restrictions and project configuration outages also use those statuses and
-	# must not permanently move every installed player into account recovery.
+
+
+
+
 	if response_code != 400 and response_code != 401 and response_code != 403:
 		return ""
-	# Firebase messages may append human-readable detail after the symbolic code.
-	# Compare the first token exactly so request/configuration errors such as
-	# INVALID_GRANT_TYPE cannot be mistaken for a revoked player credential.
+
+
+
 	var end := detail.length()
 	for separator in [":", " ", "\t", "\r", "\n", ","]:
 		var index := detail.find(separator)
@@ -125,8 +127,8 @@ static func recovery_refresh_response_matches_binding(response_uid: String, boun
 
 
 static func deleted_uid_transition_failure_code_valid(failure_code: String) -> bool:
-	# USER_DISABLED is deliberately excluded. A support transfer must not become
-	# a client-side bypass for an account that an administrator disabled.
+
+
 	return failure_code.strip_edges().to_upper() == "USER_NOT_FOUND"
 
 

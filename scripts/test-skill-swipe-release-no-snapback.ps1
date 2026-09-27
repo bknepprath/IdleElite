@@ -9,6 +9,8 @@ New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 var failed := false
 
 func _init() -> void:
@@ -34,20 +36,20 @@ func _run() -> void:
 	await _wait_frames(12)
 
 	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
-	# A short, deliberate flick should commit even though it does not cross the
-	# full distance threshold. This is the common phone gesture that previously
-	# moved the page and then snapped it back on release.
+
+
+
 	for i in range(1, 4):
 		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(720, 1500), float(i) / 3.0))
 		await _wait_frames(1)
 	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(720, 1500))
 	for frame in range(60):
 		await _wait_frames(1)
-		var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
+		var cover := TestHelpers.valid_control_object(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 		if cover == null:
 			continue
 		var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
-		var holder := _valid_control(instance_from_id(holder_id))
+		var holder := TestHelpers.valid_control_object(instance_from_id(holder_id))
 		if holder == null:
 			continue
 		var canvas_size := scene.call("_current_canvas_size") as Vector2
@@ -62,11 +64,6 @@ func _run() -> void:
 		quit(0)
 	_fail("release handoff holder was not observed before transition settled")
 	quit(0)
-
-func _valid_control(value) -> Control:
-	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
-		return null
-	return value as Control
 
 func _wait_frames(count: int) -> void:
 	for i in range(count):

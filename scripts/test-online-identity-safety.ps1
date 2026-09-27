@@ -34,6 +34,9 @@ $authReadyBlock = [regex]::Match($runtime, '(?s)func _leaderboard_auth_ready\(\)
 $recoveryRefreshAllowedBlock = [regex]::Match($runtime, '(?s)func _recovery_refresh_allowed\(\).*?(?=\r?\nfunc )').Value
 $ensureAuthBlock = [regex]::Match($runtime, '(?s)func _leaderboard_ensure_auth\(\).*?(?=\r?\nfunc )').Value
 $applyAuthBlock = [regex]::Match($runtime, '(?s)func _apply_firebase_auth_response\(.*?(?=\r?\nfunc )').Value
+$deletedTransitionBlock = [regex]::Match($runtime, '(?s)func _deleted_auth_google_transition_eligible\(\).*?(?=\r?\nfunc )').Value
+$cloudFetchCompletedBlock = [regex]::Match($runtime, '(?s)func _on_cloud_save_fetch_completed\(.*?(?=\r?\nfunc )').Value
+$cloudHistoryFetchCompletedBlock = [regex]::Match($runtime, '(?s)func _on_cloud_save_history_fetch_completed\(.*?(?=\r?\nfunc )').Value
 $profileFetchBlock = [regex]::Match($runtime, '(?s)func _fetch_profile_recovery_record\(\).*?(?=\r?\nfunc )').Value
 $profileCompleteBlock = [regex]::Match($runtime, '(?s)func _on_profile_recovery_fetch_completed\(.*?(?=\r?\nfunc )').Value
 Assert-True ($identitySafety -match 'func recovery_refresh_allowed' -and $identitySafety -match 'func recovery_refresh_response_matches_binding') "Recovery refresh must use explicit saved-token and same-binding contracts."
@@ -55,11 +58,15 @@ Assert-True ($runtime -match 'if-match: %s') "Cloud uploads must use Firebase ET
 Assert-True ($runtime -match 'IdentitySafety\.cloud_safe_payload') "Cloud payloads must strip authentication secrets."
 Assert-True ($runtime -match '_upload_cloud_save_history\(cloud_save_last_remote_record, "before_replace"\)') "Cloud upload must archive the validated current record before replacing it."
 Assert-True ($runtime -match 'cloud_save_remote_write_blocked') "Invalid current cloud records must block automatic overwrite."
+Assert-True ($runtime -match 'parsed == null and raw_body == "null"') "Only a literal Firebase null may prove that cloud history is absent."
+Assert-True ($runtime -match '_finish_cloud_history_without_backup\(reason, \(parsed as Dictionary\)\.is_empty\(\)\)') "Invalid nonempty cloud history must preserve the device save instead of unlocking writes."
 Assert-True ($runtime -match 'google_recover') "Google recovery must use a distinct same-UID transition mode."
 Assert-True ($runtime -match 'google_link') "Google linking must use a distinct same-UID transition mode."
 Assert-True ($runtime -match 'google_legacy_authless_transition') "Legacy authless profiles must use a distinct user-initiated Google transition mode."
 Assert-True ($runtime -match 'google_deleted_auth_transition' -and $runtime -match 'deleted_auth_transition') "A deleted Firebase UID must use a distinct explicit Google transition mode."
 Assert-True ($runtime -match 'leaderboard_auth_definitive_failure_code' -and $runtime -match 'deleted_uid_transition_failure_code_valid') "Deleted-UID transitions must require a persisted definitive missing-user code."
+Assert-True ($deletedTransitionBlock -match '(?s)leaderboard_auth_recovery_required.*?leaderboard_auth_provider == "google"') "Non-pending deleted-UID transitions must require a Google-backed credential."
+Assert-True ($runtime -match 'cloud_save_request_uid' -and $cloudFetchCompletedBlock -match '_cloud_save_request_matches_current_identity' -and $cloudHistoryFetchCompletedBlock -match '_cloud_save_request_matches_current_identity') "Cloud responses must be ignored after an account transition invalidates their request identity."
 Assert-True ($runtime -match 'leaderboard_deleted_auth_transition_pending') "Deleted-UID transitions must persist a pending support-transfer marker."
 Assert-True ($runtime -match 'func account_recovery_code\(\) -> String:' -and $runtime -match 'T-%s S-%s' -and $runtime -match '_auth_uid_fingerprint\(target_uid\)' -and $runtime -match '_auth_uid_fingerprint\(source_uid\)') "Pending transfers must expose only stable target/source UID fingerprints as a support code."
 Assert-True ($runtime -match 'leaderboard_legacy_authless_old_uid' -and $runtime -match 'leaderboard_name_transfer_required') "Legacy transitions must persist the old UID and pending username-transfer state."
@@ -73,7 +80,7 @@ $cloudReadyBlock = [regex]::Match($runtime, '(?s)func _cloud_save_account_ready\
 Assert-True ($cloudReadyBlock -match 'leaderboard_deleted_auth_transition_pending' -and $cloudReadyBlock -match 'leaderboard_legacy_username_recovery_required' -and $cloudReadyBlock -match 'deleted_uid_transition_failure_code_valid') "Only a validated deleted-UID transition with no recoverable name may retain conflict-checked cloud backup under the chosen Google UID."
 Assert-True ($runtime -match 'profile_recovery_lookup_gate' -and $runtime -match 'record_is_conclusively_missing') "Invalid local profiles must remain gated until the canonical lookup conclusively reports no record."
 Assert-True ($runtime -match 'if leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required or profile_recovery_blocks_username_edit\(\):') "Queued username claims must not race a pending transfer or canonical profile lookup."
-Assert-True ($normalizers -match 'existing_name_transfer_required' -and $normalizers -match 'existing_legacy_username_recovery_required' -and $normalizers -match 'existing_legacy_old_uid') "Save regression checks must preserve all pending legacy username recovery states."
+Assert-True ($normalizers -match '"leaderboard_name_transfer_required", "leaderboard_legacy_username_recovery_required", "leaderboard_deleted_auth_transition_pending"' -and $normalizers -match 'existing_legacy_old_uid') "Save regression checks must preserve all pending legacy username recovery states."
 Assert-True ($normalizers -match 'existing_deleted_auth_transition_pending' -and $normalizers -match 'existing_definitive_failure_code') "Save regression checks must preserve deleted-UID support-transfer evidence."
 Assert-True ($profileUi -match '104 if recovery_layout_active' -and $profileUi -match 'add_theme_font_size_override\("font_size", 104\)') "Profile recovery status, inputs, and action buttons must remain readable at the mobile viewport scale."
 Assert-True ($profileUi -match 'Copy Recovery Code' -and $profileUi -match 'DisplayServer\.clipboard_set\(recovery_code\)' -and $profileUi -match '_label\(recovery_code, 104') "The profile must show and copy the non-secret recovery code at the mobile-readable size."

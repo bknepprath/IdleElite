@@ -71,7 +71,6 @@ const UNMARKED_MAXED_SAVE_COMPLETION_LIMIT := 5000
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
 const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
-const HERO_SPEECH_BUBBLE_TEXTURE := "res://assets/content/ui/hero-speech-bubble-down.png"
 const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.png"
 const BASE_MAX_STAMINA := SkillState.BASE_MAX_STAMINA
 const STAMINA_REGEN_SECONDS := SkillState.STAMINA_REGEN_SECONDS
@@ -142,8 +141,6 @@ const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
 const SKILL_SWIPE_CANCEL_SECONDS := 0.14
-const SKILL_SWIPE_PREVIEW_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
-const SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA := 0.30
 const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
@@ -159,15 +156,12 @@ const PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS := 0.34
 const PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS := 0.18
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
-const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
-const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
 const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 2
 const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1
 const SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE := 1
-const SKILL_SWIPE_PROXY_FULL_REFRESH_DELAY_FRAMES := 720
 const SKILL_SWIPE_BUTTON_SUPPRESS_MSEC := 320
 const SKILL_DETAIL_SHADOW_FADE_SCROLL := 72.0
 const SKILL_DETAIL_SHADOW_FADE_SPEED := 10.0
@@ -187,7 +181,6 @@ const ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS := 3.0
 const ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS := 2.0
 const ONBOARDING_STAMINA_GAUGE_FADE_SECONDS := 2.0
 const ONBOARDING_STAMINA_TIP_LINGER_SECONDS := 4.0
-const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 300.0
 const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
 const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
@@ -240,7 +233,6 @@ const MODULE_LIST_TRANSITION_MIN_MOVE := 2.0
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
-const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const ACTION_PROGRESS_RAIL_INSET := 0
 const ACTION_PROGRESS_RAIL_HEIGHT := 88
 const PASSIVE_BORDER := 0
@@ -681,10 +673,8 @@ func _process(delta: float) -> void:
 		var now_usec := Time.get_ticks_usec()
 		trace_ui_us = now_usec - trace_last_usec
 		trace_last_usec = now_usec
-	if _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
-	else:
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	if not _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
 		if _skill_detail_surface().detail_actions_scroll_limit_elapsed >= DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS:
 			_skill_detail_surface().detail_actions_scroll_limit_elapsed = 0.0
 			_skill_detail_surface()._sync_detail_actions_scroll_limit()
@@ -735,8 +725,6 @@ func _action_stop_hold() -> StopHoldCircle:
 		circle.name = "ActionStopHoldCircle"
 		circle.setup(self)
 		layer.add_child(circle)
-	else:
-		circle.setup(self)
 	return circle
 
 func _notification(what: int) -> void:
@@ -783,9 +771,7 @@ func _build_skills_page() -> void:
 func _skill_content_width() -> float:
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 
-func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
-	if skill_id.is_empty():
-		skill_id = selected_skill_id
+func _skill_swipe_frame_content_width(_skill_id: String = "") -> float:
 	return _skill_content_width()
 
 func _skill_column_host_width() -> float:
@@ -872,7 +858,6 @@ func _update_ui(delta: float, instant := false) -> void:
 		_activity_unlock_ceremony_surface().play_pending_locked_activity_preview_reveals()
 	if static_refresh:
 		_settings_surface()._refresh_audio_volume_controls()
-	if static_refresh:
 		_shop_surface().sync_bonus_display()
 	_settings_surface()._expire_reset_data_confirm_if_needed()
 	if static_refresh:

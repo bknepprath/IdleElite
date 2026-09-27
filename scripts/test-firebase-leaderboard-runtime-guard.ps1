@@ -124,6 +124,9 @@ func _init() -> void:
 	online.leaderboard_auth_bound_uid = "firebaseUidOriginal123"
 	_expect(online.call("_leaderboard_auth_ready"), "Auth readiness should accept an unexpired token bound to the saved UID.")
 	game.save_restore_complete = false
+	_expect(not online.call("_leaderboard_ensure_auth"), "Auth ensure must wait for complete save restoration even when a token is already ready.")
+	_expect(not online.leaderboard_auth_in_flight, "Pre-restore auth ensure must not start a request.")
+	game.save_restore_complete = true
 	online.leaderboard_auth_refresh_token = "original-refresh-token"
 	var same_uid_recovery := {
 		"idToken": "recovered-id-token",

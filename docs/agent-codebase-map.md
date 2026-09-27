@@ -23,8 +23,8 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | --- | --- | --- |
 | Main scene | `scenes/main.tscn`, `scripts/main.gd` | `main.tscn` binds the game to the large script. Avoid node-name or scene-bound path changes unless references are audited. |
 | Extracted UI drawing helpers | `scripts/ui/*.gd` | These are runtime scripts preloaded by `scripts/main.gd`. Many have `.gd.uid` metadata; do not rename either side casually. |
-| Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
-| Activity UI boundaries | `docs/activity-ui-boundary-map.md`, `scripts/check-activity-ui-boundary-contracts.ps1` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
+| Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map before refactoring those areas. |
+| Activity UI boundaries | `docs/activity-ui-boundary-map.md` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map before refactoring those areas. |
 | Activity data | `docs/activity-database.json`, `docs/activity-database.html`, `docs/activity-docs.js`, `docs/activity-database-contract.md`, `scripts/audit-activity-database.ps1`, `scripts/check-activity-database-contracts.ps1` | Edit JSON first, run the contract check and audit next; serve docs over HTTP for the HTML view. |
 | Runtime art/audio | `assets/content/**`, `assets/loading/**`, `assets/android/**`, `assets/fonts/**`, `assets/music/**`, `assets/sfx/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. The former `assets/ui` split has been merged into `assets/content/ui`. Use `docs/audio-structure-guide.md` before changing shipped sound or music. |
 | Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
@@ -53,13 +53,11 @@ Use PowerShell from the repo root.
 | Activity database audit | `.\scripts\audit-activity-database.ps1` | After syncing activity data. |
 | Generated-file hygiene contract | `.\scripts\check-generated-file-hygiene.ps1` | After changing `.gitignore`, generated-file docs, build-output docs, local config rules, `.import` rules, or `.uid` rules. |
 | Save/load contracts | `.\scripts\test-save-normalization.ps1` | After save payload, restore, or serialized field changes. |
-| Performance/static regression assertions | `.\scripts\test-performance-regressions.ps1` | After broad `main.gd`, asset-path, or validation contract changes. |
 | Runtime asset path contract | `.\scripts\check-runtime-asset-paths.ps1` | After changing `res://assets` or `res://docs` paths in `project.godot`, `export_presets.cfg`, `scripts/main.gd`, boot UI scripts, or activity data. |
-| UI boundary contract | `.\scripts\check-ui-boundary-contracts.ps1` | After editing navigation, home, shop, chat, leaderboard, or profile/avatar entry points. |
-| Activity UI boundary contract | `.\scripts\check-activity-ui-boundary-contracts.ps1` | After editing activity detail, action cards, mastery medals, unlocks, lockpads, or offline summary entry points. |
+| Navigation routing checks | `.\scripts\check-ui-boundary-contracts.ps1` | After editing bottom navigation, swipe covers, or fishing-offer input routing. |
 | UI geometry/detail checks | `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1`, `.\scripts\test-skill-detail-hidden-preview-scroll-gap.ps1` | After activity-card or skill-detail layout changes. |
 
-Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches the static/readability gates through `generated-file-hygiene-ok`, `ui-boundary-contracts-ok`, `activity-ui-boundary-contracts-ok`, and `leaderboard-cost-safety-ok`. In non-strict mode the skills-page performance gate retries intermittent scroll/swipe budget failures with a short warning; it prints the last failed sample only if all retries fail, then continues with `skills-page-performance-release-warning`. Record the exact current output if this behavior changes.
+Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches the static/readability gates through `generated-file-hygiene-ok`, `ui-boundary-contracts-ok`, and `leaderboard-cost-safety-ok`. In non-strict mode the skills-page performance gate retries intermittent scroll/swipe budget failures with a short warning; it prints the last failed sample only if all retries fail, then continues with `skills-page-performance-release-warning`. Record the exact current output if this behavior changes.
 
 After every Godot command, check for leftover headless Godot processes. Only stop a process when it was launched by the validation command, is headless/non-interactive, and should have exited.
 
@@ -77,6 +75,5 @@ After every Godot command, check for leftover headless Godot processes. Only sto
 ## Common Safe First Moves
 
 - Add or update docs that describe existing behavior.
-- Add focused static assertions to `scripts/test-performance-regressions.ps1` or a narrower test when they protect a refactor.
 - Rename local variables/functions only after checking references and avoiding serialized keys, data IDs, node names, signals, input names, and user-facing strings.
 - Extract code only by one ownership area at a time, with a focused validation command and a small commit.

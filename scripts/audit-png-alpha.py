@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quick PNG alpha/fringe audit for chroma cleanup discussion."""
+
 import sys
 from pathlib import Path
 

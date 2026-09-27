@@ -1,7 +1,6 @@
 static func contract(action: Dictionary) -> Dictionary:
-	if typeof(action.get("recovery", {})) != TYPE_DICTIONARY:
-		return {}
-	return action.get("recovery", {}) as Dictionary
+	var recovery = action.get("recovery", {})
+	return recovery as Dictionary if typeof(recovery) == TYPE_DICTIONARY else {}
 
 
 static func has_recovery(action: Dictionary) -> bool:

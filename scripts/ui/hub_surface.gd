@@ -515,7 +515,7 @@ func setup(next_host: Node) -> void:
 func accept_event() -> void:
 	host.accept_event()
 
-# Hub-owned UI state.
+
 var hub_detail_open := false
 var hub_detail_transition_pending := false
 var hub_module_buttons := {}
@@ -554,41 +554,9 @@ var hub_tutorial_host: Control
 var hub_tutorial_tip_root: Control
 var hub_tutorial_tip_tween: Tween
 var hub_tutorial_info_button: Button
-# Host state proxies.
-var app_bold_font:
-	get: return host.app_bold_font
-	set(value): host.app_bold_font = value
-
-var app_font:
-	get: return host.app_font
-	set(value): host.app_font = value
-
-var action_cards:
-	get: return host.action_cards
-	set(value): host.action_cards = value
-
-var ACTION_CARD_FACE_BORDER_Z_INDEX:
-	get: return host.ACTION_CARD_FACE_BORDER_Z_INDEX
-	set(value): host.ACTION_CARD_FACE_BORDER_Z_INDEX = value
 
 var BOTTOM_NAV_HEIGHT:
 	get: return NavigationShell.BOTTOM_NAV_HEIGHT
-
-var COLOR_INK:
-	get: return host.COLOR_INK
-	set(value): host.COLOR_INK = value
-
-var COLOR_MUTED:
-	get: return host.COLOR_MUTED
-	set(value): host.COLOR_MUTED = value
-
-var COLOR_PANEL:
-	get: return host.COLOR_PANEL
-	set(value): host.COLOR_PANEL = value
-
-var current_screen:
-	get: return host.current_screen
-	set(value): host.current_screen = value
 
 var HUB_BARN_FAILURE_GAP_FACTORS:
 	get: return HubRuntime.HUB_BARN_FAILURE_GAP_FACTORS
@@ -620,48 +588,20 @@ var HUB_MODULE_MAX_LEVEL:
 var HUB_MODULE_ORDER:
 	get: return HubRuntime.HUB_MODULE_ORDER
 
-var HUB_OVERLAY_Z:
-	get: return host.HUB_OVERLAY_Z
-	set(value): host.HUB_OVERLAY_Z = value
-
 var HUB_POND_REGEN_BONUS_BY_LEVEL:
 	get: return HubRuntime.HUB_POND_REGEN_BONUS_BY_LEVEL
 
 var HUB_POSITION_ORDER:
 	get: return HubRuntime.HUB_POSITION_ORDER
 
-var last_hub_mission_completion_ceremony_text:
-	get: return host.last_hub_mission_completion_ceremony_text
-	set(value): host.last_hub_mission_completion_ceremony_text = value
-
 var leaderboard_player_id:
 	get: return host.leaderboard_profile.player_id
 	set(value): host.leaderboard_profile.player_id = value
 
-var MIN_MOBILE_BODY_FONT_SIZE:
-	get: return host.MIN_MOBILE_BODY_FONT_SIZE
-	set(value): host.MIN_MOBILE_BODY_FONT_SIZE = value
-
-var MIN_MOBILE_INFO_TITLE_FONT_SIZE:
-	get: return host.MIN_MOBILE_INFO_TITLE_FONT_SIZE
-	set(value): host.MIN_MOBILE_INFO_TITLE_FONT_SIZE = value
-
-var selected_skill_id:
-	get: return host.selected_skill_id
-	set(value): host.selected_skill_id = value
-
 var SKILL_REWARD_FLOAT_GROUP:
 	get: return RewardFeedbackSurface.SKILL_REWARD_FLOAT_GROUP
 
-var skills_content:
-	get: return host.skills_content
-	set(value): host.skills_content = value
 
-var stamina:
-	get: return host.stamina
-	set(value): host.stamina = value
-
-# End host state proxies.
 
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	return host._action_data(skill_id, action_id)
@@ -709,7 +649,7 @@ func _valid_control_ref(value) -> Control:
 func save_game() -> void:
 	host.save_game()
 
-# End host method proxies.
+
 
 
 
@@ -798,7 +738,7 @@ func _render_hub_page() -> void:
 	hub_frame.offset_bottom = 0.0
 	hub_frame.clip_contents = true
 	hub_frame.mouse_filter = Control.MOUSE_FILTER_PASS
-	skills_content.add_child(hub_frame)
+	host.skills_content.add_child(hub_frame)
 	hub_tutorial_host = hub_frame
 	var grass_bg := ColorRect.new()
 	grass_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -849,19 +789,19 @@ func _add_hub_tutorial_info_button(parent: Control) -> void:
 	button.offset_right = -44
 	button.offset_top = 50
 	button.offset_bottom = 138
-	button.z_index = HUB_OVERLAY_Z + 70
+	button.z_index = host.HUB_OVERLAY_Z + 70
 	button.z_as_relative = false
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.add_theme_font_size_override("font_size", 58)
-	if app_bold_font != null:
-		button.add_theme_font_override("font", app_bold_font)
-	elif app_font != null:
-		button.add_theme_font_override("font", app_font)
+	if host.app_bold_font != null:
+		button.add_theme_font_override("font", host.app_bold_font)
+	elif host.app_font != null:
+		button.add_theme_font_override("font", host.app_font)
 	button.add_theme_color_override("font_color", Color.WHITE)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
-	button.add_theme_color_override("font_outline_color", COLOR_INK)
+	button.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	button.add_theme_constant_override("outline_size", 8)
 	button.add_theme_stylebox_override("normal", _hub_tutorial_info_button_style())
 	button.add_theme_stylebox_override("hover", _hub_tutorial_info_button_style(false, true))
@@ -875,14 +815,14 @@ func _on_hub_tutorial_info_pressed() -> void:
 	_show_hub_tutorial_tip(false)
 
 func _maybe_show_hub_tutorial_tip() -> void:
-	if current_screen != "hub" or not host._navigation_shell()._hub_unlocked() or hub_tutorial_tip_seen:
+	if host.current_screen != "hub" or not host._navigation_shell()._hub_unlocked() or hub_tutorial_tip_seen:
 		return
 	_show_hub_tutorial_tip(true)
 
 func _show_hub_tutorial_tip(_auto_show := false) -> void:
-	if current_screen != "hub":
+	if host.current_screen != "hub":
 		return
-	var parent = hub_tutorial_host if hub_tutorial_host != null and is_instance_valid(hub_tutorial_host) else skills_content
+	var parent = hub_tutorial_host if hub_tutorial_host != null and is_instance_valid(hub_tutorial_host) else host.skills_content
 	if parent == null or not is_instance_valid(parent):
 		return
 	if not hub_tutorial_tip_seen:
@@ -906,7 +846,7 @@ func _hub_tutorial_tip_control() -> Control:
 	root.name = "HubTutorialTip"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.z_index = HUB_OVERLAY_Z + 80
+	root.z_index = host.HUB_OVERLAY_Z + 80
 	root.z_as_relative = false
 
 	var center := CenterContainer.new()
@@ -924,7 +864,7 @@ func _hub_tutorial_tip_control() -> Control:
 
 	var title := _label(HUB_TUTORIAL_TITLE, 126, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 46)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
@@ -932,7 +872,7 @@ func _hub_tutorial_tip_control() -> Control:
 	var body := _label(HUB_TUTORIAL_BODY, 82, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_theme_color_override("font_outline_color", COLOR_INK)
+	body.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	body.add_theme_constant_override("outline_size", 38)
 	body.add_theme_constant_override("line_spacing", 30)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -940,7 +880,7 @@ func _hub_tutorial_tip_control() -> Control:
 	return root
 
 func _maybe_dismiss_hub_tutorial_tip_for_input(event: InputEvent) -> void:
-	if current_screen != "hub" or not _hub_tutorial_tip_visible():
+	if host.current_screen != "hub" or not _hub_tutorial_tip_visible():
 		return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
@@ -1302,7 +1242,7 @@ func _route_hub_hotspot_hold_input(event: InputEvent) -> bool:
 	var module_id = hub_hotspot_hold_module_id
 	if module_id.is_empty() and hub_drag_module_id.is_empty():
 		return false
-	if current_screen != "hub":
+	if host.current_screen != "hub":
 		_clear_hub_hotspot_hold()
 		return false
 	if module_id.is_empty():
@@ -1332,7 +1272,7 @@ func _route_hub_hotspot_hold_input(event: InputEvent) -> bool:
 	return false
 
 func _begin_hub_hotspot_hold(module_id: String, global_point: Vector2, pointer_id: int) -> void:
-	if current_screen != "hub" or hub_detail_transition_pending:
+	if host.current_screen != "hub" or hub_detail_transition_pending:
 		return
 	hub_hotspot_hold_module_id = module_id
 	hub_hotspot_hold_pointer_id = pointer_id
@@ -1377,7 +1317,7 @@ func _finish_hub_hotspot_press(module_id: String, global_point: Vector2, pointer
 func _process_hub_hotspot_hold(delta: float) -> void:
 	if hub_hotspot_hold_module_id.is_empty() or hub_hotspot_hold_move_armed:
 		return
-	if current_screen != "hub":
+	if host.current_screen != "hub":
 		_clear_hub_hotspot_hold()
 		return
 	if hub_hotspot_hold_pointer_id < 0 and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -1735,7 +1675,7 @@ func _hub_module_decor_clear_rect(module_id: String, padding: float) -> Rect2:
 func _update_hub_decor_visibility() -> void:
 	if hub_decor_items.is_empty():
 		return
-	if current_screen != "hub":
+	if host.current_screen != "hub":
 		_clear_hub_page_control_refs()
 		return
 	var eaten_rects := []
@@ -1826,7 +1766,7 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	hub_detail_panel.offset_right = panel_pos.x + panel_size.x
 	hub_detail_panel.offset_top = panel_pos.y
 	hub_detail_panel.offset_bottom = panel_pos.y + panel_size.y
-	hub_detail_panel.z_index = HUB_OVERLAY_Z + 3
+	hub_detail_panel.z_index = host.HUB_OVERLAY_Z + 3
 	hub_detail_panel.add_theme_stylebox_override("panel", _hub_bubble_style())
 	hub_detail_panel.gui_input.connect(_on_hub_detail_panel_gui_input)
 	parent.add_child(hub_detail_panel)
@@ -1839,16 +1779,16 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 18)
 	margin.add_child(stack)
-	hub_detail_title = _label("", 74, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_title = _label("", 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	stack.add_child(hub_detail_title)
-	hub_detail_body = _label("", 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_body = _label("", 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(hub_detail_body)
 	hub_detail_missions_box = VBoxContainer.new()
 	hub_detail_missions_box.add_theme_constant_override("separation", 12)
 	hub_detail_missions_box.visible = false
 	stack.add_child(hub_detail_missions_box)
-	hub_detail_cost = _label("", 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_cost = _label("", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	stack.add_child(hub_detail_cost)
 	hub_detail_button = _menu_button("")
 	hub_detail_button.custom_minimum_size = Vector2(0, 126)
@@ -1872,7 +1812,7 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	board.custom_minimum_size = HUB_MISSION_BOARD_SIZE
 	board.size = HUB_MISSION_BOARD_SIZE
 	board.position = _hub_mission_board_target_position()
-	board.z_index = HUB_OVERLAY_Z + 3
+	board.z_index = host.HUB_OVERLAY_Z + 3
 	board.z_as_relative = false
 	board.mouse_filter = Control.MOUSE_FILTER_STOP
 	board.gui_input.connect(_on_hub_detail_panel_gui_input)
@@ -1929,7 +1869,7 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	hub_detail_missions_box.visible = false
 	stack.add_child(hub_detail_missions_box)
 
-	hub_detail_cost = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_cost = _label("", host.MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_cost.custom_minimum_size = Vector2(0, 0)
 	hub_detail_cost.add_theme_color_override("font_outline_color", Color.BLACK)
 	hub_detail_cost.add_theme_constant_override("outline_size", 11)
@@ -1989,7 +1929,7 @@ func _add_hub_detail_dismiss_layer(parent: Control) -> void:
 	var dismiss_layer := Control.new()
 	dismiss_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dismiss_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	dismiss_layer.z_index = HUB_OVERLAY_Z
+	dismiss_layer.z_index = host.HUB_OVERLAY_Z
 	dismiss_layer.z_as_relative = false
 	dismiss_layer.gui_input.connect(_on_hub_detail_dismiss_gui_input)
 	parent.add_child(dismiss_layer)
@@ -2153,13 +2093,10 @@ func _hub_detail_target(module_id: String) -> Vector2:
 
 func _hub_bubble_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = _theme_surface_color(COLOR_PANEL)
-	style.border_color = _theme_outline_color(COLOR_INK, COLOR_PANEL)
+	style.bg_color = _theme_surface_color(host.COLOR_PANEL)
+	style.border_color = _theme_outline_color(host.COLOR_INK, host.COLOR_PANEL)
 	style.set_border_width_all(9)
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.set_corner_radius_all(34)
 	style.shadow_color = Color(0, 0, 0, 0.24)
 	style.shadow_size = 12
 	style.shadow_offset = Vector2(0, 8)
@@ -2208,8 +2145,8 @@ func _apply_hub_build_countdown_style(countdown: HubBuildProgressBar, rect: Rect
 	if countdown == null:
 		return
 	countdown.add_theme_font_size_override("font_size", int(clampf(rect.size.y * 0.82, 74.0, 108.0)))
-	if app_bold_font != null:
-		countdown.add_theme_font_override("font", app_bold_font)
+	if host.app_bold_font != null:
+		countdown.add_theme_font_override("font", host.app_bold_font)
 
 func _position_hub_build_countdown_in_smoke(module_id: String) -> void:
 	var countdown := _valid_hub_module_progress_bar(module_id)
@@ -2238,11 +2175,9 @@ func _hub_module_level(module_id: String) -> int:
 func _hub_module_building(module_id: String) -> bool:
 	return _hub_runtime().module_building(module_id)
 
-func _hub_module_build_progress(module_id: String) -> float:
-	return _hub_runtime().module_build_progress(module_id)
 
 func _process_hub_modules(_delta: float) -> void:
-	var hub_ui_active = current_screen == "hub"
+	var hub_ui_active = host.current_screen == "hub"
 	var hub_ui_refs_live = (
 		not hub_module_buttons.is_empty()
 		or not hub_module_art.is_empty()
@@ -2287,7 +2222,7 @@ func _process_hub_modules(_delta: float) -> void:
 		changed = true
 	if changed:
 		save_game()
-		if current_screen == "hub":
+		if host.current_screen == "hub":
 			for raw_completed_id in completed_modules:
 				var completed_id := str(raw_completed_id)
 				_clear_hub_module_build_overlays(completed_id)
@@ -2300,7 +2235,7 @@ func _process_hub_modules(_delta: float) -> void:
 		_update_hub_detail_panel()
 
 func _show_hub_mission_completion_ceremony(skill_id: String, action_id: String) -> void:
-	last_hub_mission_completion_ceremony_text = "MISSION ICON POP"
+	host.last_hub_mission_completion_ceremony_text = "MISSION ICON POP"
 	_play_hub_mission_completion_icon_ceremony(skill_id, action_id)
 
 func _hub_mission_badge() -> Dictionary:
@@ -2314,7 +2249,7 @@ func _hub_mission_badge() -> Dictionary:
 	paper.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(paper)
-	var label := _label("", 70, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var label := _label("", 70, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.offset_left = 24.0
 	label.offset_right = -24.0
@@ -2338,7 +2273,7 @@ func _configure_action_card_type_badge_root(root: Control) -> void:
 	root.offset_top = ACTION_CARD_TYPE_BADGE_OFFSET_TOP
 	root.offset_bottom = ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX + 8
+	root.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 8
 
 func _add_action_card_type_badge_help(root: Control, title_text: String, body_text: String) -> void:
 	var popover := _action_card_type_badge_popover(title_text, body_text)
@@ -2381,12 +2316,12 @@ func _action_card_type_badge_popover(title_text: String, body_text: String) -> P
 	stack.add_theme_constant_override("separation", 10)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title := _label(title_text, MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := _label(title_text, host.MIN_MOBILE_INFO_TITLE_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body := _label(body_text, MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body := _label(body_text, host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(ACTION_CARD_TYPE_BADGE_POPOVER_SIZE.x - 56.0, 220)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2419,12 +2354,9 @@ func _hide_action_card_type_badge_popovers(except: Control = null) -> void:
 			popover.visible = false
 
 func _action_card_type_badge_popover_style() -> StyleBoxFlat:
-	var style := _surface_style(COLOR_PANEL, 22, 22, true)
-	style.border_color = COLOR_INK
-	style.border_width_left = 7
-	style.border_width_right = 7
-	style.border_width_top = 7
-	style.border_width_bottom = 7
+	var style := _surface_style(host.COLOR_PANEL, 22, 22, true)
+	style.border_color = host.COLOR_INK
+	style.set_border_width_all(7)
 	style.shadow_color = Color(0, 0, 0, 0.28)
 	style.shadow_size = 10
 	style.shadow_offset = Vector2(0, 7)
@@ -2515,7 +2447,7 @@ func _spawn_hub_mission_completion_sparkles(badge: Control) -> void:
 		var angle := TAU * float(i) / 8.0
 		var star := AchievementPresentation.MedalSparkleStar.new()
 		star.fill_color = Color("#ffe56b") if i % 2 == 0 else Color("#93ff9e")
-		star.outline_color = COLOR_INK
+		star.outline_color = host.COLOR_INK
 		star.size = Vector2(58, 58)
 		star.position = center - star.size * 0.5
 		star.z_index = mini(4090, badge.z_index + 6 + i)
@@ -2536,7 +2468,7 @@ func _finish_hub_mission_badge_success(card_key: String, badge_id: int, remove_a
 		callback_badge.modulate = Color.WHITE
 		if remove_after:
 			callback_badge.queue_free()
-	var card := action_cards.get(card_key, {}) as Dictionary
+	var card := host.action_cards.get(card_key, {}) as Dictionary
 	if not card.is_empty():
 		card.erase("mission_badge_tween")
 
@@ -2570,8 +2502,8 @@ func _jump_to_hub_mission_task(mission_index := 0) -> void:
 	_kill_hub_detail_motion_tween()
 	hub_detail_open = false
 	hub_detail_transition_pending = false
-	selected_skill_id = skill_id
-	current_screen = "skill"
+	host.selected_skill_id = skill_id
+	host.current_screen = "skill"
 	host._navigation_shell()._render_screen(false, -1)
 	await host._skill_detail_surface()._scroll_to_activity_card(action_id, true, true)
 
@@ -2612,7 +2544,7 @@ func _sync_hub_detail_mission_cards() -> void:
 	hub_mission_detail_wait_last_seconds = maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now()) if _hub_runtime().hub_missions.size() < active_slots else -1
 
 func _hub_mission_detail_wait_refresh_needed() -> bool:
-	if current_screen != "hub" or not hub_detail_open or _hub_runtime().hub_selected_module_id != "mission":
+	if host.current_screen != "hub" or not hub_detail_open or _hub_runtime().hub_selected_module_id != "mission":
 		hub_mission_detail_wait_last_seconds = -1
 		return false
 	if _hub_runtime().mission_level() <= 0 or _hub_runtime().hub_mission_cooldown_until_unix <= 0:
@@ -2828,10 +2760,7 @@ func _hub_mission_slab_style(pressed: bool, disabled := false) -> StyleBoxFlat:
 		style.bg_color = Color("#8f5b28") if not pressed else Color("#70431f")
 		style.border_color = Color.BLACK
 	style.set_border_width_all(12)
-	style.corner_radius_top_left = 20
-	style.corner_radius_top_right = 20
-	style.corner_radius_bottom_left = 20
-	style.corner_radius_bottom_right = 20
+	style.set_corner_radius_all(20)
 	style.shadow_color = Color(0, 0, 0, 0.22)
 	style.shadow_size = 7
 	style.shadow_offset = Vector2(0, 5)
@@ -2869,7 +2798,7 @@ func _on_hub_module_pressed(module_id: String) -> void:
 	call_deferred("_apply_open_hub_detail_popup", module_id)
 
 func _apply_open_hub_detail_popup(module_id: String) -> void:
-	if current_screen != "hub" or hub_build_mode:
+	if host.current_screen != "hub" or hub_build_mode:
 		hub_detail_transition_pending = false
 		return
 	_hub_runtime().hub_selected_module_id = module_id
@@ -3118,7 +3047,7 @@ func _upgrade_hub_module(module_id: String) -> void:
 	_play_hub_module_build_spend_burst(module_id, int(result.get("spent_logs", 0)), int(result.get("spent_fish", 0)))
 
 func _play_hub_module_build_spend_burst(module_id: String, spent_logs: int, spent_fish: int) -> void:
-	if current_screen != "hub" or (spent_logs <= 0 and spent_fish <= 0):
+	if host.current_screen != "hub" or (spent_logs <= 0 and spent_fish <= 0):
 		return
 	if not is_inside_tree():
 		return
@@ -3208,12 +3137,9 @@ func _hub_offline_cap_seconds() -> int:
 func _hub_tutorial_info_button_style(pressed := false, hovered := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = (Color("#5a96dd") if not hovered else Color("#68a8ef")).darkened(0.08 if pressed else 0.0)
-	style.border_color = COLOR_INK
+	style.border_color = host.COLOR_INK
 	style.set_border_width_all(7)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_corner_radius_all(999)
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0

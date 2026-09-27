@@ -359,10 +359,7 @@ func _berry_mode_title_plate_style() -> StyleBoxFlat:
 	style.bg_color = Color("#d21af2")
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(14)
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.set_corner_radius_all(34)
 	style.shadow_color = Color(0, 0, 0, 0.35)
 	style.shadow_size = 14
 	style.shadow_offset = Vector2(0, 8)
@@ -415,10 +412,7 @@ func _berry_mode_leave_button_style(pressed := false) -> StyleBoxFlat:
 	style.border_width_top = 12
 	style.border_width_right = 12
 	style.border_width_bottom = 28 if not pressed else 14
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.set_corner_radius_all(34)
 	style.shadow_color = Color(0, 0, 0, 0.38)
 	style.shadow_size = 16
 	style.shadow_offset = Vector2(0, 12 if not pressed else 5)
@@ -714,10 +708,7 @@ func _berry_prep_hover_style(pressed := false) -> StyleBoxFlat:
 	style.bg_color = Color(1.0, 0.25, 0.45, 0.14 if pressed else 0.07)
 	style.border_color = Color(1.0, 0.86, 0.50, 0.42 if pressed else 0.28)
 	style.set_border_width_all(8 if pressed else 0)
-	style.corner_radius_top_left = 42
-	style.corner_radius_top_right = 42
-	style.corner_radius_bottom_left = 42
-	style.corner_radius_bottom_right = 42
+	style.set_corner_radius_all(42)
 	return style
 
 
@@ -726,10 +717,7 @@ func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
 	style.bg_color = Color(1, 1, 1, 0.0)
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 42
-	style.corner_radius_top_right = 42
-	style.corner_radius_bottom_left = 42
-	style.corner_radius_bottom_right = 42
+	style.set_corner_radius_all(42)
 	style.shadow_color = Color(0, 0, 0, 0.28)
 	style.shadow_size = 16
 	style.shadow_offset = Vector2(0, 10)

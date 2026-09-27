@@ -61,9 +61,7 @@ var berry_prep := {}
 
 func normalize_id(mat_id: String) -> String:
 	var normalized := mat_id.strip_edges().to_lower()
-	if normalized == "logs" or normalized == "log":
-		return "softwood"
-	return normalized
+	return "softwood" if normalized == "logs" or normalized == "log" else normalized
 
 
 func has_definition(mat_id: String) -> bool:
@@ -75,29 +73,23 @@ func definition(mat_id: String) -> Dictionary:
 
 
 func display_name(mat_id: String) -> String:
-	var def := definition(mat_id)
-	return str(def.get("name", mat_id.capitalize()))
+	return str(definition(mat_id).get("name", mat_id.capitalize()))
 
 
 func icon_path(mat_id: String) -> String:
-	var def := definition(mat_id)
-	return str(def.get("icon", LOG_CURRENCY_ICON_TEXTURE))
+	return str(definition(mat_id).get("icon", LOG_CURRENCY_ICON_TEXTURE))
 
 
 func background_path(mat_id: String) -> String:
-	var def := definition(mat_id)
-	return str(def.get("background", MAT_COLLECTION_STONE_BACKGROUND_TEXTURE))
+	return str(definition(mat_id).get("background", MAT_COLLECTION_STONE_BACKGROUND_TEXTURE))
 
 
 func color(mat_id: String) -> Color:
-	var def := definition(mat_id)
-	return def.get("color", Color("#b98245")) as Color
+	return definition(mat_id).get("color", Color("#b98245")) as Color
 
 
 func rounded_amount(mat_id: String, amount: float) -> float:
-	if normalize_id(mat_id) == "scrapwood":
-		return floor(maxf(0.0, amount) * 10.0 + 0.5) / 10.0
-	return maxf(0.0, amount)
+	return floor(maxf(0.0, amount) * 10.0 + 0.5) / 10.0 if normalize_id(mat_id) == "scrapwood" else maxf(0.0, amount)
 
 
 func amount(mat_id: String) -> float:
@@ -129,7 +121,7 @@ func add_amount(mat_id: String, delta: float) -> float:
 func spend_amount(mat_id: String, cost: float) -> bool:
 	var normalized := normalize_id(mat_id)
 	var safe_cost := maxf(0.0, cost)
-	if amount(normalized) + 0.0001 < safe_cost:
+	if not has_definition(normalized) or amount(normalized) + 0.0001 < safe_cost:
 		return false
 	set_amount(normalized, amount(normalized) - safe_cost)
 	return true
@@ -145,7 +137,7 @@ func amount_text(mat_id: String, amount_override: float, compact_number: Callabl
 	return str(compact_number.call(floor(value + 0.0001), 3))
 
 
-func amount_text_for_host(mat_id: String, amount_override: float = -1.0, host = null) -> String:
+func amount_text_for_host(mat_id: String, amount_override: float = -1.0, _host = null) -> String:
 	return amount_text(mat_id, amount_override, Callable(GameFormatting, "compact_number"), Callable(GameFormatting, "trim_trailing_decimal_zeroes"))
 
 
@@ -161,13 +153,13 @@ func save_wallet() -> Dictionary:
 
 func restore_wallet(data: Dictionary) -> void:
 	wallet = {}
+	legacy_softwood_amount = 0
 	var loaded = data.get("mats", {})
 	if typeof(loaded) == TYPE_DICTIONARY:
 		for raw_mat_id in (loaded as Dictionary).keys():
 			var mat_id := normalize_id(str(raw_mat_id))
-			if has_definition(mat_id):
-				set_amount(mat_id, float((loaded as Dictionary).get(raw_mat_id, 0.0)))
-	var legacy_logs := maxi(0, int(data.get("log_currency", legacy_softwood_amount)))
+			set_amount(mat_id, float((loaded as Dictionary).get(raw_mat_id, 0.0)))
+	var legacy_logs := maxi(0, int(data.get("log_currency", 0)))
 	if legacy_logs > 0 and amount("softwood") <= 0.0001:
 		set_amount("softwood", float(legacy_logs))
 	var softwood_amount := amount("softwood")
@@ -208,9 +200,7 @@ func berry_prep_for_save(action_lookup: Callable) -> Dictionary:
 		var key := str(raw_key)
 		if _berry_prep_action_exists_for_key(key, action_lookup):
 			targets[key] = true
-	if targets.is_empty():
-		return {}
-	return {"targets": targets}
+	return {} if targets.is_empty() else {"targets": targets}
 
 
 func restore_berry_prep(value: Variant, action_lookup: Callable, action_key: Callable) -> void:
@@ -218,7 +208,7 @@ func restore_berry_prep(value: Variant, action_lookup: Callable, action_key: Cal
 		berry_prep = {}
 		return
 	var targets := {}
-	var raw_targets: Variant = (value as Dictionary).get("targets", {})
+	var raw_targets: Variant = (value as Dictionary).get("targets")
 	if typeof(raw_targets) == TYPE_DICTIONARY:
 		for raw_key in (raw_targets as Dictionary).keys():
 			var normalized := _normalized_berry_prep_key(str(raw_key), action_lookup, action_key)
@@ -253,10 +243,15 @@ func toggle_berry_prep_target(skill_id: String, action_id: String, action_lookup
 func consume_berry_prep_bonus(skill_id: String, action_id: String, reward_map: Dictionary, action_lookup: Callable, action_key: Callable) -> Dictionary:
 	if not berry_prep_matches(skill_id, action_id, action_lookup, action_key):
 		return {}
-	if amount("berries") < 1.0 or not spend_amount("berries", 1.0):
+	var bonus_xp := 0
+	for raw_skill_id in reward_map.keys():
+		bonus_xp += maxi(0, int(reward_map.get(raw_skill_id, 0)))
+	if bonus_xp <= 0 or amount("berries") < 1.0 or not spend_amount("berries", 1.0):
 		return {}
-	var bonus_xp := maxi(1, int(ceil(float(_reward_map_total(reward_map)))))
-	reward_map[skill_id] = maxi(0, int(reward_map.get(skill_id, 0))) + bonus_xp
+	for raw_skill_id in reward_map.keys():
+		var reward := maxi(0, int(reward_map.get(raw_skill_id, 0)))
+		if reward > 0:
+			reward_map[raw_skill_id] = reward * 2
 	return {
 		"bonus_xp": bonus_xp,
 		"mat_id": "berries"
@@ -265,9 +260,7 @@ func consume_berry_prep_bonus(skill_id: String, action_id: String, reward_map: D
 
 func berry_prep_result_text(result: Dictionary) -> String:
 	var bonus_xp := maxi(0, int(result.get("bonus_xp", 0)))
-	if bonus_xp <= 0:
-		return ""
-	return "Berry used 1 Berries for +%s XP and doubled loot." % bonus_xp
+	return "" if bonus_xp <= 0 else "Berry used 1 Berries for +%s XP and doubled loot." % bonus_xp
 
 
 func _normalized_berry_prep_key(key: String, action_lookup: Callable, action_key: Callable) -> String:
@@ -283,10 +276,3 @@ func _berry_prep_action_exists_for_key(key: String, action_lookup: Callable) -> 
 		return false
 	var action = action_lookup.call(str(parts[0]), str(parts[1]))
 	return typeof(action) == TYPE_DICTIONARY and not (action as Dictionary).is_empty()
-
-
-func _reward_map_total(reward_map: Dictionary) -> int:
-	var total := 0
-	for raw_value in reward_map.values():
-		total += maxi(0, int(raw_value))
-	return total

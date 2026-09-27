@@ -67,16 +67,6 @@ def paste_cover(base: Image.Image, src: Image.Image, box):
     base.alpha_composite(img.crop((x, y, x + target_w, y + target_h)), (x0, y0))
 
 
-def paste_cover(base: Image.Image, src: Image.Image, box):
-    x, y = xy
-    alpha = src.getchannel("A").point(lambda a: int(a * opacity / 255))
-    shadow = Image.new("RGBA", src.size, (0, 0, 0, 0))
-    shadow.putalpha(alpha)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
-    base.alpha_composite(shadow, (x + offset[0], y + offset[1]))
-    base.alpha_composite(src, xy)
-
-
 def draw_fit_center(draw, text, y, max_width, max_size, min_size, fill, bold=True, stroke_fill=None, stroke_width=0):
     size = max_size
     fnt = font(size, bold)
@@ -111,27 +101,6 @@ def background_from(path, top, bottom):
 def draw_centered(draw, text, y, fnt, fill=INK, width=1080):
     bbox = draw.textbbox((0, 0), text, font=fnt)
     draw.text(((width - (bbox[2] - bbox[0])) // 2, y), text, font=fnt, fill=fill)
-
-
-def draw_wrapped(draw, text, xy, fnt, fill, max_width, line_gap=8):
-    x, y = xy
-    words = text.split()
-    lines = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if draw.textlength(candidate, font=fnt) <= max_width:
-            current = candidate
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    for line in lines:
-        draw.text((x, y), line, font=fnt, fill=fill)
-        y += fnt.size + line_gap
-    return y
 
 
 def load_asset(path: str) -> Image.Image:

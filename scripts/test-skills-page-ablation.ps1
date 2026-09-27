@@ -51,23 +51,14 @@ $baseMain = Get-Content -LiteralPath $mainPath -Raw
 @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 72
 const FRAME_P99_BUDGET_US := 4000
 
 var failures: Array[String] = []
-
-
-func _truthy(value: Variant) -> bool:
-	if value == null:
-		return false
-	if value is bool:
-		return value
-	if value is int or value is float:
-		return value != 0
-	if value is String:
-		return not value.is_empty()
-	return true
 
 
 func _init() -> void:
@@ -86,7 +77,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready_truthy(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
@@ -126,7 +117,7 @@ func _sample_swipe_finalize(scene: Node, start_skill_id: String) -> Dictionary:
 		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
 			slow_frames.append({"frame": frame_times.size() - 1, "us": elapsed})
 	var finalize_us := 0
-	if _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
+	if TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
 		scene._skill_swipe_activity_surface()._complete_skill_swipe_navigation()
 		var finalize_started := Time.get_ticks_usec()
 		await process_frame
@@ -136,8 +127,8 @@ func _sample_swipe_finalize(scene: Node, start_skill_id: String) -> Dictionary:
 	var counts := _counts(scene)
 	return {
 		"action": action_id,
-		"drag_avg_us": _average(frame_times),
-		"drag_p99_us": _percentile(frame_times, 0.99),
+		"drag_avg_us": TestHelpers.average(frame_times),
+		"drag_p99_us": TestHelpers.percentile(frame_times, 0.99),
 		"drag_max_us": _max_value(frame_times),
 		"jank_frames": _count_over(frame_times, 16667),
 		"sample_frames": frame_times.size(),
@@ -147,7 +138,7 @@ func _sample_swipe_finalize(scene: Node, start_skill_id: String) -> Dictionary:
 		"cards": _action_card_count(scene),
 		"real": counts.get("real", 0),
 		"visible_placeholders": counts.get("visible_placeholders", 0),
-		"pending_full_finalize": _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
+		"pending_full_finalize": TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
 		"slow_frames": slow_frames
 	}
 
@@ -200,121 +191,45 @@ func _start_first_available_action(scene: Node, skill_id: String) -> String:
 		var action_id := str(action.get("id", ""))
 		if action_id.is_empty():
 			continue
-		if not _truthy(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", skill_id, action)):
+		if not TestHelpers.truthy(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", skill_id, action)):
 			continue
-		if _truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
+		if TestHelpers.truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
 			continue
-		if _truthy(convergence_runtime.call("_is_convergence_action", action)):
+		if TestHelpers.truthy(convergence_runtime.call("_is_convergence_action", action)):
 			continue
 		var stamina := scene.get("stamina") as Dictionary
-		stamina[skill_id] = float(scene.call("_max_stamina", skill_id))
+		stamina[skill_id] = float(SkillState.host_max_stamina(skill_id, scene))
 		scene.set("stamina", stamina)
-		if _truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
+		if TestHelpers.truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
 			return action_id
 	return ""
 
 
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			_truthy(scene.get("startup_initialized"))
-			and not _truthy(scene.get("boot_detail_render_in_progress"))
-			and not _truthy(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
-
-
 func _counts(scene: Node) -> Dictionary:
 	var result := {"real": 0, "visible_placeholders": 0}
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or scroll.get_child_count() <= 0:
 		return result
-	var stack := _valid_control(scroll.get_child(0))
+	var stack := TestHelpers.valid_control(scroll.get_child(0))
 	if stack == null:
 		return result
 	var viewport_rect := scroll.get_global_rect()
 	for raw_child in stack.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null:
 			continue
 		if child.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
 			continue
-		if _control_intersects_viewport(child, viewport_rect):
-			result["visible_placeholders"] = int(result["visible_placeholders"]) + _placeholder_count(child)
-		if _has_real_content(child):
+		if TestHelpers.control_intersects_viewport(child, viewport_rect):
+			result["visible_placeholders"] = int(result["visible_placeholders"]) + TestHelpers.placeholder_count(child)
+		if TestHelpers.has_real_content(child):
 			result["real"] = int(result["real"]) + 1
 	return result
-
-
-func _control_intersects_viewport(control: Control, viewport_rect: Rect2) -> bool:
-	if not control.visible or control.modulate.a <= 0.01:
-		return false
-	var rect := control.get_global_rect()
-	if rect.size.x <= 1.0 or rect.size.y <= 1.0:
-		return false
-	return rect.intersects(viewport_rect)
-
-
-func _has_real_content(control: Control) -> bool:
-	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
-		return false
-	if not control.visible or control.modulate.a <= 0.01:
-		return false
-	if _truthy(control.get_meta("detail_stack_entry_wrapper", false)):
-		for raw_child in control.get_children():
-			var child := _valid_control(raw_child)
-			if child != null and not _truthy(child.get_meta("detail_lazy_placeholder", false)) and child.visible and child.modulate.a > 0.01:
-				return true
-		return false
-	return maxf(control.size.y, control.custom_minimum_size.y) > 1.0
-
-
-func _placeholder_count(control: Control) -> int:
-	var count := 0
-	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
-		count += 1
-	for raw_child in control.get_children():
-		var child := _valid_control(raw_child)
-		if child != null:
-			count += _placeholder_count(child)
-	return count
-
-
-func _valid_control(value: Variant) -> Control:
-	if value == null:
-		return null
-	if not is_instance_valid(value):
-		return null
-	return value as Control
 
 
 func _action_card_count(scene: Node) -> int:
 	var cards := scene.get("action_cards") as Dictionary
 	return 0 if cards == null else cards.size()
-
-
-func _average(values: Array[int]) -> float:
-	if values.is_empty():
-		return 0.0
-	var total := 0.0
-	for value in values:
-		total += float(value)
-	return total / float(values.size())
-
-
-func _percentile(values: Array[int], pct: float) -> int:
-	if values.is_empty():
-		return 0
-	var sorted := values.duplicate()
-	sorted.sort()
-	var index := clampi(int(floor(float(sorted.size() - 1) * pct)), 0, sorted.size() - 1)
-	return int(sorted[index])
 
 
 func _max_value(values: Array[int]) -> int:

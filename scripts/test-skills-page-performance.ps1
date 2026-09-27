@@ -21,6 +21,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 const SKILLS_TO_SAMPLE := ["thieving", "build", "fight", "fishing", "woodcutting"]
@@ -35,18 +37,6 @@ const FRAME_MAX_BUDGET_US := 12000
 const SWIPE_OVER_120_FRAME_BUDGET := 2
 
 var failures: Array[String] = []
-
-
-func _truthy(value: Variant) -> bool:
-	if value == null:
-		return false
-	if value is bool:
-		return value
-	if value is int or value is float:
-		return value != 0
-	if value is String:
-		return not value.is_empty()
-	return true
 
 
 func _init() -> void:
@@ -65,7 +55,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_boot_ready_truthy(self, BOOT_TIMEOUT_FRAMES, scene):
 		_fail("boot did not become ready")
 		return
 
@@ -138,7 +128,7 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> String:
 
 func _sample_skill_scroll(scene: Node, skill_id: String) -> Dictionary:
 	var action_id := await _prepare_skill_page(scene, skill_id)
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	var max_scroll := 0
 	if scroll != null and scroll.has_method("get_max_scroll_vertical"):
 		max_scroll = int(scroll.call("get_max_scroll_vertical"))
@@ -184,7 +174,7 @@ func _sample_skill_swipes(scene: Node, start_skill_id: String) -> Dictionary:
 		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
 			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
 	var finalize_us := 0
-	if _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
+	if TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
 		scene._skill_swipe_activity_surface()._complete_skill_swipe_navigation()
 		var finalize_started := Time.get_ticks_usec()
 		await process_frame
@@ -194,7 +184,7 @@ func _sample_skill_swipes(scene: Node, start_skill_id: String) -> Dictionary:
 	var sample := _build_sample(scene, "swipe", start_skill_id, action_id, frame_times, slow_frames)
 	sample["preview_pages"] = _preview_page_count(scene)
 	sample["preview_states"] = _preview_state_count(scene)
-	sample["pending_full_finalize"] = _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
+	sample["pending_full_finalize"] = TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
 	sample["finalize_us"] = finalize_us
 	sample["transition_violations"] = transition_violations
 	return sample
@@ -217,7 +207,7 @@ func _sample_rapid_skill_swipes(scene: Node, start_skill_id: String) -> Dictiona
 		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
 			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
 	var finalize_us := 0
-	if _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
+	if TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
 		scene._skill_swipe_activity_surface()._complete_skill_swipe_navigation()
 		var finalize_started := Time.get_ticks_usec()
 		await process_frame
@@ -227,7 +217,7 @@ func _sample_rapid_skill_swipes(scene: Node, start_skill_id: String) -> Dictiona
 	var sample := _build_sample(scene, "rapid_swipe", start_skill_id, action_id, frame_times, slow_frames)
 	sample["preview_pages"] = _preview_page_count(scene)
 	sample["preview_states"] = _preview_state_count(scene)
-	sample["pending_full_finalize"] = _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
+	sample["pending_full_finalize"] = TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
 	sample["queued_offset"] = int(scene.call("_skill_swipe_activity_surface").get("skill_swipe_queued_offset"))
 	sample["finalize_us"] = finalize_us
 	sample["transition_violations"] = transition_violations
@@ -267,19 +257,19 @@ func _record_swipe_transition_violation(scene: Node, frame_index: int, transitio
 
 
 func _swipe_transition_violation(scene: Node, frame_index: int) -> Dictionary:
-	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
+	var cover := TestHelpers.valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	var cover_alpha := 0.0
 	var cover_visible := false
 	var cover_cream := false
 	if cover != null:
 		cover_alpha = cover.modulate.a
 		cover_visible = cover.visible
-		cover_cream = _truthy(cover.get_meta("swipe_cream_transition_cover", false))
+		cover_cream = TestHelpers.truthy(cover.get_meta("swipe_cream_transition_cover", false))
 	var counts := _counts(scene)
 	var cards := _action_card_count(scene)
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	var page_incomplete := (
-		_truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
+		TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize"))
 		or scroll == null
 		or cards <= 0
 		or int(counts.get("visible_placeholders", 0)) > 0
@@ -297,9 +287,9 @@ func _swipe_transition_violation(scene: Node, frame_index: int) -> Dictionary:
 		"cards": cards,
 		"real": counts.get("real", 0),
 		"visible_placeholders": counts.get("visible_placeholders", 0),
-		"engine_visible_placeholders": _truthy(scene.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders")),
-		"engine_ready": _truthy(scene.call("_skill_swipe_activity_surface").call("_skill_detail_ready_to_reveal_under_cover")),
-		"pending_full": _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
+		"engine_visible_placeholders": TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders")),
+		"engine_ready": TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").call("_skill_detail_ready_to_reveal_under_cover")),
+		"pending_full": TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
 		"scroll": scroll != null
 	}
 
@@ -310,10 +300,10 @@ func _build_sample(scene: Node, mode: String, skill_id: String, action_id: Strin
 		"mode": mode,
 		"skill": skill_id,
 		"action": action_id,
-		"avg_us": _average(frame_times),
-		"p50_us": _percentile(frame_times, 0.50),
-		"p95_us": _percentile(frame_times, 0.95),
-		"p99_us": _percentile(frame_times, 0.99),
+		"avg_us": TestHelpers.average(frame_times),
+		"p50_us": TestHelpers.percentile(frame_times, 0.50),
+		"p95_us": TestHelpers.percentile(frame_times, 0.95),
+		"p99_us": TestHelpers.percentile(frame_times, 0.99),
 		"max_us": _max_value(frame_times),
 		"over120_frames": _count_over(frame_times, FRAME_BUDGET_120_US),
 		"jank_frames": _count_over(frame_times, FRAME_BUDGET_60_US),
@@ -329,7 +319,7 @@ func _build_sample(scene: Node, mode: String, skill_id: String, action_id: Strin
 		"visible_placeholders": counts.get("visible_placeholders", 0),
 		"preview_pages": _preview_page_count(scene),
 		"preview_states": _preview_state_count(scene),
-		"pending_full_finalize": _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
+		"pending_full_finalize": TestHelpers.truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
 		"slow_frames": slow_frames
 	}
 	var geometry := _skill_detail_geometry(scene)
@@ -345,34 +335,18 @@ func _start_first_available_action(scene: Node, skill_id: String) -> String:
 		var action_id := str(action.get("id", ""))
 		if action_id.is_empty():
 			continue
-		if not _truthy(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", skill_id, action)):
+		if not TestHelpers.truthy(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", skill_id, action)):
 			continue
-		if _truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
+		if TestHelpers.truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
 			continue
-		if _truthy(convergence_runtime.call("_is_convergence_action", action)):
+		if TestHelpers.truthy(convergence_runtime.call("_is_convergence_action", action)):
 			continue
 		var stamina := scene.get("stamina") as Dictionary
 		stamina[skill_id] = float(SkillState.max_stamina(scene, skill_id))
 		scene.set("stamina", stamina)
-		if _truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
+		if TestHelpers.truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
 			return action_id
 	return ""
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _frame in range(BOOT_TIMEOUT_FRAMES):
-		await process_frame
-		if not is_instance_valid(scene):
-			return false
-		var queue := scene.get("boot_detail_render_queue") as Array
-		if (
-			_truthy(scene.get("startup_initialized"))
-			and not _truthy(scene.get("boot_detail_render_in_progress"))
-			and not _truthy(scene.get("boot_detail_scroll_locked"))
-			and (queue == null or queue.is_empty())
-		):
-			return true
-	return false
 
 
 func _slow_frame_sample(scene: Node, frame_index: int, elapsed_us: int) -> Dictionary:
@@ -400,61 +374,27 @@ func _counts(scene: Node) -> Dictionary:
 		result["plan"] = plan.size()
 		for raw_item in plan:
 			var item := raw_item as Dictionary
-			if _truthy(item.get("mounted", false)):
+			if TestHelpers.truthy(item.get("mounted", false)):
 				result["mounted"] = int(result["mounted"]) + 1
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or scroll.get_child_count() <= 0:
 		return result
-	var stack := _valid_control(scroll.get_child(0))
+	var stack := TestHelpers.valid_control(scroll.get_child(0))
 	if stack == null:
 		return result
 	var viewport_rect := scroll.get_global_rect().intersection(scene.get_viewport().get_visible_rect())
 	for raw_child in stack.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null:
 			continue
 		if child.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
 			continue
-		result["placeholders"] = int(result["placeholders"]) + _placeholder_count(child)
-		if _control_intersects_viewport(child, viewport_rect):
-			result["visible_placeholders"] = int(result["visible_placeholders"]) + _placeholder_count(child)
-		if _has_real_content(child):
+		result["placeholders"] = int(result["placeholders"]) + TestHelpers.placeholder_count(child)
+		if TestHelpers.control_intersects_viewport(child, viewport_rect):
+			result["visible_placeholders"] = int(result["visible_placeholders"]) + TestHelpers.placeholder_count(child)
+		if TestHelpers.has_real_content(child):
 			result["real"] = int(result["real"]) + 1
 	return result
-
-
-func _control_intersects_viewport(control: Control, viewport_rect: Rect2) -> bool:
-	if not control.visible or control.modulate.a <= 0.01:
-		return false
-	var rect := control.get_global_rect()
-	if rect.size.x <= 1.0 or rect.size.y <= 1.0:
-		return false
-	return rect.intersects(viewport_rect)
-
-
-func _has_real_content(control: Control) -> bool:
-	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
-		return false
-	if not control.visible or control.modulate.a <= 0.01:
-		return false
-	if _truthy(control.get_meta("detail_stack_entry_wrapper", false)):
-		for raw_child in control.get_children():
-			var child := _valid_control(raw_child)
-			if child != null and not _truthy(child.get_meta("detail_lazy_placeholder", false)) and child.visible and child.modulate.a > 0.01:
-				return true
-		return false
-	return maxf(control.size.y, control.custom_minimum_size.y) > 1.0
-
-
-func _placeholder_count(control: Control) -> int:
-	var count := 0
-	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
-		count += 1
-	for raw_child in control.get_children():
-		var child := _valid_control(raw_child)
-		if child != null:
-			count += _placeholder_count(child)
-	return count
 
 
 func _skill_detail_geometry(scene: Node) -> Dictionary:
@@ -465,13 +405,13 @@ func _skill_detail_geometry(scene: Node) -> Dictionary:
 		"scroll_parent_is_page": false,
 		"scroll_parent_clips": false,
 		"selected_skill": str(scene.get("selected_skill_id")),
-		"regen_gauge": _valid_control(scene._skill_detail_surface().detail_regen_circle) != null,
-		"fish_gauge": _valid_control(scene._skill_detail_surface().detail_fish_circle) != null,
+		"regen_gauge": TestHelpers.valid_control(scene._skill_detail_surface().detail_regen_circle) != null,
+		"fish_gauge": TestHelpers.valid_control(scene._skill_detail_surface().detail_fish_circle) != null,
 		"header_gauge_slots": _detail_header_gauge_slot_count(scene)
 	}
-	var scroll := _valid_control(scene.get("detail_actions_scroll"))
-	var content := _valid_control(scene.get("skills_content"))
-	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
+	var scroll := TestHelpers.valid_control(scene.get("detail_actions_scroll"))
+	var content := TestHelpers.valid_control(scene.get("skills_content"))
+	var page := TestHelpers.valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
 	if content != null:
 		result["content_h"] = content.size.y
 	if scroll == null:
@@ -479,7 +419,7 @@ func _skill_detail_geometry(scene: Node) -> Dictionary:
 	result["scroll_h"] = scroll.size.y
 	if content != null and content.size.y > 1.0:
 		result["scroll_ratio"] = scroll.size.y / content.size.y
-	var parent := _valid_control(scroll.get_parent())
+	var parent := TestHelpers.valid_control(scroll.get_parent())
 	if parent != null:
 		result["scroll_parent_is_page"] = parent == page
 		result["scroll_parent_clips"] = parent.clip_contents
@@ -487,7 +427,7 @@ func _skill_detail_geometry(scene: Node) -> Dictionary:
 
 
 func _detail_header_gauge_slot_count(scene: Node) -> int:
-	var header_body := _valid_control(scene._skill_detail_surface().detail_header_body)
+	var header_body := TestHelpers.valid_control(scene._skill_detail_surface().detail_header_body)
 	if header_body == null:
 		return 0
 	var row := _find_first_descendant_of_class(header_body, "HBoxContainer")
@@ -495,10 +435,10 @@ func _detail_header_gauge_slot_count(scene: Node) -> int:
 		return 0
 	var count := 0
 	for raw_child in row.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null or not child.visible:
 			continue
-		if _truthy(child.size_flags_horizontal & Control.SIZE_EXPAND):
+		if TestHelpers.truthy(child.size_flags_horizontal & Control.SIZE_EXPAND):
 			continue
 		var rect := child.get_global_rect()
 		if rect.size.x <= 1.0 or rect.size.y <= 1.0:
@@ -511,7 +451,7 @@ func _find_first_descendant_of_class(root: Control, target_class_name: String) -
 	if root == null:
 		return null
 	for raw_child in root.get_children():
-		var child := _valid_control(raw_child)
+		var child := TestHelpers.valid_control(raw_child)
 		if child == null:
 			continue
 		if child.get_class() == target_class_name:
@@ -520,14 +460,6 @@ func _find_first_descendant_of_class(root: Control, target_class_name: String) -
 		if nested != null:
 			return nested
 	return null
-
-
-func _valid_control(value: Variant) -> Control:
-	if value == null:
-		return null
-	if not is_instance_valid(value):
-		return null
-	return value as Control
 
 
 func _action_card_count(scene: Node) -> int:
@@ -543,24 +475,6 @@ func _preview_page_count(scene: Node) -> int:
 func _preview_state_count(scene: Node) -> int:
 	var states := scene.call("_skill_swipe_activity_surface").get("preview_states") as Dictionary
 	return 0 if states == null else states.size()
-
-
-func _average(values: Array[int]) -> float:
-	if values.is_empty():
-		return 0.0
-	var total := 0.0
-	for value in values:
-		total += float(value)
-	return total / float(values.size())
-
-
-func _percentile(values: Array[int], pct: float) -> int:
-	if values.is_empty():
-		return 0
-	var sorted := values.duplicate()
-	sorted.sort()
-	var index := clampi(int(floor(float(sorted.size() - 1) * pct)), 0, sorted.size() - 1)
-	return int(sorted[index])
 
 
 func _max_value(values: Array[int]) -> int:
@@ -677,7 +591,7 @@ func _check_sample(sample: Dictionary) -> void:
 		failures.append("%s/%s did not render real skill detail modules." % [mode, skill_id])
 	if int(sample.get("preview_pages", 0)) > 1:
 		failures.append("%s/%s left too many swipe preview pages cached." % [mode, skill_id])
-	if swipe_like and _truthy(sample.get("pending_full_finalize", false)):
+	if swipe_like and TestHelpers.truthy(sample.get("pending_full_finalize", false)):
 		failures.append("%s/%s did not finish converting the swipe preview to the full detail page." % [mode, skill_id])
 	if swipe_like and int(sample.get("cards", 0)) <= 0:
 		failures.append("%s/%s did not restore interactive action cards after swipe." % [mode, skill_id])
@@ -689,15 +603,15 @@ func _check_sample(sample: Dictionary) -> void:
 		failures.append("%s/%s exposed incomplete swipe content without an opaque cream cover." % [mode, skill_id])
 	if swipe_like:
 		var selected_skill := str(sample.get("selected_skill", skill_id))
-		if selected_skill == "fishing" and not _truthy(sample.get("fish_gauge", false)):
+		if selected_skill == "fishing" and not TestHelpers.truthy(sample.get("fish_gauge", false)):
 			failures.append("%s/%s did not rebuild the fish gauge after swipe." % [mode, selected_skill])
-		elif selected_skill != "fishing" and not _truthy(sample.get("regen_gauge", false)):
+		elif selected_skill != "fishing" and not TestHelpers.truthy(sample.get("regen_gauge", false)):
 			failures.append("%s/%s did not rebuild the regen stamina gauge after swipe." % [mode, selected_skill])
 		if int(sample.get("header_gauge_slots", 0)) != 1:
 			failures.append("%s/%s has %s visible header gauge slots after swipe." % [mode, selected_skill, sample.get("header_gauge_slots", 0)])
-	if swipe_like and _truthy(sample.get("scroll_parent_is_page", false)):
+	if swipe_like and TestHelpers.truthy(sample.get("scroll_parent_is_page", false)):
 		failures.append("%s/%s mounted detail actions directly under the page VBox after swipe." % [mode, skill_id])
-	if swipe_like and not _truthy(sample.get("scroll_parent_clips", false)):
+	if swipe_like and not TestHelpers.truthy(sample.get("scroll_parent_clips", false)):
 		failures.append("%s/%s detail actions parent does not clip after swipe." % [mode, skill_id])
 	if swipe_like and float(sample.get("scroll_ratio", 0.0)) < 0.68:
 		failures.append("%s/%s detail actions viewport is too short after swipe: ratio %.3f." % [mode, skill_id, float(sample.get("scroll_ratio", 0.0))])

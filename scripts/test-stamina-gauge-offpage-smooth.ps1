@@ -21,6 +21,9 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const SAMPLE_FRAMES := 54
@@ -53,14 +56,14 @@ func _run() -> void:
 	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
-	var circle := await _wait_for_regen_circle(scene, "build")
+	var circle := await TestHelpers.wait_for_regen_circle(self, SETTLE_FRAMES, scene, "build")
 	if circle == null:
 		_fail("build stamina gauge did not become ready")
 		return
 
-	var max_stamina := float(scene.call("_max_stamina", "build"))
+	var max_stamina := float(SkillState.host_max_stamina("build", scene))
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 2.0))
-	scene.call("_sync_stamina_bank", "build")
+	SkillState.host_sync_stamina_bank("build", scene)
 	scene.call("_update_ui", 0.0, true)
 	await _wait_test_frame()
 
@@ -88,17 +91,6 @@ func _run() -> void:
 
 	print("stamina-gauge-offpage-smooth-ok changes=%s target=%.4f" % [str(changes), last_target])
 	quit(0)
-
-
-func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
-	for _frame in range(SETTLE_FRAMES * 3):
-		await _wait_test_frame()
-		if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
-			continue
-		var circle := scene._skill_detail_surface().detail_regen_circle as Control
-		if circle != null and circle.is_inside_tree() and circle.visible:
-			return circle
-	return null
 
 
 func _set_skill_stamina(scene: Node, skill_id: String, value: float) -> void:

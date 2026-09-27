@@ -14,6 +14,8 @@ New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
 @"
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const OUT_PATH := "res://.codex-tmp/fight-modules/fight-modules-layout-real-builder-desktop-627x1115.png"
@@ -41,7 +43,7 @@ func _run() -> void:
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
+	if not await TestHelpers.wait_for_startup(self, scene):
 		push_error("main scene did not become capture-ready")
 		quit(1)
 		return
@@ -188,13 +190,6 @@ func _validate_push_ups_card(card_root: Control, cards_clip: Control) -> bool:
 		return false
 	print("push-ups-card-geometry-ok shadow_right=%.1f clip_right=%.1f connectors=%d top_view_depth=%.1f" % [shadow_right, clip_right, points.size(), (connectors.get("depth_offset") as Vector2).y])
 	return true
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _i in range(240):
-		if bool(scene.get("startup_initialized")):
-			return true
-		await process_frame
-	return false
 
 func _hide_capture_overlays(scene: Node) -> void:
 	if scene.has_method("_boot_warmup_runtime"):

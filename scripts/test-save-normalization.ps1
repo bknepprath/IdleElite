@@ -21,6 +21,8 @@ try {
 	@'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const MasteryState := preload("res://scripts/progression/mastery_state.gd")
 
 const MainScript := preload("res://scripts/main.gd")
@@ -268,7 +270,7 @@ func _check_equipped_fishing_tool_save_restore(game: Node) -> void:
 	game.fishing_runtime.equipped_tool_id = "hands"
 	game.call("_restore_fishing_state_from_save", {"selected_skill_id": "fishing", "equipped_fishing_tool_id": "star_rod"})
 	_expect(str(game.fishing_runtime.equipped_tool_id) == "star_rod", "Fishing tool restore should still accept legacy equipped-tool unlocks.")
-	_expect(_truthy(game.fishing_runtime.rod_collected) and _truthy(game.fishing_runtime.reinforced_rod_collected) and _truthy(game.fishing_runtime.star_rod_collected), "Legacy star rod restore should still reconcile collected rod state.")
+	_expect(TestHelpers.truthy_approx(game.fishing_runtime.rod_collected) and TestHelpers.truthy_approx(game.fishing_runtime.reinforced_rod_collected) and TestHelpers.truthy_approx(game.fishing_runtime.star_rod_collected), "Legacy star rod restore should still reconcile collected rod state.")
 
 
 func _check_fishing_rod_collection_save_restore(game: Node) -> void:
@@ -276,12 +278,12 @@ func _check_fishing_rod_collection_save_restore(game: Node) -> void:
 	game.fishing_runtime.reinforced_rod_collected = false
 	game.fishing_runtime.star_rod_collected = true
 	var state_payload := _fishing_state_save_payload(game)
-	_expect(_truthy(state_payload.get("fishing_rod_collected", false)), "Fishing rod save should infer base rod from star rod collection.")
-	_expect(_truthy(state_payload.get("fishing_reinforced_rod_collected", false)), "Fishing rod save should infer reinforced rod from star rod collection.")
+	_expect(TestHelpers.truthy_approx(state_payload.get("fishing_rod_collected", false)), "Fishing rod save should infer base rod from star rod collection.")
+	_expect(TestHelpers.truthy_approx(state_payload.get("fishing_reinforced_rod_collected", false)), "Fishing rod save should infer reinforced rod from star rod collection.")
 	var payload := _save_payload(game, int(game.call("_unix_now")))
-	_expect(_truthy(payload.get("fishing_rod_collected", false)), "Save payload should not write star rod without base rod collection.")
-	_expect(_truthy(payload.get("fishing_reinforced_rod_collected", false)), "Save payload should not write star rod without reinforced rod collection.")
-	_expect(_truthy(payload.get("fishing_star_rod_collected", false)), "Save payload should preserve star rod collection.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_rod_collected", false)), "Save payload should not write star rod without base rod collection.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_reinforced_rod_collected", false)), "Save payload should not write star rod without reinforced rod collection.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_star_rod_collected", false)), "Save payload should preserve star rod collection.")
 
 	game.fishing_runtime.rod_collected = false
 	game.fishing_runtime.reinforced_rod_collected = false
@@ -290,13 +292,13 @@ func _check_fishing_rod_collection_save_restore(game: Node) -> void:
 		"selected_skill_id": "fishing",
 		"fishing_star_rod_collected": true,
 	})
-	_expect(_truthy(game.fishing_runtime.rod_collected) and _truthy(game.fishing_runtime.reinforced_rod_collected) and _truthy(game.fishing_runtime.star_rod_collected), "Fishing rod restore should repair legacy saves where star rod is missing earlier rod flags.")
+	_expect(TestHelpers.truthy_approx(game.fishing_runtime.rod_collected) and TestHelpers.truthy_approx(game.fishing_runtime.reinforced_rod_collected) and TestHelpers.truthy_approx(game.fishing_runtime.star_rod_collected), "Fishing rod restore should repair legacy saves where star rod is missing earlier rod flags.")
 
 	game.fishing_runtime.rod_collected = false
 	game.fishing_runtime.reinforced_rod_collected = true
 	game.fishing_runtime.star_rod_collected = false
 	game.fishing_runtime.reconcile_rod_collection()
-	_expect(_truthy(game.fishing_runtime.rod_collected) and _truthy(game.fishing_runtime.reinforced_rod_collected) and not _truthy(game.fishing_runtime.star_rod_collected), "Fishing rod reconciliation should infer base rod from reinforced rod without granting star rod.")
+	_expect(TestHelpers.truthy_approx(game.fishing_runtime.rod_collected) and TestHelpers.truthy_approx(game.fishing_runtime.reinforced_rod_collected) and not TestHelpers.truthy_approx(game.fishing_runtime.star_rod_collected), "Fishing rod reconciliation should infer base rod from reinforced rod without granting star rod.")
 
 
 func _check_fishing_numeric_state_save(game: Node) -> void:
@@ -323,12 +325,12 @@ func _check_fishing_numeric_state_save(game: Node) -> void:
 func _check_fishing_net_collection_save_restore(game: Node) -> void:
 	game.fishing_runtime.net_collected = true
 	var payload := _save_payload(game, int(game.call("_unix_now")))
-	_expect(_truthy(payload.get("fishing_net_collect_completed", false)), "Fishing net save should keep the canonical collection-completed field.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_net_collect_completed", false)), "Fishing net save should keep the canonical collection-completed field.")
 	_expect(not payload.has("fishing_net_collected"), "Fishing net save should not write the legacy collection field.")
 
 	game.fishing_runtime.net_collected = false
 	game.call("_restore_fishing_state_from_save", {"selected_skill_id": "fishing", "fishing_net_collected": true})
-	_expect(_truthy(game.fishing_runtime.net_collected), "Fishing net restore should still accept the legacy collection field.")
+	_expect(TestHelpers.truthy_approx(game.fishing_runtime.net_collected), "Fishing net restore should still accept the legacy collection field.")
 
 
 func _check_thieving_jail_save(game: Node) -> void:
@@ -353,7 +355,7 @@ func _check_thieving_jail_save(game: Node) -> void:
 	_expect(saved.size() == 1, "Thieving jail save should only keep active valid punishable jail entries.")
 	_expect(saved.has("sneak-past-tip-jar"), "Thieving jail save should preserve the valid active jail.")
 	var jail := saved.get("sneak-past-tip-jar", {}) as Dictionary
-	_expect(_truthy(jail.get("resume_when_free", false)), "Thieving jail save should preserve the resume flag.")
+	_expect(TestHelpers.truthy_approx(jail.get("resume_when_free", false)), "Thieving jail save should preserve the resume flag.")
 	_expect(not jail.has("show_bars"), "Thieving jail save should not write no-bars jail state.")
 
 
@@ -377,10 +379,10 @@ func _check_thieving_jail_restore(game: Node) -> void:
 	_expect(not restored.has("sneak-past-tip-jar-eye-contact"), "Thieving jail restore should drop saved no-bars entries as no jail punishment.")
 	var dictionary_jail := restored.get("sneak-past-tip-jar", {}) as Dictionary
 	var legacy_jail := restored.get("borrow-cookie-permanently", {}) as Dictionary
-	_expect(_truthy(dictionary_jail.get("resume_when_free", false)), "Thieving jail restore should preserve dictionary resume flags.")
+	_expect(TestHelpers.truthy_approx(dictionary_jail.get("resume_when_free", false)), "Thieving jail restore should preserve dictionary resume flags.")
 	_expect(not dictionary_jail.has("show_bars"), "Thieving jail restore should not preserve dictionary no-bars state.")
 	_expect(not legacy_jail.has("show_bars"), "Thieving jail restore should not add no-bars state to legacy scalar entries.")
-	_expect(not _truthy(legacy_jail.get("resume_when_free", true)), "Thieving jail restore should default legacy scalar resume flags to false.")
+	_expect(not TestHelpers.truthy_approx(legacy_jail.get("resume_when_free", true)), "Thieving jail restore should default legacy scalar resume flags to false.")
 
 
 func _check_thieving_trophy_save_restore(game: Node) -> void:
@@ -401,9 +403,9 @@ func _check_thieving_trophy_save_restore(game: Node) -> void:
 	_expect(restored.has("crown_jewel_replica_replica"), "Thieving trophy restore should preserve valid legacy boolean entries.")
 	var spoon := restored.get("complimentary_spoon", {}) as Dictionary
 	var crown := restored.get("crown_jewel_replica_replica", {}) as Dictionary
-	_expect(_truthy(spoon.get("stolen", false)), "Thieving trophy restore should preserve stolen state.")
+	_expect(TestHelpers.truthy_approx(spoon.get("stolen", false)), "Thieving trophy restore should preserve stolen state.")
 	_expect(int(spoon.get("cooldown_until_unix", 0)) == 1234, "Thieving trophy restore should preserve legacy millisecond cooldown field.")
-	_expect(_truthy(crown.get("stolen", false)), "Thieving trophy restore should preserve legacy boolean stolen state.")
+	_expect(TestHelpers.truthy_approx(crown.get("stolen", false)), "Thieving trophy restore should preserve legacy boolean stolen state.")
 
 	thieving_state.set("trophies", {
 		"complimentary_spoon": {"stolen": true, "cooldown_until_unix": 44},
@@ -414,7 +416,7 @@ func _check_thieving_trophy_save_restore(game: Node) -> void:
 	_expect(saved.size() == 1, "Thieving trophy save should only keep valid dictionary trophy entries.")
 	_expect(saved.has("complimentary_spoon"), "Thieving trophy save should preserve valid trophy entries.")
 	var saved_spoon := saved.get("complimentary_spoon", {}) as Dictionary
-	_expect(_truthy(saved_spoon.get("stolen", false)), "Thieving trophy save should preserve stolen state.")
+	_expect(TestHelpers.truthy_approx(saved_spoon.get("stolen", false)), "Thieving trophy save should preserve stolen state.")
 	_expect(int(saved_spoon.get("cooldown_until_unix", 0)) == 44, "Thieving trophy save should preserve cooldown state.")
 
 
@@ -431,8 +433,8 @@ func _check_convergence_module_save_restore(game: Node) -> void:
 	_expect(saved.size() == 1, "Convergence module save should only keep valid convergence module entries.")
 	_expect(saved.has("test-convergence-shrine"), "Convergence module save should preserve valid module ids.")
 	var saved_state := saved.get("test-convergence-shrine", {}) as Dictionary
-	_expect(_truthy(saved_state.get("built", false)), "Convergence module save should preserve built state.")
-	_expect(_truthy(saved_state.get("building", false)), "Convergence module save should preserve building state.")
+	_expect(TestHelpers.truthy_approx(saved_state.get("built", false)), "Convergence module save should preserve built state.")
+	_expect(TestHelpers.truthy_approx(saved_state.get("building", false)), "Convergence module save should preserve building state.")
 	_expect(int(saved_state.get("build_started_unix", -1)) == 0, "Convergence module save should clamp negative build timestamps.")
 	_expect(int(saved_state.get("completions", -1)) == 0, "Convergence module save should clamp negative completion counts.")
 
@@ -492,7 +494,7 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 	_expect(int(saved_wagon.get("spawn_level", -1)) == 25, "Temporary event save should default legacy entries to the event definition level, found %s." % int(saved_wagon.get("spawn_level", -1)))
 	_expect(int(saved_wagon.get("spawned_unix", -1)) == 0, "Temporary event save should clamp negative spawn timestamps.")
 	_expect(int(saved_wagon.get("expires_unix", -1)) == 10, "Temporary event save should preserve expiry timestamps after spawn.")
-	_expect(_truthy(saved_wagon.get("completed", false)), "Temporary event save should preserve completion state.")
+	_expect(TestHelpers.truthy_approx(saved_wagon.get("completed", false)), "Temporary event save should preserve completion state.")
 	_expect(int(saved_wagon.get("completed_unix", -1)) == 0, "Temporary event save should clamp negative completion timestamps.")
 	_expect(saved_cooldowns.size() == 2 and saved_cooldowns.has("ambush-log-wagon") and saved_cooldowns.has("suspicious-picnic-basket"), "Temporary event save should keep only known cooldown ids.")
 	_expect(int(saved_cooldowns.get("suspicious-picnic-basket", -1)) == 0, "Temporary event save should clamp negative cooldown timestamps.")
@@ -1056,7 +1058,7 @@ func _check_hub_module_save_restore(game: Node) -> void:
 	var barn := saved.get("barn", {}) as Dictionary
 	var pond := saved.get("pond", {}) as Dictionary
 	_expect(int(barn.get("level", -1)) == 4, "Hub module save should clamp levels to the max module level.")
-	_expect(_truthy(barn.get("building", false)), "Hub module save should preserve building state.")
+	_expect(TestHelpers.truthy_approx(barn.get("building", false)), "Hub module save should preserve building state.")
 	_expect(int(barn.get("build_started_unix_msec", 0)) == 1234, "Hub module save should accept legacy build_started_msec.")
 	_expect(int(pond.get("level", -1)) == 0, "Hub module save should clamp negative levels.")
 	_expect(int(pond.get("build_started_unix_msec", -1)) == 0, "Hub module save should clamp negative build timestamps.")
@@ -1247,24 +1249,24 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(int(_save_payload_value(game, "leaderboard_last_submit_unix")) == 0, "Leaderboard submit timestamp save should clamp negative values.")
 	_expect(str(_save_payload_value(game, "leaderboard_display_name")) == "A Name That Is T", "Leaderboard display-name save should sanitize and truncate names.")
 	_expect(str(_save_payload_value(game, "leaderboard_name_key")).is_empty(), "Leaderboard name-key save should drop invalid keys.")
-	_expect(not _truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear unverified claims.")
-	_expect(not _truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear unverified claim verification.")
+	_expect(not TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear unverified claims.")
+	_expect(not TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear unverified claim verification.")
 
 	game.leaderboard_profile.display_name = "Mira Stone"
 	game.leaderboard_profile.name_key = ""
 	game.leaderboard_profile.profile_claimed = true
 	game.leaderboard_profile.name_claim_verified = true
 	_expect(str(_save_payload_value(game, "leaderboard_name_key")) == "mira_stone", "Leaderboard profile save should derive a missing verified claim key from the display name.")
-	_expect(_truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should preserve valid verified claims.")
-	_expect(_truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should preserve valid claim verification.")
+	_expect(TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should preserve valid verified claims.")
+	_expect(TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should preserve valid claim verification.")
 
 	game.leaderboard_profile.display_name = "guest1234"
 	game.leaderboard_profile.name_key = "guest1234"
 	game.leaderboard_profile.profile_claimed = true
 	game.leaderboard_profile.name_claim_verified = true
 	_expect(str(_save_payload_value(game, "leaderboard_name_key")).is_empty(), "Leaderboard profile save should not persist guest name keys.")
-	_expect(not _truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear guest profile claims.")
-	_expect(not _truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear guest profile verification.")
+	_expect(not TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear guest profile claims.")
+	_expect(not TestHelpers.truthy_approx(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear guest profile verification.")
 
 	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == 19, "Leaderboard avatar save should clamp to a valid avatar index.")
 	_expect(str(_save_payload_value(game, "leaderboard_player_id")).is_empty(), "Leaderboard player-id save should drop invalid ids.")
@@ -1281,7 +1283,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
 	_expect(str(game.leaderboard_profile.display_name) == "Mira Stone", "Leaderboard profile restore should preserve valid display names.")
 	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should derive missing verified claim keys.")
-	_expect(_truthy(game.leaderboard_profile.profile_claimed) and _truthy(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should preserve valid verified claims.")
+	_expect(TestHelpers.truthy_approx(game.leaderboard_profile.profile_claimed) and TestHelpers.truthy_approx(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should preserve valid verified claims.")
 	_expect(int(game.leaderboard_profile.avatar_index) == 19, "Leaderboard profile restore should clamp avatar indexes.")
 	var generated_player_id := str(game.leaderboard_profile.player_id)
 	_expect(not generated_player_id.is_empty() and generated_player_id != " bad id! ", "Leaderboard profile restore should regenerate invalid player ids.")
@@ -1293,7 +1295,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 		"leaderboard_name_claim_verified": true,
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
 	_expect(str(game.leaderboard_profile.name_key).is_empty(), "Leaderboard profile restore should clear guest name keys.")
-	_expect(not _truthy(game.leaderboard_profile.profile_claimed) and not _truthy(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should clear guest profile claims.")
+	_expect(not TestHelpers.truthy_approx(game.leaderboard_profile.profile_claimed) and not TestHelpers.truthy_approx(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should clear guest profile claims.")
 
 	LeaderboardProfile.restore_profile_metadata_from_save(game, {
 		"leaderboard_display_name": "Mira Stone",
@@ -1302,7 +1304,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 		"leaderboard_name_claim_verified": false,
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
 	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should retain a matching unverified name key as a recovery hint.")
-	_expect(not _truthy(game.leaderboard_profile.profile_claimed), "Leaderboard profile restore should clear unverified profile claims.")
+	_expect(not TestHelpers.truthy_approx(game.leaderboard_profile.profile_claimed), "Leaderboard profile restore should clear unverified profile claims.")
 	LeaderboardProfile.restore_profile_metadata_from_save(game, {
 		"leaderboard_player_id": "player_1234",
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
@@ -1380,8 +1382,8 @@ func _check_chat_metadata_save_restore(game: Node) -> void:
 	chat_runtime.set("chat_stream_next_connect_unix", -5)
 	chat_runtime.set("chat_last_opened_created_at", -20)
 	chat_runtime.set("chat_last_opened_message_id", long_id)
-	# Use one payload with the captured clock value. Rebuilding it for every field can
-	# cross a wall-clock second and make the exact retry-boundary assertions flaky.
+
+
 	var saved_metadata := _save_payload(game, now)
 	_expect(int(saved_metadata.get("chat_last_send_unix", -1)) == 0, "Chat last-send save should clamp negative timestamps.")
 	_expect(int(saved_metadata.get("chat_stream_retry_unix", 0)) == now + 30, "Chat retry save should cap future retry timestamps.")
@@ -1441,10 +1443,10 @@ func _check_resource_and_audio_settings_save(game: Node) -> void:
 	_expect(float(_save_payload_value(game, "sfx_volume")) == 0.0, "SFX volume save should clamp negative values.")
 	game.set("auto_unlock_lockpads_enabled", true)
 	var payload := _save_payload(game, int(game.call("_unix_now")))
-	_expect(_truthy(payload.get("auto_unlock_lockpads_enabled", false)), "Auto-unlock lockpad setting should be saved when enabled.")
+	_expect(TestHelpers.truthy_approx(payload.get("auto_unlock_lockpads_enabled", false)), "Auto-unlock lockpad setting should be saved when enabled.")
 	game.set("show_stamina_decimal", true)
 	payload = _save_payload(game, int(game.call("_unix_now")))
-	_expect(_truthy(payload.get("show_stamina_decimal", false)), "Stamina decimal setting should be saved when enabled.")
+	_expect(TestHelpers.truthy_approx(payload.get("show_stamina_decimal", false)), "Stamina decimal setting should be saved when enabled.")
 
 
 func _check_audio_settings_restore(game: Node) -> void:
@@ -1483,8 +1485,8 @@ func _check_audio_settings_restore(game: Node) -> void:
 		"stamina_bank": {},
 		"saved_at": int(game.call("_unix_now")),
 	})
-	_expect(_truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should restore when present.")
-	_expect(_truthy(game.get("show_stamina_decimal")), "Stamina decimal setting should restore when present.")
+	_expect(TestHelpers.truthy_approx(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should restore when present.")
+	_expect(TestHelpers.truthy_approx(game.get("show_stamina_decimal")), "Stamina decimal setting should restore when present.")
 	var migrated_payload := _save_payload(game, int(game.call("_unix_now")))
 	_expect(not migrated_payload.has("offline_clock_guard_tainted"), "Old offline clock guard taint should be dropped when existing saves are written again.")
 	_expect(not migrated_payload.has("offline_clock_guard_last_rejected_unix"), "Old offline clock guard rejection timestamps should be dropped when existing saves are written again.")
@@ -1521,20 +1523,20 @@ func _check_audio_settings_restore(game: Node) -> void:
 		"stamina_bank": {},
 		"saved_at": int(game.call("_unix_now")),
 	})
-	_expect(not _truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default off for existing saves.")
-	_expect(not _truthy(game.get("show_stamina_decimal")), "Stamina decimal setting should default off for new saves.")
+	_expect(not TestHelpers.truthy_approx(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default off for existing saves.")
+	_expect(not TestHelpers.truthy_approx(game.get("show_stamina_decimal")), "Stamina decimal setting should default off for new saves.")
 
 
 func _check_god_mode_save(game: Node) -> void:
 	game.set("god_mode_enabled", true)
-	_expect(_truthy(_save_payload_value(game, "god_mode_enabled")), "Debug saves should preserve enabled God Mode.")
+	_expect(TestHelpers.truthy_approx(_save_payload_value(game, "god_mode_enabled")), "Debug saves should preserve enabled God Mode.")
 
 
 func _check_test_profile_save_repair(game: Node) -> void:
 	var save_runtime = game.call("_save_runtime")
 	var tainted_save := {"god_mode_save_tainted": true, "god_mode_enabled": true}
-	_expect(not _truthy(save_runtime.call("_repair_save_for_regular_play", tainted_save)), "Debug builds should not repair an explicit God Mode test save.")
-	_expect(_truthy(tainted_save.get("god_mode_save_tainted", false)) and _truthy(tainted_save.get("god_mode_enabled", false)), "Debug builds should preserve test-only save markers.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_repair_save_for_regular_play", tainted_save)), "Debug builds should not repair an explicit God Mode test save.")
+	_expect(TestHelpers.truthy_approx(tainted_save.get("god_mode_save_tainted", false)) and TestHelpers.truthy_approx(tainted_save.get("god_mode_enabled", false)), "Debug builds should preserve test-only save markers.")
 	var maxed_skills := {}
 	var played_maxed_skills := {}
 	var level_99_xp := SkillState.xp_for_level(99)
@@ -1558,7 +1560,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 	_expect(maxed_save == untouched_maxed_save, "Ordinary all-99 XP and unlocks must remain byte-for-byte equivalent in memory.")
 	var authorized_maxed_save := maxed_save.duplicate(true)
 	authorized_maxed_save[SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY] = SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_MARKER
-	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", authorized_maxed_save)), "A support-authorized all-99 repair should still be available.")
+	_expect(TestHelpers.truthy_approx(save_runtime.call("_repair_save_for_regular_play", authorized_maxed_save)), "A support-authorized all-99 repair should still be available.")
 	var repaired_skills := authorized_maxed_save.get("skills", {}) as Dictionary
 	for raw_skill_id in repaired_skills.keys():
 		var repaired_skill := repaired_skills.get(raw_skill_id, {}) as Dictionary
@@ -1593,7 +1595,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 	_expect(save_runtime.call("_repair_save_for_regular_play", authorized_trophy_save) == true, "A support-authorized trophy repair should still run.")
 	var repaired_trophies := authorized_trophy_save.get("thieving_trophies", {}) as Dictionary
 	var repaired_spoon := repaired_trophies.get("complimentary_spoon", {}) as Dictionary
-	_expect(not _truthy(repaired_spoon.get("stolen", true)), "Impossible Thieving trophy repair should clear stolen state.")
+	_expect(not TestHelpers.truthy_approx(repaired_spoon.get("stolen", true)), "Impossible Thieving trophy repair should clear stolen state.")
 	_expect(int(repaired_spoon.get("cooldown_until_unix", -1)) == 0, "Impossible Thieving trophy repair should clear cooldown state.")
 	var valid_trophy_save := {
 		"onboarding_tutorial_complete": true,
@@ -1617,8 +1619,8 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		},
 	}
 	_expect(save_runtime.call("_repair_save_for_regular_play", mixed_tutorial_save) == true, "Saves with real progress should not remain stuck in tutorial mode.")
-	_expect(_truthy(mixed_tutorial_save.get("onboarding_tutorial_complete", false)), "Tutorial-progress mismatch repair should complete onboarding.")
-	_expect(_truthy(mixed_tutorial_save.get("skill_swipe_tip_seen", false)), "Tutorial-progress mismatch repair should unlock skill navigation.")
+	_expect(TestHelpers.truthy_approx(mixed_tutorial_save.get("onboarding_tutorial_complete", false)), "Tutorial-progress mismatch repair should complete onboarding.")
+	_expect(TestHelpers.truthy_approx(mixed_tutorial_save.get("skill_swipe_tip_seen", false)), "Tutorial-progress mismatch repair should unlock skill navigation.")
 	var latched_tutorial_save := {
 		"onboarding_tutorial_complete": false,
 		"tutorial_active": true,
@@ -1639,8 +1641,8 @@ func _check_test_profile_save_repair(game: Node) -> void:
 	save_runtime.call("_restore_onboarding_progression_from_save", latched_tutorial_save)
 	var level_two_action := game.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
 	var deferred_action := game.call("_action_data", "fight", "box-suspicious-feed-sack") as Dictionary
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_tutorial_complete")), "Level-two onboarding restore should complete inline tutorial saves.")
-	_expect(not _truthy(game.call("_onboarding_runtime").get("tutorial_gate_latch_only_until_swipe")), "Level-two onboarding restore should not keep the obsolete boxed swipe latch active.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_tutorial_complete")), "Level-two onboarding restore should complete inline tutorial saves.")
+	_expect(not TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("tutorial_gate_latch_only_until_swipe")), "Level-two onboarding restore should not keep the obsolete boxed swipe latch active.")
 	_expect(game.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action) == true, "Level-two onboarding latch restore should keep the level 2 fight module visible.")
 	_expect(game.call("_onboarding_runtime").call("_tutorial_should_defer_action_until_skill_swipe", "fight", deferred_action) != true, "Level-two onboarding latch restore should not defer post-gate modules after completing the repaired tutorial save.")
 	var legacy_save := {"skills": {"fight": {"xp": 40, "level": 2}}}
@@ -1768,9 +1770,9 @@ func _check_action_key_save(game: Node) -> void:
 		"silver_opportunity_tip_action_key": "fishing:dip-a-tidepool-minnow"
 	})
 	var onboarding_runtime = game.call("_onboarding_runtime")
-	_expect(_truthy(onboarding_runtime.get("lock_click_tip_seen")), "Tip metadata restore should preserve lock-click tip state.")
-	_expect(_truthy(onboarding_runtime.get("passive_module_tip_seen")), "Tip metadata restore should preserve passive-module tip state.")
-	_expect(_truthy(onboarding_runtime.get("silver_opportunity_tip_seen")), "Tip metadata restore should preserve silver-opportunity tip state.")
+	_expect(TestHelpers.truthy_approx(onboarding_runtime.get("lock_click_tip_seen")), "Tip metadata restore should preserve lock-click tip state.")
+	_expect(TestHelpers.truthy_approx(onboarding_runtime.get("passive_module_tip_seen")), "Tip metadata restore should preserve passive-module tip state.")
+	_expect(TestHelpers.truthy_approx(onboarding_runtime.get("silver_opportunity_tip_seen")), "Tip metadata restore should preserve silver-opportunity tip state.")
 	_expect(str(onboarding_runtime.get("silver_opportunity_tip_action_key")) == "fishing:shallows", "Tip metadata restore should canonicalize silver-opportunity action keys.")
 	save_runtime.call("_restore_tip_metadata_from_save", {"silver_opportunity_tip_action_key": "malformed-key"})
 	_expect(str(onboarding_runtime.get("silver_opportunity_tip_action_key")).is_empty(), "Tip metadata restore should clear malformed silver-opportunity action keys.")
@@ -1830,7 +1832,7 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 		"saved_at": int(game.call("_unix_now")),
 	})
 	var manual_unlocks := game.get("manual_activity_unlocks") as Dictionary
-	_expect(_truthy(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Manual activity unlock restore should preserve saved unlocked actions.")
+	_expect(TestHelpers.truthy_approx(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Manual activity unlock restore should preserve saved unlocked actions.")
 	_expect(not manual_unlocks.has("fight:wrestle-stuck-gate-latch"), "Manual activity unlock restore should not preserve false unlock entries.")
 	_expect(not manual_unlocks.has("fight:not-a-real-action"), "Manual activity unlock restore should drop unknown action ids.")
 	var kicked_action := game.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
@@ -1839,9 +1841,9 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 	_expect(game.call("_activity_unlock_runtime").call("_can_unlock_action", "fight", gate_action) == true, "Level-met unsaved actions should be ready to unlock after migration.")
 	_expect(game.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", gate_action) != true, "Level-met unsaved actions should not silently become playable after migration.")
 	var gate_lock_state := game.call("_activity_unlock_runtime").call("_action_lock_cluster_state", "fight", gate_action) as Dictionary
-	_expect(_truthy(gate_lock_state.get("all_met", false)) and int(gate_lock_state.get("ready_count", 0)) == int(gate_lock_state.get("total", -1)), "Level-met unsaved actions should expose an all-ready lock cluster state after migration.")
+	_expect(TestHelpers.truthy_approx(gate_lock_state.get("all_met", false)) and int(gate_lock_state.get("ready_count", 0)) == int(gate_lock_state.get("total", -1)), "Level-met unsaved actions should expose an all-ready lock cluster state after migration.")
 	var saved_manual := game.call("_activity_unlock_runtime").call("_manual_activity_unlocks_for_save") as Dictionary
-	_expect(saved_manual.size() == 1 and _truthy(saved_manual.get("fight:kick-mud-off-boot", false)), "Manual activity unlock save should serialize only canonical true unlocks.")
+	_expect(saved_manual.size() == 1 and TestHelpers.truthy_approx(saved_manual.get("fight:kick-mud-off-boot", false)), "Manual activity unlock save should serialize only canonical true unlocks.")
 
 	_prime_core_skill_state(game)
 	game.call("_save_runtime").call("_load_game_core", {
@@ -1858,8 +1860,8 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 		"saved_at": int(game.call("_unix_now")),
 	})
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(_truthy(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Legacy saves without a manual unlock map should keep old level-unlocked mono actions playable.")
-	_expect(not _truthy(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
+	_expect(TestHelpers.truthy_approx(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Legacy saves without a manual unlock map should keep old level-unlocked mono actions playable.")
+	_expect(not TestHelpers.truthy_approx(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
 
 
 func _check_player_progress_persistence_edges(game: Node) -> void:
@@ -1870,7 +1872,7 @@ func _check_player_progress_persistence_edges(game: Node) -> void:
 	var save_runtime := _save_runtime(game)
 	save_runtime.save_dirty = false
 	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "kick-mud-off-boot") == true, "A ready activity lock should finalize successfully.")
-	_expect(not _truthy(save_runtime.save_dirty), "Finalizing an activity lock should persist immediately instead of waiting for autosave.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.save_dirty), "Finalizing an activity lock should persist immediately instead of waiting for autosave.")
 
 
 func _check_fishing_method_unlock_routing(game: Node) -> void:
@@ -1896,7 +1898,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	game.call("_activity_unlock_runtime").call("_invalidate_manual_activity_unlock_trust")
 	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fishing", "rocks", "fishing method unlock") == true, "Fishing method lock click persistence should accept level-ready Rocks.")
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(_truthy(manual_unlocks.get("fishing:rocks", false)), "Fishing method lock clicks should persist the unlock immediately before page/tool refresh can discard the ceremony node.")
+	_expect(TestHelpers.truthy_approx(manual_unlocks.get("fishing:rocks", false)), "Fishing method lock clicks should persist the unlock immediately before page/tool refresh can discard the ceremony node.")
 	var rocks_action := game.call("_action_data", "fishing", "rocks") as Dictionary
 	_expect(game.call("_activity_unlock_runtime").call("_is_action_unlocked", "fishing", rocks_action) == true, "Immediately persisted fishing method unlocks should render as unlocked on rebuilt fishing location tiles.")
 	var live_panel := Panel.new()
@@ -1924,7 +1926,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	}
 	game.get("fishing_ui_surface")._sync_fishing_method_card_unlocked_live(live_method_card)
 	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted through the manual fishing hit route.")
-	_expect(not _truthy(live_method_card.get("unlock_ready_pending", true)) and not _truthy(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
+	_expect(not TestHelpers.truthy_approx(live_method_card.get("unlock_ready_pending", true)) and not TestHelpers.truthy_approx(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
 	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
 	_expect(str(game.call("_onboarding_runtime").call("_tutorial_preview_after_manual_unlock", "fishing", "rocks")) == "dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
 	_expect(str(game.fishing_runtime.global_teaser_location_key(game, "fishing", FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS)) == "pier.dock-cup", "After Rocks is unlocked, the fishing teaser should move to the Pier Dock Edge location tile.")
@@ -2015,13 +2017,13 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	var saved_order := module_ui_runtime.pinned_order_for_save(Callable(game.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse")) as Array
 	_expect(saved_order == [unlocked_key], "Module UI pin save should keep only unique unlocked module keys.")
 	var saved_collapsed := module_ui_runtime.collapsed_for_save(Callable(game.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse")) as Dictionary
-	_expect(saved_collapsed.size() == 1 and _truthy(saved_collapsed.get(unlocked_key, false)), "Module UI collapse save should keep only intentional unlocked module flags.")
+	_expect(saved_collapsed.size() == 1 and TestHelpers.truthy_approx(saved_collapsed.get(unlocked_key, false)), "Module UI collapse save should keep only intentional unlocked module flags.")
 	_expect(str(module_ui_runtime.sort_mode_for_save()) == "level_reverse", "Module UI sort save should preserve valid sort mode.")
 	var module_ui_payload := _save_payload(game, int(game.call("_unix_now")))
 	_expect(int(module_ui_payload.get("module_ui_collapse_save_version", 0)) == ModuleUiRuntime.COLLAPSE_SAVE_VERSION, "Save payload should include the current module collapse save version.")
 	_expect((module_ui_payload.get("module_ui_pinned_order", []) as Array) == [unlocked_key], "Save payload should serialize normalized pinned module order.")
 	var payload_collapsed := module_ui_payload.get("module_ui_collapsed", {}) as Dictionary
-	_expect(payload_collapsed.size() == 1 and _truthy(payload_collapsed.get(unlocked_key, false)), "Save payload should serialize normalized collapsed module flags.")
+	_expect(payload_collapsed.size() == 1 and TestHelpers.truthy_approx(payload_collapsed.get(unlocked_key, false)), "Save payload should serialize normalized collapsed module flags.")
 	_expect(str(module_ui_payload.get("module_ui_sort_mode", "")) == "level_reverse", "Save payload should serialize normalized module sort mode.")
 	module_ui_runtime.set("pin_preview_tokens", {unlocked_key: 7})
 	var restore_pinned_order := [locked_key, hub_key, locked_heist_key, unavailable_offer_key, unlocked_key, "bad"]
@@ -2038,7 +2040,7 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	var restored_order := module_ui_runtime.get("pinned_order") as Array
 	var restored_collapsed := module_ui_runtime.get("collapsed") as Dictionary
 	_expect(restored_order == [unlocked_key], "Module UI pin restore should filter locked and malformed keys.")
-	_expect(restored_collapsed.size() == 1 and _truthy(restored_collapsed.get(unlocked_key, false)), "Module UI collapse restore should filter locked and malformed keys.")
+	_expect(restored_collapsed.size() == 1 and TestHelpers.truthy_approx(restored_collapsed.get(unlocked_key, false)), "Module UI collapse restore should filter locked and malformed keys.")
 	_expect(str(module_ui_runtime.get("sort_mode")) == "level", "Module UI sort restore should fall back to default for invalid modes.")
 	_expect((module_ui_runtime.get("pin_preview_tokens") as Dictionary).is_empty(), "Module UI restore should clear transient pin preview tokens.")
 	module_ui_runtime.set("collapsed", {unlocked_key: true})
@@ -2064,10 +2066,10 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 
 
 func _check_auto_unlock_lockpads(game: Node) -> void:
-	var previous_startup := _truthy(game.get("startup_initialized"))
+	var previous_startup := TestHelpers.truthy_approx(game.get("startup_initialized"))
 	var previous_screen := str(game.get("current_screen"))
 	var previous_selected := str(game.get("selected_skill_id"))
-	var previous_auto_unlock := _truthy(game.get("auto_unlock_lockpads_enabled"))
+	var previous_auto_unlock := TestHelpers.truthy_approx(game.get("auto_unlock_lockpads_enabled"))
 	game.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
 	_prime_core_skill_state(game)
 	game.set("startup_initialized", true)
@@ -2219,7 +2221,7 @@ func _check_auto_eat_fish_per_skill_save_restore(game: Node) -> void:
 	fishing_runtime.call("set_auto_eat_fish_enabled_for_skill", game, "woodcutting", true)
 	fishing_runtime.call("set_auto_eat_fish_enabled_for_skill", game, "fight", false)
 	var saved := fishing_runtime.call("auto_eat_fish_enabled_by_skill_for_save", game) as Dictionary
-	_expect(_truthy(saved.get("woodcutting", false)), "Auto-eat fish save should keep the enabled skill.")
+	_expect(TestHelpers.truthy_approx(saved.get("woodcutting", false)), "Auto-eat fish save should keep the enabled skill.")
 	_expect(not saved.has("fight"), "Auto-eat fish save should omit disabled skills.")
 	_expect(not saved.has("fishing"), "Auto-eat fish save should omit fishing.")
 
@@ -2230,14 +2232,14 @@ func _check_auto_eat_fish_per_skill_save_restore(game: Node) -> void:
 			"fishing": true,
 		}
 	})
-	_expect(_truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fight")), "Auto-eat fish restore should enable the saved skill.")
-	_expect(not _truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "woodcutting")), "Auto-eat fish restore should keep saved disabled skills off.")
-	_expect(not _truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fishing")), "Auto-eat fish restore should not enable fishing.")
+	_expect(TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fight")), "Auto-eat fish restore should enable the saved skill.")
+	_expect(not TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "woodcutting")), "Auto-eat fish restore should keep saved disabled skills off.")
+	_expect(not TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fishing")), "Auto-eat fish restore should not enable fishing.")
 
 	fishing_runtime.call("restore_auto_eat_fish_enabled_from_save", game, {"auto_eat_fish_enabled": true})
-	_expect(_truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fight")), "Legacy auto-eat save should migrate fight to enabled.")
-	_expect(_truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "woodcutting")), "Legacy auto-eat save should migrate woodcutting to enabled.")
-	_expect(not _truthy(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fishing")), "Legacy auto-eat save should still leave fishing off.")
+	_expect(TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fight")), "Legacy auto-eat save should migrate fight to enabled.")
+	_expect(TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "woodcutting")), "Legacy auto-eat save should migrate woodcutting to enabled.")
+	_expect(not TestHelpers.truthy_approx(fishing_runtime.call("auto_eat_fish_enabled_for_skill", game, "fishing")), "Legacy auto-eat save should still leave fishing off.")
 
 
 func _check_achievement_toast_seen_ids_save_restore(game: Node) -> void:
@@ -2246,22 +2248,22 @@ func _check_achievement_toast_seen_ids_save_restore(game: Node) -> void:
 		"activity_crit_seen": false,
 		"activity_mega_crit_seen": true
 	})
-	_expect(_truthy(game.get("activity_crit_seen")), "Activity crit restore should mark crit seen when mega crit has been seen.")
-	_expect(_truthy(game.get("activity_mega_crit_seen")), "Activity crit restore should preserve mega crit state.")
+	_expect(TestHelpers.truthy_approx(game.get("activity_crit_seen")), "Activity crit restore should mark crit seen when mega crit has been seen.")
+	_expect(TestHelpers.truthy_approx(game.get("activity_mega_crit_seen")), "Activity crit restore should preserve mega crit state.")
 	game.call("_save_runtime").call("_restore_activity_crit_metadata_from_save", {
 		"activity_crit_seen": false,
 		"activity_mega_crit_seen": false
 	})
-	_expect(not _truthy(game.get("activity_crit_seen")), "Activity crit restore should preserve unseen crit state.")
-	_expect(not _truthy(game.get("activity_mega_crit_seen")), "Activity crit restore should preserve unseen mega crit state.")
+	_expect(not TestHelpers.truthy_approx(game.get("activity_crit_seen")), "Activity crit restore should preserve unseen crit state.")
+	_expect(not TestHelpers.truthy_approx(game.get("activity_mega_crit_seen")), "Activity crit restore should preserve unseen mega crit state.")
 	game.call("_save_runtime").call("_restore_boot_visible_tip_flags_from_save", {
 		"activity_start_tip_seen": true,
 		"hub_tutorial_tip_seen": true
 	})
-	_expect(_truthy(game.call("_onboarding_runtime").get("activity_start_tip_seen")), "Boot-visible tip restore should preserve activity-start tip state.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("activity_start_tip_seen")), "Boot-visible tip restore should preserve activity-start tip state.")
 	_expect(game.call("_hub_surface").get("hub_tutorial_tip_seen") == true, "Boot-visible tip restore should preserve hub tutorial tip state.")
 	game.call("_save_runtime").call("_restore_boot_visible_tip_flags_from_save", {})
-	_expect(not _truthy(game.call("_onboarding_runtime").get("activity_start_tip_seen")), "Boot-visible tip restore should default missing activity-start tip state to false.")
+	_expect(not TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("activity_start_tip_seen")), "Boot-visible tip restore should default missing activity-start tip state to false.")
 	_expect(game.call("_hub_surface").get("hub_tutorial_tip_seen") != true, "Boot-visible tip restore should default missing hub tutorial tip state to false.")
 
 	save_runtime.set("achievement_toast_seen_ids", {
@@ -2359,10 +2361,10 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	save_runtime.call("_restore_onboarding_progression_from_save", {"onboarding_fight_auto_run_message_shown": true})
 	_expect(int(game.call("_onboarding_runtime").get("onboarding_starter_action_completion_count")) == 1, "Onboarding restore should backfill starter completions from the auto-run message.")
 	save_runtime.call("_restore_onboarding_progression_from_save", {"onboarding_starter_action_completion_count": 2})
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")), "Onboarding restore should reveal the fight summary instead of preserving the obsolete header reveal backfill.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")), "Onboarding restore should reveal the fight summary instead of preserving the obsolete header reveal backfill.")
 	save_runtime.call("_restore_onboarding_progression_from_save", {"skill_swipe_tip_seen": true})
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_swipe_tip_eligible")) and _truthy(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding restore should keep swipe unlocks implied by seen swipe tips.")
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")) and _truthy(game.call("_onboarding_runtime").get("onboarding_fight_action_stats_revealed")), "Onboarding restore should keep fight reveal state implied by seen swipe tips.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_swipe_tip_eligible")) and TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding restore should keep swipe unlocks implied by seen swipe tips.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")) and TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_fight_action_stats_revealed")), "Onboarding restore should keep fight reveal state implied by seen swipe tips.")
 	game.call("_onboarding_runtime").set("skill_swipe_tip_seen", false)
 	game.call("_onboarding_runtime").set("onboarding_swipe_tip_eligible", false)
 	game.call("_onboarding_runtime").set("onboarding_swipe_navigation_unlocked", false)
@@ -2372,8 +2374,8 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_onboarding_runtime").set("onboarding_fight_stamina_revealed", false)
 	game.call("_onboarding_runtime").set("onboarding_fight_action_stats_revealed", false)
 	save_runtime.call("_apply_onboarding_restored_completion_implications")
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")) and _truthy(game.call("_onboarding_runtime").get("onboarding_fight_action_stats_revealed")), "Onboarding completion implications should reveal fight tutorial state from restored stamina tips.")
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding completion implications should unlock swipe navigation when stamina-tip progress is restored.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_fight_summary_revealed")) and TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_fight_action_stats_revealed")), "Onboarding completion implications should reveal fight tutorial state from restored stamina tips.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding completion implications should unlock swipe navigation when stamina-tip progress is restored.")
 	var low_fight_stamina := game.get("stamina") as Dictionary
 	low_fight_stamina["fight"] = 4.0
 	game.set("stamina", low_fight_stamina)
@@ -2381,7 +2383,7 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 		"stamina_gauge_tip_seen": true,
 		"onboarding_fight_action_stats_revealed": true
 	})
-	_expect(_truthy(game.call("_onboarding_runtime").get("onboarding_swipe_tip_eligible")) and _truthy(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding restore should unlock swipe navigation at the same low-stamina threshold as live tutorial play.")
+	_expect(TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_swipe_tip_eligible")) and TestHelpers.truthy_approx(game.call("_onboarding_runtime").get("onboarding_swipe_navigation_unlocked")), "Onboarding restore should unlock swipe navigation at the same low-stamina threshold as live tutorial play.")
 	save_runtime.call("_restore_onboarding_progression_from_save", {"onboarding_medal_tip_shown": true})
 	_expect(game.call("_tutorial_overlay_surface").onboarding_mastery_tip_dismissed == true, "Onboarding restore should keep medal tips dismissing the mastery tip.")
 	game.set("stamina_gauge_pre_tip_hold_seconds", 99.0)
@@ -2402,7 +2404,7 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 		"flow_active_action_seconds": -8.0
 	})
 	_expect(int(audio.flow_actions_taken) == 0, "Music flow restore should reset unsaved action streak count.")
-	_expect(_truthy(audio.music_start_chance_unlocked), "Music flow restore should preserve start chance unlock state.")
+	_expect(TestHelpers.truthy_approx(audio.music_start_chance_unlocked), "Music flow restore should preserve start chance unlock state.")
 	_expect(float(audio.flow_heat) == 36.0, "Music flow restore should cap heat.")
 	_expect(float(audio.flow_active_action_seconds) == 0.0, "Music flow restore should clamp negative active seconds.")
 	audio.flow_heat = 7.5
@@ -2554,14 +2556,14 @@ func _check_save_payload_progress_regression_guard(game: Node) -> void:
 	non_xp_progress["manual_activity_unlocks"] = {"fight:poke-the-training-dummy": true}
 	non_xp_progress["built_modules"] = {"build:cozy-firepit": true}
 	non_xp_progress["activity_completion_count"] = 4
-	_expect(_truthy(save_runtime.call("_save_payload_regresses_progress", existing_progress, reset_payload)), "Autosave guard should detect a lower-progress reset payload.")
-	_expect(_truthy(save_runtime.call("_save_payload_regresses_progress", non_xp_progress, reset_payload)), "Autosave guard should detect reset payloads that would erase non-XP progress.")
-	_expect(not _truthy(save_runtime.call("_save_payload_regresses_progress", existing_progress, marked_reset_payload)), "Autosave guard should allow marked hard-reset payloads.")
-	_expect(_truthy(save_runtime.call("_save_payload_regresses_progress", post_reset_existing, stale_payload)), "Autosave guard should reject stale pre-reset payloads after a marked hard reset.")
-	_expect(not _truthy(save_runtime.call("_save_payload_regresses_progress", existing_progress, equal_payload)), "Autosave guard should allow equal-progress save refreshes.")
-	_expect(not _truthy(save_runtime.call("_save_payload_regresses_progress", existing_progress, improved_payload)), "Autosave guard should allow improved progress.")
-	_expect(not _truthy(save_runtime.call("_save_payload_regresses_progress", {}, reset_payload)), "Autosave guard should allow first saves with no existing evidence.")
-	_expect(not _truthy(save_runtime.call("_save_payload_regresses_progress", {"skills": {}}, reset_payload)), "Autosave guard should allow saves when existing data has no progress evidence.")
+	_expect(TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", existing_progress, reset_payload)), "Autosave guard should detect a lower-progress reset payload.")
+	_expect(TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", non_xp_progress, reset_payload)), "Autosave guard should detect reset payloads that would erase non-XP progress.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", existing_progress, marked_reset_payload)), "Autosave guard should allow marked hard-reset payloads.")
+	_expect(TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", post_reset_existing, stale_payload)), "Autosave guard should reject stale pre-reset payloads after a marked hard reset.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", existing_progress, equal_payload)), "Autosave guard should allow equal-progress save refreshes.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", existing_progress, improved_payload)), "Autosave guard should allow improved progress.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", {}, reset_payload)), "Autosave guard should allow first saves with no existing evidence.")
+	_expect(not TestHelpers.truthy_approx(save_runtime.call("_save_payload_regresses_progress", {"skills": {}}, reset_payload)), "Autosave guard should allow saves when existing data has no progress evidence.")
 
 
 func _check_save_payload(game: Node) -> void:
@@ -2749,8 +2751,8 @@ func _check_save_payload(game: Node) -> void:
 	_expect(float(payload.get("music_volume", -1.0)) == 1.0, "Save payload should cap music volume.")
 	_expect(float(payload.get("sfx_volume", -1.0)) == 0.0, "Save payload should clamp SFX volume.")
 	_expect(not payload.has("is_muted"), "Save payload should not include obsolete global mute state.")
-	_expect(_truthy(payload.get("god_mode_enabled", false)), "Debug save payload should preserve enabled God Mode.")
-	_expect(_truthy(payload.get("god_mode_save_tainted", false)), "Save payload should preserve god mode taint state.")
+	_expect(TestHelpers.truthy_approx(payload.get("god_mode_enabled", false)), "Debug save payload should preserve enabled God Mode.")
+	_expect(TestHelpers.truthy_approx(payload.get("god_mode_save_tainted", false)), "Save payload should preserve god mode taint state.")
 	_expect(not payload.has("offline_clock_guard_tainted"), "Save payload should stop preserving obsolete offline clock guard taint state.")
 	_expect(not payload.has("offline_clock_guard_last_rejected_unix"), "Save payload should stop preserving obsolete offline clock guard rejection timestamps.")
 	_expect(not payload.has("saved_at_monotonic_msec"), "Save payload should stop preserving monotonic timing for obsolete same-session clock checks.")
@@ -2760,13 +2762,13 @@ func _check_save_payload(game: Node) -> void:
 	_expect(int(payload.get("fishing_net_successes", -1)) == 0, "Save payload should clamp fishing net successes.")
 	_expect(int(payload.get("fishing_net_stored_xp", -1)) == 0, "Save payload should clamp fishing net stored XP.")
 	_expect(float(payload.get("fishing_net_stored_mastery", -1.0)) == 0.0, "Save payload should clamp fishing net stored mastery.")
-	_expect(_truthy(payload.get("fishing_net_collect_completed", false)), "Save payload should keep canonical fishing net collection state.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_net_collect_completed", false)), "Save payload should keep canonical fishing net collection state.")
 	_expect(not payload.has("fishing_net_collected"), "Save payload should not include legacy fishing net collection state.")
 	_expect(int(payload.get("fishing_boat_stored_fish", -1)) == 199, "Save payload should cap fishing boat stored fish.")
 	_expect(int(payload.get("fishing_boat_successes", -1)) == 0, "Save payload should clamp fishing boat successes.")
 	_expect(int(payload.get("fishing_boat_stored_xp", -1)) == 0, "Save payload should clamp fishing boat stored XP.")
 	_expect(float(payload.get("fishing_boat_stored_mastery", -1.0)) == 0.0, "Save payload should clamp fishing boat stored mastery.")
-	_expect(_truthy(payload.get("fishing_rod_collected", false)) and _truthy(payload.get("fishing_reinforced_rod_collected", false)) and _truthy(payload.get("fishing_star_rod_collected", false)), "Save payload should normalize fishing rod collection hierarchy.")
+	_expect(TestHelpers.truthy_approx(payload.get("fishing_rod_collected", false)) and TestHelpers.truthy_approx(payload.get("fishing_reinforced_rod_collected", false)) and TestHelpers.truthy_approx(payload.get("fishing_star_rod_collected", false)), "Save payload should normalize fishing rod collection hierarchy.")
 	var payload_passive := payload.get("passive_modules", {}) as Dictionary
 	_expect(payload_passive.size() == 1 and payload_passive.has("existing-module"), "Save payload should include only valid passive module entries.")
 	var payload_passive_state := payload_passive.get("existing-module", {}) as Dictionary
@@ -2816,8 +2818,8 @@ func _check_save_payload(game: Node) -> void:
 	_expect(int(payload.get("leaderboard_last_submit_unix", -1)) == 0, "Save payload should clamp leaderboard last submit timestamps.")
 	_expect(str(payload.get("leaderboard_display_name", "")) == "A Name That Is T", "Save payload should sanitize leaderboard display names.")
 	_expect(str(payload.get("leaderboard_name_key", "bad")).is_empty(), "Save payload should sanitize leaderboard name keys.")
-	_expect(not _truthy(payload.get("leaderboard_profile_claimed", true)), "Save payload should clear invalid leaderboard profile claims.")
-	_expect(not _truthy(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
+	_expect(not TestHelpers.truthy_approx(payload.get("leaderboard_profile_claimed", true)), "Save payload should clear invalid leaderboard profile claims.")
+	_expect(not TestHelpers.truthy_approx(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
 	_expect(int(payload.get("leaderboard_avatar_index", -1)) == 19, "Save payload should clamp leaderboard avatar indexes.")
 	_expect(str(payload.get("leaderboard_player_id", "bad")).is_empty(), "Save payload should sanitize leaderboard player ids.")
 	_expect(str(payload.get("leaderboard_auth_provider", "")) == "google", "Save payload should preserve sanitized leaderboard auth providers.")
@@ -2838,10 +2840,10 @@ func _check_save_payload(game: Node) -> void:
 	_expect(float(payload.get("action_progress", -1.0)) == 0.999, "Save payload should cap action progress below completion.")
 	_expect(str(payload.get("silver_opportunity_tip_action_key", "")) == "fishing:shallows", "Save payload should canonicalize saved action-key fields.")
 	var payload_seen := payload.get("achievement_toast_seen_ids", {}) as Dictionary
-	_expect(payload_seen.size() == 1 and _truthy(payload_seen.get("total-level-25", false)), "Save payload should include only normalized achievement toast seen ids.")
+	_expect(payload_seen.size() == 1 and TestHelpers.truthy_approx(payload_seen.get("total-level-25", false)), "Save payload should include only normalized achievement toast seen ids.")
 	_expect(str(payload.get("hub_selected_module_id", "")) == "pond", "Save payload should mirror restore behavior for derived hub selections.")
 	_expect(int(payload.get("hub_mission_cooldown_until_unix", -1)) == 0, "Save payload should clamp hub mission cooldown timestamps.")
-	_expect(_truthy(payload.get("plank_boost_enabled", false)), "Save payload should preserve plank boost enabled state.")
+	_expect(TestHelpers.truthy_approx(payload.get("plank_boost_enabled", false)), "Save payload should preserve plank boost enabled state.")
 	_expect(float(payload.get("ad_bonus_seconds_remaining", 0.0)) == 21600.0, "Save payload should cap ad bonus seconds.")
 	_expect(int(payload.get("activity_start_count", -1)) == 0, "Save payload should clamp activity start counts.")
 	_expect(int(payload.get("activity_completion_count", -1)) == 0, "Save payload should clamp activity completion counts.")
@@ -2868,7 +2870,7 @@ func _check_passive_module_save(game: Node) -> void:
 	_expect(int(existing.get("time_seconds", -1)) == 30, "Passive module save should clamp time values.")
 	_expect(int(existing.get("yield", -1)) == 18, "Passive module save should clamp yield values.")
 	_expect(int(existing.get("capacity", -1)) == 1000, "Passive module save should clamp capacity values.")
-	_expect(_truthy(existing.get("seeded", false)), "Passive module save should preserve seeded state.")
+	_expect(TestHelpers.truthy_approx(existing.get("seeded", false)), "Passive module save should preserve seeded state.")
 	_expect(int(existing.get("last_update", 0)) == 1234, "Passive module save should preserve module update timestamps.")
 
 
@@ -2885,7 +2887,7 @@ func _check_passive_module_restore(game: Node) -> void:
 	_expect(not restored.has("bad-module"), "Passive restore should skip malformed passive module entries.")
 	var existing := restored.get("existing-module", {}) as Dictionary
 	_expect(int(existing.get("stored", -1)) == 7, "Passive restore should preserve stored module value.")
-	_expect(_truthy(existing.get("seeded", false)), "Passive restore should preserve seeded module state.")
+	_expect(TestHelpers.truthy_approx(existing.get("seeded", false)), "Passive restore should preserve seeded module state.")
 	_expect(int(existing.get("last_update", 0)) == 1234, "Passive restore should preserve module update timestamp.")
 
 	game.set("passive_modules", {
@@ -2985,20 +2987,6 @@ func _write_temp_save(path: String, data: Dictionary) -> void:
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
-
-
-func _truthy(value: Variant) -> bool:
-	match typeof(value):
-		TYPE_BOOL:
-			return value
-		TYPE_INT:
-			return int(value) != 0
-		TYPE_FLOAT:
-			return not is_zero_approx(float(value))
-		TYPE_STRING:
-			return not str(value).is_empty()
-		_:
-			return value != null
 
 
 func _finish() -> void:

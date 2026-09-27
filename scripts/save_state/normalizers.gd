@@ -84,11 +84,11 @@ static func normalized_convergence_modules(loaded_modules: Variant, action_data:
 	var source := loaded_modules as Dictionary
 	for raw_module_id in source.keys():
 		var module_id := str(raw_module_id)
-		var action := action_data.call("build", module_id) as Dictionary
-		if action.is_empty() or not bool(is_convergence_action.call(action)):
-			continue
 		var loaded_state = source.get(raw_module_id, {})
 		if typeof(loaded_state) != TYPE_DICTIONARY:
+			continue
+		var action := action_data.call("build", module_id) as Dictionary
+		if action.is_empty() or not bool(is_convergence_action.call(action)):
 			continue
 		normalized[module_id] = convergence_module_state(loaded_state as Dictionary)
 	return normalized
@@ -145,13 +145,7 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 	var next_reset_generation := save_reset_generation(next_payload)
 	if next_reset_generation > existing_reset_generation:
 		return false
-	if next_reset_generation < existing_reset_generation:
-		return true
-	if save_repair_generation(next_payload) < save_repair_generation(existing_payload):
-		return true
-	if payload_regresses_identity(existing_payload, next_payload):
-		return true
-	return payload_regresses_game_progress(existing_payload, next_payload, skill_defs)
+	return next_reset_generation < existing_reset_generation or save_repair_generation(next_payload) < save_repair_generation(existing_payload) or payload_regresses_identity(existing_payload, next_payload) or payload_regresses_game_progress(existing_payload, next_payload, skill_defs)
 
 
 static func payload_regresses_game_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
@@ -177,6 +171,9 @@ static func payload_regresses_game_progress(existing_payload: Dictionary, next_p
 	if _activity_requirement_unlocks_regress(existing_payload, next_payload):
 		return true
 	for key in [
+		"activity_crit_seen",
+		"activity_mega_crit_seen",
+		"music_start_chance_unlocked",
 		"fishing_net_collect_completed",
 		"fishing_rod_collected",
 		"fishing_reinforced_rod_collected",
@@ -187,17 +184,11 @@ static func payload_regresses_game_progress(existing_payload: Dictionary, next_p
 	]:
 		if bool(existing_payload.get(key, false)) and not bool(next_payload.get(key, false)):
 			return true
-	if _nested_number_regresses(existing_payload.get("mastery", {}), next_payload.get("mastery", {}), ["xp", "level"]):
+	if _nested_number_regresses(existing_payload.get("mastery", {}), next_payload.get("mastery", {}), ["xp", "level"]) or _nested_number_regresses(existing_payload.get("hub_modules", {}), next_payload.get("hub_modules", {}), ["level"]) or _nested_number_regresses(existing_payload.get("convergence_modules", {}), next_payload.get("convergence_modules", {}), ["completions"]) or _thieving_trophies_regress(existing_payload.get("thieving_trophies", {}), next_payload.get("thieving_trophies", {})):
 		return true
-	if _nested_number_regresses(existing_payload.get("hub_modules", {}), next_payload.get("hub_modules", {}), ["level"]):
-		return true
-	if _nested_number_regresses(existing_payload.get("convergence_modules", {}), next_payload.get("convergence_modules", {}), ["completions"]):
-		return true
-	if _thieving_trophies_regress(existing_payload.get("thieving_trophies", {}), next_payload.get("thieving_trophies", {})):
-		return true
-	# The aggregate evidence score is useful only for choosing between otherwise
-	# equivalent recovery candidates. It includes consumable currencies and other
-	# values that legitimately decrease during play, so it must never reject a save.
+
+
+
 	return false
 
 
@@ -207,10 +198,7 @@ static func payload_with_canonical_action_keys(payload: Dictionary, action_id_al
 	var normalized := payload.duplicate(true)
 	for field in ["manual_activity_unlocks", "built_modules"]:
 		normalized[field] = _canonical_true_action_dictionary(payload.get(field, {}), action_id_aliases)
-	normalized["manual_activity_requirement_unlocks"] = _canonical_requirement_unlock_dictionary(
-		payload.get("manual_activity_requirement_unlocks", {}),
-		action_id_aliases
-	)
+	normalized["manual_activity_requirement_unlocks"] = _canonical_requirement_unlock_dictionary(payload.get("manual_activity_requirement_unlocks", {}), action_id_aliases)
 	normalized["mastery"] = _canonical_mastery_dictionary(payload.get("mastery", {}), action_id_aliases)
 	return normalized
 
@@ -236,7 +224,7 @@ static func _canonical_requirement_unlock_dictionary(value: Variant, action_id_a
 		if not bool((value as Dictionary).get(raw_key, false)):
 			continue
 		var parts := str(raw_key).split(":", false, 4)
-		if parts.size() < 4:
+		if parts.size() != 4:
 			continue
 		var action_key := _canonical_qualified_action_key("%s:%s" % [parts[0], parts[1]], action_id_aliases)
 		if action_key.is_empty():
@@ -270,17 +258,10 @@ static func _canonical_qualified_action_key(key: String, action_id_aliases: Dict
 	var skill_id := key.substr(0, separator)
 	var action_id := key.substr(separator + 1)
 	var qualified_id := "%s:%s" % [skill_id, action_id]
-	if action_id_aliases.has(qualified_id):
-		action_id = str(action_id_aliases.get(qualified_id, action_id))
-	elif action_id_aliases.has(action_id):
-		action_id = str(action_id_aliases.get(action_id, action_id))
+	action_id = str(action_id_aliases.get(qualified_id, action_id_aliases.get(action_id, action_id)))
 	if action_id.is_empty():
 		return ""
 	return "%s:%s" % [skill_id, action_id]
-
-
-static func payload_regresses_skill_xp(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
-	return _skill_xp_regresses(existing_payload, next_payload, skill_defs)
 
 
 static func payload_regresses_outside_vetted_progress_repair(
@@ -460,22 +441,14 @@ static func payload_regresses_identity(existing_payload: Dictionary, next_payloa
 	var existing_recovery_required := bool(existing_payload.get("leaderboard_auth_recovery_required", false))
 	var next_recovery_required := bool(next_payload.get("leaderboard_auth_recovery_required", false))
 	if existing_recovery_required and not next_recovery_required:
-		# Recovery may clear the flag only after the runtime is demonstrably bound
-		# back to the preserved UID with a usable credential.
+
+
 		if next_bound_uid.is_empty() or next_player_id != next_bound_uid or next_refresh_token.is_empty():
 			return true
-	var existing_name_transfer_required := bool(existing_payload.get("leaderboard_name_transfer_required", false))
-	var next_name_transfer_required := bool(next_payload.get("leaderboard_name_transfer_required", false))
-	if existing_name_transfer_required and not next_name_transfer_required:
-		return true
-	var existing_legacy_username_recovery_required := bool(existing_payload.get("leaderboard_legacy_username_recovery_required", false))
-	var next_legacy_username_recovery_required := bool(next_payload.get("leaderboard_legacy_username_recovery_required", false))
-	if existing_legacy_username_recovery_required and not next_legacy_username_recovery_required:
-		return true
+	for pending_key in ["leaderboard_name_transfer_required", "leaderboard_legacy_username_recovery_required", "leaderboard_deleted_auth_transition_pending"]:
+		if bool(existing_payload.get(pending_key, false)) and not bool(next_payload.get(pending_key, false)):
+			return true
 	var existing_deleted_auth_transition_pending := bool(existing_payload.get("leaderboard_deleted_auth_transition_pending", false))
-	var next_deleted_auth_transition_pending := bool(next_payload.get("leaderboard_deleted_auth_transition_pending", false))
-	if existing_deleted_auth_transition_pending and not next_deleted_auth_transition_pending:
-		return true
 	var existing_definitive_failure_code := str(existing_payload.get("leaderboard_auth_definitive_failure_code", "")).strip_edges()
 	var next_definitive_failure_code := str(next_payload.get("leaderboard_auth_definitive_failure_code", "")).strip_edges()
 	if existing_deleted_auth_transition_pending and (
@@ -500,9 +473,9 @@ static func payload_has_recoverable_identity_inconsistency(payload: Dictionary) 
 	if claimed != verified:
 		return true
 	if not claimed:
-		# Older clients could retain a real profile name/key while losing both trust
-		# flags. Keep that metadata as an untrusted recovery hint instead of treating
-		# it as a guest profile and erasing it on the next save.
+
+
+
 		return not str(payload.get("leaderboard_name_key", "")).strip_edges().is_empty()
 	for required_key in ["leaderboard_display_name", "leaderboard_name_key", "leaderboard_player_id"]:
 		if str(payload.get(required_key, "")).strip_edges().is_empty():
@@ -532,9 +505,7 @@ static func vetted_identity_repair_is_safe(existing_payload: Dictionary, next_pa
 		var next_verified := bool(next_payload.get("leaderboard_name_claim_verified", false))
 		if not next_name_key.is_empty() or next_claimed or next_verified:
 			return false
-	if bool(next_payload.get("leaderboard_profile_claimed", false)) and not bool(existing_payload.get("leaderboard_profile_claimed", false)):
-		return false
-	if bool(next_payload.get("leaderboard_name_claim_verified", false)) and not bool(existing_payload.get("leaderboard_name_claim_verified", false)):
+	if (bool(next_payload.get("leaderboard_profile_claimed", false)) and not bool(existing_payload.get("leaderboard_profile_claimed", false))) or (bool(next_payload.get("leaderboard_name_claim_verified", false)) and not bool(existing_payload.get("leaderboard_name_claim_verified", false))):
 		return false
 	return true
 
@@ -601,15 +572,13 @@ static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 	var total_xp := 0
 	var source := loaded_skills as Dictionary
 	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if skill_id.is_empty() or not source.has(skill_id):
 			continue
 		var skill_state = source.get(skill_id, {})
 		if typeof(skill_state) != TYPE_DICTIONARY:
 			continue
-		var state := skill_state as Dictionary
-		total_xp += maxi(0, int(state.get("xp", 0)))
+		total_xp += maxi(0, int((skill_state as Dictionary).get("xp", 0)))
 	return total_xp
 
 
@@ -633,9 +602,7 @@ static func non_xp_progress_evidence(data: Dictionary) -> int:
 	evidence += _mastery_evidence(data.get("mastery", {}))
 	evidence += _hub_module_evidence(data.get("hub_modules", {}))
 	evidence += _thieving_trophy_evidence(data.get("thieving_trophies", {}))
-	if bool(data.get("onboarding_tutorial_complete", false)):
-		evidence += 1
-	return evidence
+	return evidence + int(bool(data.get("onboarding_tutorial_complete", false)))
 
 
 static func _positive_number_evidence(data: Dictionary, keys: Array) -> int:
@@ -684,9 +651,7 @@ static func _thieving_trophy_evidence(value: Variant) -> int:
 		return 0
 	var evidence := 0
 	for raw_state in (value as Dictionary).values():
-		if typeof(raw_state) == TYPE_DICTIONARY and bool((raw_state as Dictionary).get("stolen", false)):
-			evidence += 1
-		elif typeof(raw_state) == TYPE_BOOL and bool(raw_state):
+		if (typeof(raw_state) == TYPE_DICTIONARY and bool((raw_state as Dictionary).get("stolen", false))) or (typeof(raw_state) == TYPE_BOOL and bool(raw_state)):
 			evidence += 1
 	return evidence
 
@@ -697,23 +662,19 @@ static func has_known_skill_progress(data: Dictionary, skill_defs: Array) -> boo
 		return false
 	var source := loaded_skills as Dictionary
 	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if skill_id.is_empty() or not source.has(skill_id):
 			continue
 		var skill_state = source.get(skill_id, {})
 		if typeof(skill_state) != TYPE_DICTIONARY:
 			continue
-		var state := skill_state as Dictionary
-		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
+		if int((skill_state as Dictionary).get("level", 1)) > 1 or int((skill_state as Dictionary).get("xp", 0)) > 0:
 			return true
 	return false
 
 
 static func has_progress_beyond_onboarding(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
-	if has_non_tutorial_skill_progress(data, skill_defs, tutorial_starter_skill_id):
-		return true
-	return manual_activity_unlock_count(data) >= 2
+	return has_non_tutorial_skill_progress(data, skill_defs, tutorial_starter_skill_id) or manual_activity_unlock_count(data) >= 2
 
 
 static func has_non_tutorial_skill_progress(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
@@ -722,15 +683,13 @@ static func has_non_tutorial_skill_progress(data: Dictionary, skill_defs: Array,
 		return false
 	var source := loaded_skills as Dictionary
 	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if skill_id.is_empty() or skill_id == tutorial_starter_skill_id or not source.has(skill_id):
 			continue
 		var skill_state = source.get(skill_id, {})
 		if typeof(skill_state) != TYPE_DICTIONARY:
 			continue
-		var state := skill_state as Dictionary
-		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
+		if int((skill_state as Dictionary).get("level", 1)) > 1 or int((skill_state as Dictionary).get("xp", 0)) > 0:
 			return true
 	return false
 
@@ -748,20 +707,11 @@ static func manual_activity_unlock_count(data: Dictionary) -> int:
 
 
 static func mark_onboarding_complete(data: Dictionary) -> void:
-	data["onboarding_tutorial_complete"] = true
-	data["onboarding_explore_tip_seen"] = true
-	data["skill_swipe_tip_seen"] = true
-	data["stamina_gauge_tip_seen"] = true
-	data["onboarding_swipe_tip_eligible"] = true
-	data["onboarding_swipe_navigation_unlocked"] = true
-	data["tutorial_active"] = false
+	for key in ["onboarding_tutorial_complete", "onboarding_explore_tip_seen", "skill_swipe_tip_seen", "stamina_gauge_tip_seen", "onboarding_swipe_tip_eligible", "onboarding_swipe_navigation_unlocked", "onboarding_fight_summary_revealed", "onboarding_fight_auto_run_message_shown", "onboarding_fight_stamina_revealed", "onboarding_fight_action_stats_revealed"]:
+		data[key] = true
+	for key in ["tutorial_active", "tutorial_gate_latch_only_until_swipe", "onboarding_header_reveal_after_progress"]:
+		data[key] = false
 	data["tutorial_step"] = 4
-	data["tutorial_gate_latch_only_until_swipe"] = false
-	data["onboarding_fight_summary_revealed"] = true
-	data["onboarding_fight_auto_run_message_shown"] = true
-	data["onboarding_fight_stamina_revealed"] = true
-	data["onboarding_fight_action_stats_revealed"] = true
-	data["onboarding_header_reveal_after_progress"] = false
 
 
 static func valid_dictionary_key(raw_key: Variant, valid_defs: Dictionary, fallback: String) -> String:

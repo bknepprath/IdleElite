@@ -21,8 +21,8 @@ for ($run = 1; $run -le $repeatCount; $run++) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    # The focused test already asserts its success marker internally; it writes
-    # Godot output to the host, so the wrapper may not capture that line here.
+
+
     Assert-NoUnexpectedGodotErrors -Output $output -Context "skills page performance repeat run $run"
     Assert-NoHeadlessGodotProcesses "skills page performance repeat run $run"
 }

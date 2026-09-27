@@ -55,8 +55,6 @@ func normalized_passive_modules(loaded_modules: Variant, now: int) -> Dictionary
 
 func restore_from_save(data: Dictionary, preserve_existing := false) -> void:
 	var loaded_passive_modules = normalized_passive_modules(data.get("passive_modules", {}), host._unix_now())
-	if typeof(loaded_passive_modules) != TYPE_DICTIONARY:
-		return
 	for raw_module_id in loaded_passive_modules.keys():
 		var module_id := str(raw_module_id)
 		if preserve_existing and host.passive_modules.has(module_id):
@@ -70,10 +68,6 @@ func for_save() -> Dictionary:
 
 func firepit_state_from_save(loaded_module: Dictionary, now: int) -> Dictionary:
 	return SaveStateNormalizers.firepit_state(loaded_module, now, save_state_normalizer_limits())
-
-
-func passive_module_state_from_save(loaded_module: Dictionary, now: int) -> Dictionary:
-	return SaveStateNormalizers.passive_module_state(loaded_module, now, save_state_normalizer_limits())
 
 
 func firepit_state(now: int) -> Dictionary:
@@ -211,8 +205,6 @@ func award_firepit_burn_xp(scrapwood_burned: int, animate := true) -> void:
 	if scrapwood_burned <= 0 or not host.skills.has("woodcutting"):
 		return
 	var xp_reward := scrapwood_burned * FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD
-	if xp_reward <= 0:
-		return
 	host.skills["woodcutting"]["xp"] = int(host.skills["woodcutting"].get("xp", 0)) + xp_reward
 	SkillState.recalculate_level(host, "woodcutting")
 	host._mark_save_dirty("firepit xp")
@@ -232,15 +224,11 @@ func plank_bonus_applies(skill_id: String) -> bool:
 
 
 func firepit_seconds_available(scrapwood: float) -> float:
-	if FIREPIT_SCRAPWOOD_PER_SECOND <= 0.0:
-		return 0.0
 	return maxf(0.0, scrapwood) / FIREPIT_SCRAPWOOD_PER_SECOND
 
 
 func firepit_heat_bonus_progress_pct(now: int) -> float:
 	var max_bonus := FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)
-	if max_bonus <= 0.0:
-		return 0.0
 	if not firepit_active(now):
 		return clampf(firepit_cooling_regen_bonus(now) / max_bonus * 100.0, 0.0, 100.0)
 	var state := firepit_state(now)
@@ -248,8 +236,6 @@ func firepit_heat_bonus_progress_pct(now: int) -> float:
 	if started_unix <= 0:
 		return 0.0
 	var max_heat_seconds := FIREPIT_HEAT_TIER_SECONDS * float(FIREPIT_MAX_HEAT_TIER)
-	if max_heat_seconds <= 0.0:
-		return 0.0
 	var live_heat_seconds := maxf(0.0, Time.get_unix_time_from_system() - float(started_unix))
 	var smooth_heat_seconds := clampf(FIREPIT_HEAT_TIER_SECONDS + live_heat_seconds, FIREPIT_HEAT_TIER_SECONDS, max_heat_seconds)
 	return clampf(smooth_heat_seconds / max_heat_seconds * 100.0, 0.0, 100.0)
@@ -264,6 +250,30 @@ func firepit_next_scrapwood_progress_pct(state: Dictionary, now: int) -> float:
 	burned += live_elapsed * FIREPIT_SCRAPWOOD_PER_SECOND
 	var partial := fposmod(burned, 1.0)
 	return clampf((1.0 - partial) * 100.0, 0.0, 100.0)
+
+
+func _shutdown_firepit_state(state: Dictionary, now: int, reason: String) -> Dictionary:
+	var cooling_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
+	state["active"] = false
+	state["igniting"] = false
+	state["last_update"] = now
+	state["started_unix"] = 0
+	state["burned_scrapwood"] = 0.0
+	state = set_firepit_cooling_from_bonus(state, now, cooling_bonus)
+	state["shutdown_reason"] = reason
+	return state
+
+
+func _activate_firepit_state(state: Dictionary, now: int) -> Dictionary:
+	state["active"] = true
+	state["igniting"] = false
+	state["started_unix"] = now - int(firepit_restart_heat_offset_seconds(float(state.get("cooling_bonus", 0.0))))
+	state["last_update"] = now
+	state["burned_scrapwood"] = 0.0
+	state["cooling_bonus"] = 0.0
+	state["cooling_started_unix"] = 0
+	state["shutdown_reason"] = ""
+	return state
 
 
 func passive_module_state(module_id: String, now: int) -> Dictionary:
@@ -382,9 +392,6 @@ func apply_passive_module_production(now: int) -> void:
 			host.passive_modules[module_id] = state
 			continue
 		var cycles := int(floor(float(elapsed) / float(interval)))
-		if cycles <= 0:
-			host.passive_modules[module_id] = state
-			continue
 		var produced := cycles * maxi(1, int(state.get("yield", PASSIVE_YIELD_START)))
 		var next_stored := mini(capacity, stored + produced)
 		var gained := next_stored - stored
@@ -414,14 +421,7 @@ func apply_firepit_fuel(now: int) -> void:
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		return
 	if not is_passive_module_unlocked(WOODCUTTING_FIREPIT_MODULE_ID):
-		var locked_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
-		state["active"] = false
-		state["igniting"] = false
-		state["last_update"] = now
-		state["started_unix"] = 0
-		state["burned_scrapwood"] = 0.0
-		state = set_firepit_cooling_from_bonus(state, now, locked_bonus)
-		state["shutdown_reason"] = "locked"
+		state = _shutdown_firepit_state(state, now, "locked")
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		SkillState.invalidate_stat_caches(host)
 		return
@@ -433,14 +433,7 @@ func apply_firepit_fuel(now: int) -> void:
 	var requested_fuel := float(elapsed) * FIREPIT_SCRAPWOOD_PER_SECOND
 	var available_fuel: float = host.material_runtime.amount("scrapwood")
 	if available_fuel <= 0.0001:
-		var empty_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
-		state["active"] = false
-		state["igniting"] = false
-		state["last_update"] = now
-		state["started_unix"] = 0
-		state["burned_scrapwood"] = 0.0
-		state = set_firepit_cooling_from_bonus(state, now, empty_bonus)
-		state["shutdown_reason"] = "no_fuel"
+		state = _shutdown_firepit_state(state, now, "no_fuel")
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		SkillState.invalidate_stat_caches(host)
 		host._mark_save_dirty("firepit empty")
@@ -455,13 +448,7 @@ func apply_firepit_fuel(now: int) -> void:
 		if newly_burned_whole_scrapwood > 0:
 			award_firepit_burn_xp(newly_burned_whole_scrapwood)
 	if burned + 0.0001 < requested_fuel:
-		var out_of_fuel_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
-		state["active"] = false
-		state["igniting"] = false
-		state["started_unix"] = 0
-		state["burned_scrapwood"] = 0.0
-		state = set_firepit_cooling_from_bonus(state, now, out_of_fuel_bonus)
-		state["shutdown_reason"] = "no_fuel"
+		state = _shutdown_firepit_state(state, now, "no_fuel")
 		SkillState.invalidate_stat_caches(host)
 		host._mark_save_dirty("firepit empty")
 	else:
@@ -487,15 +474,7 @@ func start_firepit(now: int) -> bool:
 		host.last_result = "Need Scrapwood to start the fire."
 		return false
 	var state := ensure_firepit_state(now)
-	var restart_heat_offset := firepit_restart_heat_offset_seconds(float(state.get("cooling_bonus", 0.0)))
-	state["active"] = true
-	state["igniting"] = false
-	state["started_unix"] = now - int(restart_heat_offset)
-	state["last_update"] = now
-	state["burned_scrapwood"] = 0.0
-	state["cooling_bonus"] = 0.0
-	state["cooling_started_unix"] = 0
-	state["shutdown_reason"] = ""
+	state = _activate_firepit_state(state, now)
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
 	SkillState.invalidate_stat_caches(host)
@@ -507,7 +486,7 @@ func start_firepit(now: int) -> bool:
 
 
 func begin_firepit_ignition(now: int) -> bool:
-	if host.material_runtime.amount("scrapwood") < FIREPIT_START_SCRAPWOOD_COST:
+	if host.material_runtime.amount("scrapwood") + 0.0001 < FIREPIT_START_SCRAPWOOD_COST:
 		host.last_result = "Need Scrapwood to start the fire."
 		host._passive_firepit_surface()._float_firepit_need_scrapwood()
 		return false
@@ -534,13 +513,8 @@ func finish_firepit_ignition(now: int) -> void:
 	var state := ensure_firepit_state(now)
 	if not bool(state.get("igniting", false)) or bool(state.get("active", false)):
 		return
-	if host.material_runtime.amount("scrapwood") < FIREPIT_START_SCRAPWOOD_COST:
-		state["active"] = false
-		state["igniting"] = false
-		state["started_unix"] = 0
-		state["last_update"] = now
-		state["burned_scrapwood"] = 0.0
-		state["shutdown_reason"] = "no_fuel"
+	if host.material_runtime.amount("scrapwood") + 0.0001 < FIREPIT_START_SCRAPWOOD_COST:
+		state = _shutdown_firepit_state(state, now, "no_fuel")
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		host.last_result = "Need Scrapwood to start the fire."
 		host._passive_firepit_surface()._float_firepit_need_scrapwood()
@@ -548,15 +522,7 @@ func finish_firepit_ignition(now: int) -> void:
 		return
 	host.material_runtime.set_amount("scrapwood", host.material_runtime.amount("scrapwood") - FIREPIT_START_SCRAPWOOD_COST)
 	award_firepit_burn_xp(1, false)
-	var restart_heat_offset := firepit_restart_heat_offset_seconds(float(state.get("cooling_bonus", 0.0)))
-	state["active"] = true
-	state["igniting"] = false
-	state["started_unix"] = now - int(restart_heat_offset)
-	state["last_update"] = now
-	state["burned_scrapwood"] = 0.0
-	state["cooling_bonus"] = 0.0
-	state["cooling_started_unix"] = 0
-	state["shutdown_reason"] = ""
+	state = _activate_firepit_state(state, now)
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
 	SkillState.invalidate_stat_caches(host)
@@ -569,13 +535,7 @@ func finish_firepit_ignition(now: int) -> void:
 
 func extinguish_firepit(now: int) -> void:
 	var state := ensure_firepit_state(now)
-	var cooling_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
-	state["active"] = false
-	state["last_update"] = now
-	state["started_unix"] = 0
-	state["burned_scrapwood"] = 0.0
-	state = set_firepit_cooling_from_bonus(state, now, cooling_bonus)
-	state["shutdown_reason"] = "manual"
+	state = _shutdown_firepit_state(state, now, "manual")
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit stopped. Warm Momentum streak reset."
 	SkillState.invalidate_stat_caches(host)
@@ -604,24 +564,26 @@ func collect_passive_module(module_id: String, now: int) -> void:
 
 
 func upgrade_passive_module(module_id: String, stat_type: String, now: int) -> bool:
+	if stat_type not in ["time", "yield", "capacity"]:
+		return false
 	if not is_passive_module_unlocked(module_id):
 		return false
 	if passive_upgrade_maxed(module_id, stat_type, now):
 		return false
 	var cost := passive_upgrade_cost(module_id, stat_type, now)
-	if host.material_runtime.amount("softwood") < float(cost):
+	if host.material_runtime.amount("softwood") + 0.0001 < float(cost):
 		return false
 	var state := passive_module_state(module_id, now)
 	var old_value := passive_upgrade_value(module_id, stat_type, now)
+	var new_value := passive_next_upgrade_value(module_id, stat_type, now)
 	host.material_runtime.spend_amount("softwood", float(cost))
 	if stat_type == "time":
-		state["time_seconds"] = passive_next_upgrade_value(module_id, stat_type, now)
+		state["time_seconds"] = new_value
 	elif stat_type == "yield":
-		state["yield"] = passive_next_upgrade_value(module_id, stat_type, now)
+		state["yield"] = new_value
 	elif stat_type == "capacity":
-		state["capacity"] = passive_next_upgrade_value(module_id, stat_type, now)
+		state["capacity"] = new_value
 		state["stored"] = mini(int(state.get("stored", 0)), int(state.get("capacity", PASSIVE_CAPACITY_START)))
-	var new_value := int(state.get("time_seconds", PASSIVE_TIME_START)) if stat_type == "time" else (int(state.get("yield", PASSIVE_YIELD_START)) if stat_type == "yield" else int(state.get("capacity", PASSIVE_CAPACITY_START)))
 	host.passive_modules[module_id] = state
 	host._audio_director()._play_passive_upgrade_sfx()
 	host._passive_firepit_surface()._pop_passive_upgrade_button(module_id, stat_type)
@@ -679,10 +641,6 @@ func passive_upgrade_cost(module_id: String, stat_type: String, now: int) -> int
 	if passive_upgrade_maxed(module_id, stat_type, now):
 		return 0
 	var step_index := passive_upgrade_step_index(module_id, stat_type, now)
-	if step_index < 2:
-		return 1
-	if step_index < 4:
-		return 2
 	if step_index < 6:
-		return 3
+		return 1 + int(step_index / 2.0)
 	return int(floor(4.0 + pow(float(step_index - 5), 1.58) * 2.75))

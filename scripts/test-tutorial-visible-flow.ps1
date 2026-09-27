@@ -30,6 +30,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const SETTLE_FRAMES := 120
@@ -83,7 +85,7 @@ func _run() -> void:
 		_fail("visible starter screen should show all nav buttons with skills/settings bright and other nav locked: %s %s" % [_summary(scene), _chrome_summary(scene)])
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("visible starter screen should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("visible starter screen should render only Push-Ups: %s actions=%s" % [_summary(scene), str(TestHelpers.rendered_action_ids(scene))])
 		return
 	if not (await _click_settings_nav_via_viewport(scene)):
 		_fail("visible settings nav button did not open settings during tutorial: %s %s" % [_summary(scene), _chrome_summary(scene)])
@@ -109,7 +111,7 @@ func _run() -> void:
 		_fail("boot overlay did not hide after visible settings reset: %s" % _summary(scene))
 		return
 	if _starter_screen_has_stale_chrome(scene) or not _bottom_nav_locked_controls_ok(scene) or not _only_starter_activity_rendered(scene):
-		_fail("visible starter screen was not clean after settings reset: %s %s actions=%s" % [_summary(scene), _chrome_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("visible starter screen was not clean after settings reset: %s %s actions=%s" % [_summary(scene), _chrome_summary(scene), str(TestHelpers.rendered_action_ids(scene))])
 		return
 	if not (await _click_settings_nav_via_nav_handler(scene)):
 		_fail("settings nav gui handler did not open settings during tutorial: %s %s" % [_summary(scene), _chrome_summary(scene)])
@@ -476,25 +478,12 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not is_instance_valid(scroll):
 		return false
-	return _rendered_action_ids(scene).has("push-ups")
+	return TestHelpers.rendered_action_ids(scene).has("push-ups")
 
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
-	var ids := _rendered_action_ids(scene)
+	var ids := TestHelpers.rendered_action_ids(scene)
 	return ids.size() == 1 and ids[0] == "push-ups"
-
-
-func _rendered_action_ids(scene: Node) -> Array:
-	var ids := []
-	var cards := scene.get("action_cards") as Dictionary
-	if cards == null:
-		return ids
-	for raw_key in cards.keys():
-		var key := str(raw_key)
-		if key.begins_with("fight:"):
-			ids.append(key.substr("fight:".length()))
-	ids.sort()
-	return ids
 
 
 func _has_page_switch_module(scene: Node) -> bool:

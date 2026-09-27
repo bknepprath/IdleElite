@@ -99,82 +99,35 @@ const FISHING_LOCATION_DEFS := {
 		{"id": "reflection", "name": "Reflection", "unlock": 95, "fish": "Cosmic Starfish", "bg": "res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"},
 	],
 }
+const FISHING_LOCATION_ACTIONS := {
+		"beach.shallows": "shallows",
+		"beach.rocky": "rocks",
+		"pier.dock-cup": "dock-edge",
+		"pier.piling-line": "piling-line",
+		"river.bend": "river-bend",
+		"river.rapids": "rapids",
+		"sewers.drain-gate": "drain-gate",
+		"sewers.tunnel-pool": "tunnel-pool",
+		"winter_lake.ice-hole": "ice-hole",
+		"reef.pot": "reef-pot",
+		"reef.cage": "reef-cage",
+		"reef.night-reef": "night-reef",
+		"reef.pearl-bed": "pearl-bed",
+		"sea.rowboat": "rowboat",
+		"sea.open-water": "open-water",
+		"sea.chum-line": "chum-line",
+		"stormy_sea.ripple": "storm-ripple",
+		"stormy_sea.storm-line": "storm-line",
+		"deep_sea.wreck-drop": "wreck-drop",
+		"deep_sea.abyss": "abyss",
+		"deep_sea.trench": "deep-trench",
+		"space.starlight": "starlight",
+		"space.reflection": "reflection",
+}
 const FISHING_TOOL_LOCATION_ACTIONS := {
-	"hands": {
-		"beach.shallows": "shallows",
-		"beach.rocky": "rocks",
-		"pier.dock-cup": "dock-edge",
-		"pier.piling-line": "piling-line",
-		"river.bend": "river-bend",
-		"river.rapids": "rapids",
-		"sewers.drain-gate": "drain-gate",
-		"sewers.tunnel-pool": "tunnel-pool",
-		"winter_lake.ice-hole": "ice-hole",
-		"reef.pot": "reef-pot",
-		"reef.cage": "reef-cage",
-		"reef.night-reef": "night-reef",
-		"reef.pearl-bed": "pearl-bed",
-		"sea.rowboat": "rowboat",
-		"sea.open-water": "open-water",
-		"sea.chum-line": "chum-line",
-		"stormy_sea.ripple": "storm-ripple",
-		"stormy_sea.storm-line": "storm-line",
-		"deep_sea.wreck-drop": "wreck-drop",
-		"deep_sea.abyss": "abyss",
-		"deep_sea.trench": "deep-trench",
-		"space.starlight": "starlight",
-		"space.reflection": "reflection",
-	},
-	"net": {
-		"beach.shallows": "shallows",
-		"beach.rocky": "rocks",
-		"pier.dock-cup": "dock-edge",
-		"pier.piling-line": "piling-line",
-		"river.bend": "river-bend",
-		"river.rapids": "rapids",
-		"sewers.drain-gate": "drain-gate",
-		"sewers.tunnel-pool": "tunnel-pool",
-		"winter_lake.ice-hole": "ice-hole",
-		"reef.pot": "reef-pot",
-		"reef.cage": "reef-cage",
-		"reef.night-reef": "night-reef",
-		"reef.pearl-bed": "pearl-bed",
-		"sea.rowboat": "rowboat",
-		"sea.open-water": "open-water",
-		"sea.chum-line": "chum-line",
-		"stormy_sea.ripple": "storm-ripple",
-		"stormy_sea.storm-line": "storm-line",
-		"deep_sea.wreck-drop": "wreck-drop",
-		"deep_sea.abyss": "abyss",
-		"deep_sea.trench": "deep-trench",
-		"space.starlight": "starlight",
-		"space.reflection": "reflection",
-	},
-	"line": {
-		"beach.shallows": "shallows",
-		"beach.rocky": "rocks",
-		"pier.dock-cup": "dock-edge",
-		"pier.piling-line": "piling-line",
-		"river.bend": "river-bend",
-		"river.rapids": "rapids",
-		"sewers.drain-gate": "drain-gate",
-		"sewers.tunnel-pool": "tunnel-pool",
-		"winter_lake.ice-hole": "ice-hole",
-		"reef.pot": "reef-pot",
-		"reef.cage": "reef-cage",
-		"reef.night-reef": "night-reef",
-		"reef.pearl-bed": "pearl-bed",
-		"sea.rowboat": "rowboat",
-		"sea.open-water": "open-water",
-		"sea.chum-line": "chum-line",
-		"stormy_sea.ripple": "storm-ripple",
-		"stormy_sea.storm-line": "storm-line",
-		"deep_sea.wreck-drop": "wreck-drop",
-		"deep_sea.abyss": "abyss",
-		"deep_sea.trench": "deep-trench",
-		"space.starlight": "starlight",
-		"space.reflection": "reflection",
-	},
+	"hands": FISHING_LOCATION_ACTIONS,
+	"net": FISHING_LOCATION_ACTIONS,
+	"line": FISHING_LOCATION_ACTIONS,
 }
 const FISHING_BOAT_FILL_MIN := 1
 const FISHING_BOAT_FILL_MAX := 30
@@ -186,6 +139,8 @@ const FISHING_ROD_XP_MULT := 2.0
 const FISHING_REINFORCED_ROD_XP_MULT := 2.5
 const FISHING_STAR_ROD_XP_MULT := 3.0
 const FISHING_REFLECT_NET_XP_MULT := 4.0
+const BATCH_STORAGE_FIELDS := ["stored_fish", "successes", "stored_xp", "stored_mastery", "haul_visual_seconds"]
+const ARCHETYPE_SUCCESS_CHANCE := {"novice": 92.0, "volume": 78.0, "chaos": 62.0, "commit": 70.0, "risk": 68.0}
 const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
 	"shallows": "res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
 	"rocks": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
@@ -246,6 +201,14 @@ const FISHING_CATCH_TEXTURE_PATHS := [
 	"res://assets/content/fishing/catch-icons/22-tiny-leviathan-trophy-cutout.png",
 	"res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
 ]
+const RESET_VALUES := {
+	"equipped_tool_id": "hands", "fish_currency": 0.0, "fish_currency_ever_earned": false, "active_tool_init_token": 0,
+	"net_stored_fish": 0, "net_successes": 0, "net_stored_xp": 0, "net_stored_mastery": 0.0, "net_haul_visual_seconds": 0.0,
+	"net_set_in_water": false, "net_collected": false, "net_collect_pending": false,
+	"boat_stored_fish": 0, "boat_successes": 0, "boat_stored_xp": 0, "boat_stored_mastery": 0.0, "boat_haul_visual_seconds": 0.0,
+	"boat_built": false, "boat_set_in_water": false, "rod_set_in_water": false, "rod_haul_visual_seconds": 0.0,
+	"rod_collected": false, "reinforced_rod_collected": false, "star_rod_collected": false, "mirror_collected": false,
+}
 
 var equipped_tool_id := "hands"
 var fish_currency := 0.0
@@ -281,36 +244,10 @@ var auto_eat_fish_enabled_by_skill := {}
 
 
 func reset() -> void:
-	equipped_tool_id = "hands"
-	fish_currency = 0.0
-	fish_currency_ever_earned = false
-	action_location_key_cache.clear()
-	action_thumbnail_path_cache.clear()
-	action_mastery_id_cache.clear()
-	active_tool_init_token = 0
-	net_stored_fish = 0
-	net_successes = 0
-	net_stored_xp = 0
-	net_stored_mastery = 0.0
-	net_haul_visual_seconds = 0.0
-	net_set_in_water = false
-	net_collected = false
-	net_collect_pending = false
-	boat_stored_fish = 0
-	boat_successes = 0
-	boat_stored_xp = 0
-	boat_stored_mastery = 0.0
-	boat_haul_visual_seconds = 0.0
-	boat_built = false
-	boat_set_in_water = false
-	rod_set_in_water = false
-	rod_haul_visual_seconds = 0.0
-	rod_collected = false
-	reinforced_rod_collected = false
-	star_rod_collected = false
-	mirror_collected = false
-	selected_locations.clear()
-	auto_eat_fish_enabled_by_skill.clear()
+	for property in RESET_VALUES:
+		set(property, RESET_VALUES[property])
+	for dictionary in [action_location_key_cache, action_thumbnail_path_cache, action_mastery_id_cache, selected_locations, auto_eat_fish_enabled_by_skill]:
+		dictionary.clear()
 
 
 func auto_eat_fish_enabled_for_skill(host, skill_id: String) -> bool:
@@ -348,9 +285,7 @@ func restore_auto_eat_fish_enabled_from_save(host, data: Dictionary) -> void:
 		return
 	if bool(data.get("auto_eat_fish_enabled", false)):
 		for raw_skill_id in host.skills.keys():
-			var skill_id := str(raw_skill_id)
-			if not host._fishing_rework_active_for_skill(skill_id):
-				set_auto_eat_fish_enabled_for_skill(host, skill_id, true)
+			set_auto_eat_fish_enabled_for_skill(host, str(raw_skill_id), true)
 
 
 func load_area_definitions_from_skill(host, skill: Dictionary, actions: Array) -> void:
@@ -463,11 +398,8 @@ func area_module_display_name(area_def: Dictionary) -> String:
 	var module_index := int(area_def.get("module_index", -1))
 	if module_index <= 0:
 		return base_name
-	match area_id:
-		"sea":
-			return "Sea #%d" % (module_index + 1)
-		"reef":
-			return "Reef #%d" % (module_index + 1)
+	if area_id in ["sea", "reef"]:
+		return "%s #%d" % [area_id.capitalize(), module_index + 1]
 	return "%s #%d" % [base_name, module_index + 1]
 
 
@@ -513,16 +445,12 @@ func next_locked_teaser_target(host, skill_id: String, location_defs: Dictionary
 
 func global_teaser_action_id(host, skill_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> String:
 	var teaser_target := next_locked_teaser_target(host, skill_id, location_defs, tool_location_actions)
-	if str(teaser_target.get("kind", "")) == "action":
-		return str(teaser_target.get("action_id", ""))
-	return ""
+	return str(teaser_target.get("action_id", "")) if str(teaser_target.get("kind", "")) == "action" else ""
 
 
 func global_teaser_location_key(host, skill_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> String:
 	var teaser_target := next_locked_teaser_target(host, skill_id, location_defs, tool_location_actions)
-	if str(teaser_target.get("kind", "")) == "location":
-		return str(teaser_target.get("key", ""))
-	return ""
+	return str(teaser_target.get("key", "")) if str(teaser_target.get("kind", "")) == "location" else ""
 
 
 func method_should_show(host, skill_id: String, action_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> bool:
@@ -531,17 +459,13 @@ func method_should_show(host, skill_id: String, action_id: String, location_defs
 		return false
 	if action_should_render_standalone(host, skill_id, action):
 		return false
-	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-		return true
-	if host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id):
+	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) or host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id):
 		return true
 	return action_id == global_teaser_action_id(host, skill_id, location_defs, tool_location_actions)
 
 
 func action_should_render_standalone(host, skill_id: String, action: Dictionary) -> bool:
-	if skill_id != "fishing":
-		return false
-	if action.is_empty() or host._passive_modules_runtime().is_passive_action(action):
+	if skill_id != "fishing" or action.is_empty() or host._passive_modules_runtime().is_passive_action(action):
 		return false
 	return ModuleUiRuntime.action_is_combo_module(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"))
 
@@ -552,17 +476,14 @@ func visible_standalone_actions(host, skill_id: String) -> Array:
 		var action := raw_action as Dictionary
 		if action_should_render_standalone(host, skill_id, action):
 			standalone_actions.append(action)
-	if standalone_actions.size() > 1:
-		standalone_actions.sort_custom(func(left, right): return host.activity_data_catalog.activity_action_display_sort_less(left, right))
+	standalone_actions.sort_custom(func(left, right): return host.activity_data_catalog.activity_action_display_sort_less(left, right))
 	return standalone_actions
 
 
 func standalone_and_event_actions_for_render(host, skill_id: String) -> Array:
 	var actions := visible_standalone_actions(host, skill_id)
-	for raw_event_action in host._temporary_event_runtime()._active_event_actions_for_skill(skill_id):
-		actions.append(raw_event_action as Dictionary)
-	if actions.size() > 1:
-		actions.sort_custom(func(left, right): return host.activity_data_catalog.activity_action_display_sort_less(left, right))
+	actions.append_array(host._temporary_event_runtime()._active_event_actions_for_skill(skill_id))
+	actions.sort_custom(func(left, right): return host.activity_data_catalog.activity_action_display_sort_less(left, right))
 	return actions
 
 
@@ -597,28 +518,22 @@ func render_area_modules(host, skill_id: String, location_defs: Dictionary, tool
 		var area_def := raw_area as Dictionary
 		if not area_should_show(host, skill_id, area_def, location_defs, tool_location_actions):
 			continue
+		var item_key := "methods"
+		var visible_items: Array = []
 		if area_uses_location_tiles(area_def, location_defs):
+			item_key = "locations"
 			var area_id := str(area_def.get("id", ""))
-			var visible_locations: Array = []
+			visible_items = []
 			for raw_location in locations_for_area(area_id, location_defs):
 				var location := raw_location as Dictionary
 				if location_should_show(host, area_id, location, location_defs, tool_location_actions):
-					visible_locations.append(location)
-			var chunk_index := 0
-			for start in range(0, visible_locations.size(), max_buttons_per_module):
-				var location_module := area_def.duplicate(true)
-				location_module["locations"] = visible_locations.slice(start, start + max_buttons_per_module)
-				location_module["module_index"] = chunk_index
-				location_module["render_order"] = render_order
-				modules.append(location_module)
-				render_order += 1
-				chunk_index += 1
-			continue
-		var visible_methods := area_visible_method_ids(host, skill_id, area_def, location_defs, tool_location_actions)
+					visible_items.append(location)
+		else:
+			visible_items = area_visible_method_ids(host, skill_id, area_def, location_defs, tool_location_actions)
 		var chunk_index := 0
-		for start in range(0, visible_methods.size(), max_buttons_per_module):
+		for start in range(0, visible_items.size(), max_buttons_per_module):
 			var chunk := area_def.duplicate(true)
-			chunk["methods"] = visible_methods.slice(start, start + max_buttons_per_module)
+			chunk[item_key] = visible_items.slice(start, start + max_buttons_per_module)
 			chunk["module_index"] = chunk_index
 			chunk["render_order"] = render_order
 			modules.append(chunk)
@@ -671,9 +586,7 @@ func action_belongs_to_area(host, area_id: String, action_id: String) -> bool:
 
 static func area_id_for_action(host, action_id: String) -> String:
 	var action := host._action_data("fishing", action_id) as Dictionary
-	if action.is_empty():
-		return ""
-	return canonical_area_id(str(action.get("area", "")))
+	return "" if action.is_empty() else canonical_area_id(str(action.get("area", "")))
 
 
 func area_uses_location_tiles(area_def: Dictionary, location_defs: Dictionary) -> bool:
@@ -771,26 +684,14 @@ func location_level_unlocked(host, location: Dictionary) -> bool:
 
 
 func location_is_available(host, _area_id: String, location: Dictionary) -> bool:
-	if not location_level_unlocked(host, location):
-		return false
-	return true
+	return location_level_unlocked(host, location)
 
 
 func location_is_unlocked(host, area_id: String, location: Dictionary, location_defs: Dictionary, tool_location_actions: Dictionary) -> bool:
 	if not location_is_available(host, area_id, location):
 		return false
 	var action := location_display_action(host, area_id, location, location_defs, tool_location_actions)
-	if action.is_empty():
-		return false
-	return host._activity_unlock_runtime()._is_action_unlocked("fishing", action)
-
-
-func location_area_is_unlocked(host, area_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> bool:
-	for raw_location in locations_for_area(area_id, location_defs):
-		var location := raw_location as Dictionary
-		if location_is_unlocked(host, area_id, location, location_defs, tool_location_actions):
-			return true
-	return false
+	return not action.is_empty() and host._activity_unlock_runtime()._is_action_unlocked("fishing", action)
 
 
 func next_locked_location_preview_key(host, location_defs: Dictionary, tool_location_actions: Dictionary) -> String:
@@ -816,9 +717,7 @@ func location_display_action(host, area_id: String, location: Dictionary, locati
 
 func location_is_unlocked_after_manual_unlock(host, area_id: String, location: Dictionary, unlocked_action_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> bool:
 	var action_id := location_action_id(area_id, str(location.get("id", "")), tool_location_actions)
-	if action_id == unlocked_action_id:
-		return true
-	return location_is_unlocked(host, area_id, location, location_defs, tool_location_actions)
+	return action_id == unlocked_action_id or location_is_unlocked(host, area_id, location, location_defs, tool_location_actions)
 
 
 func first_locked_location_action_after_manual_unlock(host, unlocked_action_id: String, preferred_area_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> String:
@@ -898,36 +797,25 @@ func tool_is_unlocked(tool_id: String) -> bool:
 
 
 func visible_rod_slot_id() -> String:
-	if star_rod_collected:
-		return "star_rod"
-	if reinforced_rod_collected:
-		return "reinforced_rod"
-	return "line"
+	return "star_rod" if star_rod_collected else ("reinforced_rod" if reinforced_rod_collected else "line")
 
 
 func set_equipped_tool(tool_id: String) -> void:
 	equipped_tool_id = tool_id
-	net_set_in_water = false
-	boat_set_in_water = false
-	rod_set_in_water = false
+	for property in ["net_set_in_water", "boat_set_in_water", "rod_set_in_water"]:
+		set(property, false)
 	rod_haul_visual_seconds = 0.0
 	clear_inactive_batch_storage()
 
 
 func clear_inactive_batch_storage() -> void:
+	for tool_id in ["net", "boat"]:
+		if equipped_tool_id == tool_id:
+			continue
+		for field in BATCH_STORAGE_FIELDS:
+			set("%s_%s" % [tool_id, field], 0)
 	if equipped_tool_id != "net":
-		net_stored_fish = 0
-		net_successes = 0
-		net_stored_xp = 0
-		net_stored_mastery = 0.0
-		net_haul_visual_seconds = 0.0
 		net_set_in_water = false
-	if equipped_tool_id != "boat":
-		boat_stored_fish = 0
-		boat_successes = 0
-		boat_stored_xp = 0
-		boat_stored_mastery = 0.0
-		boat_haul_visual_seconds = 0.0
 
 
 func ensure_action_index_cache(tool_location_actions: Dictionary, thumbnail_path: Callable) -> void:
@@ -959,59 +847,35 @@ func indexed_action_art_path(action: Dictionary, tool_location_actions: Dictiona
 	var art := str(action.get("art", ""))
 	if not art.is_empty():
 		return art
-	var background := str(action.get("background", ""))
-	if not background.is_empty():
-		return background
-	return art
+	return str(action.get("background", ""))
 
 
 func mastery_action_id(action_id: String, tool_location_actions: Dictionary, thumbnail_path: Callable) -> String:
 	ensure_action_index_cache(tool_location_actions, thumbnail_path)
-	if action_mastery_id_cache.has(action_id):
-		return str(action_mastery_id_cache.get(action_id, action_id))
-	return action_id
+	return str(action_mastery_id_cache.get(action_id, action_id))
 
 
 func record_batch_success(tool_id: String, fish_count: int, xp_reward: int, threshold: int, haul_visual_seconds: float) -> Dictionary:
-	if tool_id == "boat":
-		boat_set_in_water = true
-		boat_successes += 1
-		boat_stored_xp += xp_reward
-		boat_stored_fish += fish_count
-		if boat_stored_fish < threshold:
-			return {"haul_count": 0, "feedback_xp": xp_reward, "feedback_mastery": 0.0}
-		var boat_haul_count := boat_stored_fish
-		var boat_feedback_xp := boat_stored_xp
-		var boat_feedback_mastery := boat_stored_mastery
-		boat_stored_fish = 0
-		boat_successes = 0
-		boat_stored_xp = 0
-		boat_stored_mastery = 0.0
-		boat_haul_visual_seconds = haul_visual_seconds
-		return {"haul_count": boat_haul_count, "feedback_xp": boat_feedback_xp, "feedback_mastery": boat_feedback_mastery}
-	net_set_in_water = true
-	net_successes += 1
-	net_stored_xp += xp_reward
-	net_stored_fish += fish_count
-	if net_stored_fish < threshold:
+	var tool := "boat" if tool_id == "boat" else "net"
+	set("%s_set_in_water" % tool, true)
+	set("%s_successes" % tool, int(get("%s_successes" % tool)) + 1)
+	set("%s_stored_xp" % tool, int(get("%s_stored_xp" % tool)) + xp_reward)
+	set("%s_stored_fish" % tool, int(get("%s_stored_fish" % tool)) + fish_count)
+	var haul_count := int(get("%s_stored_fish" % tool))
+	if haul_count < threshold:
 		return {"haul_count": 0, "feedback_xp": xp_reward, "feedback_mastery": 0.0}
-	var net_haul_count := net_stored_fish
-	var net_feedback_xp := net_stored_xp
-	var net_feedback_mastery := net_stored_mastery
-	net_stored_fish = 0
-	net_successes = 0
-	net_stored_xp = 0
-	net_stored_mastery = 0.0
-	net_haul_visual_seconds = haul_visual_seconds
-	net_set_in_water = false
-	return {"haul_count": net_haul_count, "feedback_xp": net_feedback_xp, "feedback_mastery": net_feedback_mastery}
+	var result := {"haul_count": haul_count, "feedback_xp": int(get("%s_stored_xp" % tool)), "feedback_mastery": float(get("%s_stored_mastery" % tool))}
+	for field in BATCH_STORAGE_FIELDS:
+		set("%s_%s" % [tool, field], 0)
+	set("%s_haul_visual_seconds" % tool, haul_visual_seconds)
+	if tool == "net":
+		net_set_in_water = false
+	return result
 
 
 func record_mastery_stored(tool_id: String, mastery_reward: float) -> void:
-	if tool_id == "boat":
-		boat_stored_mastery += mastery_reward
-	else:
-		net_stored_mastery += mastery_reward
+	var property := "%s_stored_mastery" % ("boat" if tool_id == "boat" else "net")
+	set(property, float(get(property)) + mastery_reward)
 
 
 func award_fish_currency(host, amount: float) -> void:
@@ -1058,36 +922,26 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 		var haul_count = fish_count
 		var feedback_xp = xp_reward
 		var feedback_mastery = 0.0
-		if netting:
-			var net_result = record_batch_success("net", fish_count, xp_reward, FISHING_NET_HAUL_THRESHOLD, FISHING_NET_HAUL_VISUAL_SECONDS)
-			haul_count = int(net_result.get("haul_count", 0))
-			feedback_xp = int(net_result.get("feedback_xp", xp_reward))
-			feedback_mastery = float(net_result.get("feedback_mastery", 0.0))
-		if boating:
-			var boat_result = record_batch_success("boat", fish_count, xp_reward, FISHING_BOAT_HAUL_THRESHOLD, FISHING_BOAT_HAUL_VISUAL_SECONDS)
-			haul_count = int(boat_result.get("haul_count", 0))
-			feedback_xp = int(boat_result.get("feedback_xp", xp_reward))
-			feedback_mastery = float(boat_result.get("feedback_mastery", 0.0))
+		var batch_tool_id := "net" if netting else "boat"
+		var batch_threshold := FISHING_NET_HAUL_THRESHOLD if netting else FISHING_BOAT_HAUL_THRESHOLD
+		var batch_visual_seconds := FISHING_NET_HAUL_VISUAL_SECONDS if netting else FISHING_BOAT_HAUL_VISUAL_SECONDS
+		if batching:
+			var batch_result = record_batch_success(batch_tool_id, fish_count, xp_reward, batch_threshold, batch_visual_seconds)
+			haul_count = int(batch_result.get("haul_count", 0))
+			feedback_xp = int(batch_result.get("feedback_xp", xp_reward))
+			feedback_mastery = float(batch_result.get("feedback_mastery", 0.0))
 		var show_success_feedback = not batching or haul_count > 0
-		if show_success_feedback:
-			host._fishing_ui_surface()._play_fishing_attempt_reveal(skill_id, action_id, true)
 		var food_value = direct_fish_currency_amount if direct_fish_currency_reward else tool_food_value_for_catches(equipped_tool_id, action_id, haul_count)
 		if food_value > 0.0:
 			award_fish_currency(host, food_value)
 		var earned_mastery_reward = net_mastery_reward(host, skill_id, action_id, haul_count > 0) if netting else mastery_reward(host, skill_id, action_id)
 		if earned_mastery_reward > 0.0:
 			MasteryState.add_host_xp(host, skill_id, mastery_action_id, earned_mastery_reward)
-			if netting:
+			if batching:
 				if haul_count > 0:
 					feedback_mastery += earned_mastery_reward
 				else:
-					record_mastery_stored("net", earned_mastery_reward)
-					stored_mastery_feedback = earned_mastery_reward
-			elif boating:
-				if haul_count > 0:
-					feedback_mastery += earned_mastery_reward
-				else:
-					record_mastery_stored("boat", earned_mastery_reward)
+					record_mastery_stored(batch_tool_id, earned_mastery_reward)
 					stored_mastery_feedback = earned_mastery_reward
 			else:
 				feedback_mastery = earned_mastery_reward
@@ -1102,16 +956,14 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 		var xp_result_phrase = host._action_runtime()._xp_reward_result_phrase(xp_reward_map, skill_id)
 		if batching and haul_count > 0 and feedback_xp != xp_reward:
 			xp_result_phrase = "+%s XP" % GameFormatting.info_chip_number(float(feedback_xp))
-		if netting:
+		if batching:
+			var stored_fish := net_stored_fish if netting else boat_stored_fish
+			var batch_result_label := "hauled" if netting else "brought in"
 			if haul_count > 0:
-				host.last_result = "%s, +%s mastery, hauled +%s food from %s." % [xp_result_phrase, GameFormatting.significant_digits(feedback_mastery), GameFormatting.compact_number(maxf(0.0, food_value), 3), action["name"]]
+				host.last_result = "%s, +%s mastery, %s +%s food from %s." % [xp_result_phrase, GameFormatting.significant_digits(feedback_mastery), batch_result_label, GameFormatting.compact_number(maxf(0.0, food_value), 3), action["name"]]
 			else:
-				host.last_result = "%s, +%s catch entered net (%s/%s)." % [xp_result_phrase, fish_count, net_stored_fish, FISHING_NET_HAUL_THRESHOLD]
-		elif boating:
-			if haul_count > 0:
-				host.last_result = "%s, +%s mastery, brought in +%s food from %s." % [xp_result_phrase, GameFormatting.significant_digits(feedback_mastery), GameFormatting.compact_number(maxf(0.0, food_value), 3), action["name"]]
-			else:
-				host.last_result = "%s, +%s catch loaded boat (%s/%s)." % [xp_result_phrase, fish_count, boat_stored_fish, FISHING_BOAT_HAUL_THRESHOLD]
+				var storage_result_label := "entered net" if netting else "loaded boat"
+				host.last_result = "%s, +%s catch %s (%s/%s)." % [xp_result_phrase, fish_count, storage_result_label, stored_fish, batch_threshold]
 		else:
 			if feedback_mastery > 0.0:
 				host.last_result = "%s, +%s mastery, +%s food from %s." % [xp_result_phrase, GameFormatting.significant_digits(feedback_mastery), GameFormatting.compact_number(maxf(0.0, food_value), 3), action["name"]]
@@ -1133,8 +985,6 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 		host._audio_director()._record_music_flow_action(true, 1, false, new_mastery_level > old_mastery_level, any_reward_skill_level_up or SkillState.host_skill_level(host, skill_id) > old_skill_level, 0.0)
 	else:
 		mark_missed(equipped_tool_id)
-		if not batching and not rodding:
-			host._fishing_ui_surface()._play_fishing_attempt_reveal(skill_id, action_id, false)
 		host._action_runtime().reset_activity_completion_streak()
 		var failure_mastery_level = MasteryState.level(host.mastery, host._action_key(skill_id, mastery_action_id))
 		host.last_result = "Missed %s." % action["name"]
@@ -1186,9 +1036,7 @@ func normalized_selected_locations(loaded_locations: Variant, area_loaded: Calla
 
 func restore_selected_locations(loaded_locations: Variant, area_loaded: Callable, location_valid: Callable) -> void:
 	selected_locations.clear()
-	var normalized := normalized_selected_locations(loaded_locations, area_loaded, location_valid)
-	for area_id in normalized.keys():
-		selected_locations[area_id] = normalized[area_id]
+	selected_locations.merge(normalized_selected_locations(loaded_locations, area_loaded, location_valid))
 
 
 func selected_locations_for_save(area_loaded: Callable, location_valid: Callable) -> Dictionary:
@@ -1222,11 +1070,8 @@ func star_rod_collected_for_save() -> bool:
 
 
 func reconcile_rod_collection() -> void:
-	if star_rod_collected:
-		reinforced_rod_collected = true
-		rod_collected = true
-	elif reinforced_rod_collected:
-		rod_collected = true
+	rod_collected = rod_collected or reinforced_rod_collected or star_rod_collected
+	reinforced_rod_collected = reinforced_rod_collected or star_rod_collected
 
 
 func restore_from_save(data: Dictionary, net_threshold: int, boat_threshold: int, is_unlocked: Callable, area_loaded: Callable, location_valid: Callable) -> void:
@@ -1288,9 +1133,7 @@ func save_payload(net_threshold: int, boat_threshold: int, is_unlocked: Callable
 
 
 static func canonical_area_id(area_id: String) -> String:
-	if FISHING_AREA_ID_ALIASES.has(area_id):
-		return str(FISHING_AREA_ID_ALIASES[area_id])
-	return area_id
+	return str(FISHING_AREA_ID_ALIASES.get(area_id, area_id))
 
 
 static func is_rod(tool_id: String) -> bool:
@@ -1306,21 +1149,11 @@ static func tool_catches_nothing_for_action(tool_id: String, action_id: String) 
 
 
 static func tool_is_bad_for_action(tool_id: String, action_id: String) -> bool:
-	if tool_catches_nothing_for_action(tool_id, action_id):
-		return true
-	match action_id:
-		"rocks":
-			return is_rod(tool_id) or tool_id == "boat"
-	return false
+	return tool_catches_nothing_for_action(tool_id, action_id) or (action_id == "rocks" and (is_rod(tool_id) or tool_id == "boat"))
 
 
 func tool_success_bonus() -> float:
-	match equipped_tool_id:
-		"reinforced_rod":
-			return 5.0
-		"star_rod":
-			return 10.0
-	return 0.0
+	return 10.0 if equipped_tool_id == "star_rod" else (5.0 if equipped_tool_id == "reinforced_rod" else 0.0)
 
 
 func tool_warning_text(action_id: String) -> String:
@@ -1368,26 +1201,18 @@ func yield_range(action: Dictionary, tool_id := "") -> Dictionary:
 		return {"min": 0, "max": 0}
 	if tool_catches_nothing_for_action(active_tool_id, action_id):
 		return {"min": 0, "max": 0}
-	if active_tool_id == "hands":
+	if active_tool_id == "hands" or is_rod(active_tool_id) or tool_is_bad_for_action(active_tool_id, action_id):
 		return {"min": 1, "max": 1}
-	if is_rod(active_tool_id):
-		return {"min": 1, "max": 1}
-	if tool_is_bad_for_action(active_tool_id, action_id):
-		return {"min": 1, "max": 1}
-	var rewards := action.get("rewards", {}) as Dictionary
-	if rewards.has("fish_min") and rewards.has("fish_max"):
-		var fish_min := maxi(1, int(rewards.get("fish_min", 1)))
-		var fish_max := maxi(fish_min, int(rewards.get("fish_max", fish_min)))
-		if active_tool_id == "net":
-			return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
-		if active_tool_id == "boat":
-			return {"min": FISHING_BOAT_FILL_MIN, "max": FISHING_BOAT_FILL_MAX}
-		return {"min": fish_min, "max": fish_max}
-	var tier := int(action.get("tier", 1))
 	if active_tool_id == "net":
 		return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
 	if active_tool_id == "boat":
 		return {"min": FISHING_BOAT_FILL_MIN, "max": FISHING_BOAT_FILL_MAX}
+	var rewards := action.get("rewards", {}) as Dictionary
+	if rewards.has("fish_min") and rewards.has("fish_max"):
+		var fish_min := maxi(1, int(rewards.get("fish_min", 1)))
+		var fish_max := maxi(fish_min, int(rewards.get("fish_max", fish_min)))
+		return {"min": fish_min, "max": fish_max}
+	var tier := int(action.get("tier", 1))
 	return {
 		"min": maxi(1, tier - 1),
 		"max": maxi(maxi(1, tier - 1) + 1, tier + 1),
@@ -1445,11 +1270,8 @@ func attempt_success_chance(host, action_id: String) -> float:
 	if equipped_tool_id == "hands":
 		return hands_success_chance(action_id)
 	var action := host._action_data("fishing", action_id) as Dictionary
-	var chance := 0.0
-	if not action.is_empty():
-		chance = float(action.get("success", attempt_success_chance_for_archetype(method_archetype(host, action_id)))) + tool_success_bonus()
-	else:
-		chance = attempt_success_chance_for_archetype(method_archetype(host, action_id)) + tool_success_bonus()
+	var default_chance := attempt_success_chance_for_archetype(method_archetype(host, action_id))
+	var chance := float(action.get("success", default_chance)) + tool_success_bonus()
 	if equipped_tool_id == "net":
 		chance *= FISHING_NET_SUCCESS_RATE_MULT
 	if tool_is_bad_for_action(equipped_tool_id, action_id):
@@ -1458,19 +1280,7 @@ func attempt_success_chance(host, action_id: String) -> float:
 
 
 static func attempt_success_chance_for_archetype(archetype: String) -> float:
-	match archetype:
-		"novice":
-			return 92.0
-		"volume":
-			return 78.0
-		"chaos":
-			return 62.0
-		"commit":
-			return 70.0
-		"risk":
-			return 68.0
-		_:
-			return 82.0
+	return float(ARCHETYPE_SUCCESS_CHANCE.get(archetype, 82.0))
 
 
 static func catch_texture_path(action: Dictionary) -> String:
@@ -1488,9 +1298,7 @@ func roll_fish_count(host, action: Dictionary, tool_id := "") -> int:
 	var active_tool_id := equipped_tool_id if tool_id.is_empty() else tool_id
 	if int(range["max"]) <= 0:
 		return 0
-	if active_tool_id == "hands":
-		return 1
-	if is_rod(active_tool_id):
+	if active_tool_id == "hands" or is_rod(active_tool_id):
 		return 1
 	if active_tool_id == "net":
 		return randi_range(FISHING_NET_FILL_MIN, FISHING_NET_FILL_MAX)

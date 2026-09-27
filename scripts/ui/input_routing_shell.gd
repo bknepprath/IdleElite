@@ -1460,16 +1460,7 @@ func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 
 
 func _fishing_detail_event_position(event: InputEvent) -> Vector2:
-	if event is InputEventMouseButton:
-		return (event as InputEventMouseButton).global_position
-	if event is InputEventMouseMotion:
-		return (event as InputEventMouseMotion).global_position
-	if event is InputEventScreenTouch:
-		return (event as InputEventScreenTouch).position
-	if event is InputEventScreenDrag:
-		return (event as InputEventScreenDrag).position
-	return Vector2.INF
-
+	return ModuleUiRuntime.press_event_position(event)
 
 func _fishing_detail_should_skip_generic_input(event: InputEvent) -> bool:
 	if host.current_screen != "skill" or host.selected_skill_id != "fishing":

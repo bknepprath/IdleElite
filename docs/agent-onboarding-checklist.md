@@ -31,9 +31,7 @@ Run the most relevant focused gate first:
 - `.\scripts\check-activity-database-contracts.ps1` and `.\scripts\audit-activity-database.ps1` for activity data changes.
 - `.\scripts\check-generated-file-hygiene.ps1` for generated-file, `.import`, `.uid`, output, build, cache, or local-config rule changes.
 - `.\scripts\check-ui-boundary-contracts.ps1` for shell UI boundary edits.
-- `.\scripts\check-activity-ui-boundary-contracts.ps1` for activity UI boundary edits.
 - `.\scripts\test-save-normalization.ps1` for save/load changes.
-- `.\scripts\test-performance-regressions.ps1` for broad `main.gd`, validation-contract, or performance-sensitive edits.
 
 Then run `.\scripts\check-project.ps1` when practical. The current known baseline reaches the readability/static gates. In non-strict mode, intermittent skills-page scroll/swipe budget failures are retried with a short warning; the harness prints the last failed sample only if all retries fail, then continues with `skills-page-performance-release-warning`. Always record the exact output if this behavior changes.
 

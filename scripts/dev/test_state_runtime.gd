@@ -36,7 +36,7 @@ func _clear_activity_unlock_ceremony_test_state() -> void:
 	unlock_ceremony.center_scroll_target = -1
 	unlock_ceremony.set_preview_after_ceremony("")
 	unlock_ceremony.heist_preview_after_ceremony_id = ""
-	host._activity_unlock_ceremony_surface().clear_preview_reveal_guards()
+	unlock_ceremony.clear_preview_reveal_guards()
 	for raw_card in host.action_cards.values():
 		if typeof(raw_card) != TYPE_DICTIONARY:
 			continue
@@ -67,9 +67,7 @@ func _god_mode_toggle_text() -> String:
 
 
 func _god_mode_status_text() -> String:
-	if host.god_mode_save_tainted:
-		return "Test save"
-	return "Debug build"
+	return "Test save" if host.god_mode_save_tainted else "Debug build"
 
 
 func _headless_validation_mode() -> bool:
@@ -110,12 +108,10 @@ func _god_mode_unlock_actions_state() -> void:
 				convergence_state["built"] = true
 				convergence_state["building"] = false
 				convergence_state["build_started_unix"] = 0
-				host.convergence_modules[action_id] = convergence_state
-			elif host._passive_modules_runtime().is_passive_action(action):
+				continue
+			if host._passive_modules_runtime().is_passive_action(action):
 				host._passive_modules_runtime().ensure_passive_module_state(action_id, now)
-				host._activity_unlock_runtime()._mark_action_manually_unlocked(skill_id, action_id)
-			else:
-				host._activity_unlock_runtime()._mark_action_manually_unlocked(skill_id, action_id)
+			host._activity_unlock_runtime()._mark_action_manually_unlocked(skill_id, action_id)
 	host._activity_unlock_runtime().sync_manual_activity_unlocks_from_levels()
 
 
@@ -132,8 +128,7 @@ func _apply_art_review_test_unlock_all_state() -> void:
 	host.material_runtime.set_amount("softwood", maxf(host.material_runtime.amount("softwood"), float(GOD_MODE_RESOURCE_GRANT)))
 	host.material_runtime.set_amount("hardwood", maxf(host.material_runtime.amount("hardwood"), float(GOD_MODE_RESOURCE_GRANT)))
 	host.fishing_runtime.fish_currency = maxf(host.fishing_runtime.fish_currency, float(GOD_MODE_RESOURCE_GRANT))
-	if host.fishing_runtime.fish_currency > 0.0:
-		host.fishing_runtime.fish_currency_ever_earned = true
+	host.fishing_runtime.fish_currency_ever_earned = true
 	for raw_skill_id in host.stamina.keys():
 		var skill_id := str(raw_skill_id)
 		host.stamina[skill_id] = float(SkillState.max_stamina(host, skill_id))
@@ -173,21 +168,15 @@ func _god_mode_unlock_thieving_trophies_state() -> void:
 
 
 func _god_mode_unlock_onboarding_state() -> void:
-	host._onboarding_runtime().activity_start_tip_seen = true
-	host._onboarding_runtime().stamina_gauge_tip_seen = true
-	host._onboarding_runtime().lock_click_tip_seen = true
-	host._onboarding_runtime().passive_module_tip_seen = true
-	host._onboarding_runtime().silver_opportunity_tip_seen = true
-	host._onboarding_runtime().silver_opportunity_tip_action_key = ""
-	host._onboarding_runtime().skill_swipe_tip_seen = true
-	host._onboarding_runtime().onboarding_explore_tip_seen = true
-	host._onboarding_runtime().onboarding_tutorial_complete = true
-	host._onboarding_runtime().onboarding_swipe_tip_eligible = true
-	host._onboarding_runtime().onboarding_swipe_navigation_unlocked = true
-	host._onboarding_runtime().onboarding_fight_summary_revealed = true
-	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = true
-	host._onboarding_runtime().onboarding_fight_stamina_revealed = true
-	host._onboarding_runtime().onboarding_fight_action_stats_revealed = true
+	var onboarding = host._onboarding_runtime()
+	for property in [
+		"activity_start_tip_seen", "stamina_gauge_tip_seen", "lock_click_tip_seen", "passive_module_tip_seen", "silver_opportunity_tip_seen",
+		"skill_swipe_tip_seen", "onboarding_explore_tip_seen", "onboarding_tutorial_complete", "onboarding_swipe_tip_eligible",
+		"onboarding_swipe_navigation_unlocked", "onboarding_fight_summary_revealed", "onboarding_fight_auto_run_message_shown",
+		"onboarding_fight_stamina_revealed", "onboarding_fight_action_stats_revealed",
+	]:
+		onboarding.set(property, true)
+	onboarding.silver_opportunity_tip_action_key = ""
 	var tutorial_surface = host._tutorial_overlay_surface()
 	tutorial_surface.onboarding_medal_tip_shown = true
 	tutorial_surface.onboarding_mastery_tip_dismissed = true
@@ -200,7 +189,6 @@ func _god_mode_max_hub_state() -> void:
 		state["level"] = HubRuntime.HUB_MODULE_MAX_LEVEL
 		state["building"] = false
 		state["build_started_unix_msec"] = 0
-		host._hub_runtime().hub_modules[module_id] = state
 
 
 func _god_mode_max_medals_state() -> void:
@@ -224,7 +212,6 @@ func _god_mode_clear_timers_state() -> void:
 		var trophy_id := str(raw_trophy_id)
 		var state: Dictionary = host.thieving_state.ensure_trophy_state(trophy_id)
 		state["cooldown_until_unix"] = 0
-		host.thieving_state.trophies[trophy_id] = state
 	for raw_module_id in host._hub_runtime().hub_modules.keys():
 		var module_id := str(raw_module_id)
 		var state: Dictionary = host._hub_surface()._ensure_hub_module_state(module_id)
@@ -232,14 +219,12 @@ func _god_mode_clear_timers_state() -> void:
 			state["level"] = mini(HubRuntime.HUB_MODULE_MAX_LEVEL, int(state.get("level", 0)) + 1)
 		state["building"] = false
 		state["build_started_unix_msec"] = 0
-		host._hub_runtime().hub_modules[module_id] = state
 	for raw_module_id in host.convergence_modules.keys():
 		var module_id := str(raw_module_id)
 		var state: Dictionary = host._convergence_runtime()._ensure_convergence_state(module_id)
 		state["built"] = true
 		state["building"] = false
 		state["build_started_unix"] = 0
-		host.convergence_modules[module_id] = state
 	host._hub_runtime().hub_mission_cooldown_until_unix = 0
 
 

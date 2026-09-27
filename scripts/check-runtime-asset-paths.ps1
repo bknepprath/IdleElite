@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$projectRootPath = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $sourceFileExtensions = @(
     ".cfg",
@@ -36,12 +37,11 @@ function Convert-ResourcePathToProjectPath {
 function Convert-ToProjectRelativePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $rootPath = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/")
     $fullPath = (Resolve-Path -LiteralPath $Path).Path
-    if (-not $fullPath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not $fullPath.StartsWith($projectRootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Path is outside the project root: $Path"
     }
-    $relativePath = $fullPath.Substring($rootPath.Length).TrimStart("\", "/")
+    $relativePath = $fullPath.Substring($projectRootPath.Length)
     $relativePath.Replace("\", "/")
 }
 
@@ -86,8 +86,8 @@ function Get-ProjectSourceFiles {
         }
         if ($entry.PSIsContainer) {
             Get-ProjectSourceFiles -Directory $entry.FullName
-        } else {
-            $entry
+        } elseif ($sourceFileExtensions -contains $entry.Extension) {
+            $relativePath
         }
     }
 }
@@ -95,13 +95,7 @@ function Get-ProjectSourceFiles {
 $pathsByResourcePath = @{}
 $exportExcludeFilters = New-Object System.Collections.Generic.List[string]
 $sourceFiles = @(
-    Get-ProjectSourceFiles |
-        Where-Object {
-            $relativePath = Convert-ToProjectRelativePath $_.FullName
-            ($sourceFileExtensions -contains $_.Extension) -and -not (Test-IsIgnoredSourcePath $relativePath)
-        } |
-        ForEach-Object { Convert-ToProjectRelativePath $_.FullName } |
-        Sort-Object
+    Get-ProjectSourceFiles | Sort-Object
 )
 
 Assert-True ($sourceFiles.Count -gt 0) "Runtime asset path check did not discover any source files."

@@ -27,6 +27,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const BOOT_TIMEOUT_FRAMES := 720
@@ -37,15 +39,6 @@ var failed := false
 
 func _init() -> void:
 	call_deferred("_run")
-
-
-func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
-	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = pressed
-	event.position = point
-	event.global_position = point
-	return event
 
 
 func _run() -> void:
@@ -114,10 +107,10 @@ func _run() -> void:
 
 	var xp_before := int(((scene.get("skills") as Dictionary).get("thieving", {}) as Dictionary).get("xp", 0))
 	scene.call("_clear_skill_swipe_button_suppression")
-	scene.call("_input", _mouse_button_event(click_point, true))
+	scene.call("_input", TestHelpers.mouse_button_event(click_point, true))
 	for _frame in range(4):
 		await process_frame
-	scene.call("_input", _mouse_button_event(click_point, false))
+	scene.call("_input", TestHelpers.mouse_button_event(click_point, false))
 	for _frame in range(45):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame

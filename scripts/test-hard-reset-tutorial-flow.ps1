@@ -27,6 +27,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const BOOT_TIMEOUT_FRAMES := 720
@@ -93,7 +95,7 @@ func _run() -> void:
 		_fail("hard reset tutorial should not show a SKIP button: %s" % _summary(scene))
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("hard reset tutorial should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("hard reset tutorial should render only Push-Ups: %s actions=%s" % [_summary(scene), str(TestHelpers.rendered_action_ids(scene))])
 		return
 	print("hard-reset-tutorial-flow-stage starter-ready")
 
@@ -162,148 +164,6 @@ func _run() -> void:
 	print("fresh-tutorial-level-two-stable-ok")
 	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
 	quit(0)
-	scene.call("_settings_surface").call("toggle_auto_unlock_lockpads_enabled")
-	for _i in range(240):
-		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-	if not bool(scene.get("auto_unlock_lockpads_enabled")):
-		_fail("auto-unlock toggle did not turn on during onboarding: %s" % _summary(scene))
-		return
-	level_two_action = scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
-	if bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
-		_fail("auto-unlock should be paused during onboarding and must not unlock Practice Kicking: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
-		return
-	var rendered_after_auto_toggle := _rendered_action_ids(scene)
-	if rendered_after_auto_toggle.has("wrestle-stuck-gate-latch") or rendered_after_auto_toggle.has("box-suspicious-feed-sack"):
-		_fail("auto-unlock during onboarding revealed stacked future locks: %s" % str(rendered_after_auto_toggle))
-		return
-	if not _lock_click_tip_visible(scene):
-		_fail("auto-unlock during onboarding hid the lock-click tutorial tip before the player clicked the lock: %s" % _summary(scene))
-		return
-	scene.set("auto_unlock_lockpads_enabled", false)
-	print("hard-reset-tutorial-flow-stage starter-run-observed")
-	var manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
-	manual_unlocks["fight:kick-mud-off-boot"] = true
-	scene.set("manual_activity_unlocks", manual_unlocks)
-	scene._onboarding_runtime().tutorial_gate_latch_only_until_swipe = true
-	unlock_ceremony_surface.ceremony_count = 0
-	unlock_ceremony_surface.locked_preview_fade_play_pending = false
-	scene._onboarding_runtime().stamina_gauge_tip_seen = true
-	scene._onboarding_runtime().onboarding_fight_action_stats_revealed = true
-	var test_stamina := scene.get("stamina") as Dictionary
-	test_stamina["fight"] = SkillState.max_stamina(scene, "fight")
-	scene.set("stamina", test_stamina)
-	var onboarding_runtime := scene.call("_onboarding_runtime") as Object
-	onboarding_runtime.call("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", "fight")
-	var swipe_tip_refresh = scene.call("_skill_detail_surface").call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
-	if swipe_tip_refresh != null:
-		await swipe_tip_refresh
-	for _i in range(720):
-		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if _has_page_switch_module(scene) and _skill_swipe_tip_between_level_two_and_three(scene):
-			break
-	if not _has_page_switch_module(scene):
-		_fail("page-switch navigation did not appear when the swipe tutorial gate became available before stamina depletion: %s" % _summary(scene))
-		return
-	if not bool(scene._onboarding_runtime().onboarding_swipe_navigation_unlocked):
-		_fail("page-switch navigation appeared before onboarding swipe navigation was unlocked by the gate prompt: %s" % _summary(scene))
-		return
-	if not _skill_swipe_tip_between_level_two_and_three(scene):
-		_fail("skill-swipe tutorial line was not placed between the level 2 and level 3 fight modules: %s tip_index=%s action_indices=%s" % [_summary(scene), str(_first_group_stack_index(scene, "skill_swipe_tip_notes")), str(_fight_action_stack_indices(scene))])
-		return
-	if not await _stale_page_switch_input_clears_on_suspend(scene):
-		_fail("stale page-switch input state kept stealing normal activity taps after suspend/resume: %s" % _summary(scene))
-		return
-	scene.set("running_skill_id", "")
-	scene.set("running_action_id", "")
-	scene.set("action_progress", 0.0)
-	if not await _press_first_page_switch_button(scene):
-		_fail("page-switch button press was not accepted during the swipe tutorial step: %s" % _summary(scene))
-		return
-	for _i in range(360):
-		await _wait_test_frame()
-		if str(scene.get("selected_skill_id")) != "fight":
-			break
-	if str(scene.get("selected_skill_id")) == "fight":
-		_fail("page-switch button did not navigate away from fight during the swipe tutorial step: %s" % _summary(scene))
-		return
-	if not bool(scene._onboarding_runtime().skill_swipe_tip_seen):
-		_fail("page-switch button did not advance the swipe tutorial milestone: %s" % _summary(scene))
-		return
-	print("hard-reset-tutorial-flow-stage page-switch-ok")
-
-	scene.call("save_game")
-	for _i in range(12):
-		await _wait_test_frame()
-	scene = _instantiate_main(packed)
-	if not await _wait_for_boot_ready(scene):
-		_fail("reloaded mid-tutorial save did not become ready")
-		return
-	for _i in range(SETTLE_FRAMES):
-		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if _tutorial_skill_page_ready(scene):
-			break
-	if bool(scene._onboarding_runtime().tutorial_active):
-		_fail("mid-tutorial save should not restore the legacy boxed tutorial overlay: %s" % _summary(scene))
-		return
-	if not _tutorial_skill_page_ready(scene):
-		_fail("mid-tutorial save did not restore to fight detail: %s" % _summary(scene))
-		return
-	if bool(scene._onboarding_runtime().onboarding_tutorial_complete):
-		_fail("mid-tutorial save should keep onboarding incomplete: %s" % _summary(scene))
-		return
-	print("hard-reset-tutorial-flow-stage reload-ok")
-
-	onboarding_runtime = scene.call("_onboarding_runtime") as Object
-	onboarding_runtime.call("_graduate_onboarding_tutorial")
-	for _i in range(8):
-		await _wait_test_frame()
-	if not _completion_bottom_chrome_fade_started(scene):
-		_fail("graduating onboarding did not start the bottom chrome fade from transparent: %s %s" % [_summary(scene), _bottom_chrome_summary(scene)])
-		return
-	for _i in range(240):
-		await _wait_test_frame()
-		if _tutorial_completion_visible(scene) and _completion_bottom_chrome_state_ok(scene):
-			break
-	if not _tutorial_completion_visible(scene):
-		_fail("graduating onboarding did not reveal bottom controls: %s %s" % [_summary(scene), _bottom_nav_summary(scene)])
-		return
-	if not _completion_bottom_chrome_state_ok(scene):
-		_fail("graduating onboarding did not leave bottom chrome collapsed with fresh-game locks: %s %s %s" % [_summary(scene), _bottom_nav_summary(scene), _bottom_chrome_summary(scene)])
-		return
-	print("hard-reset-tutorial-flow-stage graduation-ok")
-
-	scene.call("_save_runtime").call("reset_data")
-	for _i in range(SETTLE_FRAMES):
-		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if bool(scene._onboarding_runtime().tutorial_active) and _tutorial_skill_page_ready(scene):
-			break
-	if not bool(scene._onboarding_runtime().tutorial_active) or int(scene._onboarding_runtime().tutorial_step) != 1:
-		_fail("hard reset after completed tutorial did not restart a fresh tutorial: %s" % _summary(scene))
-		return
-	if not _tutorial_skill_page_ready(scene):
-		_fail("hard reset after completion should return to fight detail: %s" % _summary(scene))
-		return
-	var reset_nav := _bottom_nav_bar(scene)
-	if reset_nav == null or not reset_nav.visible:
-		_fail("fresh tutorial after completed reset should keep the bottom nav shell visible: %s" % _summary(scene))
-		return
-	if not _bottom_nav_locked_controls_ok(scene):
-		_fail("fresh tutorial after completed reset should show all nav buttons with skills/settings bright and other nav locked: %s %s" % [_summary(scene), _bottom_nav_summary(scene)])
-		return
-	tutorial_panel = scene.get("tutorial_panel") as Control
-	if tutorial_panel != null and tutorial_panel.visible:
-		_fail("fresh tutorial after completed reset should not show the legacy boxed tutorial panel: %s" % _summary(scene))
-		return
-	if not _only_starter_activity_rendered(scene):
-		_fail("fresh tutorial after completed reset should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
-		return
-
-	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
-	quit(0)
 
 
 func _instantiate_main(packed: PackedScene) -> Node:
@@ -335,61 +195,9 @@ func _press_tutorial_target(scene: Node) -> bool:
 	return accepted
 
 
-func _press_tutorial_start_button(scene: Node) -> bool:
-	var tutorial_overlay_surface := scene.call("_tutorial_overlay_surface") as Object
-	if tutorial_overlay_surface == null:
-		return false
-	var button := tutorial_overlay_surface.get("tutorial_action_button") as Button
-	if button == null or not is_instance_valid(button) or not button.is_visible_in_tree():
-		return false
-	button.pressed.emit()
-	return true
-
-
-func _tutorial_completion_visible(scene: Node) -> bool:
-	if bool(scene._onboarding_runtime().tutorial_active):
-		return false
-	if not bool(scene._onboarding_runtime().onboarding_tutorial_complete):
-		return false
-	var nav_bar := _bottom_nav_bar(scene)
-	return nav_bar != null and nav_bar.visible and _bottom_nav_post_tutorial_controls_ok(scene)
-
-
-func _completion_bottom_chrome_state_ok(scene: Node) -> bool:
-	var utility_row := _module_utility_row(scene)
-	var chat_strip := scene.get("chat_strip") as Control
-	var collapsed := _module_utility_collapsed(scene)
-	return (
-		_bottom_nav_post_tutorial_controls_ok(scene)
-		and collapsed
-		and utility_row != null
-		and utility_row.visible
-		and _effective_canvas_alpha(utility_row) > 0.96
-		and chat_strip != null
-		and chat_strip.visible
-		and _effective_canvas_alpha(chat_strip) > 0.96
-	)
-
-
-func _completion_bottom_chrome_fade_started(scene: Node) -> bool:
-	var utility_row := _module_utility_row(scene)
-	var chat_strip := scene.get("chat_strip") as Control
-	if utility_row == null or chat_strip == null:
-		return false
-	if not utility_row.visible or not chat_strip.visible:
-		return false
-	if not _module_utility_collapsed(scene):
-		return false
-	var utility_alpha := _effective_canvas_alpha(utility_row)
-	var chat_alpha := _effective_canvas_alpha(chat_strip)
-	return utility_alpha >= 0.0 and utility_alpha < 0.98 and chat_alpha >= 0.0 and chat_alpha < 0.98
-
-
 func _module_utility_row(scene: Node) -> Control:
 	var navigation_shell := scene.call("_navigation_shell") as Object
-	if navigation_shell == null:
-		return null
-	return navigation_shell.get("module_utility_row") as Control
+	return navigation_shell.get("module_utility_row") as Control if navigation_shell != null else null
 
 
 func _bottom_nav_bar(scene: Node) -> Control:
@@ -571,12 +379,12 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
-	var ids := _rendered_action_ids(scene)
+	var ids := TestHelpers.rendered_action_ids(scene)
 	return ids.size() == 1 and ids[0] == "push-ups"
 
 
 func _tutorial_start_actions_rendered(scene: Node) -> bool:
-	var ids := _rendered_action_ids(scene)
+	var ids := TestHelpers.rendered_action_ids(scene)
 	return ids.has("push-ups") and ids.has("kick-mud-off-boot")
 
 
@@ -687,21 +495,8 @@ func _onboarding_tip_summary(scene: Node) -> String:
 		str(scene._onboarding_runtime().onboarding_header_sequence_running),
 		str(scene._onboarding_runtime().onboarding_stamina_tip_sequence_running),
 		str(scene._onboarding_runtime().onboarding_fight_action_stats_fade_running),
-		str(_rendered_action_ids(scene)),
+		str(TestHelpers.rendered_action_ids(scene)),
 	]
-
-
-func _rendered_action_ids(scene: Node) -> Array:
-	var ids := []
-	var cards := scene.get("action_cards") as Dictionary
-	if cards == null:
-		return ids
-	for raw_key in cards.keys():
-		var key := str(raw_key)
-		if key.begins_with("fight:"):
-			ids.append(key.substr("fight:".length()))
-	ids.sort()
-	return ids
 
 
 func _has_page_switch_module(scene: Node) -> bool:

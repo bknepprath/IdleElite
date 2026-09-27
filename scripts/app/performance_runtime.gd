@@ -242,7 +242,7 @@ func clear_monitor_reference() -> void:
 	performance_monitor = null
 
 
-## Debug performance report node owned by PerformanceRuntime.
+
 class _PerfMonitor extends Node:
 	const WINDOW_SIZE := 180
 	const REPORT_INTERVAL := 3.0
@@ -467,14 +467,8 @@ class _PerfMonitor extends Node:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(0.03, 0.03, 0.03, 0.84)
 		style.border_color = Color(1.0, 1.0, 1.0, 0.55)
-		style.border_width_left = 4
-		style.border_width_top = 4
-		style.border_width_right = 4
-		style.border_width_bottom = 4
-		style.corner_radius_top_left = 18
-		style.corner_radius_top_right = 18
-		style.corner_radius_bottom_left = 18
-		style.corner_radius_bottom_right = 18
+		style.set_border_width_all(4)
+		style.set_corner_radius_all(18)
 		return style
 
 

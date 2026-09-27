@@ -25,6 +25,8 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 var failures: Array[String] = []
 
 
@@ -175,12 +177,12 @@ func _run() -> void:
 	action_cards[scene.call("_action_key", "fishing", fishing_action_id)] = fishing_method_card
 	scene.set("action_cards", action_cards)
 	var fishing_medal_center := fishing_medal.get_global_rect().get_center()
-	var press_event := _mouse_button_event(fishing_medal_center, true)
+	var press_event := TestHelpers.mouse_button_event(fishing_medal_center, true)
 	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(press_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
 		_record("Fishing medal press was not handled")
 	if str(fishing_button.get_meta("fishing_method_press_kind", "")) != "__medal__":
 		_record("Fishing medal press did not store medal press kind")
-	var release_event := _mouse_button_event(fishing_medal_center, false)
+	var release_event := TestHelpers.mouse_button_event(fishing_medal_center, false)
 	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(release_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
 		_record("Fishing medal release was not handled")
 	if fishing_button.has_meta("fishing_method_press_kind"):
@@ -209,13 +211,6 @@ func _fail(message: String) -> void:
 	quit(1)
 
 
-func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
-	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = pressed
-	event.position = point
-	event.global_position = point
-	return event
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1

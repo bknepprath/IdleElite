@@ -19,7 +19,9 @@ $firebaseConfig = Get-Content -LiteralPath $firebaseJsonPath -Raw | ConvertFrom-
 Assert-True ([string]$firebaseConfig.database.rules -eq "firebase-realtime-database.rules.json") "firebase.json must deploy the generated leaderboard rules file."
 
 & (Join-Path $projectRoot "scripts\update-firebase-leaderboard-rules.ps1") -Check
+if (-not $?) { exit [Math]::Max(1, [int]$LASTEXITCODE) }
 & (Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1")
+if (-not $?) { exit [Math]::Max(1, [int]$LASTEXITCODE) }
 
 if ($CheckOnly) {
     Write-Output "firebase-leaderboard-rules-deploy-check-ok"

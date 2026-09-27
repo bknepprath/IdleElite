@@ -94,10 +94,7 @@ static func _chat_world_tab_style(ink_color: Color) -> StyleBoxFlat:
 	style.bg_color = Color("#3f5068")
 	style.border_color = ink_color
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
+	style.set_corner_radius_all(24)
 	style.content_margin_left = 26
 	style.content_margin_right = 26
 	style.content_margin_top = 24
@@ -109,10 +106,7 @@ static func chat_unread_dot_style() -> StyleBoxFlat:
 	style.bg_color = Color("#ef2f2f")
 	style.border_color = Color("#111111")
 	style.set_border_width_all(6)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.set_corner_radius_all(999)
 	return style
 
 static func _chat_expanded_message_style(deleted := false, is_self := false) -> StyleBoxFlat:
@@ -135,10 +129,7 @@ static func _chat_back_button_style(pressed := false, ink_color := Color.BLACK) 
 	style.bg_color = Color("#ef3f55").darkened(0.08 if pressed else 0.0)
 	style.border_color = ink_color
 	style.set_border_width_all(8)
-	style.corner_radius_top_left = 16
-	style.corner_radius_top_right = 16
-	style.corner_radius_bottom_left = 16
-	style.corner_radius_bottom_right = 16
+	style.set_corner_radius_all(16)
 	style.content_margin_left = 18
 	style.content_margin_right = 18
 	style.content_margin_top = 10 + (5 if pressed else 0)
@@ -150,10 +141,7 @@ static func _chat_input_style(focused := false, ink_color := Color.BLACK, focus_
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color if focused else ink_color
 	style.set_border_width_all(7)
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
+	style.set_corner_radius_all(18)
 	style.content_margin_left = 46
 	style.content_margin_right = 46
 	style.content_margin_top = 24
@@ -165,10 +153,7 @@ static func _chat_keyboard_preview_style(focus_color: Color) -> StyleBoxFlat:
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color
 	style.set_border_width_all(8)
-	style.corner_radius_top_left = 22
-	style.corner_radius_top_right = 22
-	style.corner_radius_bottom_left = 22
-	style.corner_radius_bottom_right = 22
+	style.set_corner_radius_all(22)
 	style.content_margin_left = 44
 	style.content_margin_right = 44
 	style.content_margin_top = 16

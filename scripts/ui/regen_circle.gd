@@ -1,5 +1,7 @@
 extends Control
 
+const NumberReadout = preload("res://scripts/ui/number_readout.gd")
+
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
@@ -18,8 +20,6 @@ const FULL_LIQUID_FILL_ROWS := 48
 const SURFACE_OVAL_ROWS := 14
 const CENTER_NUMBER_STROKE_SCALE := 36.0
 const CENTER_NUMBER_STROKE_MIN := 26
-const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
-const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
 const LIQUID_EDGE_INSET_SCALE := 2.4
 const LIQUID_EDGE_SEAL_WIDTH_SCALE := 4.8
 const THEME_COLOR_EASE_SPEED := 7.5
@@ -49,18 +49,11 @@ var regen_unfill_from_max_pending := false
 var regen_unfill_start_value := 0.0
 var regen_unfill_elapsed := 0.0
 var readout_font: Font
-var _glass_bowl_texture: ImageTexture
-var _glass_bowl_cached_size := Vector2.ZERO
 var _pop_tween: Tween
-static var _shared_glass_bowl_textures := {}
 
 func _ready() -> void:
-	_load_readout_font()
+	readout_font = NumberReadout.load_font(readout_font)
 	set_process(false)
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED:
-		_invalidate_glass_bowl_cache()
 
 func sync_for_skill(host, skill_id: String, instant := false) -> void:
 	if not is_instance_valid(self) or not is_inside_tree():
@@ -79,10 +72,6 @@ func sync_for_skill(host, skill_id: String, instant := false) -> void:
 
 func _regen_ring_color(host, skill_id: String) -> Color:
 	return host.material_runtime.color("honey") if host._action_runtime().player_has_stamina_honey() else ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
-
-func _invalidate_glass_bowl_cache() -> void:
-	_glass_bowl_texture = null
-	_glass_bowl_cached_size = Vector2.ZERO
 
 func play_pop() -> void:
 	clear_pop_tween()
@@ -421,144 +410,6 @@ func _firepit_regen_ring_color(angle: float) -> Color:
 	var warmth := FIREPIT_WARMTH_COLOR.lerp(Color("#ffd27a"), 0.10 * (1.0 - lower_strength))
 	return regen_ring_color.lerp(warmth, clampf(lower_strength * visual_warmth, 0.0, 1.0))
 
-func _ensure_glass_bowl_texture() -> void:
-	if DisplayServer.get_name() == "headless":
-		return
-	var draw_size := size.floor()
-	if draw_size.x < 2.0 or draw_size.y < 2.0:
-		return
-	if _glass_bowl_texture != null and _glass_bowl_cached_size.is_equal_approx(draw_size):
-		return
-	var cache_key := "%sx%s" % [str(int(draw_size.x)), str(int(draw_size.y))]
-	if _shared_glass_bowl_textures.has(cache_key):
-		_glass_bowl_texture = _shared_glass_bowl_textures[cache_key] as ImageTexture
-		_glass_bowl_cached_size = draw_size
-		return
-	var center := draw_size * 0.5
-	var draw_scale := minf(draw_size.x, draw_size.y) / 552.0
-	var outer_radius := minf(draw_size.x, draw_size.y) * 0.5
-	var gauge_stroke := PAPER_BUTTON_OUTLINE_WIDTH * draw_scale
-	var ring_width := 30.0 * draw_scale
-	var ring_radius := outer_radius - ring_width * 0.5
-	var ring_inner_radius := ring_radius - ring_width * 0.5
-	var inner_radius := ring_inner_radius - gauge_stroke
-	var image := Image.create(int(draw_size.x), int(draw_size.y), false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	_paint_glass_bowl_to_image(image, center, inner_radius, draw_scale)
-	if DisplayServer.get_name() == "headless" or image == null or image.is_empty():
-		return
-	_glass_bowl_texture = ImageTexture.create_from_image(image)
-	_glass_bowl_cached_size = draw_size
-	_shared_glass_bowl_textures[cache_key] = _glass_bowl_texture
-
-func _paint_glass_bowl_to_image(image: Image, center: Vector2, radius: float, draw_scale: float) -> void:
-	_image_paint_disc(image, center, radius, Color("#fffaf0"))
-	var step := maxf(1.0, radius / 74.0)
-	var y := center.y - radius
-	while y <= center.y + radius:
-		var dy := y - center.y
-		var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
-		var vertical := clampf((dy / radius + 1.0) * 0.5, 0.0, 1.0)
-		var glass_tint := Color("#eef7ff", 0.18 * (1.0 - vertical) + 0.04)
-		_image_paint_thick_hline(
-			image,
-			int(round(center.x - chord)),
-			int(round(center.x + chord)),
-			int(round(y)),
-			glass_tint,
-			int(ceil(step + 1.0))
-		)
-		y += step
-	_image_paint_ellipse_arc(
-		image,
-		center + Vector2(-radius * 0.25, -radius * 0.39),
-		radius * 0.30,
-		radius * 0.11,
-		Color(1, 1, 1, 0.34),
-		maxf(1.0, 2.0 * draw_scale),
-		center,
-		radius
-	)
-	_image_paint_ellipse_arc(
-		image,
-		center + Vector2(radius * 0.26, radius * 0.27),
-		radius * 0.19,
-		radius * 0.07,
-		Color(1, 1, 1, 0.11),
-		maxf(1.0, 1.4 * draw_scale),
-		center,
-		radius
-	)
-
-func _image_paint_disc(image: Image, center: Vector2, radius: float, color: Color) -> void:
-	var pixel_radius := int(ceil(radius))
-	var center_x := int(round(center.x))
-	var center_y := int(round(center.y))
-	for y in range(center_y - pixel_radius, center_y + pixel_radius + 1):
-		if y < 0 or y >= image.get_height():
-			continue
-		for x in range(center_x - pixel_radius, center_x + pixel_radius + 1):
-			if x < 0 or x >= image.get_width():
-				continue
-			if Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius + 0.5:
-				_image_blend_pixel(image, x, y, color)
-
-func _image_blend_pixel(image: Image, x: int, y: int, color: Color) -> void:
-	if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
-		return
-	var existing := image.get_pixel(x, y)
-	var alpha := clampf(color.a, 0.0, 1.0)
-	if alpha <= 0.0:
-		return
-	if alpha >= 0.999 and existing.a <= 0.001:
-		image.set_pixel(x, y, color)
-		return
-	var blended := existing.lerp(color, alpha)
-	blended.a = clampf(existing.a + alpha * (1.0 - existing.a), 0.0, 1.0)
-	image.set_pixel(x, y, blended)
-
-func _image_paint_thick_hline(image: Image, x0: int, x1: int, y: int, color: Color, thickness: int) -> void:
-	if thickness <= 0:
-		return
-	var left := mini(x0, x1)
-	var right := maxi(x0, x1)
-	var half := int(thickness / 2.0)
-	for row in range(y - half, y - half + thickness):
-		for x in range(left, right + 1):
-			_image_blend_pixel(image, x, row, color)
-
-func _image_paint_ellipse_arc(
-	image: Image,
-	ellipse_center: Vector2,
-	half_width: float,
-	half_height: float,
-	color: Color,
-	width: float,
-	clip_center: Vector2,
-	clip_radius: float
-) -> void:
-	var previous := Vector2.ZERO
-	var has_previous := false
-	for i in range(97):
-		var angle := lerpf(0.0, TAU, float(i) / 96.0)
-		var point := ellipse_center + Vector2(cos(angle) * half_width, sin(angle) * half_height)
-		var inside := point.distance_to(clip_center) <= clip_radius + width * 0.5
-		if inside and has_previous:
-			_image_paint_line(image, previous, point, color, width)
-		previous = point
-		has_previous = inside
-
-func _image_paint_line(image: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
-	var length := maxf(1.0, from.distance_to(to))
-	var steps := maxi(1, int(ceil(length)))
-	var half_width := maxi(1, int(ceil(width * 0.5)))
-	for i in range(steps + 1):
-		var t := float(i) / float(steps)
-		var point := from.lerp(to, t)
-		for oy in range(-half_width, half_width + 1):
-			for ox in range(-half_width, half_width + 1):
-				_image_blend_pixel(image, int(round(point.x)) + ox, int(round(point.y)) + oy, color)
-
 func _draw_inner_fill(center: Vector2, radius: float, draw_scale: float) -> void:
 	var pct := clampf(displayed_current / float(maximum), 0.0, 1.0)
 	if current <= 0:
@@ -636,20 +487,6 @@ func _draw_liquid_surface_oval(center: Vector2, radius: float, y_center: float, 
 			row_color = surface_color.lerp(rim_shadow, rim_t * 0.28)
 		draw_line(Vector2(oval_center.x - half, y), Vector2(oval_center.x + half, y), row_color, row_width, true)
 
-func _draw_ellipse_lines(ellipse_center: Vector2, half_width: float, half_height: float, color: Color, width: float, clip_center: Vector2, clip_radius: float) -> void:
-	_draw_ellipse_arc_lines(ellipse_center, half_width, half_height, 0.0, TAU, color, width, clip_center, clip_radius)
-
-func _draw_ellipse_arc_lines(ellipse_center: Vector2, half_width: float, half_height: float, start_angle: float, end_angle: float, color: Color, width: float, clip_center: Vector2, clip_radius: float) -> void:
-	var previous := Vector2.ZERO
-	var has_previous := false
-	for i in range(97):
-		var angle := lerpf(start_angle, end_angle, float(i) / 96.0)
-		var point := ellipse_center + Vector2(cos(angle) * half_width, sin(angle) * half_height)
-		var inside := point.distance_to(clip_center) <= clip_radius + width * 0.5
-		if inside and has_previous:
-			draw_line(previous, point, color, width, true)
-		previous = point
-		has_previous = inside
 
 func _draw_inner_bevel(center: Vector2, radius: float, draw_scale: float) -> void:
 	var bevel_radius := radius - 8.0 * draw_scale
@@ -679,7 +516,7 @@ func _draw_center_text(center: Vector2) -> void:
 	var divider_y := center.y + 80.0 * draw_scale
 	var max_center_y := center.y + 128.0 * draw_scale
 	var current_stroke := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
-	_draw_stroked_number_with_decimal_suffix(font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)
+	NumberReadout.draw_number(self, font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)
 	_draw_center_divider(center, divider_y, 106.0 * draw_scale, draw_scale)
 	_draw_text_centered(font, small_text, Vector2(center.x, max_center_y), small, _readout_denominator_color())
 
@@ -698,17 +535,6 @@ func _stamina_display_number_parts() -> Dictionary:
 		"main": str(shown_current),
 		"suffix": ".%d" % decimal_digit
 	}
-
-func _load_readout_font() -> void:
-	if ResourceLoader.exists("res://assets/fonts/Fredoka.ttf"):
-		var loaded := load("res://assets/fonts/Fredoka.ttf")
-		if loaded is Font:
-			var bold := FontVariation.new()
-			bold.base_font = loaded
-			bold.variation_embolden = 1.05
-			readout_font = bold
-	if readout_font == null:
-		readout_font = ThemeDB.fallback_font
 
 func _fit_font_size(font: Font, text: String, desired_size: int, minimum_size: int, max_width: float) -> int:
 	var fitted := desired_size
@@ -731,25 +557,6 @@ func _draw_stroked_text_centered(font: Font, text: String, center: Vector2, font
 	var text_position := Vector2(center.x - text_size.x * 0.5, baseline)
 	draw_string_outline(font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
 	draw_string(font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
-
-func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suffix_text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
-	var main_size := font.get_string_size(main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var main_baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var main_position := Vector2(center.x - main_size.x * 0.5, main_baseline)
-	draw_string_outline(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, stroke_size, Color("#171615"))
-	draw_string(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
-	if suffix_text.is_empty():
-		return
-	var suffix_size := maxi(24, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
-	var suffix_stroke := maxi(6, int(round(float(stroke_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
-	var suffix_gap := maxf(4.0, float(font_size) * 0.075)
-	var suffix_baseline := center.y + (font.get_ascent(suffix_size) - font.get_descent(suffix_size)) * 0.5
-	var suffix_position := Vector2(main_position.x + main_size.x + suffix_gap, suffix_baseline)
-	var suffix_fill := fill_color
-	suffix_fill.a *= CENTER_DECIMAL_SUFFIX_ALPHA
-	var suffix_outline := Color("#171615", CENTER_DECIMAL_SUFFIX_ALPHA)
-	draw_string_outline(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_stroke, suffix_outline)
-	draw_string(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_fill)
 
 func _draw_text_centered(font: Font, text: String, center: Vector2, font_size: int, fill_color: Color) -> void:
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

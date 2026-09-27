@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sort fishing actions and normalize area backgrounds/reward ranges."""
+
 
 import json
 from pathlib import Path

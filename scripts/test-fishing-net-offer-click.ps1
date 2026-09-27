@@ -22,20 +22,14 @@ try {
     @'
 extends SceneTree
 
+const TestHelpers = preload("res://scripts/tests/test_helpers.gd")
+
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const BOOT_FRAMES := 240
 
 func _init() -> void:
 	call_deferred("_run")
-
-func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
-	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = pressed
-	event.position = point
-	event.global_position = point
-	return event
 
 func _mouse_motion_event(point: Vector2, relative: Vector2) -> InputEventMouseMotion:
 	var event := InputEventMouseMotion.new()
@@ -105,7 +99,7 @@ func _run() -> void:
 	net_offer_button.size = Vector2.ZERO
 	scene.call("_skill_swipe_activity_surface").set("skill_swipe_tracking", false)
 	scene.call("_skill_swipe_activity_surface").set("preview_prewarm_pending", false)
-	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", _mouse_button_event(net_offer_point, true)) != true):
+	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", TestHelpers.mouse_button_event(net_offer_point, true)) != true):
 		push_error("Fishing net offer did not accept a press through the fallback hit root. point=%s button_rect=%s hit_rect=%s" % [
 			str(net_offer_point),
 			str(net_offer_button.get_global_rect()),
@@ -138,7 +132,7 @@ func _run() -> void:
 		push_error("Fishing net offer vertical drag queued skill-swipe prewarm.")
 		quit(1)
 		return
-	scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", _mouse_button_event(net_offer_drag_point, false))
+	scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", TestHelpers.mouse_button_event(net_offer_drag_point, false))
 	for _frame in range(4):
 		await process_frame
 	if (scene.fishing_runtime.net_collected == true) or (scene.fishing_runtime.net_collect_pending == true):
@@ -150,7 +144,7 @@ func _run() -> void:
 
 	scene.call("_skill_swipe_activity_surface").set("skill_swipe_tracking", false)
 	scene.call("_skill_swipe_activity_surface").set("preview_prewarm_pending", false)
-	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", _mouse_button_event(net_offer_point, true)) != true):
+	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", TestHelpers.mouse_button_event(net_offer_point, true)) != true):
 		push_error("Fishing net offer did not accept a second fallback press before horizontal swipe.")
 		quit(1)
 		return
@@ -203,7 +197,7 @@ func _run() -> void:
 	var rod_offer_point := rod_offer_hit.get_global_rect().get_center()
 	var saved_rod_button_size := rod_offer_button.size
 	rod_offer_button.size = Vector2.ZERO
-	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", _mouse_button_event(rod_offer_point, true)) != true):
+	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", TestHelpers.mouse_button_event(rod_offer_point, true)) != true):
 		push_error("Fishing rod offer did not accept a press through the fallback hit root. point=%s button_rect=%s hit_rect=%s" % [
 			str(rod_offer_point),
 			str(rod_offer_button.get_global_rect()),
@@ -215,7 +209,7 @@ func _run() -> void:
 		push_error("Fishing rod offer fallback press routed but did not arm the offer button.")
 		quit(1)
 		return
-	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", _mouse_button_event(rod_offer_point, false)) != true):
+	if (scene.call("_fishing_ui_surface").call("_route_fishing_offer_button_global_input", TestHelpers.mouse_button_event(rod_offer_point, false)) != true):
 		push_error("Fishing rod offer did not accept a release through the fallback hit root.")
 		quit(1)
 		return

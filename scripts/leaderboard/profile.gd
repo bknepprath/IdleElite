@@ -27,9 +27,7 @@ func ensure_player_id() -> bool:
 
 
 static func valid_avatar_index(index: int, avatar_count: int) -> int:
-	if avatar_count <= 0:
-		return 0
-	return clampi(index, 0, avatar_count - 1)
+	return clampi(index, 0, maxi(0, avatar_count - 1))
 
 
 static func sanitize_display_name(raw_name: String, max_chars: int) -> String:
@@ -45,18 +43,15 @@ static func sanitize_display_name(raw_name: String, max_chars: int) -> String:
 static func make_name_key(display_name: String, display_max_chars: int, key_max_chars: int) -> String:
 	var clean := sanitize_display_name(display_name, display_max_chars).to_lower()
 	var key := ""
-	var last_was_separator := false
 	for i in range(clean.length()):
 		var code := clean.unicode_at(i)
 		var is_digit := code >= 48 and code <= 57
 		var is_lower := code >= 97 and code <= 122
 		if is_digit or is_lower:
 			key += char(code)
-			last_was_separator = false
 		elif code == 32 or code == 45 or code == 95:
-			if not key.is_empty() and not last_was_separator:
+			if not key.is_empty() and not key.ends_with("_"):
 				key += "_"
-				last_was_separator = true
 	while key.ends_with("_"):
 		key = key.substr(0, key.length() - 1)
 	if key.length() > key_max_chars:
@@ -135,7 +130,7 @@ static func sanitize_player_id(raw_id: String) -> String:
 static func metadata_for_save(display_name: String, raw_name_key: String, claimed: bool, verified: bool, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> Dictionary:
 	var safe_display_name := sanitize_display_name(display_name, display_max_chars)
 	var safe_name_key := sanitize_name_key(raw_name_key, key_max_chars)
-	if is_default_display_name(safe_display_name, display_max_chars) or is_guest_display_name(safe_display_name, guest_prefix, display_max_chars):
+	if is_guest_display_name(safe_display_name, guest_prefix, display_max_chars):
 		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
 	if claimed and verified and safe_name_key.is_empty():
 		safe_name_key = make_name_key(safe_display_name, display_max_chars, key_max_chars)
@@ -180,12 +175,10 @@ static func restored_metadata(data: Dictionary, current_display_name: String, cu
 	var safe_name_key := sanitize_name_key(str(data.get("leaderboard_name_key", current_name_key)), key_max_chars)
 	var claimed := bool(data.get("leaderboard_profile_claimed", false))
 	var verified := bool(data.get("leaderboard_name_claim_verified", false))
-	if is_default_display_name(display_name, display_max_chars):
+	var is_default_name := is_default_display_name(display_name, display_max_chars)
+	if is_default_name:
 		display_name = make_guest_display_name(guest_prefix)
-		claimed = false
-		verified = false
-		safe_name_key = ""
-	if is_guest_display_name(display_name, guest_prefix, display_max_chars):
+	if is_default_name or is_guest_display_name(display_name, guest_prefix, display_max_chars):
 		claimed = false
 		verified = false
 		safe_name_key = ""
@@ -195,8 +188,8 @@ static func restored_metadata(data: Dictionary, current_display_name: String, cu
 		claimed = false
 	if not claimed:
 		verified = false
-		# Keep a syntactically valid name/key pair as an untrusted recovery hint. The
-		# false trust flags prevent publishing or reserving the key until auth recovery.
+
+
 		if safe_name_key != make_name_key(display_name, display_max_chars, key_max_chars):
 			safe_name_key = ""
 	return {
@@ -263,4 +256,4 @@ static func profile_claim_valid(host, guest_prefix: String, display_max_chars: i
 		return false
 	if str(host.leaderboard_profile.name_key).is_empty():
 		host.leaderboard_profile.name_key = make_name_key(str(host.leaderboard_profile.display_name), display_max_chars, key_max_chars)
-	return not str(host.leaderboard_profile.name_key).is_empty() and not is_guest_display_name(str(host.leaderboard_profile.display_name), guest_prefix, display_max_chars)
+	return str(host.leaderboard_profile.name_key) == make_name_key(str(host.leaderboard_profile.display_name), display_max_chars, key_max_chars) and not str(host.leaderboard_profile.name_key).is_empty() and not is_guest_display_name(str(host.leaderboard_profile.display_name), guest_prefix, display_max_chars)
