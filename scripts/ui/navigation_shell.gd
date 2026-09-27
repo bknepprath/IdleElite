@@ -1454,10 +1454,6 @@ func _complete_show_skills() -> void:
 
 
 func _select_launch_skill_page() -> void:
-	if host._onboarding_runtime()._onboarding_path_active():
-		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
-		host.current_screen = "skill"
-		return
 	if not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
 		host.selected_skill_id = host.running_skill_id
 		host.current_screen = "skill"
@@ -1487,12 +1483,6 @@ func _select_skill(skill_id: String) -> void:
 func _select_skill_from_page_switch(skill_id: String, source_button: Button = null) -> void:
 	if _page_switch_transition_active():
 		return
-	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_swipe_to_other_skills_allowed():
-		if not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
-			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-		_release_page_switch_transition_button()
-		return
-	_complete_onboarding_swipe_navigation_attempt(skill_id)
 	if source_button != null and is_instance_valid(source_button) and page_switch_transition_button_id == 0:
 		_hold_page_switch_transition_button(source_button, skill_id)
 	_begin_page_switch_scroll_cover()
@@ -1510,25 +1500,8 @@ func _select_skill_from_page_switch(skill_id: String, source_button: Button = nu
 	})
 
 
-func _complete_onboarding_swipe_navigation_attempt(target_skill_id: String) -> void:
-	if not host._onboarding_runtime()._onboarding_path_active():
-		return
-	if host.selected_skill_id != host.TUTORIAL_STARTER_SKILL_ID or target_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-		return
-	if not host._onboarding_runtime().onboarding_swipe_navigation_unlocked:
-		return
-	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
-	host._tutorial_overlay_surface().fade_out_onboarding_swipe_overlay_tip()
-	host._onboarding_runtime()._mark_skill_swipe_tip_seen()
-
-
 func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
 	if screen_render_in_progress or (host._skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
-		return
-	if not host._onboarding_runtime()._onboarding_skill_accessible(skill_id):
-		var card := host.skill_cards.get(skill_id, {}) as Dictionary
-		var source := card.get("button") as Control
-		host._onboarding_runtime()._show_onboarding_skill_locked_message(source)
 		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
@@ -1572,12 +1545,10 @@ func _show_skills_module() -> void:
 		_select_launch_skill_page()
 	else:
 		host.current_screen = "skill"
-	if can_reveal_current_skill_page and not host._onboarding_runtime()._onboarding_path_active():
+	if can_reveal_current_skill_page:
 		if _try_reveal_current_skill_page(_screen_page_cache_key(host.current_screen), true):
 			return
 	_render_screen(true)
-	if host._onboarding_runtime()._onboarding_path_active():
-		host._onboarding_runtime().call_deferred("_resync_onboarding_skill_detail_after_navigation")
 
 
 func _show_hub(source_button: Control = null) -> void:
@@ -1702,7 +1673,6 @@ func _reset_page_control_refs() -> void:
 	host._skill_detail_surface().detail_lazy_stack = null
 	host._skill_detail_surface().detail_lazy_refresh_token += 1
 	host._skill_detail_surface()._cancel_detail_card_texture_prewarm()
-	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
 	host._skill_swipe_activity_surface().skill_swipe_frame = null
 	host._skill_swipe_activity_surface().skill_swipe_page = null
 	host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = 0.0
@@ -2044,13 +2014,7 @@ func _finish_render_screen_transition(target_key: String) -> void:
 	_update_page_visibility()
 	host._profile_chat_overlay_surface()._update_chat_strip(true)
 	host.call_deferred("_update_ui", 0.0, true)
-	if host.current_screen == "skill":
-		if host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-			if host._onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
-				host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-		else:
-			host._onboarding_runtime().call_deferred("_maybe_show_onboarding_explore_tip")
-	elif host.current_screen == "hub":
+	if host.current_screen == "hub":
 		host._hub_surface().call_deferred("_maybe_show_hub_tutorial_tip")
 	if (
 		host.current_screen == "skill"
@@ -2398,7 +2362,7 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 
 
 func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
-	if (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()) and not _onboarding_page_switch_module_visible():
+	if host._onboarding_runtime().tutorial_active:
 		_remove_page_switch_modules(stack)
 		return
 	var entry: Control = null
@@ -2425,46 +2389,6 @@ func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_
 		if child != entry and child.name == "DetailActionsBottomSpacer":
 			stack.move_child(entry, i)
 			return
-
-
-func _ensure_onboarding_page_switch_module_faded_in(stack: VBoxContainer) -> Control:
-	if stack == null or not is_instance_valid(stack):
-		return null
-	if not _onboarding_page_switch_module_visible():
-		return null
-	for raw_child in stack.get_children():
-		var child := raw_child as Control
-		if child == null:
-			continue
-		if child.name == "PageSwitchModule" or child.find_child("PageSwitchModule", true, false) != null:
-			return child
-	var content_width: float = host._skill_content_width()
-	var module: Control = _build_page_switch_module(host.selected_skill_id, content_width)
-	if module == null:
-		return null
-	var entry: Control = host._skill_detail_surface()._detail_stack_entry(module, content_width, content_width)
-	var target_height := maxf(1.0, entry.custom_minimum_size.y)
-	entry.custom_minimum_size.y = 0.0
-	entry.modulate.a = 0.0
-	entry.clip_contents = true
-	stack.add_child(entry)
-	var insert_index := maxi(0, stack.get_child_count() - 1)
-	for i in range(stack.get_child_count()):
-		var child := stack.get_child(i)
-		if child == entry:
-			continue
-		if child.name == "DetailActionsBottomSpacer":
-			insert_index = i
-			break
-	stack.move_child(entry, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
-	var tween: Tween = host.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(entry, "custom_minimum_size:y", target_height, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(entry, "modulate:a", 1.0, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.set_parallel(false)
-	tween.tween_callback(Callable(host._skill_detail_surface(), "_finish_smooth_tutorial_tip_entry_reveal").bind(entry.get_instance_id()))
-	Callable(host._skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-	return entry
 
 
 func _remove_page_switch_modules(root_node: Node) -> void:
@@ -2575,14 +2499,6 @@ func _set_skill_page_switch_modules_alpha(alpha: float) -> void:
 
 func _sync_skill_page_switch_modules_for_drag(abs_x: float) -> void:
 	_set_skill_page_switch_modules_alpha(1.0)
-
-
-func _onboarding_page_switch_module_visible() -> bool:
-	return (
-		host._onboarding_runtime()._onboarding_path_active()
-		and not host._onboarding_runtime().tutorial_active
-		and host._onboarding_runtime().onboarding_swipe_navigation_unlocked
-	)
 
 
 func _build_queue_activities_module(module_key: String, content_width: float) -> Control:
@@ -3182,12 +3098,6 @@ func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest
 	if skill_id.is_empty():
 		_fade_clear_page_switch_scroll_cover()
 		return
-	if not host._onboarding_runtime()._onboarding_skill_accessible(skill_id):
-		var card := host.skill_cards.get(skill_id, {}) as Dictionary
-		var source := card.get("button") as Control
-		host._onboarding_runtime()._show_onboarding_skill_locked_message(source)
-		_fade_clear_page_switch_scroll_cover()
-		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
@@ -3354,9 +3264,8 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 			"stamina": side_gauge if side_gauge is RegenCircle else null,
 			"fish": side_gauge if side_gauge is FishCircle else null,
 		}
-		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
-		button.disabled = not accessible
-		button.modulate = Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE
+		button.disabled = false
+		button.modulate = Color.WHITE
 		var drawer_slot := Control.new()
 		drawer_slot.name = "SkillMenuActiveDrawer_%s" % skill_id
 		drawer_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3428,9 +3337,8 @@ func _sync_skill_menu_page(delta: float, instant: bool, static_refresh: bool) ->
 func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, instant: bool) -> void:
 	var button := card.get("button") as Button
 	if button != null and is_instance_valid(button):
-		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
-		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, not accessible)
-		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE)
+		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, false)
+		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color.WHITE)
 	var activity_running := false
 	var activity_progress := card.get("activity") as ActivityProgressRail
 	if activity_progress != null and is_instance_valid(activity_progress):
@@ -5108,7 +5016,6 @@ func _sync_module_utility_row_visibility(animate_buttons := false) -> void:
 	_layout_module_utility_row()
 	module_utility_row.visible = (
 		_intro_bottom_controls_unlocked()
-		and host._profile_chat_overlay_surface()._global_chat_allowed()
 		and host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen()
 	)
 	if module_utility_buttons_row != null and is_instance_valid(module_utility_buttons_row):

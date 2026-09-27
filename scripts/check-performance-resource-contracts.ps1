@@ -87,10 +87,10 @@ foreach ($entry in $expectedDimensions.GetEnumerator()) {
 }
 
 $audioDirector = Get-Content -Raw -LiteralPath $audioDirectorPath
-if ([regex]::Matches($audioDirector, '_ensure_extended_audio\(\)').Count -ne 1) {
+if ([regex]::Matches($audioDirector, '_ensure_extended_audio\(\)').Count -ne 0) {
     throw "Extended SFX preload was reintroduced; SFX must remain category-on-demand."
 }
-if ([regex]::Matches($audioDirector, '_warm_extended_audio_async\(\)').Count -ne 1) {
+if ([regex]::Matches($audioDirector, '_warm_extended_audio_async\(\)').Count -ne 0) {
     throw "Extended SFX boot warmup was reintroduced."
 }
 if ($audioDirector -notmatch '(?s)func _build_music_players\(\).*?_dispose_music_players\(\).*?music_stream_cache\.clear\(\)') {

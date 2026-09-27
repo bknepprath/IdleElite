@@ -613,11 +613,9 @@ func _init_state() -> void:
 	host._onboarding_runtime().onboarding_header_reveal_after_progress = false
 	host._onboarding_runtime().onboarding_swipe_tip_eligible = true
 	host._onboarding_runtime().onboarding_swipe_navigation_unlocked = true
-	host._onboarding_runtime().onboarding_swipe_tip_sequence_running = false
 	host._onboarding_runtime().skill_swipe_tip_seen = true
 	host._onboarding_runtime().onboarding_explore_tip_seen = true
 	host._onboarding_runtime().onboarding_tutorial_complete = true
-	host._onboarding_runtime().onboarding_explore_tip_sequence_running = false
 	host._onboarding_runtime().stamina_gauge_tip_seen = true
 	host._onboarding_runtime().lock_click_tip_seen = false
 	host._onboarding_runtime().passive_module_tip_seen = false
@@ -630,12 +628,6 @@ func _init_state() -> void:
 	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = true
 	host._onboarding_runtime().onboarding_fight_stamina_revealed = true
 	host._onboarding_runtime().onboarding_fight_action_stats_revealed = true
-	host._onboarding_runtime().onboarding_fight_action_stats_fade_running = false
-	host._onboarding_runtime().onboarding_header_sequence_running = false
-	host._onboarding_runtime().onboarding_auto_run_sequence_running = false
-	host._onboarding_runtime().onboarding_stamina_tip_sequence_running = false
-	host._onboarding_runtime().onboarding_header_sequence_started_msec = 0
-	host._onboarding_runtime().onboarding_stamina_tip_sequence_started_msec = 0
 	host._tutorial_overlay_surface().reset_onboarding_tip_state()
 	host._onboarding_runtime().tutorial_gate_latch_only_until_swipe = false
 	host._activity_unlock_runtime().set_pending_readiness_pages({})
@@ -647,8 +639,6 @@ func _init_state() -> void:
 	unlock_ceremony.center_scroll_target = -1
 	unlock_ceremony.detail_refresh_done = false
 	unlock_ceremony.clear_preview_reveal_guards()
-	host._onboarding_runtime()._cancel_onboarding_header_sequence()
-	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
 	var leaderboard_state = host.leaderboard_state
 	leaderboard_state.reset_submission_metadata()
 	host.leaderboard_profile.reset(host.PROFILE_GUEST_NAME_PREFIX)
@@ -1344,7 +1334,7 @@ func load_game() -> void:
 	pending_save_restore_data = save_data
 	host.loaded_save_this_boot = true
 	_restore_boot_render_save_fields(save_data)
-	if not host._onboarding_runtime()._onboarding_path_active() and not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
+	if not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
 		host.selected_skill_id = host.running_skill_id
 func _clear_pending_save_restore_work() -> void:
 	pending_save_restore_data = {}

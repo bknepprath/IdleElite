@@ -1550,8 +1550,6 @@ func _process_action(delta: float) -> void:
 	if SkillState.spend_action_stamina(host.stamina, host.stamina_bank, host.running_skill_id, cost, Callable(SkillState, "host_max_stamina").bind(host)):
 		if not host._activity_queue_runtime().activity_queue_running:
 			_schedule_auto_eat_fish_after_spend_delay(host.running_skill_id, cost)
-		if host.running_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-			host._onboarding_runtime()._maybe_trigger_onboarding_swipe_tip_at_zero_stamina(host.TUTORIAL_STARTER_SKILL_ID)
 	if host._is_event_action(action):
 		host._temporary_event_runtime()._complete_temporary_event_action_attempt(host.running_skill_id, host.running_action_id, action, active_key, cost, bonus_snapshot_before)
 		return
@@ -1569,14 +1567,13 @@ func _process_action(delta: float) -> void:
 	if success:
 		var streak_step = record_successful_activity_completion(active_key)
 		var streak_bonus = streak_step == ACTIVITY_STREAK_BONUS_STEP
-		var crits_allowed = host._onboarding_runtime()._activity_crits_allowed()
-		var crit_chance = _activity_crit_chance(streak_bonus) if crits_allowed else 0.0
-		var xp_crit = crits_allowed and randf() < crit_chance
+		var crit_chance = _activity_crit_chance(streak_bonus)
+		var xp_crit = randf() < crit_chance
 		if xp_crit:
 			consecutive_activity_crit_count += 1
 		else:
 			reset_consecutive_activity_crits()
-		var mega_crit = crits_allowed and consecutive_activity_crit_count >= 2
+		var mega_crit = consecutive_activity_crit_count >= 2
 		if xp_crit:
 			host.activity_crit_seen = true
 		if mega_crit:
@@ -1639,7 +1636,6 @@ func _process_action(delta: float) -> void:
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit, mega_crit, consecutive_activity_crit_count)
 		host._audio_director()._record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, any_reward_skill_level_up or new_skill_level > old_skill_level, cost)
-		host._tutorial_overlay_surface().maybe_show_onboarding_medal_tip(old_mastery_level, new_mastery_level, host.running_skill_id, host.running_action_id)
 		host._onboarding_runtime()._tutorial_on_action_succeeded(completed_skill_id, completed_action_id)
 	else:
 		reset_consecutive_activity_crits()
@@ -1663,7 +1659,6 @@ func _process_action(delta: float) -> void:
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
-		host._tutorial_overlay_surface().maybe_show_onboarding_medal_tip(old_mastery_level, failure_mastery_level, host.running_skill_id, host.running_action_id)
 		if host.running_skill_id == "thieving":
 			var failed_thieving_action_id = host.running_action_id
 			var jail_seconds = host._thieving_surface()._thieving_action_jail_seconds(action)
@@ -1677,7 +1672,6 @@ func _process_action(delta: float) -> void:
 			else:
 				host.last_result += " No jail time."
 	host._onboarding_runtime()._record_activity_completion_for_tips(completed_skill_id, completed_action_id)
-	host._onboarding_runtime()._maybe_trigger_onboarding_swipe_tip_at_zero_stamina(completed_skill_id)
 	host._update_ui(0.0, false)
 	host._reward_feedback_surface()._emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 
@@ -1811,7 +1805,6 @@ func _start_action(skill_id: String, action_id: String, select_page = true, resp
 	else:
 		host._reward_feedback_surface()._set_result("%s started." % action["name"])
 	host._onboarding_runtime()._record_activity_start_for_tips()
-	host._tutorial_overlay_surface().fade_out_onboarding_explore_tip()
 	host._onboarding_runtime()._tutorial_on_action_started()
 	return true
 
@@ -1864,7 +1857,6 @@ func _start_action_from_card_tap(skill_id: String, action_id: String, visual_car
 		host._skill_detail_surface().last_action_card_tap_key = key
 		host._skill_detail_surface().last_action_card_tap_msec = now
 		return _stop_running_action(skill_id, action_id)
-	host._tutorial_overlay_surface()._on_activity_start_tutorial_card_tapped(skill_id, action_id)
 	if _start_action(skill_id, action_id, true, false):
 		host._skill_detail_surface().last_action_card_tap_key = key
 		host._skill_detail_surface().last_action_card_tap_msec = now

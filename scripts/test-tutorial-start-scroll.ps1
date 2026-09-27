@@ -124,7 +124,6 @@ func _run() -> void:
 	var detail_xp_bar := scene._skill_detail_surface().detail_xp_bar as Control
 	var detail_regen_circle := scene._skill_detail_surface().detail_regen_circle as Control
 	var tutorial_surface = scene._tutorial_overlay_surface()
-	var activity_start_highlight := tutorial_surface.activity_start_highlight_border as Control
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
 		return
@@ -211,9 +210,6 @@ func _run() -> void:
 		return
 	if get_nodes_in_group("activity_start_tip_notes").is_empty():
 		_fail("tutorial starter skill page should show the brown activity-start instruction below the card: %s" % _summary(scene))
-		return
-	if activity_start_highlight != null and _effective_canvas_alpha(activity_start_highlight) > 0.01:
-		_fail("tutorial starter skill page should not show the activity highlight immediately: alpha=%.3f %s" % [_effective_canvas_alpha(activity_start_highlight), _summary(scene)])
 		return
 	if _tutorial_module_count(scene) != 1:
 		_fail("tutorial starter skill page should render only one activity module, got %s: %s" % [str(_tutorial_module_count(scene)), _summary(scene)])

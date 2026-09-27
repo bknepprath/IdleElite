@@ -31,8 +31,7 @@ class FakeHost:
 		func keyboard_lift_active() -> bool:
 			return keyboard_active
 	class FakeTutorialOverlaySurface:
-		var activity_start_highlight_active := false
-		var activity_start_highlight_pending := false
+		pass
 	class FakeAchievementToastSurface:
 		func transient_work_active() -> bool:
 			return false

@@ -1361,8 +1361,6 @@ static func net_xp_reward(host, action: Dictionary) -> int:
 	var area_id: String = canonical_area_id(str(action.get("area", area_id_for_action(host, action_id))))
 	return maxi(1, int(FISHING_NET_AREA_XP.get(area_id, 1)))
 static func mastery_reward(host, skill_id: String, action_id: String) -> float:
-	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
-		return 0.0
 	var mastery_action_id: String = host.fishing_runtime.mastery_action_id(action_id, FISHING_TOOL_LOCATION_ACTIONS, Callable(host, "_fishing_location_thumbnail_path"))
 	if MasteryState.is_maxed(host.mastery, host._action_key(skill_id, mastery_action_id), host.MASTERY_MAX_LEVEL):
 		return 0.0

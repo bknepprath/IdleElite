@@ -307,13 +307,6 @@ var content_scroll:
 	get: return host.content_scroll
 var dark_mode_enabled: bool:
 	get: return host.dark_mode_enabled
-var onboarding_explore_tip_seen: bool:
-	get: return host._onboarding_runtime().onboarding_explore_tip_seen
-var onboarding_swipe_tip_sequence_running: bool:
-	get: return host._onboarding_runtime().onboarding_swipe_tip_sequence_running
-var skill_swipe_tip_seen: bool:
-	get: return host._onboarding_runtime().skill_swipe_tip_seen
-	set(value): host._onboarding_runtime().skill_swipe_tip_seen = bool(value)
 
 func create_tween() -> Tween:
 	return host.create_tween()
@@ -512,9 +505,6 @@ func _update_ui(delta: float, instant := false) -> void:
 	host._update_ui(delta, instant)
 
 func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) -> void:
-	if _onboarding_runtime()._onboarding_blocks_skill_swipe():
-		if not _onboarding_runtime()._ensure_onboarding_swipe_unlocked(true):
-			return
 	_skill_detail_surface()._cancel_detail_lazy_settle_warm_mount()
 	if not _skill_swipe_animation_blocks_input():
 		_interrupt_skill_swipe_animation_for_input()
@@ -562,13 +552,6 @@ func _route_skill_swipe_button_input(event: InputEvent, source: Control = null) 
 
 
 func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
-	if _onboarding_runtime()._onboarding_blocks_skill_swipe():
-		if not _onboarding_runtime()._ensure_onboarding_swipe_unlocked(true):
-			skill_swipe_tracking = false
-			skill_swipe_touch_index = -1
-			skill_swipe_horizontal = false
-			_clear_skill_swipe_button_suppression()
-			return
 	skill_swipe_last = pointer_position
 	var delta := pointer_position - skill_swipe_start
 	var abs_x := absf(delta.x)
@@ -1299,15 +1282,6 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 
 
 func _finish_skill_swipe(end_position: Vector2) -> void:
-	if _onboarding_runtime()._onboarding_blocks_skill_swipe():
-		if not _onboarding_runtime()._ensure_onboarding_swipe_unlocked(true):
-			skill_swipe_tracking = false
-			skill_swipe_touch_index = -1
-			skill_swipe_horizontal = false
-			_cancel_skill_swipe_feedback(true)
-			if skill_swipe_child_click_suppressed:
-				call_deferred("_clear_skill_swipe_action_click_suppression")
-			return
 	var delta: Vector2 = end_position - skill_swipe_start
 	skill_swipe_tracking = false
 	skill_swipe_touch_index = -1
@@ -1390,15 +1364,6 @@ func _commit_skill_swipe(offset: int) -> void:
 		_onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	_complete_passive_module_tip_page_visit(outgoing_skill_id)
 	_onboarding_runtime()._complete_silver_opportunity_tip_page_visit(outgoing_skill_id)
-	if offset != 0 and _onboarding_runtime()._onboarding_path_active():
-		if onboarding_explore_tip_seen:
-			_onboarding_runtime()._graduate_onboarding_tutorial()
-		elif outgoing_skill_id == TUTORIAL_STARTER_SKILL_ID:
-			_tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
-			_tutorial_overlay_surface().fade_out_onboarding_swipe_overlay_tip()
-			if not skill_swipe_tip_seen:
-				skill_swipe_tip_seen = true
-				save_game()
 	if animate_commit_release:
 		_animate_skill_swipe_commit_release(offset, entry_x)
 	else:
@@ -1945,7 +1910,7 @@ func _skill_detail_ready_to_reveal_under_cover() -> bool:
 	if int(stats.get("freshly_mounted_modules", 0)) > 0:
 		return false
 	var action_stat_box_count := int(stats.get("action_stat_boxes", 0))
-	if action_stat_box_count > 0 and not _tutorial_overlay_surface()._onboarding_fight_action_stats_should_hide():
+	if action_stat_box_count > 0:
 		var visible_stat_box_count := int(stats.get("visible_action_stat_boxes", 0))
 		if visible_stat_box_count < mini(2, action_stat_box_count):
 			return false
@@ -2175,13 +2140,9 @@ func _complete_skill_swipe_navigation() -> void:
 		if not skill_swipe_pending_full_finalize:
 			call_deferred("_apply_pending_swipe_resume_scroll", selected_skill_id)
 			call_deferred("_consume_queued_skill_swipe_navigation")
-		if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
-			if _onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
-				_tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-		else:
+		if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
 			_tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
 			_onboarding_runtime()._mark_skill_swipe_tip_seen()
-			_onboarding_runtime().call_deferred("_maybe_show_onboarding_explore_tip")
 
 
 func _skill_detail_ready_for_gap_entry() -> bool:
@@ -2261,10 +2222,6 @@ func _promote_swipe_preview_to_interactive(preview_state: Dictionary) -> void:
 		_skill_detail_surface()._enable_skill_detail_back_arrow(detail_header_body)
 		_tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
 		_skill_detail_surface()._sync_skill_detail_back_arrow_visibility()
-		if _onboarding_runtime()._onboarding_auto_run_message_resumable():
-			_onboarding_runtime().call_deferred("_run_onboarding_auto_run_message_sequence")
-		if _onboarding_runtime()._onboarding_header_reveal_sequence_resumable():
-			_onboarding_runtime().call_deferred("_run_onboarding_header_reveal_sequence")
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		var actions_clip: Control = _skill_detail_surface()._ensure_skill_detail_actions_clip_wrapper(skill_swipe_page, detail_actions_scroll, _skill_content_width())
 		if actions_clip == null or not is_instance_valid(actions_clip):
@@ -2553,13 +2510,9 @@ func _navigate_adjacent_skill_page(offset: int) -> void:
 	_update_ui(0.0, true)
 	Callable(_skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
 	_skill_detail_surface().call_deferred("_queue_detail_lazy_settle_warm_mount", selected_skill_id)
-	if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
-		if _onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
-			_tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-	else:
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
 		_tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
 		_onboarding_runtime()._mark_skill_swipe_tip_seen()
-		_onboarding_runtime().call_deferred("_maybe_show_onboarding_explore_tip")
 	adjacent.schedule_build()
 	if not skill_swipe_animating:
 		call_deferred("_consume_queued_skill_swipe_navigation")
@@ -3911,7 +3864,6 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 		if skill_id == "thieving":
 			host._thieving_surface()._sync_thieving_action_jail_overlay(card, action_id)
 		_update_action_card_run_feedback(card, skill_id, running, delta, instant, running_progress)
-	host._activity_unlock_ceremony_surface().sync_hidden_locked_activity_preview_layouts()
 	return true
 
 
@@ -4614,18 +4566,7 @@ func _build_swipe_preview_real_card_cache_entry(skill_id: String, entry_data: Di
 	}
 
 func _preview_detail_entries_for_skill(skill_id: String) -> Array:
-	if not host._onboarding_runtime()._onboarding_path_active() or skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-		return host._skill_detail_surface()._visible_detail_entries_for_skill(skill_id)
-	var entries := []
-	for entry in host._skill_detail_surface()._visible_detail_entries_for_skill(skill_id):
-		var entry_data := entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action := entry_data.get("action", {}) as Dictionary
-		if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-			continue
-		entries.append(entry_data)
-	return entries
+	return host._skill_detail_surface()._visible_detail_entries_for_skill(skill_id)
 
 func _free_swipe_real_card_cache_dictionary(cache: Dictionary) -> void:
 	if cache == null or cache.is_empty():
@@ -5619,21 +5560,8 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 		and not action.is_empty()
 		and not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
 	)
-	var show_onboarding_level_up_tip = (
-		host._onboarding_runtime()._onboarding_path_active()
-		and skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and not action.is_empty()
-		and str(action.get("id", "")) == host._activity_unlock_runtime()._first_locked_action_id(skill_id)
-		and int(action.get("unlock", 0)) == 2
-		and SkillState.host_skill_level(host, skill_id) < 2
-		and bool(card.get("unlock_next_preview_smooth", false))
-	)
 	if host._onboarding_runtime()._should_release_onboarding_first_module_centering_for_preview(skill_id, action):
 		host._onboarding_runtime()._release_onboarding_first_module_centering()
-	var tutorial_surface = host._tutorial_overlay_surface()
-	if show_onboarding_level_up_tip:
-		tutorial_surface.fade_out_onboarding_mastery_tip(host.ACTIVITY_PREVIEW_FADE_IN_SECONDS)
-		tutorial_surface.fade_out_onboarding_medal_tip(host.ACTIVITY_PREVIEW_FADE_IN_SECONDS)
 	if show_lock_fade:
 		host._skill_detail_surface()._set_activity_lock_overlay_active(lock_overlay, true)
 		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(lock_rig, Color(1, 1, 1, 0))
@@ -5703,19 +5631,6 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			0.0,
 			host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
 		).set_trans(Tween.TRANS_QUINT if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	var level_up_tip: Control = null
-	if show_onboarding_level_up_tip:
-		level_up_tip = tutorial_surface.ensure_onboarding_level_up_tip(card)
-		if level_up_tip != null and is_instance_valid(level_up_tip):
-			level_up_tip.modulate.a = 0.0
-			tutorial_surface.sync_onboarding_level_up_tip_position(card)
-			tween.tween_property(level_up_tip, "modulate:a", 1.0, host.ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			tween.tween_method(
-				Callable(tutorial_surface, "sync_onboarding_level_up_tip_position_by_key").bind(card_key),
-				0.0,
-				1.0,
-				host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-			)
 	var pop_id = pop.get_instance_id() if pop != null else 0
 	var lock_rig_id = lock_rig.get_instance_id() if lock_rig != null else 0
 	tween.finished.connect(Callable(unlock_ceremony_surface, "finish_activity_preview_fade_in").bind(card_key, root_id, pop_id, lock_rig_id, expand_from_zero, target_height, skill_id, action_id))

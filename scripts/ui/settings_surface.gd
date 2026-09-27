@@ -108,7 +108,7 @@ func _close_settings() -> void:
 
 
 func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
-	if not (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()):
+	if not host._onboarding_runtime().tutorial_active:
 		return false
 	if host.settings_tab == null or not is_instance_valid(host.settings_tab) or not host.settings_tab.is_visible_in_tree():
 		return false
@@ -466,7 +466,7 @@ func apply_auto_unlock_lockpad_toggle_style(button: Button) -> void:
 func toggle_auto_unlock_lockpads_enabled() -> void:
 	host.auto_unlock_lockpads_enabled = not host.auto_unlock_lockpads_enabled
 	_refresh_auto_unlock_lockpad_controls()
-	if host.auto_unlock_lockpads_enabled and not host._onboarding_runtime()._onboarding_path_active():
+	if host.auto_unlock_lockpads_enabled:
 		host._activity_unlock_runtime()._auto_unlock_retroactive_lockpads()
 		host._activity_unlock_runtime()._auto_unlock_pending_lockpads()
 	host.save_game()
@@ -1045,50 +1045,6 @@ func _clear_notification_settings_notice_immediate() -> void:
 		notification_permission_notice.queue_free()
 	notification_permission_notice = null
 	notification_permission_notice_tween = null
-
-
-func _navigation_state() -> Dictionary:
-	return {
-		"music_volume_sliders": music_volume_sliders,
-		"music_volume_labels": music_volume_labels,
-		"music_mute_toggles": music_mute_toggles,
-		"music_mute_labels": music_mute_labels,
-		"sfx_volume_sliders": sfx_volume_sliders,
-		"sfx_volume_labels": sfx_volume_labels,
-		"sfx_mute_toggles": sfx_mute_toggles,
-		"sfx_mute_labels": sfx_mute_labels,
-		"offline_progress_toggles": offline_progress_toggles,
-		"auto_unlock_lockpad_toggles": auto_unlock_lockpad_toggles,
-		"stamina_decimal_toggles": stamina_decimal_toggles,
-		"offline_progress_cap_notification_toggles": offline_progress_cap_notification_toggles,
-		"dark_mode_toggles": dark_mode_toggles,
-		"audio_controls_sync_key": audio_controls_sync_key,
-		"reset_data_buttons": reset_data_buttons,
-		"reset_data_confirm_until": reset_data_confirm_until,
-		"reset_data_confirm_armed_at": reset_data_confirm_armed_at,
-		"reset_data_confirm_button": reset_data_confirm_button,
-	}
-
-
-func _apply_navigation_state(state: Dictionary) -> void:
-	music_volume_sliders = state.get("music_volume_sliders", []) as Array
-	music_volume_labels = state.get("music_volume_labels", []) as Array
-	music_mute_toggles = state.get("music_mute_toggles", []) as Array
-	music_mute_labels = state.get("music_mute_labels", []) as Array
-	sfx_volume_sliders = state.get("sfx_volume_sliders", []) as Array
-	sfx_volume_labels = state.get("sfx_volume_labels", []) as Array
-	sfx_mute_toggles = state.get("sfx_mute_toggles", []) as Array
-	sfx_mute_labels = state.get("sfx_mute_labels", []) as Array
-	offline_progress_toggles = state.get("offline_progress_toggles", []) as Array
-	auto_unlock_lockpad_toggles = state.get("auto_unlock_lockpad_toggles", []) as Array
-	stamina_decimal_toggles = state.get("stamina_decimal_toggles", []) as Array
-	offline_progress_cap_notification_toggles = state.get("offline_progress_cap_notification_toggles", []) as Array
-	dark_mode_toggles = state.get("dark_mode_toggles", []) as Array
-	audio_controls_sync_key = str(state.get("audio_controls_sync_key", ""))
-	reset_data_buttons = state.get("reset_data_buttons", []) as Array
-	reset_data_confirm_until = float(state.get("reset_data_confirm_until", 0.0))
-	reset_data_confirm_armed_at = float(state.get("reset_data_confirm_armed_at", 0.0))
-	reset_data_confirm_button = host._app_lifecycle_runtime().state_object_ref(state.get("reset_data_confirm_button")) as Button
 
 
 func _register_reset_button(button: Button, default_text: String) -> void:

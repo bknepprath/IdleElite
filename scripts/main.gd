@@ -165,13 +165,9 @@ const TUTORIAL_STARTER_ACTION_ID := "push-ups"
 const TUTORIAL_LEVEL_TWO_ACTION_ID := "kick-mud-off-boot"
 const TUTORIAL_GATE_LATCH_ACTION_ID := "wrestle-stuck-gate-latch"
 const TUTORIAL_DEFERRED_AFTER_GATE_ACTION_ID := "box-suspicious-feed-sack"
-const ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD := 1
-const ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION := 0.5
 const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
-const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
 const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
-const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 52
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
@@ -812,9 +808,6 @@ func _update_ui(delta: float, instant := false) -> void:
 	if static_refresh and not boot_detail_render_in_progress and not _navigation_shell().screen_render_in_progress and _skill_detail_surface()._skill_detail_needs_action_list_refresh():
 		var refresh_restore_scroll := _skill_detail_surface().detail_actions_scroll.scroll_vertical if _skill_detail_surface().detail_actions_scroll != null else -1
 		_skill_detail_surface().call_deferred("_refresh_visible_skill_detail_action_list", refresh_restore_scroll, selected_skill_id)
-	if static_refresh and _onboarding_runtime()._skill_detail_shows_tutorial_tips():
-		_tutorial_overlay_surface()._show_lock_click_tip_note_if_needed()
-		_onboarding_runtime()._resume_onboarding_stamina_mastery_sequence_if_needed()
 	if trace_static_refresh:
 		var trace_now := Time.get_ticks_usec()
 		trace_static_shell_us = trace_now - trace_static_last
@@ -824,17 +817,8 @@ func _update_ui(delta: float, instant := false) -> void:
 	if current_screen == "menu":
 		_navigation_shell()._sync_skill_menu_page(delta, instant, static_refresh)
 	if current_screen == "skill":
-		if static_refresh and _onboarding_runtime()._onboarding_fight_header_sequence_active():
-			_tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
-			_tutorial_overlay_surface()._apply_onboarding_fight_action_stats_visibility_all()
-		if static_refresh and selected_skill_id == TUTORIAL_STARTER_SKILL_ID and _onboarding_runtime()._onboarding_path_active():
-			_onboarding_runtime()._maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
-			if _onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not _onboarding_runtime().onboarding_swipe_tip_sequence_running:
-				_tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 		if skill_frame_refresh:
-			_tutorial_overlay_surface().sync_onboarding_overlay_tips()
 			_onboarding_runtime()._maybe_trigger_onboarding_header_reveal_from_progress()
-			_tutorial_overlay_surface()._sync_activity_start_highlight_position()
 		_skill_detail_surface()._update_detail_header_gauges(static_refresh, skill_frame_refresh, detail_header_gauge_refresh, delta, instant)
 		if skill_frame_refresh:
 			_skill_detail_surface()._update_skill_detail_shadow(delta, instant)
@@ -852,8 +836,6 @@ func _update_ui(delta: float, instant := false) -> void:
 		var trace_now := Time.get_ticks_usec()
 		trace_static_cards_us = trace_now - trace_static_last
 		trace_static_last = trace_now
-	if _activity_unlock_ceremony_surface().locked_preview_fade_play_pending:
-		_activity_unlock_ceremony_surface().play_pending_locked_activity_preview_reveals()
 	if static_refresh:
 		_settings_surface()._refresh_audio_volume_controls()
 	if static_refresh:

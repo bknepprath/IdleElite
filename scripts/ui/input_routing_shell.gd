@@ -1332,8 +1332,7 @@ func _activity_card_is_locked_or_covered(skill_id: String, action: Dictionary, c
 	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
 		return false
 	return (
-		bool(card.get("locked_preview_hidden", false))
-		or bool(card.get("unlock_ready_pending", false))
+		bool(card.get("unlock_ready_pending", false))
 		or bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
 		or not (card.get("lock_overlay", {}) as Dictionary).is_empty()

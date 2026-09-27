@@ -53,7 +53,7 @@ func _init(host_ref) -> void:
 
 func _reward_float_reserved_bottom() -> float:
 	var reserved := float(NavigationShell.BOTTOM_NAV_HEIGHT)
-	if host._profile_chat_overlay_surface()._global_chat_allowed() and host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen():
+	if host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen():
 		reserved += float(ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT)
 		reserved += host._navigation_shell()._module_utility_row_reserved_height_for_screen()
 	return minf(reserved, maxf(0.0, host._current_canvas_size().y - 120.0))

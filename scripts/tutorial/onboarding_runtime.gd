@@ -9,7 +9,6 @@ var host
 
 var tutorial_active := false
 var tutorial_step := 0
-var tutorial_step_changed_msec := -100000
 var tutorial_gate_latch_only_until_swipe := false
 var tutorial_target_activity_started := false
 var tutorial_completion_exit_running := false
@@ -18,7 +17,6 @@ var activity_start_tip_seen := false
 var skill_swipe_tip_seen := false
 var onboarding_explore_tip_seen := false
 var onboarding_tutorial_complete := false
-var onboarding_explore_tip_sequence_running := false
 var passive_module_tip_seen := false
 var silver_opportunity_tip_seen := false
 var silver_opportunity_tip_action_key := ""
@@ -27,18 +25,10 @@ var onboarding_starter_action_completion_count := 0
 var onboarding_header_reveal_after_progress := false
 var onboarding_swipe_tip_eligible := false
 var onboarding_swipe_navigation_unlocked := false
-var onboarding_swipe_tip_sequence_running := false
 var onboarding_fight_summary_revealed := false
 var onboarding_fight_auto_run_message_shown := false
 var onboarding_fight_stamina_revealed := false
 var onboarding_fight_action_stats_revealed := false
-var onboarding_fight_action_stats_fade_running := false
-var onboarding_stamina_tip_sequence_running := false
-var onboarding_header_sequence_token := 0
-var onboarding_header_sequence_running := false
-var onboarding_header_sequence_started_msec := 0
-var onboarding_stamina_tip_sequence_started_msec := 0
-var onboarding_auto_run_sequence_running := false
 var lock_click_tip_seen := false
 var onboarding_first_module_center_release_pending := false
 var onboarding_first_module_center_released := false
@@ -60,7 +50,6 @@ func prepare_tutorial_state() -> void:
 	onboarding_fight_auto_run_message_shown = false
 	onboarding_fight_stamina_revealed = false
 	onboarding_fight_action_stats_revealed = false
-	onboarding_fight_action_stats_fade_running = false
 	tutorial_target_activity_started = false
 	tutorial_completion_exit_running = false
 	tutorial_active = true
@@ -89,7 +78,6 @@ func _start_tutorial() -> void:
 	host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
 	host._tutorial_overlay_surface()._fade_tip_group("stamina_cost_tip_notes")
 	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
-	host._tutorial_overlay_surface()._fade_tip_group("onboarding_explore_tip_notes", false, true)
 	if host.stamina_gauge_tip_root != null and is_instance_valid(host.stamina_gauge_tip_root):
 		host.stamina_gauge_tip_root.queue_free()
 	host.stamina_gauge_tip_root = null
@@ -199,7 +187,6 @@ func _on_tutorial_action_button_pressed() -> void:
 
 func _set_tutorial_step(step: int) -> void:
 	tutorial_step = clampi(step, 0, 4)
-	tutorial_step_changed_msec = Time.get_ticks_msec()
 	host._tutorial_overlay_surface()._update_tutorial_overlay()
 	host.save_game()
 
@@ -231,67 +218,10 @@ func _mark_skill_swipe_tip_seen() -> void:
 	host.save_game()
 
 
-func _onboarding_fight_header_sequence_active() -> bool:
-	return false
-
-
-func _onboarding_auto_run_message_resumable() -> bool:
-	return (
-		_onboarding_fight_header_sequence_active()
-		and not onboarding_fight_auto_run_message_shown
-		and onboarding_starter_action_completion_count >= host.ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD
-	)
-
-
-func _onboarding_header_reveal_sequence_resumable() -> bool:
-	return false
-
-
 func _maybe_trigger_onboarding_header_reveal_from_progress() -> void:
-	if not onboarding_header_reveal_after_progress:
-		return
-	if onboarding_fight_summary_revealed or onboarding_header_sequence_running:
-		return
-	if not _onboarding_fight_header_sequence_active():
+	# The header reveal sequence no longer runs; just clear a restored pending flag.
+	if onboarding_header_reveal_after_progress and not onboarding_fight_summary_revealed:
 		onboarding_header_reveal_after_progress = false
-		return
-	if host.running_skill_id != host.TUTORIAL_STARTER_SKILL_ID or host.running_action_id != host.TUTORIAL_STARTER_ACTION_ID:
-		return
-	if host.action_progress < host.ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION:
-		return
-	onboarding_header_reveal_after_progress = false
-	call_deferred("_run_onboarding_header_reveal_sequence")
-
-
-func _cancel_onboarding_header_sequence() -> void:
-	onboarding_header_sequence_token += 1
-	onboarding_header_sequence_running = false
-	onboarding_header_sequence_started_msec = 0
-	onboarding_auto_run_sequence_running = false
-	onboarding_stamina_tip_sequence_running = false
-	onboarding_stamina_tip_sequence_started_msec = 0
-	host._tutorial_overlay_surface()._clear_onboarding_auto_run_message(true)
-	host._tutorial_overlay_surface()._fade_tip_group("onboarding_auto_run_tip_notes")
-
-
-func _run_onboarding_auto_run_message_sequence() -> void:
-	return
-
-
-func _run_onboarding_header_reveal_sequence() -> void:
-	return
-
-
-func _run_onboarding_stamina_tip_sequence(token: int = -1, skip_fade_in := false):
-	return
-
-
-func _resume_onboarding_stamina_mastery_sequence_if_needed() -> void:
-	return
-
-
-func _onboarding_combo_swipe_tip_context_ready() -> bool:
-	return true
 
 
 func _onboarding_fight_stamina_depleted() -> bool:
@@ -304,18 +234,6 @@ func _onboarding_swipe_prompt_due() -> bool:
 		or _onboarding_fight_stamina_depleted()
 		or tutorial_gate_latch_only_until_swipe
 	)
-
-
-func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
-	return true
-
-
-func _onboarding_swipe_tip_sequence_resumable() -> bool:
-	return false
-
-
-func _maybe_trigger_onboarding_swipe_tip_at_zero_stamina(skill_id: String) -> void:
-	pass
 
 
 func _mark_lock_click_tip_seen() -> bool:
@@ -335,52 +253,14 @@ func _record_activity_start_for_tips() -> void:
 	if not activity_start_tip_seen:
 		activity_start_tip_seen = true
 		host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
-		if host._tutorial_overlay_surface().activity_start_highlight_pending:
-			host._tutorial_overlay_surface().activity_start_highlight_pending = false
-			host._tutorial_overlay_surface().activity_start_highlight_token += 1
 	host.save_game()
-
-
-func _onboarding_mastery_rewards_allowed(skill_id: String) -> bool:
-	return true
-
-
-func _onboarding_path_active() -> bool:
-	return false
-
-
-func _activity_crits_allowed() -> bool:
-	return true
-
-
-func _onboarding_skill_accessible(skill_id: String) -> bool:
-	return true
-
-
-func _onboarding_swipe_to_other_skills_allowed() -> bool:
-	return true
-
-
-func _onboarding_blocks_skill_swipe() -> bool:
-	return false
 
 
 func _swipe_offset_accessible(offset: int) -> bool:
 	if offset == 0:
 		return false
 	var target_skill_id: String = host._skill_swipe_activity_surface()._skill_id_for_swipe_offset(offset)
-	if target_skill_id.is_empty():
-		return false
-	if not _onboarding_skill_accessible(target_skill_id):
-		return false
-	return true
-
-
-func _show_onboarding_skill_locked_message(source: Control = null) -> void:
-	var message := "Finish the %s intro first." % SkillState.skill_name(host.skill_defs, host.TUTORIAL_STARTER_SKILL_ID)
-	host._reward_feedback_surface()._set_result(message, false)
-	if source != null and is_instance_valid(source) and source.is_visible_in_tree():
-		host._reward_feedback_surface()._float_reward(host, source, message, 52, Color.WHITE, Vector2(0, -24), Vector2(0, -120), 0.0)
+	return not target_skill_id.is_empty()
 
 
 func _record_activity_completion_for_tips(skill_id: String = "", action_id: String = "") -> void:
@@ -395,23 +275,6 @@ func _record_activity_completion_for_tips(skill_id: String = "", action_id: Stri
 		onboarding_starter_action_completion_count += 1
 		if onboarding_starter_action_completion_count == 1 and not onboarding_first_module_center_released:
 			onboarding_first_module_center_release_pending = true
-	if _onboarding_fight_header_sequence_active() and is_starter_completion:
-		if (
-			onboarding_starter_action_completion_count >= host.ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD
-			and not onboarding_fight_auto_run_message_shown
-		):
-			call_deferred("_run_onboarding_auto_run_message_sequence")
-		if (
-			onboarding_starter_action_completion_count >= 2
-			and not onboarding_fight_summary_revealed
-		):
-			onboarding_header_reveal_after_progress = true
-		if (
-			onboarding_starter_action_completion_count >= 3
-			and not onboarding_fight_summary_revealed
-		):
-			onboarding_header_reveal_after_progress = false
-			call_deferred("_run_onboarding_header_reveal_sequence")
 	if save_immediately:
 		host.save_game()
 	else:
@@ -519,17 +382,8 @@ func _skill_swipe_tip_available() -> bool:
 		not skill_swipe_tip_seen
 		and activity_start_tip_seen
 		and stamina_gauge_tip_seen
-		and _onboarding_combo_swipe_tip_context_ready()
 		and _onboarding_swipe_prompt_due()
 	)
-
-
-func _maybe_show_onboarding_explore_tip() -> void:
-	pass
-
-
-func _resync_onboarding_skill_detail_after_navigation() -> void:
-	pass
 
 
 func _force_tutorial_skill_scroll_to_top() -> void:
@@ -555,8 +409,6 @@ func _dismiss_skill_detail_tutorial_tips() -> void:
 	_complete_passive_module_tip_page_visit()
 	_complete_silver_opportunity_tip_page_visit()
 	host._tutorial_overlay_surface()._fade_tip_group("lock_click_tip_notes")
-	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
-	_cancel_onboarding_header_sequence()
 	host._tutorial_overlay_surface()._fade_tip_group("stamina_cost_tip_notes")
 	if host.stamina_gauge_tip_root != null and is_instance_valid(host.stamina_gauge_tip_root):
 		host._tutorial_overlay_surface()._fade_tip_control(host.stamina_gauge_tip_root)
@@ -641,7 +493,3 @@ func _should_release_onboarding_first_module_centering_for_preview(skill_id: Str
 	if str(action.get("id", "")) != _tutorial_current_locked_preview_action_id(skill_id):
 		return false
 	return int(action.get("unlock", 0)) == 2
-
-
-func _should_release_onboarding_first_module_centering_for_locked_preview(skill_id: String, action_id: String) -> bool:
-	return false
