@@ -1633,6 +1633,26 @@ func render_area_modules_into_stack(stack: VBoxContainer, content_width: float) 
 		host._skill_detail_surface()._queue_detail_lazy_settle_warm_mount(skill_id)
 
 
+## Same result as render_area_modules_into_stack for a neighbour page built
+## beside the current one: signature, plan and slots land in separate frames.
+## Returns false when the render was abandoned between frames.
+func render_area_modules_into_stack_staged(stack: VBoxContainer, content_width: float) -> bool:
+	var skill_id := "fishing"
+	var detail = host._skill_detail_surface()
+	detail._clear_detail_lazy_cache_bin()
+	detail.detail_rendered_action_ids = _fishing_detail_render_signature()
+	await detail._render_frame_yield()
+	if host.selected_skill_id != skill_id or stack == null or not is_instance_valid(stack):
+		return false
+	detail.detail_lazy_plan = _build_fishing_detail_lazy_plan(skill_id)
+	detail.detail_lazy_last_scroll = -1.0
+	if not await detail._detail_lazy_create_slots_batched(stack, skill_id, content_width, content_width, host.SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE):
+		return false
+	detail._sync_detail_actions_scroll_limit()
+	_sync_fishing_detail_render_culling(true)
+	return true
+
+
 func _render_fishing_area_modules_preview(stack: VBoxContainer, content_width: float, state: Dictionary) -> void:
 	var skill_id = "fishing"
 	var net_offer_rendered = false

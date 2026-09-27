@@ -1200,7 +1200,8 @@ func _finish_detail_lazy_card_list_render() -> void:
 			0.0 if host._skill_swipe_activity_surface().skill_swipe_handoff_cover == null or not is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_handoff_cover) else host._skill_swipe_activity_surface().skill_swipe_handoff_cover.modulate.a,
 			str(detail_lazy_plan.size())
 		])
-	if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
+	var adjacent_neighbour_render: bool = host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active
+	if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount and not adjacent_neighbour_render:
 		_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id))
 	if not host._skill_swipe_loading_transition_active() and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
 		_detail_lazy_mount_thieving_heists_sync(true)
@@ -1681,6 +1682,11 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.anchor_top = 0.0
 	background.anchor_bottom = 1.0
 	var bleed: float = maxf(host.PAGE_PAD, (host._skill_column_host_width() - content_width) * 0.5) + host._skill_swipe_activity_surface()._skill_swipe_page_span()
+	var adjacent_pages = host._skill_swipe_activity_surface()._adjacent_pages()
+	if adjacent_pages.enabled():
+		# Neighbour pages sit one screen width away: bleed only to the middle of
+		# the gutter so two shelves never overlap and none shows at rest.
+		bleed = adjacent_pages.half_gutter()
 	background.offset_left = -bleed
 	background.offset_right = bleed
 	background.offset_top = -host.SKILLS_PAGE_TOP_PAD
@@ -3456,6 +3462,9 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		page.offset_top = 0.0
 		page.offset_bottom = 0.0
 		page.custom_minimum_size.x = content_width
+		var adjacent_pages = host._skill_swipe_activity_surface()._adjacent_pages()
+		if adjacent_pages.neighbour_render_active:
+			adjacent_pages.prepare_neighbour_page(page)
 	else:
 		page.set_anchors_preset(Control.PRESET_FULL_RECT)
 		page.custom_minimum_size.x = actions_width
@@ -3476,7 +3485,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	header.add_child(header_body)
 	_add_skill_detail_shelf_background(header_body, selected_skill_id, content_width)
 	if yield_under_cover:
-		await host.get_tree().process_frame
+		await _render_frame_yield()
 		if current_screen != "skill" or selected_skill_id != render_skill_id or not is_instance_valid(page):
 			return
 	var header_margin = MarginContainer.new()
@@ -3535,7 +3544,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	title_stack.add_child(detail_xp_bar)
 
 	if boot_detail_card_yield or yield_under_cover:
-		await host.get_tree().process_frame
+		await _render_frame_yield()
 		if current_screen != "skill" or selected_skill_id != render_skill_id or not is_instance_valid(page):
 			return
 
@@ -3590,7 +3599,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		host._onboarding_runtime()._dismiss_skill_detail_tutorial_tips()
 
 	if boot_detail_card_yield or yield_under_cover:
-		await host.get_tree().process_frame
+		await _render_frame_yield()
 		if current_screen != "skill" or selected_skill_id != render_skill_id or not is_instance_valid(page):
 			return
 
@@ -3642,9 +3651,13 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 
 	detail_lazy_stack = stack
 	if host._fishing_rework_active_for_skill(selected_skill_id):
-		host._fishing_ui_surface().render_area_modules_into_stack(stack, content_width)
+		if host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active:
+			if not await host._fishing_ui_surface().render_area_modules_into_stack_staged(stack, content_width):
+				return
+		else:
+			host._fishing_ui_surface().render_area_modules_into_stack(stack, content_width)
 		if boot_detail_card_yield or yield_under_cover:
-			await host.get_tree().process_frame
+			await _render_frame_yield()
 			if current_screen != "skill" or selected_skill_id != render_skill_id or not is_instance_valid(page):
 				return
 		if _activity_start_inline_tip_available(selected_skill_id):
@@ -3701,7 +3714,9 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		host.call_deferred("_finish_boot_skill_detail_extras")
 	else:
 		_build_detail_jump_arrows(actions_clip)
-		_add_skill_detail_shadow_overlay(_skill_detail_shadow_top_y())
+		if not strip_mode:
+			# One fixed shelf shadow is shared by every page in the frame.
+			_add_skill_detail_shadow_overlay(_skill_detail_shadow_top_y())
 	if not strip_mode:
 		call_deferred("_sync_detail_actions_scroll_limit_deferred")
 		if restore_detail_scroll == DETAIL_RESTORE_SCROLL_BOTTOM:
@@ -3720,6 +3735,16 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 			call_deferred("_scroll_to_resume_activity", false)
 		host._skill_swipe_activity_surface().call_deferred("_ensure_skill_swipe_frame_centered")
 		host._skill_swipe_activity_surface()._normalize_skill_detail_page_layout()
+
+
+## Frame break inside a staged page render. A neighbour page rendered beside the
+## current one hands the real current page back while it waits for the frame.
+func _render_frame_yield() -> void:
+	var adjacent_pages = host._skill_swipe_activity_surface()._adjacent_pages()
+	if adjacent_pages.neighbour_render_active:
+		await adjacent_pages.yield_neighbour_render()
+		return
+	await host.get_tree().process_frame
 
 
 func _detail_restore_scroll_value(restore_detail_scroll: int) -> int:
@@ -8977,6 +9002,9 @@ func _detail_lazy_create_slots_batched(
 ) -> bool:
 	var created_since_yield := 0
 	var batch_limit := maxi(1, batch_size)
+	if host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active:
+		# A neighbour page just paid for its lazy plan; start the slots next frame.
+		await _render_frame_yield()
 	for lazy_entry in detail_lazy_plan:
 		if current_screen != "skill" or selected_skill_id != skill_id:
 			return false
@@ -8986,7 +9014,7 @@ func _detail_lazy_create_slots_batched(
 		created_since_yield += 1
 		if created_since_yield >= batch_limit:
 			created_since_yield = 0
-			await host.get_tree().process_frame
+			await _render_frame_yield()
 	return true
 
 

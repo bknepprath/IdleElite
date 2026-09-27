@@ -1712,6 +1712,7 @@ func _reset_page_control_refs() -> void:
 	host._skill_swipe_activity_surface().skill_strip_ids.clear()
 	host._skill_swipe_activity_surface().skill_strip_index = 0
 	host._skill_swipe_activity_surface().skill_strip_refs.clear()
+	host._skill_swipe_activity_surface()._adjacent_pages().reset()
 	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 	host._hub_surface()._clear_hub_page_control_refs()
 	host._settings_surface()._clear_settings_page_control_refs()
@@ -2062,6 +2063,8 @@ func _finish_render_screen_transition(target_key: String) -> void:
 	):
 		if host._skill_detail_surface().detail_lazy_plan.size() > 0 and not host._skill_detail_surface()._detail_lazy_all_mounted():
 			host._skill_detail_surface().call_deferred("_detail_lazy_refresh_after_page_ready", host._skill_detail_surface().detail_lazy_refresh_token)
+	if host.current_screen == "skill":
+		host._skill_swipe_activity_surface()._adjacent_pages().schedule_build()
 
 
 func _apply_skills_content_layout_for_screen() -> void:
