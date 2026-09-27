@@ -141,6 +141,18 @@ func _check_identity_transition_capability_is_scoped() -> void:
 		{"leaderboard_player_id": target_uid, "leaderboard_auth_bound_uid": target_uid, "leaderboard_auth_provider": "anonymous"},
 		capability
 	), "An identity transition capability must reject a non-Google target binding.")
+	var anonymous_capability := capability.duplicate()
+	anonymous_capability["target_provider"] = "anonymous"
+	_expect(SaveRuntime._identity_transition_capability_matches(
+		{"leaderboard_player_id": source_uid},
+		{"leaderboard_player_id": target_uid, "leaderboard_auth_bound_uid": target_uid, "leaderboard_auth_provider": "anonymous"},
+		anonymous_capability
+	), "A capability scoped to an anonymous web transfer must accept that exact binding.")
+	_expect(not SaveRuntime._identity_transition_capability_matches(
+		{"leaderboard_player_id": source_uid},
+		{"leaderboard_player_id": target_uid, "leaderboard_auth_bound_uid": target_uid, "leaderboard_auth_provider": "google"},
+		anonymous_capability
+	), "A capability scoped to an anonymous web transfer must reject any other provider.")
 	_expect((runtime.call("_consume_next_identity_transition_save") as Dictionary).is_empty(), "An identity transition capability must be consumed after one attempt.")
 	_expect(runtime.allow_next_identity_transition_save(target_uid, target_uid), "A completed same-UID recovery transition should be authorizable.")
 	_expect(not runtime.allow_next_identity_transition_save("", target_uid), "An invalid identity transition request must be rejected.")

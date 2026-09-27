@@ -47,6 +47,7 @@ var save_dirty_reason := ""
 var allow_next_save_progress_regression := false
 var next_save_identity_transition_source_uid := ""
 var next_save_identity_transition_target_uid := ""
+var next_save_identity_transition_provider := "google"
 var next_save_vetted_progress_repair_source := {}
 var next_save_vetted_progress_repair_payload := {}
 var next_save_vetted_identity_repair_source := {}
@@ -715,7 +716,7 @@ func _mark_save_dirty(reason = "") -> void:
 		save_dirty_reason = reason
 
 
-func allow_next_identity_transition_save(source_uid: String, target_uid: String) -> bool:
+func allow_next_identity_transition_save(source_uid: String, target_uid: String, target_provider := "google") -> bool:
 	# This capability is reserved for a completed, user-initiated account switch.
 	# Refresh, anonymous signup, and background auth must never call it. Exact UID
 	# anchors prevent it from authorizing any different in-memory transition.
@@ -726,12 +727,14 @@ func allow_next_identity_transition_save(source_uid: String, target_uid: String)
 		return false
 	next_save_identity_transition_source_uid = clean_source_uid
 	next_save_identity_transition_target_uid = clean_target_uid
+	next_save_identity_transition_provider = target_provider
 	return true
 
 
 func cancel_next_identity_transition_save() -> void:
 	next_save_identity_transition_source_uid = ""
 	next_save_identity_transition_target_uid = ""
+	next_save_identity_transition_provider = "google"
 
 
 func _consume_next_identity_transition_save() -> Dictionary:
@@ -740,6 +743,7 @@ func _consume_next_identity_transition_save() -> Dictionary:
 		capability = {
 			"source_uid": next_save_identity_transition_source_uid,
 			"target_uid": next_save_identity_transition_target_uid,
+			"target_provider": next_save_identity_transition_provider,
 		}
 	cancel_next_identity_transition_save()
 	return capability
@@ -933,7 +937,7 @@ static func _identity_transition_capability_matches(existing_payload: Dictionary
 		and (existing_bound_uid.is_empty() or existing_bound_uid == expected_source_uid)
 		and next_uid == expected_target_uid
 		and next_bound_uid == expected_target_uid
-		and next_provider == "google"
+		and next_provider == str(source.get("target_provider", "google"))
 	)
 
 

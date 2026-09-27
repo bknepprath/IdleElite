@@ -20,7 +20,6 @@ const PASSIVE_YIELD_START := 2
 const PASSIVE_YIELD_MAX := 18
 const PASSIVE_CAPACITY_START := 20
 const PASSIVE_CAPACITY_MAX := 1000
-const MAX_OFFLINE_SECONDS := 8 * 60 * 60
 
 var host
 
@@ -363,7 +362,7 @@ func apply_passive_module_production(now: int) -> void:
 			continue
 		var interval := maxi(PASSIVE_TIME_MAX, int(state.get("time_seconds", PASSIVE_TIME_START)))
 		var last_update := int(state.get("last_update", now))
-		var elapsed := maxi(0, mini(MAX_OFFLINE_SECONDS, now - last_update))
+		var elapsed := maxi(0, mini(int(host.MAX_OFFLINE_SECONDS), now - last_update))
 		if elapsed < interval:
 			host.passive_modules[module_id] = state
 			continue
@@ -400,7 +399,7 @@ func apply_firepit_fuel(now: int) -> void:
 		SkillState.invalidate_stat_caches(host)
 		return
 	var last_update := int(state.get("last_update", now))
-	var elapsed := maxi(0, mini(MAX_OFFLINE_SECONDS, now - last_update))
+	var elapsed := maxi(0, mini(int(host.MAX_OFFLINE_SECONDS), now - last_update))
 	if elapsed <= 0:
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		return

@@ -121,13 +121,13 @@
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
               },
               "score": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val() || ($category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()))"
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($category != 'total_level' || newData.val() <= 495) && (!data.exists() || newData.val() >= data.val())"
               },
               "skill_level": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
               },
               "total_xp": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || !data.child('total_xp').exists() || newData.val() >= data.child('total_xp').val())"
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val())"
               },
               "updated_at": {
                 ".validate": "newData.isNumber() && newData.val() >= now - 300000 && newData.val() <= now + 60000"

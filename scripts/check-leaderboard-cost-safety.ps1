@@ -162,7 +162,7 @@ Assert-True ($leaderboardState -match 'return LeaderboardProfile\.profile_claim_
 Assert-True ($transportRuntime -match 'func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh = false\)') "Visible-category reads must default to honoring the 15-minute cache."
 Assert-True ($leaderboardFetchFunction -match '(?s)ensure_leaderboard_http\(\).*?if not _leaderboard_firebase_enabled\(\):') "Public leaderboard reads must build HTTP request nodes directly before checking config."
 Assert-True ($transportRuntime -match 'if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS') "Leaderboard reads must enforce the 15-minute cache unless explicitly refreshed after a write."
-Assert-True ($leaderboardFetchFunction -match '(?s)var last_success_fetch :?= int\(leaderboard_state\.fetch_unix_by_category\.get\(valid_id, 0\)\).*?var last_failed_fetch :?= int\(leaderboard_state\.fetch_retry_unix_by_category\.get\(valid_id, 0\)\).*?var last_fetch :?= maxi\(last_success_fetch, last_failed_fetch\).*?if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:.*?return.*?if leaderboard_state\.fetch_in_flight or leaderboard_state\.total_xp_fetch_in_flight:') "Fresh visible-category cache hits must return before any HTTP read work."
+Assert-True ($leaderboardFetchFunction -match '(?s)var last_success_fetch :?= int\(leaderboard_state\.fetch_unix_by_category\.get\(valid_id, 0\)\).*?var last_failed_fetch :?= int\(leaderboard_state\.fetch_retry_unix_by_category\.get\(valid_id, 0\)\).*?var last_fetch :?= maxi\(last_success_fetch, last_failed_fetch\).*?if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:.*?return.*?if leaderboard_state\.fetch_in_flight:') "Fresh visible-category cache hits must return before any HTTP read work."
 Assert-True ($leaderboardFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Visible-category reads must not start Firebase Auth or append an auth token."
 Assert-True ($leaderboardFinalizeFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Compat total XP reads must not start Firebase Auth or append an auth token."
 Assert-True ($leaderboardFetchFunction -match '(?s)if not _leaderboard_firebase_enabled\(\):.*?return') "Visible-category reads must bail out when Firebase config is absent or malformed."
@@ -250,7 +250,7 @@ Assert-True ($main -notmatch '"chat_rows":\s*chat_rows\s*(,|\})') "Chat rows mus
 Assert-True ($main -match 'one live chat connection while it is visible') "Chat UI must describe the live connection without naming backend services."
 
 $leaderboardRequests = [regex]::Matches($transportRuntime, 'leaderboard_(fetch|submit)_request\.request\(').Count
-Assert-True ($leaderboardRequests -eq 3) "Expected exactly three leaderboard HTTP request sites: one GET, one gate PUT, and one score PATCH."
+Assert-True ($leaderboardRequests -eq 4) "Expected exactly four leaderboard HTTP request sites: one GET, one gate PUT, one batched score PATCH, and the per-category PATCH fallback used only after a validation denial."
 $leaderboardAuthRequests = [regex]::Matches($transportRuntime, 'leaderboard_auth_request\.request\(').Count
 Assert-True ($leaderboardAuthRequests -eq 2) "Expected exactly two auth request sites: anonymous sign-up and token refresh."
 
@@ -339,9 +339,6 @@ Assert-True ($categoryWriteRule -match "updated_at'\)\.val\(\) <= now \+ 60000")
 
 $scoreRule = Get-JsonProp (Get-JsonProp $player "score") ".validate"
 Assert-True ($scoreRule -match "newData.val\(\) >= data.val\(\)") "Scores must be monotonic per player/category."
-Assert-True ($scoreRule -match "\`$category == 'total_level'") "Only the Total Level category may repair legacy XP-as-score rows."
-Assert-True ($scoreRule -match "data.child\('score'\).val\(\) > 999") "Legacy Total Level repairs must only apply to impossible level-shaped scores."
-Assert-True ($scoreRule -match "newData.parent\(\).child\('total_xp'\).val\(\) >= data.child\('score'\).val\(\)") "Legacy Total Level repairs must preserve the old XP score in total_xp or better."
 Assert-True ($null -ne (Get-JsonProp $player "total_xp")) "Score rows must allow total XP for the combined Total leaderboard."
 Assert-True ((Get-JsonProp $player ".validate") -match "newData.hasChildren") "Score rows must require the expected child fields."
 Assert-True ((Get-JsonProp $player ".validate") -match "name_key") "Score rows must store the claimed name key."

@@ -175,6 +175,10 @@ try {
             finally {
                 [void][GodotRunner.NativeErrorMode]::SetErrorMode($previousErrorMode)
             }
+            # Windows PowerShell only records ExitCode for a Start-Process object whose
+            # handle was opened while the process was alive. Without this, ExitCode is
+            # $null and every failing Godot run below would be reported as exit 0.
+            $null = $process.Handle
             break
         }
 
@@ -223,7 +227,7 @@ if (-not $visibleGame -and (Test-Path -LiteralPath $stderrPath)) {
 }
 
 $process.Refresh()
-$exitCode = if ($null -eq $process.ExitCode) { 0 } else { $process.ExitCode }
+$exitCode = if ($null -eq $process.ExitCode) { 1 } else { $process.ExitCode }
 if ($exitCode -eq 0 -and ($stderrLines -match "Main executable .* not found")) {
     $exitCode = 1
 }

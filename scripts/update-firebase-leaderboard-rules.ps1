@@ -54,7 +54,9 @@ $legacyRecoveryGateTicketRule = "root.child('leaderboards').child('v1').child('n
 $legacyRecoveryGateOldClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('old_uid').val() || (root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && data.exists() && data.child('name_key').val() == newData.child('name_key').val() && data.child('old_uid').val() == newData.child('old_uid').val() && data.child('target_uid').val() == auth.uid)"
 $leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
 $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
-$leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()"
+# Total Level is five skills at level 99. Inside a child .validate, `data` is the
+# child value itself, so monotonic checks compare data.val() directly.
+$leaderboardTotalLevelCapRule = "`$category != 'total_level' || newData.val() <= 495"
 $chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && auth != null && newData.child('sender_id').val() == auth.uid"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000"
 $chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('display_name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('name_key').val() == newData.child('name_key').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('avatar_index').val() == newData.child('avatar_index').val()"
@@ -184,13 +186,13 @@ $rulesObject = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
                             }
                             score = [ordered]@{
-                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val() || ($leaderboardLegacyTotalLevelScoreRule))"
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($leaderboardTotalLevelCapRule) && (!data.exists() || newData.val() >= data.val())"
                             }
                             skill_level = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
                             }
                             total_xp = [ordered]@{
-                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || !data.child('total_xp').exists() || newData.val() >= data.child('total_xp').val())"
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val())"
                             }
                             updated_at = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= now - 300000 && newData.val() <= now + 60000"

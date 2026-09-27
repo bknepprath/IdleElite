@@ -1583,7 +1583,9 @@ func _rebuild_profile_overlay() -> void:
 	cloud_status.add_theme_font_size_override("font_size", host.MIN_MOBILE_HELP_FONT_SIZE)
 	cloud_status.custom_minimum_size = Vector2(0, 140 if recovery_layout_active else 68)
 	name_stack.add_child(cloud_status)
-	if host._online_runtime().leaderboard_auth_provider != "google" or host._online_runtime().leaderboard_auth_recovery_required or host._online_runtime().leaderboard_name_transfer_required:
+	# Google sign-in exists only in the Android build; web recovery uses the
+	# anonymous transfer plus the recovery code below.
+	if OS.get_name() == "Android" and (host._online_runtime().leaderboard_auth_provider != "google" or host._online_runtime().leaderboard_auth_recovery_required or host._online_runtime().leaderboard_name_transfer_required):
 		var google_button_text := "Connect Google"
 		if host._online_runtime().leaderboard_name_transfer_required:
 			google_button_text = "Change Google Account"
@@ -1752,7 +1754,7 @@ func _profile_status_text() -> String:
 	if host._online_runtime().leaderboard_legacy_username_recovery_required:
 		return "Username recovery needs support approval."
 	if host._online_runtime().legacy_authless_google_transition_required():
-		return "Connect Google to recover this legacy profile."
+		return "Connect Google to recover this legacy profile." if OS.get_name() == "Android" else "Moving this legacy profile to a secure login..."
 	if host._online_runtime().deleted_auth_google_transition_required():
 		return "Connect Google to recover this deleted online account."
 	if host._online_runtime().leaderboard_auth_recovery_required:

@@ -39,3 +39,12 @@ firebase-debug*.log
 assets/loading/blue-guy-flex-loading-spritesheet*.png
 !assets/loading/blue-guy-flex-loading-spritesheet.png
 docs/loading-flex-preview.html
+
+# Scratch and generated output. Files already tracked stay tracked until
+# someone deliberately removes them; these only stop new junk being added.
+outputs/
+tmp/
+/.codex-*.png
+/.codex-*.png.import
+.playwright-cli/
+.claude/settings.local.json
