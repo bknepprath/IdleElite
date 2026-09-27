@@ -3,6 +3,7 @@ extends RefCounted
 const ActionRuntime = preload("res://scripts/gameplay/action_runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
+const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 
 const BLUE_GUY_HEALTH_MAX := 30
 const BLUE_GUY_HEALTH_REGEN_SECONDS := 2.0
@@ -14,6 +15,8 @@ var completed_bosses := {}
 var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
 var blue_guy_health_bank := 0.0
 var parked_combat_stage: Control
+# Arena XP banked toward the next "completion" (mission tick + medal progress), per fight action.
+var arena_completion_xp_progress := {}
 var parked_combat_action_id := ""
 
 
@@ -268,6 +271,23 @@ func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) ->
 	if amount <= 0:
 		return
 	_award_fighting_xp(amount, stage)
+	_record_arena_completion_progress(amount)
+
+# Arena fights have no fixed completion, so every activity-XP's worth of kill XP
+# counts as one completion (the unit offline fighting uses): it ticks the mission
+# board and earns medal mastery like any other activity.
+func _record_arena_completion_progress(amount: int) -> void:
+	var action_id: String = host.running_action_id
+	if host.running_skill_id != "fight" or not action_is_free_fighting_proto("fight", action_id):
+		return
+	var action: Dictionary = host._action_data("fight", action_id)
+	var xp_per_completion := maxf(1.0, float(action.get("xp", 1)))
+	var banked := float(arena_completion_xp_progress.get(action_id, 0.0)) + float(amount)
+	while banked >= xp_per_completion:
+		banked -= xp_per_completion
+		host._hub_runtime().record_mission_action_completion("fight", action_id)
+		MasteryState.add_host_xp(host, "fight", action_id, MasteryState.reward_for_action(host, "fight", action_id, action))
+	arena_completion_xp_progress[action_id] = banked
 func _award_fighting_xp(amount: int, stage: Control) -> void:
 	if not host.skills.has("fight"):
 		host.skills["fight"] = {"xp": 0, "level": 1}

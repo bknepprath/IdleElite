@@ -602,8 +602,10 @@ func _offline_summary_medal_stack(old_level: int, new_level: int) -> Control:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for i in range(levels.size()):
 		var level := int(levels[i])
-		var medal = host.visual_texture_cache._image_from_texture(AchievementPresentation.mastery_medal_texture(level, host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), medal_size)
-		medal.position = Vector2(float(i) * overlap_step, float(levels.size() - 1 - i) * 3.5)
+		# Same per-tier display scale as the medal strip, so winged and elite medals match plain ones.
+		var scaled_size: Vector2 = medal_size * AchievementPresentation.mastery_medal_display_scale(level)
+		var medal = host.visual_texture_cache._image_from_texture(AchievementPresentation.mastery_medal_texture(level, host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), scaled_size)
+		medal.position = Vector2(float(i) * overlap_step, float(levels.size() - 1 - i) * 3.5) - (scaled_size - medal_size) * 0.5
 		medal.z_index = i + 1
 		medal.tooltip_text = ""
 		holder.add_child(medal)
@@ -1619,7 +1621,7 @@ func _populate_achievement_medal_cluster(parent: Control, levels: Array) -> void
 		medal_size = 38.0
 	for i in range(count):
 		var center: Vector2 = positions[i] if i < positions.size() else Vector2(44.5, 36)
-		var icon_size = Vector2(medal_size, medal_size)
+		var icon_size = Vector2(medal_size, medal_size) * AchievementPresentation.mastery_medal_display_scale(int(levels[i]))
 		_add_achievement_art_image(parent, AchievementPresentation.mastery_medal_visual_texture(int(levels[i]), host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), center - icon_size * 0.5, icon_size, i + 1)
 
 func _achievement_log_card(achievement: Dictionary, show_progress = true) -> Control:

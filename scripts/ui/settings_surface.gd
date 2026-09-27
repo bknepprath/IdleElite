@@ -278,6 +278,11 @@ func render_page() -> void:
 	stack.add_child(discord)
 	stack.move_child(discord, fill_spacer.get_index())
 	stack.add_child(action_stack)
+	var version_text := str(ProjectSettings.get_setting("application/config/version", ""))
+	if not version_text.is_empty():
+		var version_label: Label = host._label("Version %s" % version_text, 36, Color(host.COLOR_INK, 0.55), HORIZONTAL_ALIGNMENT_CENTER)
+		version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(version_label)
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, 6)
 	stack.add_child(bottom_spacer)

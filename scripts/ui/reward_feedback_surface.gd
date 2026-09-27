@@ -21,7 +21,8 @@ const STAMINA_NEED_FISH_FLOAT_GROUP := "stamina_need_fish_float"
 const TIRED_ACTIVITY_FLOAT_TEXT := "Tired!\n20% speed"
 const EVENT_NEED_STAMINA_FLOAT_TEXT := "Need\n%s STAM"
 const TIRED_ACTIVITY_FLOAT_COLOR := Color("#fff2a8")
-const ACTIVITY_CRIT_FEEDBACK_SECONDS := 1.68
+# Long enough to read the crit callout (players reported it vanished too fast at 1.68s).
+const ACTIVITY_CRIT_FEEDBACK_SECONDS := 2.6
 const ACTIVITY_CRIT_SHAKE_PIXELS := 8.5
 const ACTIVITY_CRIT_LIFT_PIXELS := 3.5
 const ACTIVITY_CRIT_CARD_SCALE_PEAK := 1.035

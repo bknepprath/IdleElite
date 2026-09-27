@@ -4777,10 +4777,10 @@
           "unlock": 90,
           "stamina": 5,
           "seconds": 4,
-          "xp": 467,
+          "xp": 70,
           "success": 89.7,
           "rewards": {
-            "xp": 467,
+            "xp": 70,
             "fish_min": 45,
             "fish_max": 110
           },
@@ -4799,10 +4799,10 @@
           "unlock": 95,
           "stamina": 8,
           "seconds": 4,
-          "xp": 700,
+          "xp": 110,
           "success": 69.7,
           "rewards": {
-            "xp": 700,
+            "xp": 110,
             "fish_min": 70,
             "fish_max": 170
           },
