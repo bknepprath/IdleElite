@@ -207,6 +207,9 @@ func _set_tutorial_step(step: int) -> void:
 func _graduate_onboarding_tutorial() -> void:
 	if onboarding_tutorial_complete:
 		return
+	# Cover everything except the starter card before the rest of the game UI is
+	# made visible, then fade the cover out so the game builds around the player.
+	host._navigation_shell().play_post_onboarding_reveal_veil()
 	onboarding_tutorial_complete = true
 	host._navigation_shell().module_utility_collapsed = true
 	host.save_game()

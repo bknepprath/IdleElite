@@ -553,6 +553,46 @@ func _fade_in_post_onboarding_bottom_chrome() -> void:
 	post_onboarding_bottom_chrome_fade_tween.finished.connect(_finish_post_onboarding_bottom_chrome_fade)
 
 
+const POST_ONBOARDING_REVEAL_SECONDS := 1.4
+const POST_ONBOARDING_REVEAL_LAYER := 140
+const POST_ONBOARDING_REVEAL_CARD_PAD := 10.0
+
+
+# The first activity unlocks the header, the other cards, skill tiles, chat and
+# navigation in the same frame. Paper-colored panels around the starter card hide
+# that jump cut and fade away: the area above the card first, then below it.
+func play_post_onboarding_reveal_veil() -> void:
+	var canvas_size: Vector2 = host._current_canvas_size()
+	var card_rect := Rect2(Vector2(0.0, canvas_size.y * 0.1), Vector2(canvas_size.x, 0.0))
+	var starter_card := host.action_cards.get(host._action_key(host.TUTORIAL_STARTER_SKILL_ID, host.TUTORIAL_STARTER_ACTION_ID), {}) as Dictionary
+	var card_root := starter_card.get("root") as Control
+	if card_root != null and is_instance_valid(card_root) and card_root.is_visible_in_tree():
+		card_rect = card_root.get_global_rect().grow(POST_ONBOARDING_REVEAL_CARD_PAD)
+	var layer := CanvasLayer.new()
+	layer.name = "PostOnboardingRevealVeil"
+	layer.layer = POST_ONBOARDING_REVEAL_LAYER
+	host.add_child(layer)
+	var paper: Color = host._theme_paper_color()
+	var panels := {
+		"above": Rect2(0.0, 0.0, canvas_size.x, maxf(0.0, card_rect.position.y)),
+		"below": Rect2(0.0, card_rect.end.y, canvas_size.x, maxf(0.0, canvas_size.y - card_rect.end.y)),
+		"left": Rect2(0.0, card_rect.position.y, maxf(0.0, card_rect.position.x), card_rect.size.y),
+		"right": Rect2(card_rect.end.x, card_rect.position.y, maxf(0.0, canvas_size.x - card_rect.end.x), card_rect.size.y),
+	}
+	var tween: Tween = host.create_tween().set_parallel(true)
+	for panel_name in panels.keys():
+		var rect: Rect2 = panels[panel_name]
+		var veil := ColorRect.new()
+		veil.color = paper
+		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		veil.position = rect.position
+		veil.size = rect.size
+		layer.add_child(veil)
+		var delay := 0.35 if panel_name == "below" else 0.0
+		tween.tween_property(veil, "modulate:a", 0.0, POST_ONBOARDING_REVEAL_SECONDS).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.chain().tween_callback(layer.queue_free)
+
+
 func _finish_post_onboarding_bottom_chrome_fade() -> void:
 	post_onboarding_bottom_chrome_fade_tween = null
 

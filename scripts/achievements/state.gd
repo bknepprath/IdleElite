@@ -402,15 +402,19 @@ static func _append_crit_milestones(milestone_list: Array, context: Dictionary, 
 	var crit_reward_text := str(context.get("crit_reward_text", "Reward: crit chance"))
 	var crit_reward_amount := float(context.get("crit_reward_amount", 0.0))
 	if not first_incomplete_only or not crit_seen:
-		milestone_list.append(_crit_milestone("activity-crit", "Critical Success", "Land your first CRIT!!", crit_reward_text, crit_reward_amount, crit_seen, 1, "#67b8ff"))
+		milestone_list.append(_crit_milestone("activity-crit", "Critical Success", "Land your first CRIT!!", crit_reward_text, crit_reward_amount, crit_seen, 1, "#67b8ff", "Your first CRIT!", "Lucky roll: that activity earned 3x XP."))
 	if first_incomplete_only and not crit_seen:
 		return
 	if not first_incomplete_only or not mega_crit_seen:
-		milestone_list.append(_crit_milestone("activity-mega-crit", "Mega Critical Success", "Land your first MEGA CRIT!!!!", crit_reward_text, crit_reward_amount, mega_crit_seen, 2, "#fff052"))
+		milestone_list.append(_crit_milestone("activity-mega-crit", "Mega Critical Success", "Land your first MEGA CRIT!!!!", crit_reward_text, crit_reward_amount, mega_crit_seen, 2, "#fff052", "Your first MEGA CRIT!", "Super lucky roll: that activity earned 9x XP."))
 
 
-static func _crit_milestone(id: String, title: String, subtitle: String, reward: String, reward_amount: float, completed: bool, medal_level: int, accent: String) -> Dictionary:
+# toast_title/toast_detail explain surprise events to a player who did not
+# trigger them on purpose; the achievements list keeps the shorter goal copy.
+static func _crit_milestone(id: String, title: String, subtitle: String, reward: String, reward_amount: float, completed: bool, medal_level: int, accent: String, toast_title := "", toast_detail := "") -> Dictionary:
 	return {
+		"toast_title": toast_title,
+		"toast_detail": toast_detail,
 		"id": id,
 		"chain_key": "activity-crits",
 		"kind": "activity_crit",
