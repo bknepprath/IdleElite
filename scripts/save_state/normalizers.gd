@@ -147,14 +147,451 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 		return false
 	if next_reset_generation < existing_reset_generation:
 		return true
-	var existing_progress := progress_evidence_score(existing_payload, skill_defs)
-	if existing_progress <= 0:
+	if save_repair_generation(next_payload) < save_repair_generation(existing_payload):
+		return true
+	if payload_regresses_identity(existing_payload, next_payload):
+		return true
+	return payload_regresses_game_progress(existing_payload, next_payload, skill_defs)
+
+
+static func payload_regresses_game_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	if _skill_xp_regresses(existing_payload, next_payload, skill_defs):
+		return true
+	for key in [
+		"activity_start_count",
+		"activity_completion_count",
+		"onboarding_starter_action_completion_count",
+		"guaranteed_success_action_completions",
+	]:
+		if int(next_payload.get(key, 0)) < int(existing_payload.get(key, 0)):
+			return true
+	for key in [
+		"manual_activity_unlocks",
+		"built_modules",
+		"completed_bosses",
+		"achievement_toast_seen_ids",
+		"nav_symbol_seen_ids",
+	]:
+		if _true_dictionary_regresses(existing_payload.get(key, {}), next_payload.get(key, {})):
+			return true
+	if _activity_requirement_unlocks_regress(existing_payload, next_payload):
+		return true
+	for key in [
+		"fishing_net_collect_completed",
+		"fishing_rod_collected",
+		"fishing_reinforced_rod_collected",
+		"fishing_star_rod_collected",
+		"fishing_boat_built",
+		"fishing_mirror_collected",
+		"onboarding_tutorial_complete",
+	]:
+		if bool(existing_payload.get(key, false)) and not bool(next_payload.get(key, false)):
+			return true
+	if _nested_number_regresses(existing_payload.get("mastery", {}), next_payload.get("mastery", {}), ["xp", "level"]):
+		return true
+	if _nested_number_regresses(existing_payload.get("hub_modules", {}), next_payload.get("hub_modules", {}), ["level"]):
+		return true
+	if _nested_number_regresses(existing_payload.get("convergence_modules", {}), next_payload.get("convergence_modules", {}), ["completions"]):
+		return true
+	if _thieving_trophies_regress(existing_payload.get("thieving_trophies", {}), next_payload.get("thieving_trophies", {})):
+		return true
+	# The aggregate evidence score is useful only for choosing between otherwise
+	# equivalent recovery candidates. It includes consumable currencies and other
+	# values that legitimately decrease during play, so it must never reject a save.
+	return false
+
+
+static func payload_with_canonical_action_keys(payload: Dictionary, action_id_aliases := {}) -> Dictionary:
+	if payload.is_empty() or typeof(action_id_aliases) != TYPE_DICTIONARY or (action_id_aliases as Dictionary).is_empty():
+		return payload
+	var normalized := payload.duplicate(true)
+	for field in ["manual_activity_unlocks", "built_modules"]:
+		normalized[field] = _canonical_true_action_dictionary(payload.get(field, {}), action_id_aliases)
+	normalized["manual_activity_requirement_unlocks"] = _canonical_requirement_unlock_dictionary(
+		payload.get("manual_activity_requirement_unlocks", {}),
+		action_id_aliases
+	)
+	normalized["mastery"] = _canonical_mastery_dictionary(payload.get("mastery", {}), action_id_aliases)
+	return normalized
+
+
+static func _canonical_true_action_dictionary(value: Variant, action_id_aliases: Dictionary) -> Dictionary:
+	var normalized := {}
+	if typeof(value) != TYPE_DICTIONARY:
+		return normalized
+	for raw_key in (value as Dictionary).keys():
+		if not bool((value as Dictionary).get(raw_key, false)):
+			continue
+		var key := _canonical_qualified_action_key(str(raw_key), action_id_aliases)
+		if not key.is_empty():
+			normalized[key] = true
+	return normalized
+
+
+static func _canonical_requirement_unlock_dictionary(value: Variant, action_id_aliases: Dictionary) -> Dictionary:
+	var normalized := {}
+	if typeof(value) != TYPE_DICTIONARY:
+		return normalized
+	for raw_key in (value as Dictionary).keys():
+		if not bool((value as Dictionary).get(raw_key, false)):
+			continue
+		var parts := str(raw_key).split(":", false, 4)
+		if parts.size() < 4:
+			continue
+		var action_key := _canonical_qualified_action_key("%s:%s" % [parts[0], parts[1]], action_id_aliases)
+		if action_key.is_empty():
+			continue
+		normalized["%s:%s:%s" % [action_key, parts[2], parts[3]]] = true
+	return normalized
+
+
+static func _canonical_mastery_dictionary(value: Variant, action_id_aliases: Dictionary) -> Dictionary:
+	var normalized := {}
+	if typeof(value) != TYPE_DICTIONARY:
+		return normalized
+	for raw_key in (value as Dictionary).keys():
+		var key := _canonical_qualified_action_key(str(raw_key), action_id_aliases)
+		var raw_state = (value as Dictionary).get(raw_key, {})
+		if key.is_empty() or typeof(raw_state) != TYPE_DICTIONARY:
+			continue
+		var state := (raw_state as Dictionary).duplicate(true)
+		var existing = normalized.get(key, null)
+		if typeof(existing) == TYPE_DICTIONARY:
+			state["xp"] = maxf(float(state.get("xp", 0.0)), float((existing as Dictionary).get("xp", 0.0)))
+			state["level"] = maxi(int(state.get("level", 0)), int((existing as Dictionary).get("level", 0)))
+		normalized[key] = state
+	return normalized
+
+
+static func _canonical_qualified_action_key(key: String, action_id_aliases: Dictionary) -> String:
+	var separator := key.find(":")
+	if separator <= 0 or separator >= key.length() - 1:
+		return ""
+	var skill_id := key.substr(0, separator)
+	var action_id := key.substr(separator + 1)
+	var qualified_id := "%s:%s" % [skill_id, action_id]
+	if action_id_aliases.has(qualified_id):
+		action_id = str(action_id_aliases.get(qualified_id, action_id))
+	elif action_id_aliases.has(action_id):
+		action_id = str(action_id_aliases.get(action_id, action_id))
+	if action_id.is_empty():
+		return ""
+	return "%s:%s" % [skill_id, action_id]
+
+
+static func payload_regresses_skill_xp(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	return _skill_xp_regresses(existing_payload, next_payload, skill_defs)
+
+
+static func payload_regresses_outside_vetted_progress_repair(
+	existing_payload: Dictionary,
+	next_payload: Dictionary,
+	repair_source_payload: Dictionary,
+	repaired_payload: Dictionary,
+	skill_defs: Array
+) -> bool:
+	if repair_source_payload.is_empty() or repaired_payload.is_empty() or existing_payload != repair_source_payload:
+		return true
+	var vetted_baseline := existing_payload.duplicate(true)
+	var repair_changed_progress := false
+	for key in ["skills", "manual_activity_unlocks", "manual_activity_requirement_unlocks", "thieving_trophies"]:
+		var source_has_key := repair_source_payload.has(key)
+		var repaired_has_key := repaired_payload.has(key)
+		var source_value = repair_source_payload.get(key, null)
+		var repaired_value = repaired_payload.get(key, null)
+		if source_has_key == repaired_has_key and source_value == repaired_value:
+			continue
+		repair_changed_progress = true
+		if repaired_has_key:
+			vetted_baseline[key] = repaired_value
+		else:
+			vetted_baseline.erase(key)
+	if not repair_changed_progress:
+		return true
+	return payload_regresses_game_progress(vetted_baseline, next_payload, skill_defs)
+
+
+static func _activity_requirement_unlocks_regress(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	var existing_value = existing_payload.get("manual_activity_requirement_unlocks", {})
+	if typeof(existing_value) != TYPE_DICTIONARY:
 		return false
-	return progress_evidence_score(next_payload, skill_defs) < existing_progress
+	var next_requirements = next_payload.get("manual_activity_requirement_unlocks", {})
+	if typeof(next_requirements) != TYPE_DICTIONARY:
+		next_requirements = {}
+	var next_full_unlocks = next_payload.get("manual_activity_unlocks", {})
+	if typeof(next_full_unlocks) != TYPE_DICTIONARY:
+		next_full_unlocks = {}
+	for raw_key in (existing_value as Dictionary).keys():
+		if not bool((existing_value as Dictionary).get(raw_key, false)):
+			continue
+		var requirement_key := str(raw_key)
+		if bool((next_requirements as Dictionary).get(requirement_key, false)):
+			continue
+		var parts := requirement_key.split(":", false, 4)
+		if parts.size() >= 2:
+			var full_unlock_key := "%s:%s" % [parts[0], parts[1]]
+			if bool((next_full_unlocks as Dictionary).get(full_unlock_key, false)):
+				continue
+		return true
+	return false
+
+
+static func _skill_xp_regresses(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	var existing_skills = existing_payload.get("skills", {})
+	var next_skills = next_payload.get("skills", {})
+	if typeof(existing_skills) != TYPE_DICTIONARY or typeof(next_skills) != TYPE_DICTIONARY:
+		return typeof(existing_skills) == TYPE_DICTIONARY and typeof(next_skills) != TYPE_DICTIONARY
+	for raw_def in skill_defs:
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
+		var existing_state = (existing_skills as Dictionary).get(skill_id, {})
+		if typeof(existing_state) != TYPE_DICTIONARY:
+			continue
+		var next_state = (next_skills as Dictionary).get(skill_id, {})
+		if typeof(next_state) != TYPE_DICTIONARY:
+			return true
+		if int((next_state as Dictionary).get("xp", 0)) < int((existing_state as Dictionary).get("xp", 0)):
+			return true
+	return false
+
+
+static func _true_dictionary_regresses(existing_value: Variant, next_value: Variant) -> bool:
+	if typeof(existing_value) != TYPE_DICTIONARY:
+		return false
+	if typeof(next_value) != TYPE_DICTIONARY:
+		return not (existing_value as Dictionary).is_empty()
+	for raw_key in (existing_value as Dictionary).keys():
+		if bool((existing_value as Dictionary).get(raw_key, false)) and not bool((next_value as Dictionary).get(raw_key, false)):
+			return true
+	return false
+
+
+static func _nested_number_regresses(existing_value: Variant, next_value: Variant, fields: Array) -> bool:
+	if typeof(existing_value) != TYPE_DICTIONARY:
+		return false
+	if typeof(next_value) != TYPE_DICTIONARY:
+		return not (existing_value as Dictionary).is_empty()
+	for raw_key in (existing_value as Dictionary).keys():
+		var existing_state = (existing_value as Dictionary).get(raw_key, {})
+		if typeof(existing_state) != TYPE_DICTIONARY:
+			continue
+		var next_state = (next_value as Dictionary).get(raw_key, {})
+		if typeof(next_state) != TYPE_DICTIONARY:
+			return true
+		for raw_field in fields:
+			var field := str(raw_field)
+			if float((next_state as Dictionary).get(field, 0.0)) < float((existing_state as Dictionary).get(field, 0.0)):
+				return true
+	return false
+
+
+static func _thieving_trophies_regress(existing_value: Variant, next_value: Variant) -> bool:
+	if typeof(existing_value) != TYPE_DICTIONARY:
+		return false
+	if typeof(next_value) != TYPE_DICTIONARY:
+		return not (existing_value as Dictionary).is_empty()
+	for raw_key in (existing_value as Dictionary).keys():
+		var existing_state = (existing_value as Dictionary).get(raw_key, false)
+		var was_stolen := false
+		if typeof(existing_state) == TYPE_DICTIONARY:
+			was_stolen = bool((existing_state as Dictionary).get("stolen", false))
+		else:
+			was_stolen = bool(existing_state)
+		if not was_stolen:
+			continue
+		var next_state = (next_value as Dictionary).get(raw_key, false)
+		var is_stolen := false
+		if typeof(next_state) == TYPE_DICTIONARY:
+			is_stolen = bool((next_state as Dictionary).get("stolen", false))
+		else:
+			is_stolen = bool(next_state)
+		if not is_stolen:
+			return true
+	return false
+
+
+static func payload_regresses_identity(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	if existing_payload.is_empty():
+		return false
+	var existing_claimed := bool(existing_payload.get("leaderboard_profile_claimed", false))
+	var existing_verified := bool(existing_payload.get("leaderboard_name_claim_verified", false))
+	var next_claimed := bool(next_payload.get("leaderboard_profile_claimed", false))
+	var next_verified := bool(next_payload.get("leaderboard_name_claim_verified", false))
+	if existing_claimed and not next_claimed:
+		return true
+	if existing_verified and not next_verified:
+		return true
+	if existing_claimed or existing_verified:
+		for required_key in ["leaderboard_display_name", "leaderboard_name_key"]:
+			var existing_value := str(existing_payload.get(required_key, "")).strip_edges()
+			var next_value := str(next_payload.get(required_key, "")).strip_edges()
+			if existing_value.is_empty() or next_value != existing_value:
+				return true
+
+	var existing_bound_uid := str(existing_payload.get("leaderboard_auth_bound_uid", "")).strip_edges()
+	var next_bound_uid := str(next_payload.get("leaderboard_auth_bound_uid", "")).strip_edges()
+	if not existing_bound_uid.is_empty() and next_bound_uid != existing_bound_uid:
+		return true
+
+	var existing_provider := str(existing_payload.get("leaderboard_auth_provider", "")).strip_edges()
+	var next_provider := str(next_payload.get("leaderboard_auth_provider", "")).strip_edges()
+	if not existing_provider.is_empty() and next_provider.is_empty():
+		return true
+	if existing_provider == "google" and next_provider != "google":
+		return true
+	var existing_refresh_token := str(existing_payload.get("leaderboard_auth_refresh_token", "")).strip_edges()
+	var next_refresh_token := str(next_payload.get("leaderboard_auth_refresh_token", "")).strip_edges()
+	if not existing_refresh_token.is_empty() and next_refresh_token.is_empty():
+		return true
+
+	var existing_player_id := str(existing_payload.get("leaderboard_player_id", "")).strip_edges()
+	var next_player_id := str(next_payload.get("leaderboard_player_id", "")).strip_edges()
+	var existing_has_bound_identity := (
+		existing_claimed
+		or not existing_bound_uid.is_empty()
+		or not existing_refresh_token.is_empty()
+		or existing_provider == "google"
+		or (not existing_player_id.is_empty() and not _player_id_is_local_placeholder(existing_player_id))
+	)
+	if existing_has_bound_identity and not existing_player_id.is_empty() and next_player_id != existing_player_id:
+		return true
+
+	if existing_payload.has("leaderboard_auth_recovery_required") and not next_payload.has("leaderboard_auth_recovery_required"):
+		return true
+	var existing_recovery_required := bool(existing_payload.get("leaderboard_auth_recovery_required", false))
+	var next_recovery_required := bool(next_payload.get("leaderboard_auth_recovery_required", false))
+	if existing_recovery_required and not next_recovery_required:
+		# Recovery may clear the flag only after the runtime is demonstrably bound
+		# back to the preserved UID with a usable credential.
+		if next_bound_uid.is_empty() or next_player_id != next_bound_uid or next_refresh_token.is_empty():
+			return true
+	var existing_name_transfer_required := bool(existing_payload.get("leaderboard_name_transfer_required", false))
+	var next_name_transfer_required := bool(next_payload.get("leaderboard_name_transfer_required", false))
+	if existing_name_transfer_required and not next_name_transfer_required:
+		return true
+	var existing_legacy_username_recovery_required := bool(existing_payload.get("leaderboard_legacy_username_recovery_required", false))
+	var next_legacy_username_recovery_required := bool(next_payload.get("leaderboard_legacy_username_recovery_required", false))
+	if existing_legacy_username_recovery_required and not next_legacy_username_recovery_required:
+		return true
+	var existing_deleted_auth_transition_pending := bool(existing_payload.get("leaderboard_deleted_auth_transition_pending", false))
+	var next_deleted_auth_transition_pending := bool(next_payload.get("leaderboard_deleted_auth_transition_pending", false))
+	if existing_deleted_auth_transition_pending and not next_deleted_auth_transition_pending:
+		return true
+	var existing_definitive_failure_code := str(existing_payload.get("leaderboard_auth_definitive_failure_code", "")).strip_edges()
+	var next_definitive_failure_code := str(next_payload.get("leaderboard_auth_definitive_failure_code", "")).strip_edges()
+	if existing_deleted_auth_transition_pending and (
+		existing_definitive_failure_code.is_empty()
+		or next_definitive_failure_code != existing_definitive_failure_code
+	):
+		return true
+	var existing_legacy_old_uid := str(existing_payload.get("leaderboard_legacy_authless_old_uid", "")).strip_edges()
+	var next_legacy_old_uid := str(next_payload.get("leaderboard_legacy_authless_old_uid", "")).strip_edges()
+	if not existing_legacy_old_uid.is_empty() and next_legacy_old_uid != existing_legacy_old_uid:
+		return true
+	for hint_key in ["leaderboard_legacy_name_hint_display", "leaderboard_legacy_name_hint_key"]:
+		var existing_hint := str(existing_payload.get(hint_key, "")).strip_edges()
+		if not existing_hint.is_empty() and str(next_payload.get(hint_key, "")).strip_edges() != existing_hint:
+			return true
+	return false
+
+
+static func payload_has_recoverable_identity_inconsistency(payload: Dictionary) -> bool:
+	var claimed := bool(payload.get("leaderboard_profile_claimed", false))
+	var verified := bool(payload.get("leaderboard_name_claim_verified", false))
+	if claimed != verified:
+		return true
+	if not claimed:
+		# Older clients could retain a real profile name/key while losing both trust
+		# flags. Keep that metadata as an untrusted recovery hint instead of treating
+		# it as a guest profile and erasing it on the next save.
+		return not str(payload.get("leaderboard_name_key", "")).strip_edges().is_empty()
+	for required_key in ["leaderboard_display_name", "leaderboard_name_key", "leaderboard_player_id"]:
+		if str(payload.get(required_key, "")).strip_edges().is_empty():
+			return true
+	return false
+
+
+static func vetted_identity_repair_is_safe(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	if not payload_has_recoverable_identity_inconsistency(existing_payload):
+		return false
+	if not bool(next_payload.get("leaderboard_auth_recovery_required", false)):
+		return false
+	for stable_key in [
+		"leaderboard_player_id",
+		"leaderboard_auth_bound_uid",
+		"leaderboard_auth_refresh_token",
+		"leaderboard_auth_provider",
+		"leaderboard_display_name",
+	]:
+		var existing_value := str(existing_payload.get(stable_key, "")).strip_edges()
+		if not existing_value.is_empty() and str(next_payload.get(stable_key, "")).strip_edges() != existing_value:
+			return false
+	var existing_name_key := str(existing_payload.get("leaderboard_name_key", "")).strip_edges()
+	var next_name_key := str(next_payload.get("leaderboard_name_key", "")).strip_edges()
+	if not existing_name_key.is_empty() and next_name_key != existing_name_key:
+		var next_claimed := bool(next_payload.get("leaderboard_profile_claimed", false))
+		var next_verified := bool(next_payload.get("leaderboard_name_claim_verified", false))
+		if not next_name_key.is_empty() or next_claimed or next_verified:
+			return false
+	if bool(next_payload.get("leaderboard_profile_claimed", false)) and not bool(existing_payload.get("leaderboard_profile_claimed", false)):
+		return false
+	if bool(next_payload.get("leaderboard_name_claim_verified", false)) and not bool(existing_payload.get("leaderboard_name_claim_verified", false)):
+		return false
+	return true
+
+
+static func claimed_name_boundary_changes(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	if not (
+		bool(existing_payload.get("leaderboard_profile_claimed", false))
+		or bool(existing_payload.get("leaderboard_name_claim_verified", false))
+	):
+		return false
+	for key in ["leaderboard_display_name", "leaderboard_name_key"]:
+		if str(existing_payload.get(key, "")).strip_edges() != str(next_payload.get(key, "")).strip_edges():
+			return true
+	return false
+
+
+static func stable_account_uid(payload: Dictionary) -> String:
+	var player_id := str(payload.get("leaderboard_player_id", "")).strip_edges()
+	var bound_uid := str(payload.get("leaderboard_auth_bound_uid", "")).strip_edges()
+	if not bound_uid.is_empty():
+		if not player_id.is_empty() and player_id != bound_uid:
+			return ""
+		return bound_uid
+	if player_id.is_empty() or _player_id_is_local_placeholder(player_id):
+		return ""
+	var provider := str(payload.get("leaderboard_auth_provider", "")).strip_edges()
+	var has_account_evidence := (
+		bool(payload.get("leaderboard_profile_claimed", false))
+		or bool(payload.get("leaderboard_name_claim_verified", false))
+		or provider == "google"
+		or not str(payload.get("leaderboard_auth_refresh_token", "")).strip_edges().is_empty()
+	)
+	return player_id if has_account_evidence else ""
+
+
+static func payloads_share_stable_account_boundary(first_payload: Dictionary, second_payload: Dictionary) -> bool:
+	var first_uid := stable_account_uid(first_payload)
+	return not first_uid.is_empty() and first_uid == stable_account_uid(second_payload)
+
+
+static func _player_id_is_local_placeholder(player_id: String) -> bool:
+	var clean := player_id.strip_edges()
+	if clean.length() != 33 or not clean.begins_with("p"):
+		return false
+	for index in range(1, clean.length()):
+		var code := clean.unicode_at(index)
+		if not ((code >= 48 and code <= 57) or (code >= 97 and code <= 102)):
+			return false
+	return true
 
 
 static func save_reset_generation(data: Dictionary) -> int:
 	return maxi(0, int(data.get("save_reset_generation", 0)))
+
+
+static func save_repair_generation(data: Dictionary) -> int:
+	return maxi(0, int(data.get("save_repair_generation", 0)))
 
 
 static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
@@ -189,7 +626,7 @@ static func non_xp_progress_evidence(data: Dictionary) -> int:
 		"activity_completion_count",
 		"onboarding_starter_action_completion_count"
 	])
-	evidence += _dictionary_true_evidence(data.get("manual_activity_unlocks", {}))
+	evidence += _dictionary_true_evidence(data.get("manual_activity_unlocks", {})) * 100
 	evidence += _dictionary_true_evidence(data.get("manual_activity_requirement_unlocks", {}))
 	evidence += _dictionary_true_evidence(data.get("built_modules", {}))
 	evidence += _dictionary_true_evidence(data.get("completed_bosses", {}))

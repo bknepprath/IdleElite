@@ -25,6 +25,7 @@ $rulesDeployPath = Join-Path $projectRoot "scripts\deploy-firebase-leaderboard-r
 $chatReadToolPath = Join-Path $projectRoot "scripts\read-firebase-chat-messages.ps1"
 $chatDeleteToolPath = Join-Path $projectRoot "scripts\remove-firebase-chat-message.ps1"
 $chatPruneToolPath = Join-Path $projectRoot "scripts\prune-firebase-chat-messages.ps1"
+$profileBackfillToolPath = Join-Path $projectRoot "scripts\backfill-firebase-profiles-by-uid.ps1"
 
 function Get-JsonProp {
     param(
@@ -61,6 +62,7 @@ Assert-True (Test-Path -LiteralPath $rulesDeployPath) "Missing scripts\deploy-fi
 Assert-True (Test-Path -LiteralPath $chatReadToolPath) "Missing scripts\read-firebase-chat-messages.ps1"
 Assert-True (Test-Path -LiteralPath $chatDeleteToolPath) "Missing scripts\remove-firebase-chat-message.ps1"
 Assert-True (Test-Path -LiteralPath $chatPruneToolPath) "Missing scripts\prune-firebase-chat-messages.ps1"
+Assert-True (Test-Path -LiteralPath $profileBackfillToolPath) "Missing scripts\backfill-firebase-profiles-by-uid.ps1"
 
 $main = Get-Content -LiteralPath $mainPath -Raw
 $profileChatOverlaySurface = Get-Content -LiteralPath $profileChatOverlaySurfacePath -Raw
@@ -93,6 +95,7 @@ $rulesDeploy = Get-Content -LiteralPath $rulesDeployPath -Raw
 $chatReadTool = Get-Content -LiteralPath $chatReadToolPath -Raw
 $chatDeleteTool = Get-Content -LiteralPath $chatDeleteToolPath -Raw
 $chatPruneTool = Get-Content -LiteralPath $chatPruneToolPath -Raw
+$profileBackfillTool = Get-Content -LiteralPath $profileBackfillToolPath -Raw
 $skillIds = @($activityDatabase.skills | ForEach-Object { $_.id } | Where-Object { $_ })
 Assert-True ($skillIds.Count -gt 0) "Activity database must define leaderboard skill categories."
 $expectedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("medals_earned", "elite_heavenly")
@@ -188,6 +191,8 @@ Assert-True ($main -match 'leaderboard_state\.pending_score_updates') "Score row
 Assert-True ($onlineRuntime -match 'FIREBASE_AUTH_SIGN_UP_URL') "Leaderboard must use Firebase Anonymous Auth before database access."
 Assert-True ($onlineRuntime -match 'FIREBASE_AUTH_REFRESH_URL') "Leaderboard must refresh the anonymous auth token instead of creating a new account every launch."
 Assert-True ($onlineRuntime -match 'FIREBASE_AUTH_SIGN_IN_WITH_IDP_URL') "Google account linking must exchange native Google ID tokens through Firebase Auth REST."
+Assert-True ($onlineRuntime -match '(?s)func _leaderboard_web_authless_writes_enabled\(\) -> bool:.*?return false') "Every Firebase mutation must use authenticated ownership rules."
+Assert-True ($onlineRuntime -match '(?s)func _leaderboard_auth_ready\(\) -> bool:.*?player_uid == bound_uid') "Authenticated readiness must require the saved player UID to match the token-bound UID."
 Assert-True ($main -match 'const CLOUD_SAVE_FIREBASE_ROOT := "cloud_saves/v1"') "Cloud saves must use the expected owner-only Firebase root."
 Assert-True ($main -match 'func _cloud_save_account_ready\(\) -> bool:') "Cloud saves must require Google-backed Firebase auth before reads or writes."
 Assert-True ($main -match 'func _fetch_cloud_save\(\) -> void:') "Cloud saves must use an explicit finite fetch path."
@@ -196,6 +201,10 @@ Assert-True ($main -match 'func _cloud_save_payload_should_replace_local\(remote
 Assert-True ($main -match 'func _restore_cloud_save_payload\(remote_payload: Dictionary\) -> void:') "Cloud saves must be able to restore a better remote save into the local profile."
 Assert-True ($main -match 'if (app\.)?cloud_save_fetch_in_flight:\s*\r?\n\s*return') "Cloud save upload must wait for pending fetches so fresh installs do not overwrite older remote saves."
 Assert-True ($main -match 'if not (app\.)?cloud_save_remote_checked:\s*\r?\n\s*_fetch_cloud_save\(\)\s*\r?\n\s*return') "Cloud save upload must require a successful remote check before writing."
+Assert-True ($onlineRuntime -match '_upload_cloud_save_history\(cloud_save_last_remote_record, "before_replace"\)') "Cloud saves must archive the validated current record before replacing it."
+Assert-True ($onlineRuntime -match '(?s)purpose == "before_replace".*?if not succeeded:.*?cloud_save_pending_record\.clear\(\)') "A failed pre-replacement archive must cancel the cloud overwrite."
+Assert-True ($onlineRuntime -match 'cloud_save_remote_write_blocked') "Invalid current cloud records must block automatic replacement."
+Assert-True ($onlineRuntime -match 'func _fetch_cloud_save_history\(reason: String\) -> void:') "Cloud saves must have a bounded history recovery read path."
 Assert-True ($main -match '(app\.)?cloud_save_remote_checked = true') "Cloud save fetch success paths must mark the remote check complete."
 Assert-True ($main -match '_cloud_save_payload_should_replace_local\((app\.)?cloud_save_last_remote_payload\)') "Fetched cloud saves must be evaluated before upload resumes."
 Assert-True ($main -match '_restore_cloud_save_payload\((app\.)?cloud_save_last_remote_payload\)') "A better fetched cloud save must be restored locally."
@@ -236,7 +245,7 @@ Assert-True ($onlineRuntime -match 'chat_stream_client\.connect_to_host') "Chat 
 Assert-True ($onlineRuntime -match '_chat_stream_disconnect\(false\)') "Chat must explicitly disconnect the stream off-screen."
 Assert-True ($onlineRuntime -match 'chat_send_request\.request\(') "Chat must use finite REST PATCH writes."
 Assert-True ($main -match '"user_write_gates/%s" % leaderboard_profile\.player_id') "Chat writes must include the shared per-player two-second write gate."
-Assert-True ($saveRuntime -match 'payload\.merge\(_online_runtime\(\)\.chat_metadata_for_save\(now\), true\)') "SaveRuntime must include chat metadata in the save payload."
+Assert-True ($saveRuntime -match 'payload\.merge\((?:host\._online_runtime\(\)|online_runtime)\.chat_metadata_for_save\(now\), true\)') "SaveRuntime must include chat metadata in the save payload."
 Assert-True ($chatState -match '"chat_last_send_unix": maxi\(0, int\(runtime\.chat_last_send_unix\)\)') "Chat send cooldown must be saved across relaunches."
 Assert-True ($chatState -match '"chat_stream_retry_unix": retry_unix_for_save\(runtime\.chat_stream_retry_unix, now_unix, retry_interval_seconds\)') "Chat stream reconnect cooldown must be saved across relaunches."
 Assert-True ($main -match 'Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible\.') "Chat rows must not be persisted locally."
@@ -261,6 +270,8 @@ $nameClaims = Get-JsonProp $v1 "name_claims"
 $nameClaim = Get-JsonProp $nameClaims '$nameKey'
 $nameRecoveryTickets = Get-JsonProp $v1 "name_recovery_tickets"
 $nameRecoveryTicket = Get-JsonProp $nameRecoveryTickets '$nameKey'
+$profilesByUid = Get-JsonProp $v1 "profiles_by_uid"
+$profileByUid = Get-JsonProp $profilesByUid '$uid'
 $category = Get-JsonProp $scores '$category'
 $player = Get-JsonProp $category '$playerId'
 $gates = Get-JsonProp $v1 "player_write_gates"
@@ -273,17 +284,38 @@ $chatGates = Get-JsonProp $chatV1 "user_write_gates"
 $chatGatePlayer = Get-JsonProp $chatGates '$playerId'
 $chatModerationLogs = Get-JsonProp $chatV1 "moderation_logs"
 $chatModerationLog = Get-JsonProp $chatModerationLogs '$logId'
+$cloudSaves = Get-JsonProp $rootRules "cloud_saves"
+$cloudV1 = Get-JsonProp $cloudSaves "v1"
+$cloudUsers = Get-JsonProp $cloudV1 "users"
+$cloudUser = Get-JsonProp $cloudUsers '$uid'
+$cloudHistory = Get-JsonProp $cloudV1 "history"
+$cloudHistoryUser = Get-JsonProp $cloudHistory '$uid'
+$cloudHistorySlots = Get-JsonProp $cloudHistoryUser "slots"
+$cloudHistorySlot = Get-JsonProp $cloudHistorySlots '$slot'
 
 Assert-True ($null -ne $nameClaim) "Rules must define leaderboards/v1/name_claims/<nameKey>."
 Assert-True ((Get-JsonProp $nameClaim ".read") -eq $false) "Name claims must not be publicly readable."
-Assert-True ((Get-JsonProp $nameClaim ".write") -match [regex]::Escape("!data.exists() || data.child('uid').val() == auth.uid")) "Name claims must reject duplicate names owned by another user."
-Assert-True ((Get-JsonProp $nameClaim ".write") -match [regex]::Escape("newData.child('uid').val() == auth.uid")) "Name claims must be bound to the authenticated anonymous UID."
-Assert-True ((Get-JsonProp $nameClaim ".write") -match "name_recovery_tickets") "Name claim transfer repair must require an admin-created recovery ticket."
-Assert-True ((Get-JsonProp (Get-JsonProp $nameClaim "uid") ".validate") -match "name_recovery_tickets") "Name claim uid validation must also require recovery ticket before owner changes."
+$nameClaimWriteRule = Get-JsonProp $nameClaim ".write"
+$nameClaimUidValidateRule = Get-JsonProp (Get-JsonProp $nameClaim "uid") ".validate"
+Assert-True ($nameClaimWriteRule -match [regex]::Escape("!data.exists() || data.child('uid').val() == auth.uid")) "Name claims must reject duplicate names owned by another user."
+Assert-True ($nameClaimWriteRule -match [regex]::Escape("newData.child('uid').val() == auth.uid")) "Name claims must be bound to the authenticated anonymous UID."
+Assert-True ($nameClaimWriteRule -match "name_recovery_tickets") "Name claim transfer repair must require an admin-created recovery ticket."
+Assert-True ($nameClaimWriteRule -match "target_uid") "Name recovery tickets must target the authenticated UID."
+Assert-True ($nameClaimWriteRule -match "expires_at") "Name recovery tickets must expire."
+Assert-True ($nameClaimWriteRule -match "name_recovery_gates" -and $nameClaimWriteRule -match [regex]::Escape("newData.parent().parent()") -and $nameClaimWriteRule -match "old_uid" -and $nameClaimWriteRule -match [regex]::Escape("data.child('uid').val()")) "Claim transfers must include the target recovery gate bound to the pre-write owner in the same atomic update."
+Assert-True ($nameClaimUidValidateRule -match "name_recovery_tickets" -and $nameClaimUidValidateRule -match "name_recovery_gates" -and $nameClaimUidValidateRule -match [regex]::Escape("data.val()")) "Name claim uid validation must require both the recovery ticket and the old-owner gate before ownership changes."
 Assert-True ((Get-JsonProp (Get-JsonProp $nameClaim "name_key") ".validate") -match "^[\s\S]*matches") "Name claim keys must be shape-validated."
 Assert-True ($null -ne $nameRecoveryTicket) "Rules must define leaderboards/v1/name_recovery_tickets/<nameKey>."
 Assert-True ((Get-JsonProp $nameRecoveryTicket ".read") -eq $false) "Name recovery tickets must not be publicly readable."
 Assert-True ((Get-JsonProp $nameRecoveryTicket ".write") -eq $false) "Name recovery tickets must be admin-created only."
+Assert-True ($null -ne $profileByUid) "Rules must define canonical profiles_by_uid records."
+Assert-True ((Get-JsonProp $profileByUid ".read") -match "name_claims") "Profile recovery reads must reject stale records after a claim transfer."
+$profileWriteRule = Get-JsonProp $profileByUid ".write"
+Assert-True ($profileWriteRule -match "name_claims") "Canonical profiles must match the owned name claim."
+Assert-True ($profileWriteRule -match "avatar_index") "Canonical profile avatars must match the claimed avatar."
+Assert-True ($profileWriteRule -match [regex]::Escape("!data.exists() || data.child('name_key').val() == newData.child('name_key').val()")) "A recovery update must fail closed if the target canonical profile appeared with a different name after the resolver snapshot."
+Assert-True ($profileWriteRule -notmatch "name_recovery_tickets") "A recovery ticket must never override an intervening target canonical profile."
+Assert-True ($rulesGenerator -match '\$profileExistingNameRule\s*=\s*"!data\.exists\(\) \|\| data\.child\(''name_key''\)\.val\(\) == newData\.child\(''name_key''\)\.val\(\)"' -and $rulesGenerator -notmatch '\$profileNameRecoveryTicketRule') "The generator must preserve the absent-or-same-key target profile rule without a ticket exception."
 
 Assert-True ($null -ne $category) "Rules must define leaderboards/v1/scores/<category>."
 $categoryReadRule = Get-JsonProp $category ".read"
@@ -296,8 +328,9 @@ foreach ($categoryKey in $expectedCategoryKeys) {
 }
 Assert-True (@(Get-JsonProp $category ".indexOn") -contains "score") "Scores must be indexed by score."
 Assert-True ($categoryWriteRule -match [regex]::Escape('auth.uid == $playerId')) "Score writes must allow the authenticated anonymous UID path."
-Assert-True ($categoryWriteRule -match "auth == null") "Score writes must allow the Web authless saved-player-id path for itch."
+Assert-True ($categoryWriteRule -notmatch "auth == null") "Score writes must never allow an unauthenticated saved-player-id path."
 Assert-True ($categoryWriteRule -match "name_claims") "Score writes must require ownership of the submitted name key."
+Assert-True ($categoryWriteRule -match "profiles_by_uid") "Score names and avatars must match the canonical profile."
 Assert-True ($categoryWriteRule -match "newData.exists\(\)") "Score writes must reject client deletes."
 Assert-True ($categoryWriteRule -match "player_write_gates") "Score writes must depend on the shared per-player write gate."
 Assert-True ($categoryWriteRule -match [regex]::Escape("root.child('leaderboards').child('v1').child('player_write_gates')")) "Score writes must read the already-claimed gate from root data."
@@ -320,7 +353,7 @@ Assert-True ($null -ne (Get-JsonProp $player '$other')) "Score rows must reject 
 Assert-True ($null -ne $gatePlayer) "Rules must define leaderboards/v1/player_write_gates/<playerId>."
 Assert-True ((Get-JsonProp $gatePlayer ".read") -eq $false) "Write gates must not be readable."
 Assert-True ((Get-JsonProp $gatePlayer ".write") -match [regex]::Escape('auth.uid == $playerId')) "Write gates must allow the authenticated anonymous UID path."
-Assert-True ((Get-JsonProp $gatePlayer ".write") -match "auth == null") "Write gates must allow the Web authless saved-player-id path for itch."
+Assert-True ((Get-JsonProp $gatePlayer ".write") -notmatch "auth == null") "Write gates must reject unauthenticated saved-player-id writes."
 Assert-True ((Get-JsonProp $gatePlayer ".write") -match "newData.exists\(\)") "Write gates must reject client deletes."
 Assert-True ((Get-JsonProp $gatePlayer ".write") -match "900000") "Firebase rules must enforce at least 15 minutes between player writes."
 Assert-True ((Get-JsonProp $gatePlayer ".validate") -match "newData.hasChildren") "Write gates must require the expected child fields."
@@ -333,8 +366,9 @@ Assert-True ((Get-JsonProp $chatMessages ".read") -match "query.limitToLast != n
 Assert-True ((Get-JsonProp $chatMessages ".read") -notmatch "auth != null") "Chat reads must remain public so viewing messages never depends on Firebase Auth."
 Assert-True (@(Get-JsonProp $chatMessages ".indexOn") -contains "created_at") "Chat messages must be indexed by created_at."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match "sender_id") "Chat message creates must be bound to a saved sender/player id."
-Assert-True ((Get-JsonProp $chatMessage ".write") -match "auth == null") "Chat message creates must allow the Web authless path for itch."
-Assert-True ((Get-JsonProp $chatMessage ".write") -notmatch "name_claims") "Temporary open chat must not depend on leaderboard name claims."
+Assert-True ((Get-JsonProp $chatMessage ".write") -notmatch "auth == null") "Chat message creates must require Firebase Auth."
+Assert-True ((Get-JsonProp $chatMessage ".write") -match "name_claims") "Claimed chat names must match an owned name claim."
+Assert-True ((Get-JsonProp $chatMessage ".write") -match "profiles_by_uid") "Claimed chat names and avatars must match the canonical profile."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match [regex]::Escape("newData.child('name_key').isString()")) "Claimed-name chat message creates must still include a shaped name_key."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match [regex]::Escape("!newData.child('name_key').exists()")) "Guest chat message creates must omit name_key."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match "\^guest\[0-9\]\{4\}") "Guest chat message creates must be limited to generated guest names."
@@ -352,17 +386,28 @@ Assert-True ((Get-JsonProp (Get-JsonProp $chatMessage "deleted") ".validate") -m
 Assert-True ($null -ne (Get-JsonProp $chatMessage '$other')) "Chat messages must reject unexpected fields."
 Assert-True ($null -ne $chatGatePlayer) "Rules must define global_chat/v1/user_write_gates/<playerId>."
 Assert-True ((Get-JsonProp $chatGatePlayer ".read") -eq $false) "Chat write gates must not be readable."
+Assert-True ((Get-JsonProp $chatGatePlayer ".write") -match [regex]::Escape('auth.uid == $playerId')) "Chat write gates must be owned by the authenticated UID."
+Assert-True ((Get-JsonProp $chatGatePlayer ".write") -notmatch "auth == null") "Chat write gates must reject unauthenticated writes."
 Assert-True ((Get-JsonProp $chatGatePlayer ".write") -match "2000") "Firebase rules must enforce at least two seconds between chat writes."
 Assert-True ((Get-JsonProp (Get-JsonProp $chatGatePlayer "updated_at") ".validate") -match "newData.val\(\) >= now - 10000") "Chat write gate timestamps must be fresh."
 Assert-True ((Get-JsonProp (Get-JsonProp $chatGatePlayer "updated_at") ".validate") -match "newData.val\(\) <= now \+ 60000") "Chat write gate timestamps must reject far-future values."
 Assert-True ((Get-JsonProp $chatModerationLog ".read") -match "auth.token.moderator == true") "Chat moderation logs must be readable only by moderators."
 Assert-True ((Get-JsonProp $chatModerationLog ".write") -match "auth.token.moderator == true") "Chat moderation logs must be writable only by moderators."
+Assert-True ($null -ne $cloudUser) "Rules must define owner-only current cloud saves."
+Assert-True ((Get-JsonProp $cloudUser ".write") -match [regex]::Escape('auth.uid == $uid')) "Current cloud saves must be bound to the authenticated UID."
+Assert-True ((Get-JsonProp $cloudUser ".validate") -match "payload_checksum") "Revisioned current cloud saves must include a checksum."
+Assert-True ($null -ne $cloudHistorySlot) "Rules must define bounded cloud-save history slots."
+Assert-True ((Get-JsonProp $cloudHistorySlot ".write") -match [regex]::Escape("`$slot == '4'")) "Cloud history writes must stay inside five fixed slots."
+Assert-True ((Get-JsonProp $cloudHistorySlot ".write") -match "payload_checksum") "Idempotent history writes must match the protected record checksum."
 Assert-True ($chatReadTool -match 'limitToLast=\{0\}') "Chat read moderation helper must keep an explicit read limit."
 Assert-True ($chatReadTool -match '\$safeLimit = \[Math\]::Min\(\[Math\]::Max\(\$Limit, 1\), 25\)') "Chat read moderation helper must cap reads to 25."
 Assert-True ($chatPruneTool -match '\$safeKeep = \[Math\]::Min\(\[Math\]::Max\(\$Keep, 1\), 500\)') "Chat prune helper must bound its keep count."
 Assert-True ($chatPruneTool -match 'database:get /global_chat/v1/messages') "Chat prune helper must read the chat collection through Firebase CLI."
 Assert-True ($chatPruneTool -match 'database:remove') "Chat prune helper must physically remove old chat rows."
 Assert-True ($chatPruneTool -match '\[switch\]\$DryRun') "Chat prune helper must support dry runs."
+Assert-True ($profileBackfillTool -match '\[switch\]\$Apply') "Canonical profile backfill must be dry-run by default and require explicit apply."
+Assert-True ($profileBackfillTool -match 'Refusing to overwrite a profile') "Canonical profile backfill must refuse concurrent profile overwrites."
+Assert-True ($profileBackfillTool -match 'ambiguous_uids') "Canonical profile backfill must refuse ambiguous legacy claims."
 Assert-True ($chatDeleteTool -match 'Invoke-RestMethod -Method Get') "Chat delete helper must read the existing message before tombstoning it."
 Assert-True ($chatDeleteTool -match 'Invoke-RestMethod -Method Patch') "Chat delete helper must write a moderation tombstone."
 Assert-True ($chatDeleteTool -match 'moderation_logs') "Chat delete helper must create a moderation log."
@@ -387,7 +432,7 @@ Assert-True ($rulesDeploy -match 'firebase-leaderboard-rules-deploy-check-ok') "
 Assert-True ($rulesDeploy -match 'firebase deploy --only database --project') "Rules deploy helper must use a database-only Firebase rules deploy."
 Assert-True ($rulesDeploy -notmatch 'database:(set|update|push|remove)') "Rules deploy helper must not write or delete database data."
 Assert-True ($setupState -match 'update-firebase-leaderboard-rules\.ps1"\) -Check') "Setup state helper must verify generated rules are current."
-Assert-True ($setupState -match 'firebase-setup-state-config-absent') "Setup state helper must report when local Firebase config is absent."
+Assert-True ($setupState -match 'firebase-leaderboard-config\.json is required for account recovery and cloud save') "Setup state helper must block release when local Firebase recovery config is absent."
 Assert-True ($setupState -match 'firebase-setup-state-config-ok') "Setup state helper must report when local Firebase config is valid."
 Assert-True ($setupState -match '-cmatch \$firebaseDatabaseUrlPattern') "Setup state helper must validate Firebase database URLs case-sensitively."
 Assert-True ($setupState -notmatch 'Invoke-RestMethod|HTTPClient|firebase deploy') "Setup state helper must not perform network or deploy work."
@@ -420,7 +465,7 @@ Assert-True ($preflight -match 'deploy-firebase-leaderboard-rules\.ps1"\) -Proje
 Assert-True ($configWriter -match 'firebasedatabase\\\.app') "Config writer must accept regional Realtime Database URLs."
 Assert-True ($configWriter -match '-cmatch \$firebaseDatabaseUrlPattern') "Config writer must validate Firebase database URLs case-sensitively."
 Assert-True ($configWriter -match '\$OutputPath') "Config writer must support an alternate output path for no-network validation."
-Assert-True ($configWriter -match '\$GoogleWebClientId') "Config writer must support optional Google OAuth web client ids for account linking."
+Assert-True ($configWriter -match '\[Parameter\(Mandatory = \$true\)\]\[string\]\$GoogleWebClientId') "Config writer must require the Google OAuth web client id used for account recovery."
 Assert-True ($configValidation -match 'firebase-config-validation-ok') "Config validation test must report success."
 Assert-True ($configValidation -match 'europe-west1\.firebasedatabase\.app') "Config validation test must cover regional Realtime Database URLs."
 Assert-True ($configValidation -match 'your-project-id-default-rtdb\.firebaseio\.com') "Config validation test must reject placeholder database URLs."

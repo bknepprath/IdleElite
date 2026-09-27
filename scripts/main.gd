@@ -492,6 +492,7 @@ var playable_medal_buff_actions_cache := {}
 var playable_medal_buff_index_cache := {}
 var visual_texture_cache := VisualTextureCache.new()
 var loaded_save_this_boot := false
+var save_restore_complete := false
 var activity_queue_runtime: ActivityQueueRuntime
 var save_runtime: SaveRuntime
 var action_runtime: ActionRuntime
@@ -571,7 +572,9 @@ func _ready() -> void:
 	deferred_skill_validation_pending = true
 	deferred_selected_skill_mastery_pending = true
 	await _build_ui_boot_async()
-	await _boot_warmup_runtime()._finish_boot_render_async()
+	var boot_ready_for_play := await _boot_warmup_runtime()._finish_boot_render_async()
+	if not boot_ready_for_play:
+		return
 	var timer := Timer.new()
 	timer.wait_time = SaveRuntime.AUTOSAVE_INTERVAL_SECONDS
 	timer.autostart = true
@@ -957,8 +960,8 @@ func _fishing_rework_active_for_skill(skill_id: String) -> bool:
 func _mark_save_dirty(reason := "") -> void:
 	_save_runtime()._mark_save_dirty(reason)
 
-func save_game() -> void:
-	_save_runtime().save_game()
+func save_game() -> bool:
+	return _save_runtime().save_game()
 
 func _unix_now() -> int:
 	return int(floor(Time.get_unix_time_from_system()))

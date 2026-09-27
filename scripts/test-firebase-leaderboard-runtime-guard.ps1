@@ -5,6 +5,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\firebase-runtime-guard"
 $testScript = Join-Path $testDir "leaderboard_runtime_guard_test.gd"
+$testUserDataDir = Join-Path $testDir "user-data"
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -14,6 +16,7 @@ if (Test-Path -LiteralPath $testDir) {
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 try {
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
     @'
 extends SceneTree
 
@@ -87,7 +90,7 @@ func _init() -> void:
 	game.leaderboard_profile.profile_claimed = false
 	game.leaderboard_profile.name_claim_verified = false
 	online.call("_start_google_account_sign_in")
-	_expect(online.google_auth_status_message == "Save a username before connecting Google.", "Google sign-in should require a claimed username first.")
+	_expect(online.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "A wiped username must not hide the missing Google client configuration.")
 	game.leaderboard_profile.display_name = "Validation Player"
 	game.leaderboard_profile.name_key = "validation_player"
 	game.leaderboard_profile.profile_claimed = true
@@ -95,6 +98,9 @@ func _init() -> void:
 	online.call("_start_google_account_sign_in")
 	_expect(online.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "Google sign-in without a client id should explain the missing config key.")
 	online.google_auth_web_client_id = "1234567890-validationonly.apps.googleusercontent.com"
+	online.call("_start_google_account_sign_in")
+	_expect(online.google_auth_status_message == "Google sign-in is waiting for save recovery.", "Google sign-in must wait until the complete save and identity restore finishes.")
+	game.save_restore_complete = true
 	online.call("_start_google_account_sign_in")
 	_expect(online.google_auth_status_message == "Google sign-in is not available in this build yet.", "Non-Android Google sign-in should explain that this build has no native Google auth.")
 	online.call("_on_google_sign_in_failed", "")
@@ -107,6 +113,36 @@ func _init() -> void:
 	_expect(online.google_auth_status_message == "Google sign-in needs an internet connection. Try again in a moment.", "Network Google failure should be actionable.")
 	online.call("_on_google_sign_in_failed", "provider exploded")
 	_expect(online.google_auth_status_message == "Google sign-in failed: provider exploded", "Unknown Google failure should preserve useful details.")
+	game.leaderboard_profile.player_id = "firebaseUidOriginal123"
+	game.leaderboard_profile.display_name = "Validation Player"
+	game.leaderboard_profile.name_key = "validation_player"
+	online.leaderboard_auth_bound_uid = "firebaseUidDifferent456"
+	online.leaderboard_auth_id_token = "current-id-token"
+	online.leaderboard_auth_expires_unix = game._unix_now() + 3600
+	online.leaderboard_auth_recovery_required = false
+	_expect(not online.call("_leaderboard_auth_ready"), "Auth readiness must reject a token bound to a different UID.")
+	online.leaderboard_auth_bound_uid = "firebaseUidOriginal123"
+	_expect(online.call("_leaderboard_auth_ready"), "Auth readiness should accept an unexpired token bound to the saved UID.")
+	game.save_restore_complete = false
+	online.leaderboard_auth_refresh_token = "original-refresh-token"
+	var same_uid_recovery := {
+		"idToken": "recovered-id-token",
+		"refreshToken": "recovered-refresh-token",
+		"localId": "firebaseUidOriginal123",
+		"expiresIn": "3600"
+	}
+	_expect(online.call("_apply_firebase_auth_response", same_uid_recovery, "google", "google_recover"), "Google recovery must accept the same bound UID.")
+	_expect(game.leaderboard_profile.display_name == "Validation Player", "Same-UID Google recovery must preserve the username.")
+	var wrong_uid_recovery := {
+		"idToken": "wrong-id-token",
+		"refreshToken": "wrong-refresh-token",
+		"localId": "firebaseUidWrong999",
+		"expiresIn": "3600"
+	}
+	_expect(not online.call("_apply_firebase_auth_response", wrong_uid_recovery, "google", "google_recover"), "Google recovery must reject a different Firebase UID.")
+	_expect(game.leaderboard_profile.player_id == "firebaseUidOriginal123", "Rejected Google recovery must preserve the saved player UID.")
+	_expect(game.leaderboard_profile.display_name == "Validation Player", "Rejected Google recovery must preserve the username.")
+	_expect(online.leaderboard_auth_refresh_token == "recovered-refresh-token", "Rejected Google recovery must not install the wrong account refresh token.")
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")
@@ -142,5 +178,10 @@ func _expect_leaderboard_requests_idle(game: Node, context: String) -> void:
         throw "A headless Godot process is still running after the runtime guard test."
     }
 } finally {
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }
