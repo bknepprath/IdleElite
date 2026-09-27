@@ -47,6 +47,8 @@ New-Item -ItemType Directory -Path $itchBuildDir -Force | Out-Null
 if (-not $SkipValidation) {
     & (Join-Path $projectRoot "scripts\update-firebase-leaderboard-rules.ps1") -Check
     & (Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1")
+    & (Join-Path $projectRoot "scripts	est-save-hardening.ps1")
+    & (Join-Path $projectRoot "scripts	est-save-lifecycle-guard.ps1")
     & (Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1")
 }
 
