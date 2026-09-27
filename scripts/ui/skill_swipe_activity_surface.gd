@@ -151,6 +151,10 @@ var skill_swipe_frame: Control
 var skill_swipe_page: Control
 var skill_swipe_animating := false
 var skill_swipe_animation_mode := ""
+# Target of an in-flight commit settle, kept separately because preview pages
+# no longer exist and a touch during the settle must still finish navigation.
+var skill_swipe_settle_offset := 0
+var skill_swipe_settle_target_x := 0.0
 var skill_swipe_drag_base_x := 0.0
 var skill_swipe_drag_offset_x := 0.0
 var skill_swipe_gap_render_offset_x := 0.0
@@ -772,11 +776,13 @@ func _interrupt_skill_swipe_animation_for_input() -> void:
 	if _skill_swipe_animation_blocks_input():
 		return
 	var mode := skill_swipe_animation_mode
-	var offset: int = _skill_swipe_activity_surface()._active_preview_offset()
-	var preview_page: Control = _skill_swipe_activity_surface()._active_preview_page()
-	if mode == "settle" and offset != 0 and preview_page != null:
+	if mode == "settle" and skill_swipe_settle_offset != 0:
+		# Finish the committed swipe instead of freezing the page part-way; a
+		# frozen page turned the next small touch into a snap back.
+		var offset := skill_swipe_settle_offset
+		var target_x := skill_swipe_settle_target_x
 		_kill_skill_swipe_tween()
-		_navigate_skill_page(offset, 0.0, false, false)
+		_finish_skill_swipe_commit_tween(offset, target_x)
 		return
 	_kill_skill_swipe_tween()
 
@@ -1379,7 +1385,9 @@ func _hold_skill_swipe_cover_until_detail_ready(seconds: float, attempts: int) -
 	if attempts >= 18:
 		_repair_blank_detail_lazy_stack()
 		_force_skill_detail_reveal_mount_under_cover()
-		if _skill_detail_ready_to_reveal_under_cover():
+		# Never hold the player behind a blank cover indefinitely; after ~0.5 s
+		# reveal whatever has mounted rather than looking frozen.
+		if _skill_detail_ready_to_reveal_under_cover() or attempts >= 30:
 			_start_skill_swipe_cover_fade(seconds)
 			return
 	call_deferred("_hold_skill_swipe_cover_until_detail_ready_after_frame", seconds, attempts + 1)
@@ -1622,6 +1630,8 @@ func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
 	_skill_swipe_activity_surface()._set_active_preview(_skill_swipe_activity_surface()._active_preview_page(), offset)
 	var swipe_surface = _skill_swipe_activity_surface()
 	var target_x := _skill_swipe_commit_release_target_x(offset)
+	skill_swipe_settle_offset = offset
+	skill_swipe_settle_target_x = target_x
 	var remaining_ratio := clampf(absf(target_x - start_x) / maxf(1.0, _skill_swipe_commit_release_span()), 0.0, 1.0)
 	var settle_seconds := clampf(SKILL_SWIPE_SETTLE_SECONDS * remaining_ratio, 0.08, SKILL_SWIPE_SETTLE_SECONDS)
 	skill_swipe_tween = create_tween()
@@ -1649,6 +1659,7 @@ func _finish_skill_swipe_cancel_tween() -> void:
 
 
 func _finish_skill_swipe_commit_tween(offset: int, target_x: float) -> void:
+	skill_swipe_settle_offset = 0
 	skill_swipe_animating = false
 	skill_swipe_animation_mode = ""
 	if skill_strip_ids.is_empty():

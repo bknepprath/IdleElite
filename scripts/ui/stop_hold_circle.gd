@@ -149,11 +149,16 @@ func process_action(delta: float) -> void:
 		action_stop_hold_elapsed += delta
 		if action_stop_hold_elapsed < ACTION_STOP_HOLD_ARM_DELAY_SECONDS:
 			return
+		var swipe = host._skill_swipe_activity_surface()
+		if swipe.skill_swipe_tracking and swipe.skill_swipe_horizontal:
+			# The finger is already swiping pages; this is not a hold on the card.
+			cancel_action()
+			return
 		action_stop_hold_armed = true
 		action_stop_hold_elapsed = 0.0
-		host._skill_swipe_activity_surface().skill_swipe_tracking = false
-		host._skill_swipe_activity_surface().skill_swipe_horizontal = false
-		host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
+		# Put any small drag offset back at rest instead of leaving the page
+		# shifted with tracking switched off.
+		swipe._cancel_skill_swipe_feedback(true)
 		if action_stop_hold_kind == "action":
 			host._skill_swipe_activity_surface()._press_action_card_3d(action_stop_hold_card_key)
 			show_ring(ThemeStyles.skill_theme_color(action_stop_hold_skill_id, host.COLOR_BLUE), action_stop_hold_position)

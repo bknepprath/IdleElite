@@ -1948,7 +1948,9 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	var swipe_surface = host._skill_swipe_activity_surface()
 	var staged_direct_render: bool = host.current_screen == "skill" and swipe_surface.direct_skill_nav_cover_active and not boot_async
 	if staged_direct_render:
-		while swipe_surface._skill_swipe_handoff_cover_is_cream_transition() and not swipe_surface._skill_swipe_handoff_cover_is_opaque_cream_transition():
+		var cover_wait_frames := 0
+		while swipe_surface._skill_swipe_handoff_cover_is_cream_transition() and not swipe_surface._skill_swipe_handoff_cover_is_opaque_cream_transition() and cover_wait_frames < 30:
+			cover_wait_frames += 1
 			await host.get_tree().process_frame
 			if _screen_page_cache_key(host.current_screen) != requested_key:
 				_finish_screen_render_request()
