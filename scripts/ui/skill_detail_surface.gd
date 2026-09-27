@@ -9209,7 +9209,8 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 	var y = 0.0
 	var activity_start_tip_pending = _activity_start_inline_tip_available(skill_id)
 	var skill_swipe_tip_pending = not activity_start_tip_pending and host._onboarding_runtime()._skill_swipe_tip_available()
-	var skill_swipe_tip_anchor_track_id = _skill_swipe_tip_anchor_track_id(skill_id)
+	# The anchor walks every visible entry again; only pay for it when the tip shows.
+	var skill_swipe_tip_anchor_track_id = _skill_swipe_tip_anchor_track_id(skill_id) if skill_swipe_tip_pending else ""
 	for entry in _visible_detail_entries_for_skill(skill_id):
 		var entry_data = entry as Dictionary
 		var track_id = _detail_lazy_track_id_for_entry(entry_data)
