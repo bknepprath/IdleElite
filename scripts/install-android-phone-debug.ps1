@@ -73,7 +73,9 @@ $ErrorActionPreference = "Continue"
 $ErrorActionPreference = "Stop"
 Assert-CommandSucceeded "bundletool install-apks"
 
-& $adb shell monkey -p $packageName -c android.intent.category.LAUNCHER 1 | Out-Host
+$ErrorActionPreference = "Continue"
+& $adb shell monkey -p $packageName -c android.intent.category.LAUNCHER 1 2>&1 | Out-Host
+$ErrorActionPreference = "Stop"
 Assert-CommandSucceeded "Launch $packageName"
 
 Write-Output "Installed and launched $packageName from $apks"
