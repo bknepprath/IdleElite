@@ -120,6 +120,11 @@ var leaderboard_legacy_name_hint_key := ""
 var leaderboard_auth_last_error_class := "none"
 var leaderboard_auth_last_transition_outcome := "none"
 var leaderboard_auth_diagnostic_events := []
+var leaderboard_fresh_start_restart_source_uid := ""
+var leaderboard_fresh_start_profile_confirmed_uid := ""
+var leaderboard_fresh_start_profile_check_unix := 0
+var leaderboard_fresh_start_name_reclaim_pending := false
+var leaderboard_released_name_key := ""
 var leaderboard_config_loaded := false
 var leaderboard_config_database_url := ""
 var leaderboard_config_web_api_key := ""
@@ -243,6 +248,11 @@ func reset_leaderboard_runtime_state() -> void:
 	leaderboard_auth_last_error_class = "none"
 	leaderboard_auth_last_transition_outcome = "none"
 	leaderboard_auth_diagnostic_events.clear()
+	leaderboard_fresh_start_restart_source_uid = ""
+	leaderboard_fresh_start_profile_confirmed_uid = ""
+	leaderboard_fresh_start_profile_check_unix = 0
+	leaderboard_fresh_start_name_reclaim_pending = false
+	leaderboard_released_name_key = ""
 	google_auth_in_flight = false
 	google_auth_status_message = ""
 	google_auth_pending_id_token = ""
@@ -288,7 +298,8 @@ func auth_identity_metadata_for_save() -> Dictionary:
 		"leaderboard_name_transfer_required": leaderboard_name_transfer_required,
 		"leaderboard_legacy_username_recovery_required": leaderboard_legacy_username_recovery_required,
 		"leaderboard_legacy_name_hint_display": LeaderboardProfile.sanitize_display_name(leaderboard_legacy_name_hint_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS),
-		"leaderboard_legacy_name_hint_key": LeaderboardProfile.sanitize_name_key(leaderboard_legacy_name_hint_key, app.PROFILE_NAME_KEY_MAX_CHARS)
+		"leaderboard_legacy_name_hint_key": LeaderboardProfile.sanitize_name_key(leaderboard_legacy_name_hint_key, app.PROFILE_NAME_KEY_MAX_CHARS),
+		"leaderboard_released_name_key": LeaderboardProfile.sanitize_name_key(leaderboard_released_name_key, app.PROFILE_NAME_KEY_MAX_CHARS)
 	}
 
 
@@ -320,6 +331,7 @@ func restore_auth_identity_metadata_from_save(data: Dictionary) -> void:
 	leaderboard_deleted_auth_transition_pending = bool(data.get("leaderboard_deleted_auth_transition_pending", false))
 	leaderboard_name_transfer_required = bool(data.get("leaderboard_name_transfer_required", false))
 	leaderboard_legacy_username_recovery_required = bool(data.get("leaderboard_legacy_username_recovery_required", false))
+	leaderboard_released_name_key = LeaderboardProfile.sanitize_name_key(str(data.get("leaderboard_released_name_key", "")), app.PROFILE_NAME_KEY_MAX_CHARS)
 	var raw_hint_display := LeaderboardProfile.sanitize_display_name(str(data.get("leaderboard_legacy_name_hint_display", data.get("leaderboard_display_name", ""))), app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 	var raw_hint_key := LeaderboardProfile.sanitize_name_key(str(data.get("leaderboard_legacy_name_hint_key", saved_name_key)), app.PROFILE_NAME_KEY_MAX_CHARS)
 	var hint_is_valid := (
@@ -328,6 +340,10 @@ func restore_auth_identity_metadata_from_save(data: Dictionary) -> void:
 		and not LeaderboardProfile.is_default_display_name(raw_hint_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS)
 		and LeaderboardProfile.make_name_key(raw_hint_display, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) == raw_hint_key
 	)
+	if IdentitySafety.LEADERBOARD_FRESH_START:
+		_restore_fresh_start_identity_state(data)
+		_record_auth_diagnostic("identity_restored")
+		return
 	var legacy_transition_state_present := leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required
 	var saved_identity_may_need_canonical_recovery: bool = (
 		not leaderboard_auth_refresh_token.is_empty()
@@ -365,6 +381,34 @@ func restore_auth_identity_metadata_from_save(data: Dictionary) -> void:
 	if leaderboard_auth_recovery_required and leaderboard_auth_recovery_reason.is_empty():
 		leaderboard_auth_recovery_reason = "Saved online identity needs recovery."
 	_record_auth_diagnostic("identity_restored")
+
+
+func _restore_fresh_start_identity_state(data: Dictionary) -> void:
+	# Leaderboard fresh start: legacy identities are wiped server-side, not
+	# migrated. Retire every persisted legacy transfer/recovery marker (earlier
+	# builds or preview testers may have saved them) so the identity signs in like
+	# a new player. Recovery for genuine reasons (Google account recovery, a
+	# disabled account, an inconsistent local claim) is kept.
+	if (
+		leaderboard_auth_recovery_required
+		and IdentitySafety.fresh_start_legacy_identity_state(data)
+		and not SaveStateNormalizers.payload_has_recoverable_identity_inconsistency(data)
+	):
+		leaderboard_auth_recovery_required = false
+		leaderboard_auth_recovery_reason = ""
+		leaderboard_auth_definitive_failure_code = ""
+	if not leaderboard_auth_recovery_required:
+		leaderboard_auth_definitive_failure_code = ""
+	_clear_legacy_migration_state()
+
+
+func _clear_legacy_migration_state() -> void:
+	leaderboard_name_transfer_required = false
+	leaderboard_legacy_username_recovery_required = false
+	leaderboard_deleted_auth_transition_pending = false
+	leaderboard_legacy_authless_old_uid = ""
+	leaderboard_legacy_name_hint_display = ""
+	leaderboard_legacy_name_hint_key = ""
 
 
 func _save_restore_complete() -> bool:
@@ -505,6 +549,10 @@ func profile_recovery_blocks_username_edit() -> bool:
 
 
 func legacy_authless_google_transition_required() -> bool:
+	if IdentitySafety.LEADERBOARD_FRESH_START:
+		# Fresh start moves legacy authless saves to a new anonymous login
+		# automatically; Google stays optional.
+		return false
 	return not leaderboard_name_transfer_required and not leaderboard_legacy_username_recovery_required and _legacy_authless_google_transition_eligible()
 
 
@@ -560,7 +608,52 @@ func _anonymous_signup_allowed() -> bool:
 # authless id. They get a fresh anonymous uid and the same support-approved name
 # transfer that the Google path uses.
 func _anonymous_legacy_authless_transition_allowed() -> bool:
+	if IdentitySafety.LEADERBOARD_FRESH_START:
+		# Superseded by the fresh-start anonymous restart on every platform.
+		return false
 	return OS.get_name() != "Android" and legacy_authless_google_transition_required() and not leaderboard_auth_recovery_required
+
+
+# Leaderboard fresh start: a save whose online identity can never be refreshed
+# (legacy authless p+32 id with a claimed name, an anonymous login whose refresh
+# token was lost, or an anonymous login Firebase definitively rejected) signs in
+# anonymously again and adopts the new UID, exactly like a brand-new player.
+func _fresh_start_anonymous_restart_allowed() -> bool:
+	if not IdentitySafety.LEADERBOARD_FRESH_START or leaderboard_auth_provider == "google" or leaderboard_auth_recovery_required:
+		return false
+	var player_uid := LeaderboardProfile.sanitize_player_id(app.leaderboard_profile.player_id)
+	if player_uid.is_empty():
+		return false
+	if not leaderboard_fresh_start_restart_source_uid.is_empty():
+		return leaderboard_fresh_start_restart_source_uid == player_uid
+	return leaderboard_auth_refresh_token.is_empty() and _identity_has_prior_binding()
+
+
+func _fresh_start_restart_after_definitive_failure(failure_code: String) -> bool:
+	if not IdentitySafety.LEADERBOARD_FRESH_START or leaderboard_auth_provider == "google" or leaderboard_auth_recovery_required:
+		return false
+	if not IdentitySafety.fresh_start_anonymous_restart_failure_code(failure_code):
+		return false
+	var player_uid := LeaderboardProfile.sanitize_player_id(app.leaderboard_profile.player_id)
+	if player_uid.is_empty():
+		return false
+	leaderboard_auth_id_token = ""
+	leaderboard_auth_expires_unix = 0
+	leaderboard_fresh_start_restart_source_uid = player_uid
+	leaderboard_auth_last_error_class = "fresh_start_restart"
+	_record_auth_diagnostic("fresh_start_anonymous_restart", IdentitySafety.refresh_failure_code(400, failure_code))
+	_leaderboard_ensure_auth()
+	return true
+
+
+func _anonymous_sign_up_mode() -> String:
+	if _fresh_start_anonymous_restart_allowed():
+		return "fresh_start_anonymous_restart"
+	if _anonymous_legacy_authless_transition_allowed():
+		return "anonymous_legacy_authless_transition"
+	if _anonymous_signup_allowed():
+		return "sign_up"
+	return ""
 
 
 func _set_auth_recovery_required(reason: String, definitive_failure_code := "") -> void:
@@ -868,6 +961,8 @@ func _leaderboard_auth_retry_wait_seconds() -> int:
 func _leaderboard_note_auth_failure(message: String, definitive_identity_failure = false, definitive_failure_code := "") -> void:
 	var leaderboard_state = app.leaderboard_state
 	if definitive_identity_failure:
+		if _fresh_start_restart_after_definitive_failure(definitive_failure_code):
+			return
 		_set_auth_recovery_required(message, definitive_failure_code)
 		if not google_auth_pending_id_token.is_empty():
 			var recovery_intent: String = "deleted_auth_transition" if _deleted_auth_google_transition_eligible() else "recover_same_uid"
@@ -949,7 +1044,7 @@ func _leaderboard_ensure_auth() -> bool:
 		app.leaderboard_state.status_message = "Online services are not connected yet."
 		return false
 	leaderboard_auth_in_flight = true
-	if not leaderboard_auth_refresh_token.is_empty():
+	if not leaderboard_auth_refresh_token.is_empty() and leaderboard_fresh_start_restart_source_uid.is_empty():
 		leaderboard_auth_mode = "refresh_recovery" if leaderboard_auth_recovery_required else "refresh"
 		app.leaderboard_state.status_message = "Verifying the saved online account..." if leaderboard_auth_recovery_required else "Refreshing leaderboard login..."
 		var body = "grant_type=refresh_token&refresh_token=%s" % leaderboard_auth_refresh_token.uri_encode()
@@ -962,13 +1057,13 @@ func _leaderboard_ensure_auth() -> bool:
 		if err == OK:
 			return false
 	else:
-		var anonymous_legacy_transition := _anonymous_legacy_authless_transition_allowed()
-		if not _anonymous_signup_allowed() and not anonymous_legacy_transition:
+		var sign_up_mode := _anonymous_sign_up_mode()
+		if sign_up_mode.is_empty():
 			leaderboard_auth_in_flight = false
 			leaderboard_auth_mode = ""
 			_set_auth_recovery_required("The previous online login is missing.")
 			return false
-		leaderboard_auth_mode = "anonymous_legacy_authless_transition" if anonymous_legacy_transition else "sign_up"
+		leaderboard_auth_mode = sign_up_mode
 		app.leaderboard_state.status_message = "Creating leaderboard login..."
 		var err = leaderboard_auth_request.request(
 			FIREBASE_AUTH_SIGN_UP_URL % api_key.uri_encode(),
@@ -1250,6 +1345,8 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		"google_deleted_auth_transition":
 			var deleted_source_uid: String = leaderboard_legacy_authless_old_uid if leaderboard_deleted_auth_transition_pending else current_uid
 			uid_transition_allowed = _deleted_auth_google_transition_eligible() and local_id != deleted_source_uid
+		"fresh_start_anonymous_restart":
+			uid_transition_allowed = _fresh_start_anonymous_restart_allowed() and local_id != current_uid
 		"google_sign_in":
 			# Compatibility for direct tests/older callers: only a genuinely fresh
 			# install may accept an arbitrary Google UID.
@@ -1266,7 +1363,9 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		return false
 	var legacy_authless_transition: bool = mode in ["google_legacy_authless_transition", "anonymous_legacy_authless_transition"]
 	var deleted_auth_transition: bool = mode == "google_deleted_auth_transition"
-	var protected_identity_transition: bool = legacy_authless_transition or deleted_auth_transition
+	var fresh_start_restart: bool = mode == "fresh_start_anonymous_restart"
+	var protected_identity_transition: bool = legacy_authless_transition or deleted_auth_transition or fresh_start_restart
+	var fresh_start_identity_transition: bool = protected_identity_transition and IdentitySafety.LEADERBOARD_FRESH_START
 	var fresh_google_identity: bool = mode in ["google_fresh_sign_in", "google_sign_in", "google_legacy_authless_transition", "google_deleted_auth_transition"] and current_uid != local_id
 	var previous_auth_state: Dictionary = {
 		"id_token": leaderboard_auth_id_token,
@@ -1289,9 +1388,15 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		"legacy_name_hint_display": leaderboard_legacy_name_hint_display,
 		"legacy_name_hint_key": leaderboard_legacy_name_hint_key,
 		"profile_recovery_lookup_gate": profile_recovery_lookup_gate,
-		"profile_recovery_lookup_conclusive_missing": profile_recovery_lookup_conclusive_missing
+		"profile_recovery_lookup_conclusive_missing": profile_recovery_lookup_conclusive_missing,
+		"fresh_start_restart_source_uid": leaderboard_fresh_start_restart_source_uid,
+		"last_submitted_score": app.leaderboard_state.last_submitted_score,
+		"last_submitted_total_xp": app.leaderboard_state.last_submitted_total_xp,
+		"last_submitted_scores_by_category": app.leaderboard_state.last_submitted_scores_by_category.duplicate(true),
+		"last_submit_unix": app.leaderboard_state.last_submit_unix,
+		"repair_publish_version": app.leaderboard_state.repair_publish_version
 	}
-	if fresh_google_identity:
+	if fresh_google_identity or fresh_start_restart:
 		reset_cloud_save_state()
 	leaderboard_auth_id_token = id_token
 	if recovery_refresh:
@@ -1311,7 +1416,19 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		if not deleted_auth_transition:
 			leaderboard_auth_definitive_failure_code = ""
 		leaderboard_auth_last_error_class = "none"
-	if protected_identity_transition:
+	if fresh_start_identity_transition:
+		# Fresh start: adopt the new UID like a brand-new player. No transfer or
+		# support-recovery markers; the saved display name is re-claimed through
+		# the canonical profile check, and every category is republished.
+		_clear_legacy_migration_state()
+		leaderboard_auth_definitive_failure_code = ""
+		leaderboard_fresh_start_restart_source_uid = ""
+		leaderboard_fresh_start_profile_confirmed_uid = ""
+		leaderboard_fresh_start_name_reclaim_pending = false
+		profile_recovery_lookup_gate = false
+		profile_recovery_lookup_conclusive_missing = false
+		app.leaderboard_state.reset_submission_metadata()
+	elif protected_identity_transition:
 		if leaderboard_legacy_authless_old_uid.is_empty():
 			leaderboard_legacy_authless_old_uid = current_uid
 		if not leaderboard_name_transfer_required and not leaderboard_legacy_username_recovery_required:
@@ -1322,6 +1439,8 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		leaderboard_deleted_auth_transition_pending = deleted_auth_transition
 	if recovery_refresh:
 		leaderboard_auth_last_transition_outcome = "refresh_recovery_pending_profile"
+	elif fresh_start_identity_transition:
+		leaderboard_auth_last_transition_outcome = "fresh_start_new_identity"
 	elif deleted_auth_transition:
 		leaderboard_auth_last_transition_outcome = "deleted_auth_google_pending_recovery"
 	elif legacy_authless_transition:
@@ -1351,8 +1470,11 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 		# with the Google UID before any server profile operation is allowed.
 		# The web build has no Google sign-in; its legacy transfer binds an
 		# anonymous account instead, and the capability is scoped to exactly that.
-		app._save_runtime().allow_next_identity_transition_save(current_uid, local_id, "anonymous" if mode == "anonymous_legacy_authless_transition" else "google")
-		if not _save_identity_state("deleted account Google transition" if deleted_auth_transition else "legacy authless Google transition"):
+		app._save_runtime().allow_next_identity_transition_save(current_uid, local_id, "anonymous" if mode in ["anonymous_legacy_authless_transition", "fresh_start_anonymous_restart"] else "google")
+		var transition_save_reason := "deleted account Google transition" if deleted_auth_transition else "legacy authless Google transition"
+		if fresh_start_identity_transition:
+			transition_save_reason = "leaderboard fresh start identity"
+		if not _save_identity_state(transition_save_reason):
 			leaderboard_auth_id_token = str(previous_auth_state.get("id_token", ""))
 			leaderboard_auth_refresh_token = str(previous_auth_state.get("refresh_token", ""))
 			leaderboard_auth_expires_unix = int(previous_auth_state.get("expires_unix", 0))
@@ -1373,8 +1495,14 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String, transitio
 			leaderboard_legacy_name_hint_key = str(previous_auth_state.get("legacy_name_hint_key", ""))
 			profile_recovery_lookup_gate = bool(previous_auth_state.get("profile_recovery_lookup_gate", false))
 			profile_recovery_lookup_conclusive_missing = bool(previous_auth_state.get("profile_recovery_lookup_conclusive_missing", false))
+			leaderboard_fresh_start_restart_source_uid = str(previous_auth_state.get("fresh_start_restart_source_uid", ""))
+			app.leaderboard_state.last_submitted_score = int(previous_auth_state.get("last_submitted_score", 0))
+			app.leaderboard_state.last_submitted_total_xp = int(previous_auth_state.get("last_submitted_total_xp", 0))
+			app.leaderboard_state.last_submitted_scores_by_category = (previous_auth_state.get("last_submitted_scores_by_category", {}) as Dictionary).duplicate(true)
+			app.leaderboard_state.last_submit_unix = int(previous_auth_state.get("last_submit_unix", 0))
+			app.leaderboard_state.repair_publish_version = int(previous_auth_state.get("repair_publish_version", 0))
 			app.leaderboard_profile.player_id = str(previous_auth_state.get("player_id", ""))
-			app.leaderboard_state.status_message = "Google account was not applied because the local save failed."
+			app.leaderboard_state.status_message = "Online login was not applied because the local save failed." if mode in ["anonymous_legacy_authless_transition", "fresh_start_anonymous_restart"] else "Google account was not applied because the local save failed."
 			google_auth_status_message = app.leaderboard_state.status_message
 			_record_auth_diagnostic("identity_transition_save_failed")
 			app._save_runtime().cancel_next_identity_transition_save()
@@ -1993,7 +2121,9 @@ func _restore_cloud_save_payload(remote_payload: Dictionary) -> void:
 	var legacy_username_recovery_required: bool = leaderboard_legacy_username_recovery_required
 	var legacy_name_hint_display: String = leaderboard_legacy_name_hint_display
 	var legacy_name_hint_key: String = leaderboard_legacy_name_hint_key
+	var released_name_key: String = leaderboard_released_name_key
 	var restored_payload := remote_payload.duplicate(true)
+	restored_payload["leaderboard_released_name_key"] = released_name_key
 	restored_payload["leaderboard_player_id"] = player_id
 	restored_payload["leaderboard_display_name"] = display_name
 	restored_payload["leaderboard_name_key"] = name_key
@@ -2035,6 +2165,7 @@ func _restore_cloud_save_payload(remote_payload: Dictionary) -> void:
 	leaderboard_legacy_username_recovery_required = legacy_username_recovery_required
 	leaderboard_legacy_name_hint_display = legacy_name_hint_display
 	leaderboard_legacy_name_hint_key = legacy_name_hint_key
+	leaderboard_released_name_key = released_name_key
 	app.leaderboard_profile.player_id = player_id
 	cloud_save_remote_checked = true
 	_save_identity_state("cloud save restored")
@@ -2105,7 +2236,7 @@ func _leaderboard_submit_scores() -> void:
 	if not _leaderboard_firebase_enabled():
 		app.leaderboard_state.status_message = "Online services are not connected yet."
 		return
-	if leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required:
+	if not IdentitySafety.LEADERBOARD_FRESH_START and (leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required):
 		app.leaderboard_state.status_message = "Leaderboard publishing is paused until legacy username recovery is complete."
 		return
 	if not _leaderboard_write_ready():
@@ -2115,6 +2246,18 @@ func _leaderboard_submit_scores() -> void:
 		return
 	var leaderboard_state = app.leaderboard_state
 	if leaderboard_submit_in_flight or not leaderboard_state.submit_ready():
+		return
+	if IdentitySafety.LEADERBOARD_FRESH_START and leaderboard_fresh_start_profile_confirmed_uid != app.leaderboard_profile.player_id:
+		# Score rules require this UID to own the name claim and canonical profile.
+		# After the fresh start (new UID or wiped server data) confirm or re-claim
+		# them once per session before writing, instead of burning a denied write.
+		app.leaderboard_state.status_message = "Checking your leaderboard name before publishing..."
+		if not profile_recovery_fetch_in_flight and (
+			leaderboard_fresh_start_profile_check_unix <= 0
+			or app._unix_now() - leaderboard_fresh_start_profile_check_unix >= LeaderboardState.SUBMIT_INTERVAL_SECONDS
+		):
+			leaderboard_fresh_start_profile_check_unix = app._unix_now()
+			_fetch_profile_recovery_record()
 		return
 	_ensure_leaderboard_player_id()
 	var repair_publish_due = leaderboard_state.repair_publish_due()
@@ -2312,7 +2455,7 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	if typeof(parsed) != TYPE_DICTIONARY:
 		_leaderboard_note_auth_failure("Online login returned invalid JSON.")
 		return
-	var response_provider := "anonymous" if mode in ["sign_up", "anonymous_legacy_authless_transition"] else str(leaderboard_auth_provider)
+	var response_provider := "anonymous" if mode in ["sign_up", "anonymous_legacy_authless_transition", "fresh_start_anonymous_restart"] else str(leaderboard_auth_provider)
 	if not _apply_firebase_auth_response(parsed as Dictionary, response_provider, mode):
 		return
 	if not google_auth_pending_id_token.is_empty():
@@ -2438,6 +2581,7 @@ func _on_leaderboard_name_claim_completed(result: int, response_code: int, _head
 	app.leaderboard_profile.name_key = claimed_key
 	app.leaderboard_profile.profile_claimed = true
 	app.leaderboard_profile.name_claim_verified = true
+	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
 	app.leaderboard_state.status_message = "Leaderboard name saved."
 	_save_identity_state("leaderboard username claimed")
 	_refresh_profile_references()
@@ -2557,7 +2701,10 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 			profile_recovery_required_after_google_switch = false
 			google_auth_status_message = "Google connected. Choose a username for this account."
 		elif LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
-			_refresh_profile_references()
+			if IdentitySafety.LEADERBOARD_FRESH_START:
+				_fresh_start_reclaim_saved_name()
+			else:
+				_refresh_profile_references()
 		else:
 			app.leaderboard_state.status_message = "No saved username was found. Choose a username."
 		if _cloud_save_account_ready():
@@ -2565,6 +2712,16 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		if leaderboard_name_claim_in_flight and not leaderboard_name_claim_request_started:
 			_start_queued_name_claim()
+		return
+	if (
+		IdentitySafety.LEADERBOARD_FRESH_START
+		and not recovery_refresh_verification
+		and (response_code == 401 or response_code == 403)
+		and LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS)
+	):
+		# The owner-read rule denies a canonical profile whose name claim no longer
+		# belongs to this UID (for example wiped legacy data). Re-claim the name.
+		_fresh_start_reclaim_saved_name()
 		return
 	if response_code < 200 or response_code >= 300 or typeof(parsed) != TYPE_DICTIONARY:
 		if recovery_refresh_verification:
@@ -2649,12 +2806,15 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		_record_auth_diagnostic("refresh_recovery_verification_not_saved")
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		return
+	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
 	_refresh_local_profile_references()
 	if _cloud_save_account_ready():
 		_fetch_cloud_save()
 	app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 	if app.current_screen == "leaderboard":
 		app.leaderboard_presentation._refresh_if_visible()
+	if IdentitySafety.LEADERBOARD_FRESH_START and app.leaderboard_state.submit_ready():
+		_leaderboard_submit_scores()
 
 
 func _attempt_leaderboard_name_recovery() -> bool:
@@ -2729,6 +2889,7 @@ func _on_leaderboard_name_recovery_completed(result: int, response_code: int, _h
 			app.leaderboard_profile.name_key = recovered_name_key
 		app.leaderboard_profile.profile_claimed = true
 		app.leaderboard_profile.name_claim_verified = true
+		leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
 		if completed_legacy_transfer:
 			leaderboard_name_transfer_required = false
 			leaderboard_legacy_username_recovery_required = false
@@ -2832,6 +2993,20 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 		_leaderboard_fetch_category(app.leaderboard_state.category_id, true)
 		app.leaderboard_presentation._refresh_if_visible()
 func _on_profile_reference_update_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	if profile_reference_update_stage == "fresh_start_claim_probe":
+		_on_fresh_start_claim_probe_completed(result, response_code)
+		return
+	if profile_reference_update_stage == "canonical" and leaderboard_fresh_start_name_reclaim_pending:
+		leaderboard_fresh_start_name_reclaim_pending = false
+		if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+			_fresh_start_name_reclaimed()
+		elif result == HTTPRequest.RESULT_SUCCESS and (response_code == 401 or response_code == 403):
+			# The claim + profile write was refused. Probe the name claim alone
+			# before giving the name up, so only a claim held by someone else
+			# falls back to a guest name.
+			if not _start_fresh_start_claim_probe():
+				_finish_profile_reference_update()
+			return
 	if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
 		_finish_profile_reference_update()
 		return
@@ -3446,6 +3621,116 @@ func _chat_next_send_seconds() -> int:
 	if chat_last_send_unix <= 0:
 		return 0
 	return maxi(0, app.CHAT_SEND_INTERVAL_SECONDS - (app._unix_now() - chat_last_send_unix))
+
+func _fresh_start_reclaim_saved_name() -> void:
+	# Fresh start: this UID has no canonical profile (a new UID, or wiped legacy
+	# data), so claim the saved display name exactly like a new player would. The
+	# canonical stage of the reference refresh writes the name claim and profile.
+	leaderboard_fresh_start_name_reclaim_pending = true
+	app.leaderboard_state.status_message = "Claiming your leaderboard name..."
+	_refresh_profile_references()
+
+
+func _fresh_start_name_reclaimed() -> void:
+	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
+	# The server holds no rows for this identity yet: republish every category.
+	app.leaderboard_state.repair_publish_version = 0
+	app.leaderboard_state.last_submit_unix = 0
+	app.leaderboard_state.status_message = "Leaderboard name saved."
+	app._mark_save_dirty("leaderboard name reclaimed")
+	app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+	if app.leaderboard_state.submit_ready():
+		_leaderboard_submit_scores()
+
+
+func _start_fresh_start_claim_probe() -> bool:
+	if not LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS):
+		return false
+	if profile_reference_update_request == null or not is_instance_valid(profile_reference_update_request) or not _leaderboard_auth_ready():
+		return false
+	var name_key := LeaderboardProfile.sanitize_name_key(app.leaderboard_profile.name_key, app.PROFILE_NAME_KEY_MAX_CHARS)
+	if name_key.is_empty():
+		return false
+	var server_timestamp = _firebase_server_timestamp()
+	var payload = {
+		"uid": app.leaderboard_profile.player_id,
+		"name": app.leaderboard_profile.display_name,
+		"name_key": name_key,
+		"avatar_index": app.leaderboard_profile.avatar_index,
+		"created_at": server_timestamp,
+		"updated_at": server_timestamp,
+		"submitted_at_unix": app._unix_now()
+	}
+	# The reference stage is retried after the canonical profile succeeds.
+	profile_reference_pending_updates.clear()
+	profile_reference_update_in_flight = true
+	profile_reference_update_stage = "fresh_start_claim_probe"
+	var err = profile_reference_update_request.request(
+		_leaderboard_firebase_url("name_claims/%s" % name_key, _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PUT,
+		JSON.stringify(payload)
+	)
+	return err == OK
+
+
+func _on_fresh_start_claim_probe_completed(result: int, response_code: int) -> void:
+	_finish_profile_reference_update()
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return
+	if response_code >= 200 and response_code < 300:
+		# The claim belongs to this UID; only the canonical profile write was
+		# refused (for example before the new rules are deployed). Keep the name
+		# and let the next publish attempt re-check the profile.
+		app.leaderboard_state.status_message = "Leaderboard name kept. Publishing will retry shortly."
+		return
+	if response_code == 401 or response_code == 403:
+		# Someone else holds the name claim. Fall back to the new-player guest
+		# name so the player can pick another one; publishing is never paused.
+		_fresh_start_release_unavailable_name()
+
+
+func _fresh_start_release_unavailable_name() -> void:
+	var taken_name := str(app.leaderboard_profile.display_name)
+	var released_key := LeaderboardProfile.sanitize_name_key(app.leaderboard_profile.name_key, app.PROFILE_NAME_KEY_MAX_CHARS)
+	var previous_profile := {
+		"display_name": app.leaderboard_profile.display_name,
+		"name_key": app.leaderboard_profile.name_key,
+		"profile_claimed": app.leaderboard_profile.profile_claimed,
+		"name_claim_verified": app.leaderboard_profile.name_claim_verified,
+		"released_name_key": leaderboard_released_name_key
+	}
+	if released_key.is_empty():
+		return
+	# The persisted released key is what lets the save guard accept dropping this
+	# claimed name for the same UID (IdentitySafety.fresh_start_claimed_name_released).
+	leaderboard_released_name_key = released_key
+	var guest_name := LeaderboardProfile.make_guest_display_name(app.PROFILE_GUEST_NAME_PREFIX)
+	app.leaderboard_profile.display_name = guest_name
+	app.leaderboard_profile.name_key = ""
+	app.leaderboard_profile.profile_claimed = false
+	app.leaderboard_profile.name_claim_verified = false
+	leaderboard_fresh_start_profile_confirmed_uid = ""
+	app.leaderboard_state.clear_pending_submit()
+	app.leaderboard_state.repair_publish_version = 0
+	app.leaderboard_state.last_submit_unix = 0
+	if not _save_identity_state("leaderboard name unavailable after fresh start"):
+		# Never leave an unsaveable identity in memory: every later save would be
+		# refused as an identity regression.
+		app.leaderboard_profile.display_name = str(previous_profile.get("display_name", ""))
+		app.leaderboard_profile.name_key = str(previous_profile.get("name_key", ""))
+		app.leaderboard_profile.profile_claimed = bool(previous_profile.get("profile_claimed", false))
+		app.leaderboard_profile.name_claim_verified = bool(previous_profile.get("name_claim_verified", false))
+		leaderboard_released_name_key = str(previous_profile.get("released_name_key", ""))
+		app.leaderboard_state.status_message = "Leaderboard name \"%s\" is taken. Try again later." % taken_name
+		return
+	app.leaderboard_state.status_message = "Leaderboard name \"%s\" is taken. Choose another username." % taken_name
+	_record_auth_diagnostic("fresh_start_name_unavailable")
+	app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+	app._profile_chat_overlay_surface()._set_profile_status_text(app.leaderboard_state.status_message)
+	if app.current_screen == "leaderboard":
+		app.leaderboard_presentation._refresh_if_visible()
+
 
 func _refresh_profile_references() -> void:
 	_refresh_local_profile_references()

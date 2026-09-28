@@ -77,6 +77,19 @@ Assert-True ($runtime -match 'profile_recovery_lookup_gate' -and $runtime -match
 Assert-True ($runtime -match 'if leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required or profile_recovery_blocks_username_edit\(\):') "Queued username claims must not race a pending transfer or canonical profile lookup."
 Assert-True ($normalizers -match 'existing_name_transfer_required' -and $normalizers -match 'existing_legacy_username_recovery_required' -and $normalizers -match 'existing_legacy_old_uid') "Save regression checks must preserve all pending legacy username recovery states."
 Assert-True ($normalizers -match 'existing_deleted_auth_transition_pending' -and $normalizers -match 'existing_definitive_failure_code') "Save regression checks must preserve deleted-UID support-transfer evidence."
+# Leaderboard fresh start (0.6.0 wipe): the legacy migration above stays in the code
+# for a non-wipe build but must not gate anything while the switch is on.
+Assert-True ($identitySafety -match '(?m)^const LEADERBOARD_FRESH_START := true\r?$') "The leaderboard fresh-start switch must be enabled."
+$restoreBlock = [regex]::Match($runtime, '(?s)func restore_auth_identity_metadata_from_save\(.*?(?=\r?\nfunc )').Value
+Assert-True ($restoreBlock -match 'if IdentitySafety\.LEADERBOARD_FRESH_START:\s+_restore_fresh_start_identity_state\(data\)') "Fresh start must retire persisted legacy transfer and recovery markers on load."
+$freshRestoreBlock = [regex]::Match($runtime, '(?s)func _restore_fresh_start_identity_state\(.*?(?=\r?\nfunc )').Value
+Assert-True ($freshRestoreBlock -match 'IdentitySafety\.fresh_start_legacy_identity_state\(data\)' -and $freshRestoreBlock -match 'payload_has_recoverable_identity_inconsistency') "Fresh start may clear only legacy-migration recovery, never an inconsistent local claim."
+$legacyRequiredBlock = [regex]::Match($runtime, '(?s)func legacy_authless_google_transition_required\(\).*?(?=\r?\nfunc )').Value
+Assert-True ($legacyRequiredBlock -match 'if IdentitySafety\.LEADERBOARD_FRESH_START:\s+(#[^\r\n]*\s+)*return false') "Fresh start must never force Google for a legacy authless save."
+Assert-True ($ensureAuthBlock -match 'var sign_up_mode := _anonymous_sign_up_mode\(\)' -and $runtime -match 'return "fresh_start_anonymous_restart"') "Legacy authless, lost-token, and deleted anonymous logins must sign in anonymously again."
+Assert-True ($runtime -match 'if _fresh_start_restart_after_definitive_failure\(definitive_failure_code\):') "A definitive anonymous refresh failure must restart anonymously instead of requiring support."
+Assert-True ($applyAuthBlock -match 'if fresh_start_identity_transition:[\s\S]*?_clear_legacy_migration_state\(\)[\s\S]*?reset_submission_metadata\(\)[\s\S]*?elif protected_identity_transition:') "A fresh-start UID adoption must set no transfer markers and republish every category."
+Assert-True ($normalizers -match 'if IdentitySafety\.LEADERBOARD_FRESH_START:\s+(#[^\r\n]*\s+)*return false') "Retired legacy transfer anchors must not block saves in fresh-start mode."
 Assert-True ($profileUi -match '_label\(_profile_status_text\(\), PROFILE_HELP_FONT_SIZE' -and $profileUi -match 'add_theme_font_size_override\("font_size", 52\)') "Profile recovery status, inputs, and action buttons must remain readable at the mobile viewport scale."
 Assert-True ($profileUi -match 'Copy Recovery Code' -and $profileUi -match 'DisplayServer\.clipboard_set\(recovery_code\)' -and $profileUi -match '_label\(recovery_code, host\.MIN_MOBILE_HELP_FONT_SIZE') "The profile must show and copy the non-secret recovery code at the mobile-readable size."
 Assert-True ($runtime -notmatch 'app\.leaderboard_profile\.display_name = LeaderboardProfile\.make_guest_display_name') "Chat must not replace a saved username with a guest name."
@@ -186,6 +199,40 @@ func _init() -> void:
 	_expect(SaveStateNormalizers.progress_evidence_score({}, []) == 0, "A fresh save must not be treated as gameplay evidence.")
 	_expect(SaveStateNormalizers.progress_evidence_score({"log_currency": 1}, []) > 0, "Non-XP gameplay progress must count as recovery evidence.")
 	_expect(IdentitySafety.google_link_collision("FEDERATED_USER_ID_ALREADY_LINKED"), "Existing Google accounts must be recognized during link attempts.")
+	_expect(IdentitySafety.LEADERBOARD_FRESH_START, "The leaderboard fresh-start switch must be on for the wipe release.")
+	_expect(IdentitySafety.fresh_start_anonymous_restart_failure_code("USER_NOT_FOUND"), "A deleted anonymous login may restart anonymously.")
+	_expect(IdentitySafety.fresh_start_anonymous_restart_failure_code("INVALID_REFRESH_TOKEN"), "A revoked anonymous token may restart anonymously.")
+	_expect(not IdentitySafety.fresh_start_anonymous_restart_failure_code("USER_DISABLED"), "A disabled account must never restart anonymously.")
+	_expect(not IdentitySafety.fresh_start_anonymous_restart_failure_code(""), "A transient failure must never restart the identity.")
+	_expect(IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "p0123456789abcdef0123456789abcdef", "leaderboard_auth_provider": "anonymous"}), "A legacy authless save carries only legacy recovery state.")
+	_expect(IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_provider": "google", "leaderboard_name_transfer_required": true}), "A pending legacy username transfer is retired even for Google.")
+	_expect(IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_provider": "anonymous", "leaderboard_auth_refresh_token": "t", "leaderboard_auth_definitive_failure_code": "USER_NOT_FOUND"}), "A deleted anonymous login is legacy state.")
+	_expect(not IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_provider": "google", "leaderboard_auth_refresh_token": "t", "leaderboard_auth_definitive_failure_code": "USER_NOT_FOUND"}), "Google account recovery is never legacy state.")
+	_expect(not IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_provider": "anonymous", "leaderboard_auth_refresh_token": "t", "leaderboard_auth_definitive_failure_code": "USER_DISABLED"}), "A disabled account is never legacy state.")
+	_expect(not IdentitySafety.fresh_start_legacy_identity_state({"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_provider": "anonymous", "leaderboard_auth_refresh_token": "t"}), "A working anonymous login is never legacy state.")
+	var claimed_save := {"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_bound_uid": "firebaseUid123", "leaderboard_auth_refresh_token": "t", "leaderboard_auth_provider": "anonymous", "leaderboard_display_name": "Hero", "leaderboard_name_key": "hero", "leaderboard_profile_claimed": true, "leaderboard_name_claim_verified": true}
+	var released_save := claimed_save.duplicate(true)
+	released_save["leaderboard_display_name"] = "guest1234"
+	released_save["leaderboard_name_key"] = ""
+	released_save["leaderboard_profile_claimed"] = false
+	released_save["leaderboard_name_claim_verified"] = false
+	_expect(SaveStateNormalizers.payload_regresses_identity(claimed_save, released_save), "Dropping a claimed name without a release marker must stay blocked.")
+	released_save["leaderboard_released_name_key"] = "hero"
+	_expect(not SaveStateNormalizers.payload_regresses_identity(claimed_save, released_save), "A same-UID released name may be dropped after the fresh-start claim check.")
+	var other_uid_release := released_save.duplicate(true)
+	other_uid_release["leaderboard_player_id"] = "otherFirebaseUid456"
+	other_uid_release["leaderboard_auth_bound_uid"] = "otherFirebaseUid456"
+	_expect(SaveStateNormalizers.payload_regresses_identity(claimed_save, other_uid_release), "A release marker must never authorize a UID change.")
+	var legacy_recovery_save := {"leaderboard_player_id": "p0123456789abcdef0123456789abcdef", "leaderboard_auth_provider": "anonymous", "leaderboard_auth_recovery_required": true, "leaderboard_name_transfer_required": true}
+	var legacy_cleared_save := legacy_recovery_save.duplicate(true)
+	legacy_cleared_save["leaderboard_auth_recovery_required"] = false
+	legacy_cleared_save["leaderboard_name_transfer_required"] = false
+	_expect(not SaveStateNormalizers.payload_regresses_identity(legacy_recovery_save, legacy_cleared_save), "Retiring legacy-only recovery must not block saves.")
+	var genuine_recovery_save := {"leaderboard_player_id": "firebaseUid123", "leaderboard_auth_bound_uid": "firebaseUid123", "leaderboard_auth_provider": "google", "leaderboard_auth_refresh_token": "t", "leaderboard_auth_recovery_required": true}
+	var genuine_cleared_save := genuine_recovery_save.duplicate(true)
+	genuine_cleared_save["leaderboard_auth_recovery_required"] = false
+	genuine_cleared_save["leaderboard_auth_refresh_token"] = ""
+	_expect(SaveStateNormalizers.payload_regresses_identity(genuine_recovery_save, genuine_cleared_save), "Genuine Google recovery must still require a usable credential.")
 	var original := {
 		"leaderboard_auth_refresh_token": "secret",
 		"progress": 42,

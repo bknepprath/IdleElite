@@ -256,6 +256,7 @@ foreach ($validation in @(
     @("scripts\test-online-identity-safety.ps1", "Online identity safety", "online identity safety"),
     @("scripts\test-firebase-profile-backfill.ps1", "Firebase profile backfill", "firebase profile backfill"),
     @("scripts\test-firebase-leaderboard-runtime-guard.ps1", "Firebase leaderboard runtime guard", "firebase leaderboard runtime guard"),
+    @("scripts\test-leaderboard-fresh-start.ps1", "Leaderboard fresh start", "leaderboard fresh start"),
     @("scripts\test-activity-queue.ps1", "Activity queue", "activity queue"),
     @("scripts\test-module-list-transitions.ps1", "Module list transitions", "module list transitions"),
     @("scripts\test-pinned-pin-visual-smoke.ps1", "Pinned pin visual smoke", "pinned pin visual smoke"),

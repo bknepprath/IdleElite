@@ -164,6 +164,18 @@ func _init() -> void:
 	online.leaderboard_legacy_name_hint_key = ""
 	_expect(not online.call("legacy_authless_google_transition_required"), "A fresh install with progress must not be treated as a legacy account.")
 	_expect(online.call("_anonymous_signup_allowed"), "A fresh install with progress must be allowed to create an anonymous login.")
+	_expect(online.call("_anonymous_sign_up_mode") == "sign_up", "A brand-new player must keep the plain anonymous sign-up.")
+	# Leaderboard fresh start: a claimed legacy authless profile signs in anonymously
+	# on every platform instead of being forced through Google or support recovery.
+	game.leaderboard_profile.display_name = "Legacy Player"
+	game.leaderboard_profile.name_key = "legacy_player"
+	game.leaderboard_profile.profile_claimed = true
+	game.leaderboard_profile.name_claim_verified = true
+	_expect(not online.call("legacy_authless_google_transition_required"), "Fresh start must not force Google for a claimed legacy authless profile.")
+	_expect(online.call("_anonymous_sign_up_mode") == "fresh_start_anonymous_restart", "A claimed legacy authless profile must request a fresh anonymous login.")
+	online.leaderboard_auth_provider = "google"
+	_expect(online.call("_anonymous_sign_up_mode") == "", "A Google profile must never be replaced by an anonymous login.")
+	online.leaderboard_auth_provider = ""
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")

@@ -1,3 +1,6 @@
+const IdentitySafety = preload("res://scripts/online/identity_safety.gd")
+
+
 static func restored_tip_metadata(data: Dictionary, valid_detail_tips: Array, action_key_for_save: Callable) -> Dictionary:
 	return {
 		"lock_click_tip_seen": bool(data.get("lock_click_tip_seen", false)),
@@ -408,11 +411,12 @@ static func payload_regresses_identity(existing_payload: Dictionary, next_payloa
 	var existing_verified := bool(existing_payload.get("leaderboard_name_claim_verified", false))
 	var next_claimed := bool(next_payload.get("leaderboard_profile_claimed", false))
 	var next_verified := bool(next_payload.get("leaderboard_name_claim_verified", false))
-	if existing_claimed and not next_claimed:
+	var claimed_name_released := IdentitySafety.fresh_start_claimed_name_released(existing_payload, next_payload)
+	if existing_claimed and not next_claimed and not claimed_name_released:
 		return true
-	if existing_verified and not next_verified:
+	if existing_verified and not next_verified and not claimed_name_released:
 		return true
-	if existing_claimed or existing_verified:
+	if (existing_claimed or existing_verified) and not claimed_name_released:
 		for required_key in ["leaderboard_display_name", "leaderboard_name_key"]:
 			var existing_value := str(existing_payload.get(required_key, "")).strip_edges()
 			var next_value := str(next_payload.get(required_key, "")).strip_edges()
@@ -453,9 +457,18 @@ static func payload_regresses_identity(existing_payload: Dictionary, next_payloa
 	var next_recovery_required := bool(next_payload.get("leaderboard_auth_recovery_required", false))
 	if existing_recovery_required and not next_recovery_required:
 		# Recovery may clear the flag only after the runtime is demonstrably bound
-		# back to the preserved UID with a usable credential.
-		if next_bound_uid.is_empty() or next_player_id != next_bound_uid or next_refresh_token.is_empty():
+		# back to the preserved UID with a usable credential. Leaderboard fresh start
+		# retires recovery that exists only for the legacy identity migration.
+		if (
+			(next_bound_uid.is_empty() or next_player_id != next_bound_uid or next_refresh_token.is_empty())
+			and not IdentitySafety.fresh_start_legacy_identity_state(existing_payload)
+		):
 			return true
+	if IdentitySafety.LEADERBOARD_FRESH_START:
+		# Legacy transfer/recovery anchors no longer gate anything, so clearing them
+		# must not block saves. The claim, UID, credential and provider checks above
+		# still apply.
+		return false
 	var existing_name_transfer_required := bool(existing_payload.get("leaderboard_name_transfer_required", false))
 	var next_name_transfer_required := bool(next_payload.get("leaderboard_name_transfer_required", false))
 	if existing_name_transfer_required and not next_name_transfer_required:

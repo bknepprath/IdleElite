@@ -704,6 +704,38 @@ try {
     } $E.Token $silent)
     Assert-Case "legacy_owner_unauth_reclaim_after_transfer" deny (Invoke-Db PUT "$lb/name_claims/old_hero" (New-NameClaimPayload $legacyOwner "Old Hero" "old_hero" 4) "" $silent)
 
+    # ---------------------------------------------------------------- leaderboard fresh start (returning 0.5.3 player)
+    # The client signs a returning legacy player in with a brand-new anonymous UID and
+    # re-claims the saved name through the canonical refresh (name claim + profile in
+    # one root PATCH, as _profile_reference_updates() builds it). The legacy authless
+    # claim blocks that until the one-time wipe deletes it; afterwards it must succeed
+    # with no recovery ticket, and the repair publish must be accepted.
+    $R = New-AnonymousUser "R"
+    $returnerLegacyUid = New-LegacyPlayerId
+    [void](Invoke-Admin PUT "$lb/name_claims/returner" ([ordered]@{ uid = $returnerLegacyUid; name = "Returner"; name_key = "returner"; avatar_index = 3; created_at = (Get-NowMs) - 86400000; updated_at = (Get-NowMs) - 86400000; submitted_at_unix = (Get-NowUnix) - 86400 }))
+    [void](Invoke-Admin PUT "$lb/scores/total_level/$returnerLegacyUid" ([ordered]@{ name = "Returner"; name_key = "returner"; avatar_index = 3; score = 150; skill_level = 0; total_xp = 900000; updated_at = (Get-NowMs) - 86400000; submitted_at_unix = (Get-NowUnix) - 86400 }))
+    function New-FreshStartReclaimUpdates($User) {
+        return @{
+            "leaderboards/v1/name_claims/returner" = (New-NameClaimPayload $User.Uid "Returner" "returner" 3)
+            "leaderboards/v1/profiles_by_uid/$($User.Uid)" = (New-ProfilePayload $User.Uid "Returner" "returner" 3)
+        }
+    }
+    Assert-Case "fresh_start_missing_profile_read_is_null" allow (Invoke-Db GET "$lb/profiles_by_uid/$($R.Uid)" $null $R.Token)
+    Assert-Case "fresh_start_reclaim_while_legacy_claim_exists" deny (Invoke-Db PATCH "" (New-FreshStartReclaimUpdates $R) $R.Token $silent)
+    Assert-Case "fresh_start_claim_only_while_legacy_claim_exists" deny (Invoke-Db PUT "$lb/name_claims/returner" (New-NameClaimPayload $R.Uid "Returner" "returner" 3) $R.Token $silent)
+    # One-time wipe: delete legacy claims and score rows that belong to no Auth account.
+    [void](Invoke-Admin DELETE "$lb/name_claims/returner")
+    [void](Invoke-Admin DELETE "$lb/scores/total_level/$returnerLegacyUid")
+    Assert-Case "fresh_start_reclaim_after_legacy_claim_deleted" allow (Invoke-Db PATCH "" (New-FreshStartReclaimUpdates $R) $R.Token $silent)
+    Assert-Case "fresh_start_claim_probe_own_claim" allow (Invoke-Db PUT "$lb/name_claims/returner" (New-NameClaimPayload $R.Uid "Returner" "returner" 3) $R.Token $silent)
+    Assert-Case "fresh_start_profile_read_after_reclaim" allow (Invoke-Db GET "$lb/profiles_by_uid/$($R.Uid)" $null $R.Token)
+    Assert-Case "fresh_start_repair_publish_gate" allow (Invoke-Db PUT "$lb/player_write_gates/$($R.Uid)" (New-GatePayload) $R.Token $silent)
+    Assert-Case "fresh_start_repair_publish_scores" allow (Invoke-Db PATCH $lb @{
+        "scores/total_level/$($R.Uid)" = (New-ScorePayload "Returner" "returner" 3 150 0 900000)
+        "scores/skill_xp__fishing/$($R.Uid)" = (New-ScorePayload "Returner" "returner" 3 240000 57 0)
+    } $R.Token $silent)
+    Assert-Case "fresh_start_legacy_uid_cannot_retake_name" deny (Invoke-Db PUT "$lb/name_claims/returner" (New-NameClaimPayload $returnerLegacyUid "Returner" "returner" 3) "" $silent)
+
     # ---------------------------------------------------------------- informational (documents current rule behavior)
     # A claimed user can reserve additional name keys without a profile (name_claims-only write).
     Assert-Case "info_extra_name_claim_without_profile_allowed" allow (Invoke-Db PUT "$lb/name_claims/mossy_spare" (New-NameClaimPayload $A.Uid "Mossy Spare" "mossy_spare" $newAvatar) $A.Token $silent)
