@@ -1,3 +1,9 @@
+param(
+    # Ship-first rollout: build without the Firebase migration receipt. Use only when the
+    # live rules still accept this build's writes and the rules switch happens after launch
+    # (scripts\switch-on-firebase-leaderboard-rules.ps1). The receipt stays mandatory otherwise.
+    [switch]$SkipFirebaseMigrationReceipt
+)
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
@@ -63,7 +69,11 @@ $googleWebClientId = ([string]$firebaseConfig.google_web_client_id).Trim()
 if ($googleWebClientId -notmatch '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
     throw "Android release blocked: firebase-leaderboard-config.json must contain a valid google_web_client_id."
 }
-& $firebaseMigrationReadinessCheck
+if ($SkipFirebaseMigrationReceipt) {
+    Write-Warning "Skipping the Firebase migration receipt check (ship-first rollout). Switch the rules on after launch."
+} else {
+    & $firebaseMigrationReadinessCheck
+}
 & (Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1")
 & (Join-Path $projectRoot "scripts\check-firebase-leaderboard-preflight.ps1") -SkipGodotSafeValidation
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath

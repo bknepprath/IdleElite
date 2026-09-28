@@ -1493,7 +1493,19 @@ func _cloud_save_payload_from_record(record: Dictionary, allow_legacy_checksum :
 
 
 func _cloud_save_archival_record(record: Dictionary, payload: Dictionary) -> Dictionary:
-	var payload_json := _cloud_save_payload_json(payload)
+	# Archive the fetched text verbatim: history rules require the same bytes for the
+	# same revision, and a JSON parse/stringify round trip turns 0 into 0.0.
+	var payload_json := ""
+	var original_json := str(record.get("payload_json", ""))
+	if (
+		int(record.get("revision", 0)) > 0
+		and not original_json.is_empty()
+		and original_json.length() <= CLOUD_SAVE_MAX_PAYLOAD_CHARS
+		and IdentitySafety.checksum_matches(original_json, str(record.get("payload_checksum", "")), false)
+	):
+		payload_json = original_json
+	else:
+		payload_json = _cloud_save_payload_json(payload)
 	if payload_json.is_empty():
 		return {}
 	var now_unix: int = app._unix_now()
@@ -1643,7 +1655,8 @@ func _start_cloud_save_put() -> void:
 	cloud_save_status_message = "Uploading cloud save..."
 	var expected_etag := cloud_save_remote_etag if not cloud_save_remote_etag.is_empty() else "null_etag"
 	var err = cloud_save_upload_request.request(
-		_cloud_save_firebase_url("users/%s" % app.leaderboard_profile.player_id, _leaderboard_authenticated_query("print=silent")),
+		# No print=silent here: Firebase rejects it combined with if-match (HTTP 400).
+		_cloud_save_firebase_url("users/%s" % app.leaderboard_profile.player_id, _leaderboard_authenticated_query()),
 		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON, FIREBASE_ETAG_REQUEST_HEADER, "if-match: %s" % expected_etag]),
 		HTTPClient.METHOD_PUT,
 		JSON.stringify(cloud_save_pending_record)
