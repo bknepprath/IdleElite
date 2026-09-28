@@ -163,6 +163,10 @@ func _route_tutorial_panel_input(event: InputEvent) -> bool:
 		return false
 	if host._settings_surface()._route_onboarding_settings_nav_input(event):
 		return true
+	# The release that ends a skill swipe always belongs to the swipe, even if a tip
+	# appeared mid-drag; eating it left the page parked halfway and then snapped back.
+	if is_release and host._skill_swipe_activity_surface().skill_swipe_tracking:
+		return false
 	if blocking_tip_active:
 		if _route_blocking_tip_input(event, event_position):
 			return true
@@ -668,8 +672,25 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_to_group(group_name)
 	root.visible = false
-	call_deferred("show_blocking_tip", text, group_name, target)
+	if not bool(host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active):
+		call_deferred("_show_blocking_tip_for_note", root, text, group_name, target)
 	return root
+
+
+# Tip notes are also built inside the pre-rendered neighbour skill pages. Only a note on
+# the page the player is looking at may raise the blocking tip; otherwise an off-screen
+# page's tip swallowed input (including the release of a swipe) and floated over other screens.
+func _show_blocking_tip_for_note(note: Control, text: String, group_name: String, target: Control = null) -> void:
+	if note == null or not is_instance_valid(note) or not note.is_inside_tree():
+		return
+	if host.current_screen != "skill":
+		return
+	var node: Node = note
+	while node != null:
+		if node is Control and (node as Control).has_meta("adjacent_skill_page"):
+			return
+		node = node.get_parent()
+	show_blocking_tip(text, group_name, target)
 
 
 func _fade_tip_control(control: Control, preserve_layout := false, collapse_layout := false) -> void:

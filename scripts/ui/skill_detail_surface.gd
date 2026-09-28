@@ -7541,6 +7541,7 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 	button.custom_minimum_size = hit_size
 	button.z_index = 100
 	button.set_meta(meta_key, true)
+	button.set_meta("allows_skill_swipe", true)
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
@@ -7553,6 +7554,9 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 # drag that starts on it must scroll without toggling the menu when the finger lifts.
 func _on_tier_banner_hit_pressed(callback: Callable) -> void:
 	if _detail_actions_scroll_suppresses_child_click():
+		return
+	var swipe = host._skill_swipe_activity_surface()
+	if swipe._skill_swipe_suppresses_button_action() or swipe.skill_swipe_horizontal or swipe.skill_swipe_animating:
 		return
 	callback.call()
 

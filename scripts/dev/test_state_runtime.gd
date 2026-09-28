@@ -165,6 +165,9 @@ func _god_mode_unlock_onboarding_state() -> void:
 	var tutorial_surface = host._tutorial_overlay_surface()
 	tutorial_surface.onboarding_medal_tip_shown = true
 	tutorial_surface.onboarding_mastery_tip_dismissed = true
+	# Like the real tutorial finish: hide the full-screen tutorial overlay, which would
+	# otherwise keep swallowing GUI presses (e.g. tier banner buttons) in test states.
+	tutorial_surface._update_tutorial_overlay()
 func _god_mode_max_hub_state() -> void:
 	for raw_module_id in HubRuntime.HUB_MODULE_DEFS.keys():
 		var module_id := str(raw_module_id)

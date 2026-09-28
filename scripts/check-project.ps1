@@ -252,6 +252,7 @@ foreach ($validation in @(
     @("scripts\test-save-hardening.ps1", "Save hardening", "save hardening"),
     @("scripts\test-skill-swipe-fresh-save.ps1", "Fresh-save skill swipe", "fresh-save skill swipe"),
     @("scripts\test-tier-banner-scroll.ps1", "Tier menu drag scroll", "tier menu drag scroll"),
+    @("scripts\test-skill-swipe-first-swipe.ps1", "First swipe after neighbour rebuild", "first swipe after neighbour rebuild"),
     @("scripts\test-skill-swipe-adjacent-pages.ps1", "Adjacent skill pages swipe", "adjacent skill pages swipe"),
     @("scripts\test-save-lifecycle-guard.ps1", "Save lifecycle guard", "save lifecycle guard"),
     @("scripts\test-online-identity-safety.ps1", "Online identity safety", "online identity safety"),

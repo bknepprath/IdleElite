@@ -73,6 +73,19 @@ func _run() -> void:
 		await _frames(20)
 		if not str(detail.get("expanded_tier_banner_key")).is_empty():
 			failures.append("a plain tap on the open tier menu no longer closes it")
+	# A sideways swipe that starts on a tier banner must change skill pages.
+	await _frames(60)
+	plaque = await _scroll_to_hit(scene, detail, "tier_banner_plaque_hit")
+	if plaque == null:
+		failures.append("tier banner disappeared before the swipe check")
+	else:
+		var swipe_start := _visible_point(plaque.get_global_rect())
+		swipe_start.x = 900.0
+		await _touch_drag(swipe_start, Vector2(240.0, swipe_start.y), 24)
+		await _frames(90)
+		print("tier-banner-scroll swipe landed=%s expanded=%s" % [str(scene.get("selected_skill_id")), str(detail.get("expanded_tier_banner_key"))])
+		if str(scene.get("selected_skill_id")) == "thieving":
+			failures.append("a sideways swipe that starts on a tier banner did not change pages")
 	_finish(failures)
 
 

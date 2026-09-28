@@ -593,6 +593,20 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 	return false
 
 
+# Page-sized tap targets (tier banners) are buttons, but a skill swipe may still start on them;
+# the button keeps its press, so a plain tap still toggles it.
+func _press_on_swipe_passthrough_button(event: InputEvent) -> bool:
+	var event_position := Vector2.INF
+	if event is InputEventMouseButton:
+		event_position = (event as InputEventMouseButton).global_position
+	elif event is InputEventScreenTouch:
+		event_position = (event as InputEventScreenTouch).position
+	if event_position == Vector2.INF:
+		return false
+	var button: BaseButton = host.button_press_runtime._button_at_global_position(host, event_position)
+	return button != null and bool(button.get_meta("allows_skill_swipe", false))
+
+
 func _input_primary_press_started_on_button(event: InputEvent) -> bool:
 	var press_started_on_button := false
 	if _is_primary_press_event(event):
@@ -789,7 +803,7 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 			if _route_action_card_press(event.global_position):
 				host.get_viewport().set_input_as_handled()
 				return true
-			if host.current_screen == "skill" and not press_started_on_button:
+			if host.current_screen == "skill" and (not press_started_on_button or _press_on_swipe_passthrough_button(event)):
 				host._skill_swipe_activity_surface()._interrupt_skill_swipe_animation_for_input()
 				if host.skills_page != null and Rect2(host.skills_page.global_position, host.skills_page.size).has_point(event.global_position):
 					host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(event.global_position, -1)
@@ -805,7 +819,7 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 			if _route_action_card_press(event.position, event.index):
 				host.get_viewport().set_input_as_handled()
 				return true
-			if host.current_screen == "skill" and not press_started_on_button:
+			if host.current_screen == "skill" and (not press_started_on_button or _press_on_swipe_passthrough_button(event)):
 				host._skill_swipe_activity_surface()._interrupt_skill_swipe_animation_for_input()
 				host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(event.position, event.index)
 		elif host._skill_swipe_activity_surface().skill_swipe_tracking and event.index == host._skill_swipe_activity_surface().skill_swipe_touch_index:
