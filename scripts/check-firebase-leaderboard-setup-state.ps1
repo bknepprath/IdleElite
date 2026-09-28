@@ -16,7 +16,7 @@ $firebaseJson = Get-Content -LiteralPath $firebaseJsonPath -Raw | ConvertFrom-Js
 Assert-True ([string]$firebaseJson.database.rules -eq "firebase-realtime-database.rules.json") "firebase.json must point at the leaderboard Realtime Database rules file."
 
 $gitignore = Get-Content -LiteralPath $gitignorePath -Raw
-Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json$') "firebase-leaderboard-config.json must stay ignored by git."
+Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json\r?$') "firebase-leaderboard-config.json must stay ignored by git."
 
 & (Join-Path $projectRoot "scripts\update-firebase-leaderboard-rules.ps1") -Check
 Write-Output "firebase-setup-state-rules-current"

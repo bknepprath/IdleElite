@@ -32,8 +32,8 @@ foreach ($requiredIgnore in @(
 )) {
     Assert-True ($gitignore.Contains($requiredIgnore)) ".gitignore is missing generated-file rule: $requiredIgnore"
 }
-Assert-True ($gitignore -notmatch '(?m)^\*\.import$') ".gitignore must not ignore every .import file; runtime import metadata can be required."
-Assert-True ($gitignore -notmatch '(?m)^\*\.uid$') ".gitignore must not ignore every .uid file; tracked Godot/addon metadata can be required."
+Assert-True ($gitignore -notmatch '(?m)^\*\.import\r?$') ".gitignore must not ignore every .import file; runtime import metadata can be required."
+Assert-True ($gitignore -notmatch '(?m)^\*\.uid\r?$') ".gitignore must not ignore every .uid file; tracked Godot/addon metadata can be required."
 foreach ($requiredDocTerm in @(
     ".import",
     ".uid",

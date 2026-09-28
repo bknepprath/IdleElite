@@ -14,19 +14,19 @@ foreach ($path in @($AabPath, $bundletool, $java, $exportPresetsPath)) {
 }
 
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
-if ($exportPresets -notmatch '(?m)^package/unique_name="([^"]+)"$') {
+if ($exportPresets -notmatch '(?m)^package/unique_name="([^"]+)"\r?$') {
     throw "Could not read the Android package name from export_presets.cfg."
 }
 $expectedPackage = $Matches[1]
-if ($exportPresets -notmatch '(?m)^version/code=(\d+)$') {
+if ($exportPresets -notmatch '(?m)^version/code=(\d+)\r?$') {
     throw "Could not read the Android version code from export_presets.cfg."
 }
 $expectedVersionCode = $Matches[1]
-if ($exportPresets -notmatch '(?m)^version/name="([^"]+)"$') {
+if ($exportPresets -notmatch '(?m)^version/name="([^"]+)"\r?$') {
     throw "Could not read the Android version name from export_presets.cfg."
 }
 $expectedVersionName = $Matches[1]
-if ($exportPresets -notmatch '(?m)^gradle_build/target_sdk="(\d+)"$') {
+if ($exportPresets -notmatch '(?m)^gradle_build/target_sdk="(\d+)"\r?$') {
     throw "Could not read the Android target SDK from export_presets.cfg."
 }
 $expectedTargetSdk = $Matches[1]

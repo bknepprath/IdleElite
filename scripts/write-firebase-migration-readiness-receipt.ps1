@@ -121,9 +121,9 @@ Assert-Condition ($webApiKey.Length -ge 20 -and $webApiKey -notmatch '\s') "fire
 Assert-Condition ($googleWebClientId -match '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') "firebase-leaderboard-config.json has an invalid google_web_client_id."
 
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
-Assert-Condition ($exportPresets -match '(?m)^version/name="([^"]+)"$') "export_presets.cfg is missing version/name."
+Assert-Condition ($exportPresets -match '(?m)^version/name="([^"]+)"\r?$') "export_presets.cfg is missing version/name."
 $versionName = $Matches[1]
-Assert-Condition ($exportPresets -match '(?m)^version/code=(\d+)$') "export_presets.cfg is missing version/code."
+Assert-Condition ($exportPresets -match '(?m)^version/code=(\d+)\r?$') "export_presets.cfg is missing version/code."
 $versionCode = [int]$Matches[1]
 
 $receipt = [ordered]@{

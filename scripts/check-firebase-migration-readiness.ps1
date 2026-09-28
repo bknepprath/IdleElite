@@ -113,9 +113,9 @@ $temporaryFirebaseConfig = Get-Content -LiteralPath $temporaryFirebaseConfigPath
 Assert-Condition ([string]$temporaryFirebaseConfig.database.rules -ceq (Split-Path -Leaf $FreezeRulesPath)) "Android release blocked: the migration freeze firebase.json does not target the freeze rules."
 Assert-Condition ($temporaryFirebaseConfig.PSObject.Properties.Count -eq 1) "Android release blocked: the migration freeze firebase.json must remain database-only."
 
-Assert-Condition ($exportPresets -match '(?m)^version/name="([^"]+)"$') "Android release blocked: version/name is missing from export_presets.cfg."
+Assert-Condition ($exportPresets -match '(?m)^version/name="([^"]+)"\r?$') "Android release blocked: version/name is missing from export_presets.cfg."
 $versionName = $Matches[1]
-Assert-Condition ($exportPresets -match '(?m)^version/code=(\d+)$') "Android release blocked: version/code is missing from export_presets.cfg."
+Assert-Condition ($exportPresets -match '(?m)^version/code=(\d+)\r?$') "Android release blocked: version/code is missing from export_presets.cfg."
 $versionCode = [int]$Matches[1]
 
 $databaseUrl = ([string]$config.database_url).Trim().TrimEnd("/").ToLowerInvariant()

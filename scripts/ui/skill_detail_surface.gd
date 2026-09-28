@@ -7545,8 +7545,16 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.pressed.connect(callback)
+	button.pressed.connect(_on_tier_banner_hit_pressed.bind(callback))
 	return button
+
+
+# The tier banner (and its open menu) is one big tap target inside the scrolling page, so a
+# drag that starts on it must scroll without toggling the menu when the finger lifts.
+func _on_tier_banner_hit_pressed(callback: Callable) -> void:
+	if _detail_actions_scroll_suppresses_child_click():
+		return
+	callback.call()
 
 
 func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, counts: Dictionary) -> void:

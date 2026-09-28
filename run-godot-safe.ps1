@@ -119,7 +119,9 @@ $previousAppData = $env:APPDATA
 # or overwrite the developer's real desktop save. Visible game runs keep the real
 # profile unless a test explicitly supplies IDLE_ELITE_TEST_USER_DATA_DIR.
 $removeHeadlessUserData = $false
-$isolatedUserDataActive = -not $visibleGame -or [bool]$env:IDLE_ELITE_TEST_USER_DATA_DIR
+# Exports never run game code, and they need the real export_templates folder under APPDATA.
+$exportRun = @($godotArgs | Where-Object { "$_" -like "--export-*" }).Count -gt 0
+$isolatedUserDataActive = (-not $visibleGame -and -not $exportRun) -or [bool]$env:IDLE_ELITE_TEST_USER_DATA_DIR
 $headlessUserDataDir = ""
 if ($isolatedUserDataActive) {
     $requestedUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
