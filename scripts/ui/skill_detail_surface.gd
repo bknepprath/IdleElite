@@ -7673,7 +7673,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	medal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal)
-	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var medal_name: Label = host._label_on_light_panel(str(goal.get("medal", "Medal")), 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal_name)
 	var progress_stack := VBoxContainer.new()
@@ -7683,7 +7683,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	progress_stack.add_theme_constant_override("separation", 7)
 	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(progress_stack)
-	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var requirement: Label = host._label_on_light_panel("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	progress_stack.add_child(requirement)

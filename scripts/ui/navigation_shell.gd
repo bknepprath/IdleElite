@@ -3963,7 +3963,7 @@ func _activity_queue_active_shelf(content_width: float) -> Control:
 	return header
 
 func _activity_queue_static_title() -> Label:
-	var title: Label = host._label("Activity Queue", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label_on_light_panel("Activity Queue", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.name = "ActivityQueueTitle"
 	title.anchor_left = 0.0
 	title.anchor_right = 1.0

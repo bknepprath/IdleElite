@@ -4431,6 +4431,17 @@ func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outl
 	title.offset_top = 14
 	title.offset_bottom = 79
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The mirror offer's title came out with offset_right rewritten to +896 (twice the card
+	# width), which pushed "Reflection mirror" off the right edge. Keep the insets pinned.
+	title.resized.connect(_restore_fishing_offer_title_insets.bind(title))
+
+
+func _restore_fishing_offer_title_insets(title: Label) -> void:
+	if title == null or not is_instance_valid(title):
+		return
+	if absf(title.offset_left - FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET) > 0.5 or absf(title.offset_right + FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET) > 0.5:
+		title.offset_left = FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
+		title.offset_right = -FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
 
 func _fishing_offer_shell(content_width: float, offer_height: float, texture: Texture2D, shade_alpha: float, clip_contents := false, fallback_color := Color.TRANSPARENT, feather_height := 60.0) -> Dictionary:
 	var root := Control.new()

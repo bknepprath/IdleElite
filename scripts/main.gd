@@ -976,6 +976,12 @@ func _load_font() -> void:
 	app_bold_font = fonts.get("bold_font", null) as Font
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
 	return ThemeStyles.label(text, font_size, color, align, app_font, app_bold_font, dark_mode_enabled, COLOR_INK, COLOR_DARK_INK, COLOR_MUTED, COLOR_DARK_MUTED, COLOR_LINE, COLOR_DARK_LINE)
+# For text on panels that stay light in dark mode: keep the given colour instead of the
+# dark-theme swap, which would turn dark ink light and leave it unreadable.
+func _label_on_light_panel(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
+	var node := _label(text, font_size, color, align)
+	node.add_theme_color_override("font_color", color)
+	return node
 func _theme_paper_color() -> Color:
 	return ThemeStyles.paper_color(dark_mode_enabled, COLOR_PAPER, COLOR_DARK_PAPER)
 func _theme_surface_color(color: Color) -> Color:

@@ -14,7 +14,8 @@ const AUTO_EXIT_SECONDS := 0.64
 const TAP_EXIT_SECONDS := 0.12
 const TAP_SWAP_SECONDS := 0.045
 const QUEUE_BADGE_SIZE := Vector2(95, 59)
-const QUEUE_BADGE_TOP_OVERHANG := 33.0
+# Most of the 59 px badge sits above the card so it doesn't cover the toast title.
+const QUEUE_BADGE_TOP_OVERHANG := 50.0
 
 var host
 var pending_offline_summary_achievements := []

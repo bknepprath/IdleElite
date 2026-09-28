@@ -153,7 +153,7 @@ func _leaderboard_page_frame(rows: Array) -> Control:
 	stack.alignment = BoxContainer.ALIGNMENT_BEGIN
 	stack.add_theme_constant_override("separation", 20)
 	margin.add_child(stack)
-	var title = host._label("Leaderboard", 80, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title = host._label_on_light_panel("Leaderboard", 80, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", host.app_bold_font)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_child(title)
@@ -329,12 +329,12 @@ func _leaderboard_player_card() -> Control:
 	status.add_theme_constant_override("separation", 4)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(status)
-	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 40, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	var status_title = host._label_on_light_panel(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 40, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_title.custom_minimum_size = Vector2(340, 0)
 	status.add_child(status_title)
 	var simple_status = LeaderboardPresentation.simple_status_message(str(leaderboard_state.status_message))
-	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), 36, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var detail = host._label_on_light_panel(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), 36, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.custom_minimum_size = Vector2(340, 0)
 	status.add_child(detail)
