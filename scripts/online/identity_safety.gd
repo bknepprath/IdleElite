@@ -1,5 +1,15 @@
 class_name OnlineIdentitySafety
 
+# Leaderboard fresh start (owner decision for the 0.6.0 leaderboard wipe).
+# Legacy leaderboard identities are wiped server-side instead of migrated, so a
+# legacy authless save, a deleted/revoked anonymous login, or a pending legacy
+# username transfer simply signs in anonymously like a new player, adopts the new
+# Firebase UID, and re-claims its display name when it is free. Nothing waits on
+# support-issued name recovery tickets. Local progress is never touched; genuine
+# save-safety gates (cross-account cloud saves, fail-closed loading, Google
+# account recovery, disabled accounts) are unaffected.
+const LEADERBOARD_FRESH_START := true
+
 
 const SECRET_SAVE_KEYS := {
 	"leaderboard_auth_refresh_token": true,
@@ -27,7 +37,8 @@ const IDENTITY_COMPARISON_KEYS := [
 	"leaderboard_name_transfer_required",
 	"leaderboard_legacy_username_recovery_required",
 	"leaderboard_legacy_name_hint_display",
-	"leaderboard_legacy_name_hint_key"
+	"leaderboard_legacy_name_hint_key",
+	"leaderboard_released_name_key"
 ]
 
 
@@ -128,6 +139,57 @@ static func deleted_uid_transition_failure_code_valid(failure_code: String) -> b
 	# USER_DISABLED is deliberately excluded. A support transfer must not become
 	# a client-side bypass for an account that an administrator disabled.
 	return failure_code.strip_edges().to_upper() == "USER_NOT_FOUND"
+
+
+static func fresh_start_anonymous_restart_failure_code(failure_code: String) -> bool:
+	# Any definitive refresh failure leaves an anonymous login unrecoverable (it has
+	# no other credential). USER_DISABLED stays blocked: an administrator disabled
+	# that account on purpose.
+	var clean := failure_code.strip_edges().to_upper()
+	return not clean.is_empty() and clean != "USER_DISABLED"
+
+
+static func fresh_start_legacy_identity_state(payload: Dictionary) -> bool:
+	# True when a saved identity's recovery/transfer state exists only because of
+	# the retired legacy leaderboard migration, so fresh-start mode may clear it.
+	if not LEADERBOARD_FRESH_START:
+		return false
+	if (
+		bool(payload.get("leaderboard_name_transfer_required", false))
+		or bool(payload.get("leaderboard_legacy_username_recovery_required", false))
+		or bool(payload.get("leaderboard_deleted_auth_transition_pending", false))
+		or not str(payload.get("leaderboard_legacy_authless_old_uid", "")).strip_edges().is_empty()
+	):
+		return true
+	var provider := str(payload.get("leaderboard_auth_provider", "")).strip_edges()
+	if provider == "google":
+		return false
+	var player_id := str(payload.get("leaderboard_player_id", "")).strip_edges()
+	var refresh_token := str(payload.get("leaderboard_auth_refresh_token", "")).strip_edges()
+	if legacy_authless_google_transition_allowed(player_id, refresh_token, str(payload.get("leaderboard_auth_bound_uid", "")), provider):
+		return true
+	var failure_code := str(payload.get("leaderboard_auth_definitive_failure_code", "")).strip_edges()
+	if not failure_code.is_empty():
+		return fresh_start_anonymous_restart_failure_code(failure_code)
+	# An anonymous Firebase UID whose refresh token was lost can never be refreshed.
+	return refresh_token.is_empty() and not player_id.is_empty()
+
+
+static func fresh_start_claimed_name_released(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	# A claimed name may be dropped only when the same UID persisted that exact
+	# key as released (fresh start found the server claim held by someone else).
+	# The marker keeps older claimed backups from outranking the released save.
+	if not LEADERBOARD_FRESH_START:
+		return false
+	var released_key := str(next_payload.get("leaderboard_released_name_key", "")).strip_edges()
+	var existing_key := str(existing_payload.get("leaderboard_name_key", "")).strip_edges()
+	var existing_player_id := str(existing_payload.get("leaderboard_player_id", "")).strip_edges()
+	return (
+		not released_key.is_empty()
+		and released_key == existing_key
+		and not existing_player_id.is_empty()
+		and existing_player_id == str(next_payload.get("leaderboard_player_id", "")).strip_edges()
+	)
 
 
 static func google_link_collision(firebase_detail: String) -> bool:
