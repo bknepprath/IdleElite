@@ -62,9 +62,15 @@ class ActivityProgressOpportunityOverlay:
 		var t := clampf(elapsed / maxf(0.001, duration), 0.0, 1.0)
 		var feedback_alpha := 1.0
 		var offset := Vector2.ZERO
-		var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
-		offset = Vector2(shake_wave * 5.5, absf(shake_wave))
-		var stroke := Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
+		var stroke: Color
+		if feedback_mode == "success":
+			# A hit flashes green and fades out; only a miss turns red and shakes.
+			stroke = Color("#35d86d")
+			feedback_alpha = 1.0 - smoothstep(0.55, 1.0, t)
+		else:
+			var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
+			offset = Vector2(shake_wave * 5.5, absf(shake_wave))
+			stroke = Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
 		var outline := Color("#15120b")
 		outline.a = 0.96 * feedback_alpha
 		stroke.a = feedback_alpha
