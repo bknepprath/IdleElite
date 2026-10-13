@@ -13,6 +13,8 @@ var last_process_monotonic_msec := -1
 var last_lifecycle_save_monotonic_msec := -1
 var last_lifecycle_save_succeeded := false
 var last_lifecycle_save_was_deferred := false
+var suspended_at_unix := -1
+var resume_repair_waiting_for_frame := false
 
 
 func _init(host_ref) -> void:
@@ -128,7 +130,8 @@ func colors_close_enough(current: Color, next: Color) -> bool:
 
 
 func set_canvas_item_visible_if_changed(item: CanvasItem, should_show: bool) -> void:
-	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and item.visible != should_show:
+	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and (item.visible != should_show or (should_show and bool(item.get_meta("desktop_closing", false)))):
+		if item is Control and host.desktop_layout.animate_modal_visibility(item, should_show): return
 		item.visible = should_show
 
 
@@ -241,14 +244,19 @@ func handle_notification(what: int) -> void:
 	elif what == host.NOTIFICATION_APPLICATION_FOCUS_OUT:
 		_save_for_app_suspend()
 	elif what == host.NOTIFICATION_APPLICATION_FOCUS_IN:
-		if _app_lifecycle_uses_focus_resume():
-			_resume_from_app_suspend()
+		if suspended_at_unix >= 0 or _app_lifecycle_uses_focus_resume():
+			call_deferred("_resume_from_app_suspend")
 		else:
 			host._crash_report_runtime().write_session_marker("running")
+			if is_instance_valid(host.audio_director):
+				host.audio_director._restart_music_after_app_resume()
+	elif what == host.NOTIFICATION_WM_MOUSE_EXIT:
+		if host.startup_initialized:
+			_cancel_interrupted_pointer()
 	elif what == host.NOTIFICATION_APPLICATION_PAUSED:
 		_save_for_app_suspend()
 	elif what == host.NOTIFICATION_APPLICATION_RESUMED:
-		_resume_from_app_suspend()
+		call_deferred("_resume_from_app_suspend")
 	elif what == host.NOTIFICATION_PREDELETE:
 		_prepare_for_shutdown()
 
@@ -338,10 +346,23 @@ func _save_for_app_suspend() -> void:
 	# Do not create audio/input children while the parent is locked for setup.
 	if not host.is_node_ready() or not host.startup_initialized or host.shutdown_cleanup_started:
 		return
-	host._clear_page_transient_input_state(true)
+	if suspended_at_unix < 0:
+		suspended_at_unix = host._unix_now()
+	host._save_runtime().suspend_saved_at_unix = suspended_at_unix
+	_cancel_interrupted_pointer()
 	if is_instance_valid(host.audio_director):
 		host.audio_director._pause_music_for_app_suspend()
+	if is_instance_valid(host.online_runtime):
+		host.online_runtime._chat_stream_disconnect(false)
 	_write_lifecycle_save_marker(_persist_for_lifecycle())
+
+
+func _cancel_interrupted_pointer() -> void:
+	host.desktop_layout.cancel_carousel()
+	host._clear_page_transient_input_state(true)
+	var swipe = host._skill_swipe_activity_surface()
+	if swipe.skill_swipe_tracking:
+		swipe._cancel_skill_swipe_feedback(false)
 
 
 func _persist_for_lifecycle() -> int:
@@ -353,6 +374,8 @@ func _persist_for_lifecycle() -> int:
 		last_lifecycle_save_was_deferred = true
 		last_lifecycle_save_succeeded = false
 		return 0
+	if suspended_at_unix >= 0 and last_lifecycle_save_succeeded:
+		return 1
 	var now_msec := Time.get_ticks_msec()
 	if last_lifecycle_save_succeeded and last_lifecycle_save_monotonic_msec >= 0 and now_msec - last_lifecycle_save_monotonic_msec <= LIFECYCLE_SAVE_DEBOUNCE_MSEC:
 		return 1
@@ -375,6 +398,13 @@ func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 	if not host.is_node_ready() or not host.startup_initialized:
 		host.app_resume_repair_pending = true
 		return
+	# Focus-in and resumed may both arrive. Only a recorded suspension or an
+	# observed process gap may earn offline time, never a foreground autosave gap.
+	if suspended_at_unix < 0 and offline_from_unix < 0:
+		var missed_seconds := process_suspension_seconds(last_process_unix_time, host._unix_now(), last_process_monotonic_msec, Time.get_ticks_msec())
+		if missed_seconds > 0:
+			offline_from_unix = host._unix_now() - missed_seconds
+	host._save_runtime().suspend_saved_at_unix = -1
 	last_process_unix_time = host._unix_now()
 	last_process_monotonic_msec = Time.get_ticks_msec()
 	last_lifecycle_save_monotonic_msec = -1
@@ -384,10 +414,14 @@ func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 	host._performance_runtime()._record_battery_governor_activity()
 	host._navigation_shell()._clear_page_switch_input_state(true)
 	if not _runtime_save_is_safe():
+		suspended_at_unix = -1
 		host._audio_director()._restart_music_after_app_resume()
 		return
 	var now: int = host._unix_now()
-	var saved_at: int = host._save_runtime().last_save_unix_time if offline_from_unix < 0 else offline_from_unix
+	var saved_at: int = now if offline_from_unix < 0 else offline_from_unix
+	if suspended_at_unix >= 0:
+		saved_at = suspended_at_unix
+	suspended_at_unix = -1
 	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(saved_at) > 0
 	if host.offline_progress_enabled:
 		host._passive_modules_runtime().apply_passive_module_production(now)
@@ -396,19 +430,30 @@ func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 		host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	if offline_progressed:
 		host._update_ui(0.0, true)
+	# Persist the consumed interval even when offline rewards are disabled.
+	if saved_at > 0 and now > saved_at:
 		host.save_game()
 	call_deferred("_repair_after_app_resume")
 	host._audio_director()._restart_music_after_app_resume()
 
 
 func _repair_after_app_resume():
-	if not host.is_inside_tree():
+	if not host.is_inside_tree() or host.shutdown_cleanup_started:
 		return
 	if not host.startup_initialized:
 		host.app_resume_repair_pending = true
 		return
 	if host._boot_warmup_runtime().active or host.boot_detail_render_in_progress or host._navigation_shell().screen_render_in_progress:
 		host.app_resume_repair_pending = true
+		if resume_repair_waiting_for_frame:
+			return
+		resume_repair_waiting_for_frame = true
+		# Deferred calls run until the queue is empty. Retrying immediately here
+		# starves the render frame we are waiting for and can crash the engine.
+		await host.get_tree().process_frame
+		resume_repair_waiting_for_frame = false
+		if not host.is_inside_tree() or host.shutdown_cleanup_started:
+			return
 		call_deferred("_repair_after_app_resume")
 		return
 	host.app_resume_repair_pending = false
@@ -417,10 +462,10 @@ func _repair_after_app_resume():
 	if host.current_screen != "home" and host.skills_content != null and host.skills_content.get_child_count() == 0:
 		await host._navigation_shell()._render_screen(false, -1, false)
 	elif host.current_screen == "skill":
-		var stack := host._detail_actions_stack() as Control
+		var stack := host._skill_detail_surface()._detail_actions_stack() as Control
 		if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 			host._skill_swipe_activity_surface()._force_skill_detail_reveal_mount_under_cover()
-			stack = host._detail_actions_stack() as Control
+			stack = host._skill_detail_surface()._detail_actions_stack() as Control
 			if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 				await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(-1, host.selected_skill_id, true, true)
 	host._navigation_shell()._update_page_visibility()
@@ -456,6 +501,7 @@ func _kill_transient_tweens_in_subtree(node: Node) -> void:
 	_kill_meta_tween(node, "hub_decor_pop_tween")
 	_kill_meta_tween(node, "mat_flyer_tween")
 	_kill_meta_tween(node, "mat_pulse_tween")
+	_kill_meta_tween(node, "fishing_net_offer_idle_tween")
 	for child in node.get_children():
 		_kill_transient_tweens_in_subtree(child)
 

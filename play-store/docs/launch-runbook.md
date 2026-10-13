@@ -4,8 +4,10 @@
 
 ## Current Build Artifacts
 
-- Play upload bundle: `builds/android/idle-elite-release-v0.5.3-code38.aab`
-- Bundletool test package: `builds/android/idle-elite-release-v0.5.3-code38.apks`
+- Stability candidate: **0.6.2 / code41**, built and artifact-verified; physical-device acceptance is pending. See `launch-readiness-2026-10-11-v0.6.2.md`.
+- Candidate build/output root: `E:\IdleElite-v0.6.2` because C: is low on space.
+- Play upload bundle: `E:\IdleElite-v0.6.2\build-source\builds\android\idle-elite-release-v0.6.2-code41.aab`.
+- Bundletool test package: `E:\IdleElite-v0.6.2\build-source\builds\android\idle-elite-release-v0.6.2-code41.apks`.
 - Debug APK used for emulator testing: `builds/android/idle-elite-debug.apk`
 - Upload keystore: `release/idle-elite-upload.keystore`
 - Local keystore details: `release/local-release-notes.md`
@@ -16,9 +18,17 @@
 
 The `release/` and `builds/` folders are ignored by Git because they contain local signing material and generated binaries.
 
-## Verified v0.5.3 Baseline
+## Current Update Workflow
 
-These statements describe the current code38 artifact. They are not evidence that a future existing-player transition release has passed.
+The October 11 stability candidate preserves the current account system and targets API 36. Use `build-android-release.ps1 -ExistingReleaseBaselineAab <code40-aab>`. The Firebase login was refreshed and the live rules/configuration check passed for code40 to code41. No Firebase rules or player records were changed. Publishing this candidate has not been requested. Complete the current readiness note's device/update/ad tests before publication.
+
+## Previous Update Status
+
+Play Console was checked October 10, 2026: production is code39 / 0.6.0 at 100%. The 0.6.1 / code40 candidate uses the existing Firebase configuration and deployed authenticated rules. Use `build-android-release.ps1 -ExistingReleaseBaselineAab <published-code39-aab>` after reviewing identity compatibility. Do not repeat the old leaderboard reset, freeze, or migration deployment. Code40 has now been submitted for a 100% public production rollout, with automatic publication after Google approval. See `launch-readiness-2026-10-10.md` for current evidence, warnings, owner authorization, and review status.
+
+## Historical Verified v0.5.3 Baseline
+
+These statements describe the historical code38 artifact. They are not evidence that code40 or a future existing-player transition release has passed.
 
 - Headless validation is pinned to the verified Godot 4.7.1 binary through `run-godot-safe.ps1` and uses isolated user data. Godot 4.5.1 is not used for this project validation.
 - Android Gradle export template is installed under `android/build`.

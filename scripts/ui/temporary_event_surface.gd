@@ -158,7 +158,8 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 	var layout_snapshot: Dictionary = host._skill_detail_surface()._capture_detail_module_layout_snapshot()
 	if not _detail_lazy_insert_animated_temporary_event_entry(stack, skill_id, event_entry, event_index, content_width, actions_width):
 		return false
-	host._skill_detail_surface()._detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan, event_id)
+	host._skill_detail_surface()._detail_lazy_reconcile_plan_slots(stack, new_plan, skill_id, content_width, actions_width)
+	host._skill_detail_surface()._detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan)
 	host._skill_detail_surface().detail_lazy_stack = stack
 	host._skill_detail_surface().detail_lazy_plan = new_plan
 	host._skill_detail_surface().detail_rendered_action_ids = new_signature

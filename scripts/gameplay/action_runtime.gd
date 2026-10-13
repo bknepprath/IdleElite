@@ -587,12 +587,17 @@ func _base_xp_reward_map(action: Dictionary, owner_skill_id := "") -> Dictionary
 	return rewards
 
 func _effective_xp_reward_amount(action: Dictionary, owner_skill_id: String, reward_skill_id: String, base_amount: int, force_plank_bonus := false) -> int:
+	return maxi(1, roundi(_unrounded_xp_reward_amount(action, owner_skill_id, reward_skill_id, base_amount, force_plank_bonus)))
+
+func _unrounded_xp_reward_amount(action: Dictionary, owner_skill_id: String, reward_skill_id: String, base_amount: int, force_plank_bonus := false) -> float:
 	var xp_bonus: float = AchievementState.global_reward_bonus(host, "xp_mult", reward_skill_id) + host._ad_bonus_runtime().xp_multiplier()
+	if reward_skill_id == "fight":
+		xp_bonus += host._hub_runtime().fighting_xp_bonus()
 	if reward_skill_id == owner_skill_id and (force_plank_bonus or host._passive_modules_runtime().plank_bonus_applies(owner_skill_id)):
 		xp_bonus += PassiveModulesRuntime.PLANK_BUILD_XP_MULT
 	if reward_skill_id == owner_skill_id and host._hub_runtime().mission_bonus_applies(owner_skill_id, action):
 		xp_bonus += host._hub_runtime().mission_xp_bonus()
-	return maxi(1, int(round(float(maxi(1, base_amount)) * (1.0 + xp_bonus))))
+	return float(maxi(1, base_amount)) * (1.0 + xp_bonus)
 
 func _action_opportunity_frame_work_needed() -> bool:
 	return (
@@ -606,6 +611,8 @@ func _action_opportunity_pattern_windows(skill_id: String, action_id: String) ->
 	return _action_opportunity_apply_speed_forgiveness(skill_id, action_id, _action_opportunity_apply_miss_expansion(_action_opportunity_raw_pattern_windows(skill_id, action_id)))
 
 func _action_opportunity_raw_pattern_windows(skill_id: String, action_id: String) -> Array[Vector2]:
+	if RecoveryModules.has_recovery(host._action_data(skill_id, action_id)) or not MasteryState.action_has_mastery(host, host._action_data(skill_id, action_id)):
+		return []
 	var medal_level: int = int(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)))
 	if medal_level < ACTION_OPPORTUNITY_MIN_MEDAL_LEVEL:
 		return []
@@ -1137,11 +1144,13 @@ func _action_cycle_seconds(skill_id: String, action: Dictionary) -> float:
 	if action_stat_value_cache.has(cache_key):
 		return float(action_stat_value_cache[cache_key])
 	var value := 0.0
-	if _fishing_net_soak_active(skill_id):
+	if FishingState.is_xp_training(action):
+		value = _effective_seconds(skill_id, action)
+	elif _fishing_net_soak_active(skill_id):
 		value = _apply_mission_time_reduction(skill_id, action, _apply_medal_time_reduction_to_seconds(skill_id, action, _fishing_net_tick_seconds(action)))
 	elif _fishing_boat_soak_active(skill_id):
 		value = _apply_mission_time_reduction(skill_id, action, _apply_medal_time_reduction_to_seconds(skill_id, action, _fishing_boat_tick_seconds(action)))
-	elif host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action):
+	elif host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action):
 		value = _apply_mission_time_reduction(skill_id, action, _apply_medal_time_reduction_to_seconds(skill_id, action, maxf(0.1, float(action.get("seconds", 1.0))) * host.fishing_runtime.tool_time_multiplier()))
 	else:
 		value = _effective_seconds(skill_id, action)
@@ -1202,7 +1211,7 @@ func _success_chance(skill_id: String, action: Dictionary) -> float:
 	if action_stat_value_cache.has(cache_key):
 		return float(action_stat_value_cache[cache_key])
 	var value := 100.0
-	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action):
+	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action):
 		value = clampf(host.fishing_runtime.attempt_success_chance(host, str(action.get("id", ""))) + AchievementState.activity_medal_accuracy_bonus(host, skill_id, action) + AchievementState.activity_tier_accuracy_bonus(host, skill_id, action), 5.0, 100.0)
 	else:
 		var base_success := float(action.get("success", 90.0))
@@ -1436,6 +1445,7 @@ func _roll_action_mat_rewards(action: Dictionary) -> Array:
 		rolled.append({"id": mat_id, "amount": maxf(0.0, amount)})
 	return rolled
 func _award_action_mat_rewards(action: Dictionary, multiplier := 1.0) -> Array:
+	preload("res://scripts/progression/wisdom_state.gd").award(host, action)
 	var awarded = []
 	for raw_roll in _roll_action_mat_rewards(action):
 		var roll = raw_roll as Dictionary
@@ -1495,7 +1505,7 @@ func _process_action(delta: float) -> void:
 		action_opportunity_cycle_elapsed = 0.0
 		host.tired_activity_zero_float_action_key = ""
 		return
-	var fishing_rework_attempt = host._fishing_rework_active_for_skill(host.running_skill_id) and not host._is_event_action(action)
+	var fishing_rework_attempt = host._fishing_rework_active_for_skill(host.running_skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action)
 	var cost = _effective_stamina(host.running_skill_id, action)
 	if not fishing_rework_attempt and not host._activity_queue_runtime().activity_queue_running and (_auto_eat_fish_after_spend_delay_due(host.running_skill_id) or not _auto_eat_fish_after_spend_delay_active(host.running_skill_id)):
 		_auto_eat_fish_for_action(host.running_skill_id, cost, host._skill_detail_surface().detail_regen_circle, false)
@@ -1556,8 +1566,9 @@ func _process_action(delta: float) -> void:
 	var old_mastery_level = MasteryState.level(host.mastery, active_key)
 	var mastery_reward = MasteryState.reward_for_action(host, host.running_skill_id, host.running_action_id, action)
 	var tiers_unlocked_before = {}
-	for tier in range(1, host.MASTERY_MAX_LEVEL + 1):
-		tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
+	if MasteryState.would_reward_level_up(host.mastery, active_key, mastery_reward, host.MASTERY_MAX_LEVEL):
+		for tier in range(old_mastery_level + 1, host.MASTERY_MAX_LEVEL + 1):
+			tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
 	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_skill_level = SkillState.host_skill_level(host, host.running_skill_id)
 	var success = _roll_action_success(host.running_skill_id, action)
@@ -1601,7 +1612,9 @@ func _process_action(delta: float) -> void:
 			return SkillState.skill_name(host.skill_defs, skill_id)
 		var recovery_text = RecoveryModules.result_text(recovery_result, recovery_skill_name, Callable(GameFormatting, "stamina_cost_detail"))
 		var berry_prep_text = host.material_runtime.berry_prep_result_text(berry_prep_result)
+		var wisdom_before := preload("res://scripts/progression/wisdom_state.gd").total(host, host.running_skill_id)
 		var awarded_mats = _award_action_mat_rewards(action, 2.0 if not berry_prep_result.is_empty() else 1.0)
+		var wisdom_awarded := preload("res://scripts/progression/wisdom_state.gd").total(host, host.running_skill_id) - wisdom_before
 		var mat_result_text = _mat_reward_result_text(awarded_mats)
 		var boss_clear_text = host._fighting_runtime().complete_boss_if_needed(action)
 		if not boss_clear_text.is_empty():
@@ -1628,7 +1641,7 @@ func _process_action(delta: float) -> void:
 		var new_global_buffs = AchievementState.new_global_medal_buff_messages(host, old_mastery_level, new_mastery_level, tiers_unlocked_before)
 		if not new_global_buffs.is_empty():
 			host.last_result += " " + " ".join(new_global_buffs)
-		host._reward_feedback_surface()._play_action_feedback(active_key, true, xp_reward, mastery_reward, xp_crit, mega_crit, xp_reward_map)
+		host._reward_feedback_surface()._play_action_feedback(active_key, true, xp_reward, mastery_reward, xp_crit, mega_crit, xp_reward_map, 0.0, wisdom_awarded)
 		host._material_collection_surface()._play_mat_collection_feedback(active_key, awarded_mats)
 		if plank_bonus_used:
 			host._passive_firepit_surface()._play_build_log_spend_feedback(active_key)
@@ -1672,7 +1685,14 @@ func _process_action(delta: float) -> void:
 			else:
 				host.last_result += " No jail time."
 	host._onboarding_runtime()._record_activity_completion_for_tips(completed_skill_id, completed_action_id)
-	host._update_ui(0.0, false)
+	if FishingState.is_xp_training(action):
+		host._activity_queue_runtime().fishing_cycle_completed()
+	if bonus_snapshot_before.is_empty() and host.current_screen == "skill" and host._skill_detail_surface().detail_lazy_mounted_this_frame:
+		# The normal frame update refreshes progress immediately and consumes this
+		# stat refresh when card construction is idle. Keep bonus ceremonies instant.
+		host._performance_runtime().request_ui_static_refresh()
+	else:
+		host._update_ui(0.0, false)
 	host._reward_feedback_surface()._emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 
 
@@ -1789,7 +1809,7 @@ func _start_action(skill_id: String, action_id: String, select_page = true, resp
 		host._audio_director()._record_music_flow_start()
 	host._skill_swipe_activity_surface()._pop_activity_button(action_key)
 	host._material_collection_surface()._sync_visible_mat_collection_for_action(skill_id, action_id, true)
-	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action):
+	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action):
 		var tool_warning = host.fishing_runtime.tool_warning_text(action_id)
 		if tool_warning.is_empty():
 			host._reward_feedback_surface()._set_result("%s started." % action["name"])
@@ -1887,7 +1907,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 		return _apply_offline_convergence_action(offline_seconds, host.running_action_id, action)
 	var skill_id = host.running_skill_id
 	var action_id = host.running_action_id
-	var mastery_action_id = host.fishing_runtime.mastery_action_id(action_id, FishingState.FISHING_TOOL_LOCATION_ACTIONS, Callable(host._fishing_ui_surface(), "_fishing_location_thumbnail_path")) if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) else action_id
+	var mastery_action_id = host.fishing_runtime.mastery_action_id(action_id, FishingState.FISHING_TOOL_LOCATION_ACTIONS, Callable(host._fishing_ui_surface(), "_fishing_location_thumbnail_path")) if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action) else action_id
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
 	var old_global_level = SkillState.global_level(host.skills)
 	var old_mastery_level = MasteryState.level(host.mastery, host._action_key(skill_id, mastery_action_id))
@@ -1899,7 +1919,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	var mastery_total = 0.0
 	var fish_total = 0.0
 	var logs_spent = 0
-	var fishing_rework_attempt = host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action)
+	var fishing_rework_attempt = host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action)
 	while remaining > 0.001:
 		var cycle_seconds = _offline_active_cycle_seconds(skill_id, action, host.action_progress, fishing_rework_attempt)
 		if (
@@ -2126,7 +2146,7 @@ func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
 
 
 func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary, defer_recalc = false) -> Dictionary:
-	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action):
+	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action) and not FishingState.is_xp_training(action):
 		return _grant_offline_fishing_action_completion(skill_id, action_id, action, defer_recalc)
 	var mastery_reward = _offline_mastery_reward(skill_id, action_id, action)
 	var success = _roll_action_success(skill_id, action)
@@ -2137,13 +2157,18 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 	var old_mastery_level = MasteryState.level(host.mastery, host._action_key(skill_id, action_id))
 	if success:
 		var plank_bonus_used = host._passive_modules_runtime().plank_bonus_applies(skill_id)
-		xp_reward = _offline_xp_reward(action, skill_id, plank_bonus_used)
-		var berry_prep_reward_map = {}
-		berry_prep_reward_map[skill_id] = xp_reward
+		var berry_prep_reward_map := _effective_xp_reward_map(action, skill_id, plank_bonus_used)
+		for reward_skill in berry_prep_reward_map.keys():
+			berry_prep_reward_map[reward_skill] = maxi(1, int(round(float(berry_prep_reward_map[reward_skill]) * OFFLINE_XP_MULT)))
 		var berry_prep_result = host.material_runtime.consume_berry_prep_bonus(skill_id, action_id, berry_prep_reward_map, Callable(host, "_action_data"), Callable(host, "_action_key"))
 		host._material_collection_surface().play_berry_prep_badge_feedback(skill_id, action_id, not berry_prep_result.is_empty(), host.material_runtime.berry_prep_matches(skill_id, action_id, Callable(host, "_action_data"), Callable(host, "_action_key")) and host.material_runtime.amount("berries") < 1.0)
-		xp_reward += maxi(0, int(berry_prep_result.get("bonus_xp", 0)))
-		host.skills[skill_id]["xp"] = int(host.skills[skill_id]["xp"]) + xp_reward
+		_award_action_mat_rewards(action, 2.0 if not berry_prep_result.is_empty() else 1.0)
+		for reward_skill in berry_prep_reward_map.keys():
+			var reward := int(berry_prep_reward_map[reward_skill])
+			host.skills[reward_skill]["xp"] = int(host.skills[reward_skill]["xp"]) + reward
+			xp_reward += reward
+			if reward_skill != skill_id:
+				SkillState.recalculate_level(host, reward_skill)
 		if mastery_reward > 0.0:
 			MasteryState.add_host_xp(host, skill_id, action_id, mastery_reward)
 			mastery_gained = mastery_reward
@@ -2226,7 +2251,7 @@ func _grant_offline_fishing_action_completion(skill_id: String, action_id: Strin
 		"logs_spent": 0
 	}
 func _offline_xp_reward(action: Dictionary, skill_id: String, force_plank_bonus = false) -> int:
-	if _fishing_net_soak_active(skill_id):
+	if _fishing_net_soak_active(skill_id) and not FishingState.is_xp_training(action):
 		return maxi(1, int(round(float(FishingState.net_xp_reward(host, action)) * OFFLINE_XP_MULT)))
 	return maxi(1, int(round(float(_effective_xp(action, skill_id, force_plank_bonus)) * OFFLINE_XP_MULT)))
 

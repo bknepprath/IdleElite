@@ -4,11 +4,10 @@ class ActivityProgressOpportunityOverlay:
 	extends Control
 
 	const WINDOW_VERTICAL_OUTSET := 11.0
-	const WINDOW_RADIUS := 9.0
-	const WINDOW_OUTLINE_GROW := 1.5
-	const WINDOW_STROKE_INSET := 2.5
-	const WINDOW_STROKE_WIDTH := 6.0
-	const WINDOW_HOLE_INSET := WINDOW_STROKE_INSET + WINDOW_STROKE_WIDTH
+	const WINDOW_INK_WIDTH := 6
+	const WINDOW_COLOR_WIDTH := 6
+	var window_ink := StyleBoxFlat.new()
+	var window_color := StyleBoxFlat.new()
 
 	var progress_rail: Control
 
@@ -83,128 +82,25 @@ class ActivityProgressOpportunityOverlay:
 			_draw_opportunity_window_strokes(rect, start, finish, outline, stroke, offset)
 
 	func _draw_opportunity_window_strokes(rect: Rect2, start: float, finish: float, outline: Color, stroke: Color, offset: Vector2) -> void:
-		var min_marker_pct := 1.0 / maxf(1.0, rect.size.x)
-		var marker_width_pct := maxf(min_marker_pct, finish - start)
-		var marker_start := start
-		var marker_finish := start + marker_width_pct
-		if marker_finish > 1.0:
-			marker_finish = 1.0
-			marker_start = maxf(0.0, marker_finish - marker_width_pct)
-		var grow_pct := WINDOW_OUTLINE_GROW / maxf(1.0, rect.size.x)
-		_draw_opportunity_window_ring(
-			rect,
-			outline,
-			marker_start - grow_pct,
-			marker_finish + grow_pct,
-			0.0,
-			marker_start,
-			marker_finish,
-			WINDOW_STROKE_INSET,
-			offset,
-			WINDOW_VERTICAL_OUTSET
-		)
-		_draw_opportunity_window_ring(
-			rect,
-			stroke,
-			marker_start,
-			marker_finish,
-			WINDOW_STROKE_INSET,
-			marker_start,
-			marker_finish,
-			WINDOW_HOLE_INSET,
-			offset,
-			WINDOW_VERTICAL_OUTSET
-		)
-
-	func _draw_opportunity_window_ring(rect: Rect2, color: Color, outer_start_pct: float, outer_finish_pct: float, outer_inset_px: float, inner_start_pct: float, inner_finish_pct: float, inner_inset_px: float, offset: Vector2, vertical_outset_px := 0.0) -> void:
-		var draw_rect := Rect2(
-			Vector2(rect.position.x, rect.position.y - maxf(0.0, vertical_outset_px)),
-			Vector2(rect.size.x, rect.size.y + maxf(0.0, vertical_outset_px) * 2.0)
-		)
-		var row_count := int(progress_rail.call("_rounded_fill_row_count", draw_rect))
-		if row_count <= 0:
-			return
-		var row_height := draw_rect.size.y / float(row_count)
-		for i in range(row_count):
-			var y := draw_rect.position.y + (float(i) + 0.5) * row_height
-			var outer_bounds := _opportunity_window_row_bounds(rect, outer_start_pct, outer_finish_pct, outer_inset_px, offset, draw_rect, y)
-			if outer_bounds.y <= outer_bounds.x:
-				continue
-			var inner_bounds := _opportunity_window_row_bounds(rect, inner_start_pct, inner_finish_pct, inner_inset_px, offset, draw_rect, y)
-			if inner_bounds.y <= inner_bounds.x:
-				draw_line(Vector2(outer_bounds.x, y), Vector2(outer_bounds.y, y), color, row_height + 1.0, false)
-				continue
-			var left_right := minf(inner_bounds.x, outer_bounds.y)
-			if left_right > outer_bounds.x:
-				draw_line(Vector2(outer_bounds.x, y), Vector2(left_right, y), color, row_height + 1.0, false)
-			var right_left := maxf(inner_bounds.y, outer_bounds.x)
-			if outer_bounds.y > right_left:
-				draw_line(Vector2(right_left, y), Vector2(outer_bounds.y, y), color, row_height + 1.0, false)
-
-	func _opportunity_window_row_bounds(rect: Rect2, start_pct: float, finish_pct: float, inset_px: float, offset: Vector2, draw_rect: Rect2, y: float) -> Vector2:
-		var start := clampf(start_pct, 0.0, 1.0)
-		var finish := clampf(finish_pct, 0.0, 1.0)
-		if finish <= start or rect.size.x <= 0.0 or rect.size.y <= 0.0:
-			return Vector2(1.0, 0.0)
-		var line_left := rect.position.x + rect.size.x * start + offset.x + inset_px
-		var line_right := rect.position.x + rect.size.x * finish + offset.x - inset_px
-		var shape_top := draw_rect.position.y + offset.y + inset_px
-		var shape_bottom := draw_rect.end.y + offset.y - inset_px
-		if line_right <= line_left or shape_bottom <= shape_top or y < shape_top or y > shape_bottom:
-			return Vector2(1.0, 0.0)
-		var inset_radius := maxf(0.0, WINDOW_RADIUS - inset_px)
-		var shape_radius := minf(inset_radius, minf(line_right - line_left, shape_bottom - shape_top) * 0.5)
-		var window_inset := 0.0
-		if shape_radius > 0.0 and y < shape_top + shape_radius:
-			var top_dy := shape_top + shape_radius - y
-			window_inset = shape_radius - sqrt(maxf(0.0, shape_radius * shape_radius - top_dy * top_dy))
-		elif shape_radius > 0.0 and y > shape_bottom - shape_radius:
-			var bottom_dy := y - (shape_bottom - shape_radius)
-			window_inset = shape_radius - sqrt(maxf(0.0, shape_radius * shape_radius - bottom_dy * bottom_dy))
-		return Vector2(line_left + window_inset, line_right - window_inset)
-
-	func _draw_opportunity_window_shape(rect: Rect2, color: Color, start_pct: float, finish_pct: float, inset_px: float, offset: Vector2, vertical_outset_px := 0.0, clip_to_track := true) -> void:
-		var start := clampf(start_pct, 0.0, 1.0)
-		var finish := clampf(finish_pct, 0.0, 1.0)
-		if finish <= start or rect.size.x <= 0.0 or rect.size.y <= 0.0:
-			return
-		var draw_rect := Rect2(
-			Vector2(rect.position.x, rect.position.y - maxf(0.0, vertical_outset_px)),
-			Vector2(rect.size.x, rect.size.y + maxf(0.0, vertical_outset_px) * 2.0)
-		)
-		var line_left := rect.position.x + rect.size.x * start + offset.x + inset_px
-		var line_right := rect.position.x + rect.size.x * finish + offset.x - inset_px
-		var shape_top := draw_rect.position.y + offset.y + inset_px
-		var shape_bottom := draw_rect.end.y + offset.y - inset_px
-		if line_right <= line_left or shape_bottom <= shape_top:
-			return
-		var inset_radius := maxf(0.0, WINDOW_RADIUS - inset_px)
-		var shape_radius := minf(inset_radius, minf(line_right - line_left, shape_bottom - shape_top) * 0.5)
-		var row_count := int(progress_rail.call("_rounded_fill_row_count", draw_rect))
-		var row_height := draw_rect.size.y / float(row_count)
-		for i in range(row_count):
-			var y := draw_rect.position.y + (float(i) + 0.5) * row_height
-			if y < shape_top or y > shape_bottom:
-				continue
-			var window_inset := 0.0
-			if shape_radius > 0.0 and y < shape_top + shape_radius:
-				var top_dy := shape_top + shape_radius - y
-				window_inset = shape_radius - sqrt(maxf(0.0, shape_radius * shape_radius - top_dy * top_dy))
-			elif shape_radius > 0.0 and y > shape_bottom - shape_radius:
-				var bottom_dy := y - (shape_bottom - shape_radius)
-				window_inset = shape_radius - sqrt(maxf(0.0, shape_radius * shape_radius - bottom_dy * bottom_dy))
-			var clip: Vector2 = progress_rail.call("_bottom_round_row_clip", rect, y) if clip_to_track else Vector2(rect.position.x, rect.end.x)
-			var row_left := maxf(clip.x, line_left + window_inset)
-			var row_right := minf(clip.y, line_right - window_inset)
-			if row_right <= row_left:
-				continue
-			draw_line(
-				Vector2(row_left, y),
-				Vector2(row_right, y),
-				color,
-				row_height + 1.0,
-				false
-			)
+		# Rounded, antialiased frames use the same six-pixel ink as the mastery bar.
+		# The timing interval remains exact: styling never changes the hit window.
+		var frame := Rect2(Vector2(rect.position.x + rect.size.x * start, rect.position.y - WINDOW_VERTICAL_OUTSET) + offset,
+			Vector2(rect.size.x * (finish - start), rect.size.y + WINDOW_VERTICAL_OUTSET * 2.0))
+		var radius := int(minf(frame.size.x, frame.size.y) * 0.5)
+		window_ink.draw_center = false
+		window_ink.border_color = outline
+		window_ink.set_border_width_all(WINDOW_INK_WIDTH * 2 + WINDOW_COLOR_WIDTH)
+		window_ink.set_corner_radius_all(radius)
+		window_ink.corner_detail = 12
+		window_ink.anti_aliasing = true
+		draw_style_box(window_ink, frame)
+		window_color.draw_center = false
+		window_color.border_color = stroke
+		window_color.set_border_width_all(WINDOW_COLOR_WIDTH)
+		window_color.set_corner_radius_all(maxi(0, radius - WINDOW_INK_WIDTH))
+		window_color.corner_detail = 12
+		window_color.anti_aliasing = true
+		draw_style_box(window_color, frame.grow(-WINDOW_INK_WIDTH))
 
 const OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 11.0
 const OPPORTUNITY_WINDOW_OVERLAY_Z := 80

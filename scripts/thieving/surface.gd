@@ -484,7 +484,7 @@ func _finish_thieving_heist_preview_fade_in(heist_id: String, root_id: int, pop_
 		card.erase("thieving_heist_reveal_original_pop_offset_bottom")
 		card.erase("preview_fade_tween")
 	activity_unlock_heist_preview_after_ceremony_id = ""
-	host._release_detail_unlock_extra_scroll_space()
+	host._skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 
 
 
@@ -1105,6 +1105,8 @@ func _thieving_heist_success_chance(heist: Dictionary) -> float:
 
 
 func _attempt_thieving_heist(heist_id: String) -> void:
+	if not pending_thieving_trophy_reward_float.is_empty():
+		return
 	host._settings_surface()._disarm_reset_data_confirmation()
 	if host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
 		return
@@ -1179,16 +1181,16 @@ func _play_pending_thieving_trophy_reward_float() -> void:
 
 func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void:
 	if not action_cards.has(action_key):
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	var card := action_cards[action_key] as Dictionary
 	var trophy := _state_object_ref(card.get("trophy")) as TextureRect
 	var anchor := _valid_control_ref(card.get("art_panel"))
 	if trophy == null or anchor == null or not anchor.is_inside_tree():
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	if trophy.texture == null:
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	var source_rect := trophy.get_global_rect()
 	if source_rect.size.x <= 1.0 or source_rect.size.y <= 1.0:
@@ -1306,7 +1308,7 @@ func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
 	if trophy_holder != null:
 		trophy_holder.queue_free()
 		host.button_press_runtime._pop_nav_button(hub_tab)
-		_fade_completed_thieving_heist_card(action_key)
+	_fade_completed_thieving_heist_card(action_key)
 
 
 
@@ -1412,6 +1414,8 @@ func _cleanup_stale_thieving_heist_cards() -> void:
 func _remove_thieving_heist_card_from_detail(action_key: String, restore_scroll: int, update_after := true) -> void:
 	if action_key.is_empty():
 		return
+	if update_after:
+		host._skill_detail_surface()._hold_skill_detail_layout_refresh(0.9)
 	if str(pending_thieving_trophy_reward_float.get("key", "")) == action_key:
 		pending_thieving_trophy_reward_float.clear()
 	var card := action_cards.get(action_key, {}) as Dictionary
@@ -1430,7 +1434,7 @@ func _remove_thieving_heist_card_from_detail(action_key: String, restore_scroll:
 		detail_actions_scroll.scroll_vertical = clamped_scroll
 	call_deferred("_clamp_detail_actions_scroll_to_content_deferred")
 	if update_after:
-		host._update_ui(0.0, true)
+		call_deferred("_refresh_skill_detail_after_thieving_heist_fade", restore_scroll)
 
 
 
@@ -1449,6 +1453,36 @@ func _refresh_skill_detail_after_thieving_heist_fade(restore_scroll: int) -> voi
 				break
 	if not action_key.is_empty():
 		_remove_thieving_heist_card_from_detail(action_key, restore_scroll, false)
+	# Reconcile explicitly: the retired heist is still in the lazy plan, which
+	# can suppress the ordinary refresh check while other rows are unmounted.
+	var reconciled := false
+	for attempt in range(30):
+		if current_screen != "skill" or selected_skill_id != "thieving":
+			return
+		if host._skill_detail_surface()._try_refresh_detail_module_order_in_place():
+			reconciled = true
+			# Reveal the new rows in place before moving the viewport to their end.
+			# Otherwise a high-level tier jump lands on still-transparent content.
+			var detail = host._skill_detail_surface()
+			for entry in detail.detail_lazy_plan.duplicate():
+				if entry.has("progression_reveal_delay"):
+					detail._ensure_detail_lazy_entry_mounted(str(entry.get("track_id", "")))
+			var reveal_until := Time.get_ticks_msec()
+			for entry in detail.detail_lazy_plan:
+				var entry_root := _valid_control_ref(entry.get("stack_host"))
+				if entry_root != null:
+					reveal_until = maxi(reveal_until, int(entry_root.get_meta("progression_reveal_until_msec", 0)))
+			var reveal_wait := maxf(0.0, float(reveal_until - Time.get_ticks_msec()) / 1000.0)
+			if reveal_wait > 0.0:
+				await get_tree().create_timer(reveal_wait).timeout
+			if current_screen != "skill" or selected_skill_id != "thieving":
+				return
+			for heist in host.thieving_state.visible_heists_for_render():
+				await host._skill_detail_surface()._scroll_to_activity_card("heist:" + str(heist.id), true, true)
+			break
+		await get_tree().process_frame
+	if not reconciled and current_screen == "skill" and selected_skill_id == "thieving":
+		await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(restore_scroll, "thieving", true, true)
 	host._update_ui(0.0, true)
 
 
@@ -1515,10 +1549,10 @@ func _discard_action_card_key(action_key: String) -> void:
 	host._skill_detail_surface()._discard_action_card_key(action_key)
 
 func _clamp_detail_actions_scroll_to_content_deferred() -> void:
-	host._clamp_detail_actions_scroll_to_content_deferred()
+	host._skill_detail_surface()._clamp_detail_actions_scroll_to_content_deferred()
 
 func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
-	host._set_detail_unlock_scroll_spacer_height(height)
+	host._skill_detail_surface()._set_detail_unlock_scroll_spacer_height(height)
 
 func _current_canvas_size() -> Vector2:
 	return host._current_canvas_size()

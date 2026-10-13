@@ -163,7 +163,8 @@
       "Each activity mastery level awards that tier medal for that activity, from Bronze through Elite Heavenly only.",
       "Mastery is presented as visual progress on the action card: medal state plus progress bar until the activity reaches max mastery.",
       "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, Demonic, Elite Bronze, Elite Sapphire, and Elite Demonic increase max stamina; Silver, Emerald, Heavenly, Elite Silver, Elite Emerald, and Elite Heavenly increase XP; Gold, Ruby, Elite Gold, and Elite Ruby increase action speed; Platinum, Diamond, Elite Platinum, and Elite Diamond increase success rate."
-    ]
+    ],
+    "fishing_mirror_offer_cost": 1000000
   },
   "event_modules": [
     {
@@ -553,11 +554,17 @@
             "reward_xp": 151,
             "par_reward_xp": 151,
             "kill_reward_share": 0.75,
-            "art_ref": "assets/content/fight/prototype/chicken-idle.png"
-            ,"population_curve": [4, 5, 6, 7, 8]
-            ,"population_cap": 8
-            ,"final_population": 12
-            ,"signature": "swarm_lunge"
+            "art_ref": "assets/content/fight/prototype/chicken-idle.png",
+            "population_curve": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "population_cap": 8,
+            "final_population": 12,
+            "signature": "swarm_lunge"
           },
           "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
@@ -601,6 +608,7 @@
           "costs": {
             "stamina": -3
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 3,
@@ -776,7 +784,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/goblins/goblins-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [2, 3, 3, 4, 5],
+            "population_curve": [
+              2,
+              3,
+              3,
+              4,
+              5
+            ],
             "population_cap": 3,
             "final_population": 5,
             "signature": "shielded_hold_ground"
@@ -821,6 +835,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -897,7 +912,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/rouses/rouses-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 2, 2, 3],
+            "population_curve": [
+              1,
+              1,
+              2,
+              2,
+              3
+            ],
             "population_cap": 2,
             "final_population": 3,
             "signature": "momentum_roll"
@@ -963,7 +984,7 @@
           "combat": {
             "enemy_id": "guys",
             "enemy_kind": "duelist",
-            "speed": 1.40,
+            "speed": 1.4,
             "health": 59,
             "spawn_rhythm": 0.275,
             "contact_damage": 6.0,
@@ -972,7 +993,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [16, 20, 24, 28, 32],
+            "population_curve": [
+              16,
+              20,
+              24,
+              28,
+              32
+            ],
             "population_cap": 24,
             "final_population": 40,
             "signature": "duelist_guard"
@@ -998,6 +1025,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -1136,7 +1164,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/werewolves/werewolves-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 2, 2, 3],
+            "population_curve": [
+              1,
+              1,
+              2,
+              2,
+              3
+            ],
             "population_cap": 2,
             "final_population": 3,
             "signature": "howl_charge"
@@ -1180,6 +1214,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -1238,7 +1273,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/cave-trolls/cave-trolls-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 2, 2],
+            "population_curve": [
+              1,
+              1,
+              1,
+              2,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "alternating_club_swing_ground_pound"
@@ -1332,7 +1373,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/giants/giants-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1.3, 1.6, 1.9, 2],
+            "population_curve": [
+              1,
+              1.3,
+              1.6,
+              1.9,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "reach_grab_flip"
@@ -1358,6 +1405,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -1469,7 +1517,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/vampires/vampires-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 2, 2],
+            "population_curve": [
+              1,
+              1,
+              1,
+              2,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "teleport_cape_bats_low_health_bite_drain"
@@ -1508,7 +1562,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/dragons/dragons-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 1, 1],
+            "population_curve": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
             "population_cap": 1,
             "final_population": 1,
             "signature": "breath_land"
@@ -1598,10 +1658,10 @@
           "unlock": 4,
           "stamina": 1,
           "seconds": 1.3,
-          "xp": 5,
+          "xp": 2,
           "success": 93.6,
           "rewards": {
-            "xp": 5
+            "xp": 2
           },
           "costs": {
             "stamina": 1
@@ -1634,7 +1694,9 @@
               "hold_seconds": 0.75
             }
           },
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "wisdom_reward": 1,
+          "wisdom_skill": "thieving"
         },
         {
           "id": "steal-a-penny",
@@ -1669,6 +1731,7 @@
           "costs": {
             "stamina": -2
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 2,
@@ -1833,6 +1896,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -1937,7 +2001,9 @@
             "Combo"
           ],
           "art": "assets/content/combo/thieving/actions/scope-out-a-heist.png",
-          "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png"
+          "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png",
+          "wisdom_required": 120,
+          "wisdom_skill": "thieving"
         },
         {
           "id": "practice-cracking-vault",
@@ -1972,6 +2038,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -2161,6 +2228,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -2277,6 +2345,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -2481,10 +2550,10 @@
           "sort_unlock": 5,
           "stamina": 1,
           "seconds": 2.04,
-          "xp": 5,
+          "xp": 2,
           "success": 96.5,
           "rewards": {
-            "xp": 5
+            "xp": 2
           },
           "costs": {
             "stamina": 1
@@ -2500,7 +2569,7 @@
             }
           ],
           "xp_rewards": {
-            "build": 5,
+            "build": 2,
             "thieving": 1
           },
           "combo_tags": [
@@ -2512,7 +2581,9 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/03-study-blueprint.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/01-early.png",
+          "wisdom_reward": 1,
+          "wisdom_skill": "build"
         },
         {
           "id": "repair-small-shack",
@@ -2530,7 +2601,14 @@
             "stamina": 2
           },
           "art": "assets/content/build/actions/04-repair-small-shack.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/01-early.png",
+          "xp_rewards": {
+            "build": 5,
+            "woodcutting": 1
+          },
+          "display_tags": [
+            "Combo"
+          ]
         },
         {
           "id": "sharpen-the-pencil",
@@ -2547,6 +2625,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -2651,7 +2730,9 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/07-frame-a-treehouse-platform.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "wisdom_required": 25,
+          "wisdom_skill": "build"
         },
         {
           "id": "pour-questionable-foundation",
@@ -2686,6 +2767,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -2776,7 +2858,9 @@
             "Combo"
           ],
           "art": "assets/content/thieving/actions/build-build-a-decoy-vault.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "wisdom_required": 60,
+          "wisdom_skill": "build"
         },
         {
           "id": "construct-fishing-pier",
@@ -2869,6 +2953,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -2949,6 +3034,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -3065,6 +3151,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -3341,6 +3428,7 @@
           "costs": {
             "stamina": -3
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 3,
@@ -3385,10 +3473,10 @@
           "unlock": 13,
           "stamina": 3,
           "seconds": 2.61,
-          "xp": 14,
+          "xp": 5,
           "success": 92.7,
           "rewards": {
-            "xp": 14
+            "xp": 5
           },
           "costs": {
             "stamina": 3
@@ -3403,7 +3491,9 @@
               "whole": true,
               "chance": 1.0
             }
-          ]
+          ],
+          "wisdom_reward": 2,
+          "wisdom_skill": "woodcutting"
         },
         {
           "id": "fell-skinny-pine",
@@ -3474,6 +3564,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -3516,6 +3607,13 @@
               "zero_chance": 0.1,
               "whole": true
             }
+          ],
+          "xp_rewards": {
+            "woodcutting": 24,
+            "fight": 5
+          },
+          "display_tags": [
+            "Combo"
           ]
         },
         {
@@ -3596,6 +3694,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -3711,6 +3810,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -3851,7 +3951,9 @@
             "Combo"
           ],
           "art": "assets/content/combo/woodcutting/actions/carve-the-guilds-trophy-oar.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "wisdom_required": 300,
+          "wisdom_skill": "woodcutting"
         },
         {
           "id": "chop-invisible-windwood",
@@ -3955,6 +4057,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -4128,6 +4231,28 @@
           "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
           "area": "beach",
           "archetype": "novice"
+        },
+        {
+          "id": "practice-pool",
+          "tier": 1,
+          "kind": "fishing_training",
+          "name": "Practice Pool",
+          "unlock": 2,
+          "stamina": 0,
+          "seconds": 3,
+          "xp": 3,
+          "success": 100,
+          "rewards": {
+            "xp": 3,
+            "fish_min": 0,
+            "fish_max": 0
+          },
+          "costs": {
+            "stamina": 0
+          },
+          "art": "assets/content/fishing/tools/tool-bamboo-rod.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
+          "area": "beach"
         },
         {
           "id": "rocks",

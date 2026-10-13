@@ -16,6 +16,8 @@
 
 ## Required Change Flow
 
+`mastery_xp_per_completion` is optional and defaults to 1. Resting activities use 10 to reduce completion requirements to approximately one tenth without changing saved mastery XP or levels. Arena activities (`combat.arena_shape = "diamond"`) do not earn mastery or count toward medal requirements.
+
 1. Edit `docs/activity-database.json`.
 2. Run `.\scripts\check-activity-database-contracts.ps1`.
 3. Run `.\scripts\audit-activity-database.ps1`.

@@ -210,7 +210,7 @@ func _fail(message: String) -> void:
 
     $startedAt = Get-Date
     # Visible runs do not relay game stdout, so success is judged by fresh PNGs.
-    & $runner --visible-game --path $projectRoot --script "res://.codex-tmp/screen-audit-script/capture_screen_audit.gd" 2>&1 | Write-Output
+    & $runner --visible-game --audio-driver Dummy --path $projectRoot --script "res://.codex-tmp/screen-audit-script/capture_screen_audit.gd" 2>&1 | Write-Output
     $expected = @($Screens.Split(",") | ForEach-Object { Join-Path $OutputDir ($_.Trim().Replace(":", "-") + ".png") })
     $missing = @($expected | Where-Object { -not (Test-Path -LiteralPath $_) -or (Get-Item -LiteralPath $_).LastWriteTime -lt $startedAt })
     Assert-True ($missing.Count -eq 0) "Screen audit did not produce: $($missing -join ', ')"

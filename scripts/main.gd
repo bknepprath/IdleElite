@@ -514,7 +514,9 @@ var trace_process_skill_filter := ""
 var action_stop_hold_circle: StopHoldCircle
 var app_resume_repair_pending := false
 var web_fishing_perf_probe_enabled := false
+var desktop_layout = preload("res://scripts/ui/desktop_layout.gd").new(self)
 func _ready() -> void:
+	desktop_layout.configure_window()
 	trace_process_slow_enabled = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
 	trace_process_threshold_us = 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
 	trace_process_skill_filter = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
@@ -569,6 +571,7 @@ func _ready() -> void:
 		_test_state_runtime().call_deferred("_run_headless_boot_smoke")
 	if web_fishing_perf_probe_enabled:
 		_fishing_ui_surface().call_deferred("_run_web_fishing_perf_probe_setup")
+	desktop_layout.call_deferred("start")
 func _finish_boot_skill_detail_extras() -> void:
 	if _skill_detail_surface().detail_actions_scroll == null or not is_instance_valid(_skill_detail_surface().detail_actions_scroll):
 		return
@@ -595,6 +598,10 @@ func _skill_swipe_loading_transition_active() -> bool:
 	)
 
 func _process(delta: float) -> void:
+	# Hidden browser tabs may still receive throttled frames. Do not move the
+	# save timestamp forward while waiting to account for the suspended interval.
+	if _app_lifecycle_runtime().suspended_at_unix >= 0:
+		return
 	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
 	var trace_process := trace_process_slow_enabled
@@ -647,6 +654,8 @@ func _process(delta: float) -> void:
 	_audio_director()._process_music_flow(delta)
 	_profile_chat_overlay_surface()._process_chat_keyboard_lift(delta)
 	_profile_chat_overlay_surface()._process_chat_enter_submit_poll()
+	# Desktop resizing and sibling columns must update even when the focused fishing page is idle.
+	desktop_layout.update(delta)
 	if not _fishing_ui_surface()._fishing_detail_scroll_frame_can_skip_ui_update():
 		_update_ui(delta)
 	_skill_swipe_activity_surface()._maybe_release_ready_skill_swipe_cover()
@@ -691,6 +700,8 @@ func _process(delta: float) -> void:
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
 func _input(event: InputEvent) -> void:
+	if desktop_layout.route_input(event):
+		return
 	_input_routing_shell().input(event)
 func _action_stop_hold() -> StopHoldCircle:
 	if action_stop_hold_circle != null and is_instance_valid(action_stop_hold_circle) and not action_stop_hold_circle.is_queued_for_deletion() and action_stop_hold_circle.is_inside_tree():
@@ -748,6 +759,8 @@ func _build_skills_page() -> void:
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
 func _skill_content_width() -> float:
+	if desktop_layout.enabled() and current_screen == "skill":
+		return desktop_layout.column_width
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
 	if skill_id.is_empty():

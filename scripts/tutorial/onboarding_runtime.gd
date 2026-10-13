@@ -271,7 +271,7 @@ func _record_activity_completion_for_tips(skill_id: String = "", action_id: Stri
 		and action_id == host.TUTORIAL_STARTER_ACTION_ID
 	)
 	if is_starter_completion:
-		save_immediately = true
+		save_immediately = not onboarding_tutorial_complete
 		onboarding_starter_action_completion_count += 1
 		if onboarding_starter_action_completion_count == 1 and not onboarding_first_module_center_released:
 			onboarding_first_module_center_release_pending = true

@@ -3087,21 +3087,24 @@ func _assert_no_tooltips_in_roots(roots: Array[Node], context: String) -> void:
 		_assert_no_tooltips_in_tree(root_node, context)
 
 
-func _assert_action_bonus_panel_filled(card: Dictionary, context: String) -> void:
-	var bonus := card.get("bonus_panel", {}) as Dictionary
+func _assert_action_information_filled(scene: Node, context: String) -> void:
+	await create_timer(0.3).timeout
+	var detail = scene.call("_skill_detail_surface")
+	var card: Dictionary = (scene.get("action_cards") as Dictionary).get(str(detail.expanded_activity_stat_key), {})
+	var bonus: Dictionary = card.get("bonus_panel", {})
 	if bonus.is_empty():
-		_record("%s did not create a bonus panel" % context)
+		_record("%s did not expand module details" % context)
 		return
-	var root := bonus.get("root", null) as Control
-	if root == null or not is_instance_valid(root) or not root.visible:
-		_record("%s bonus panel is not visible" % context)
-	for label_key in ["title", "original", "current", "bonuses"]:
-		var label := bonus.get(label_key, null) as Label
-		if label == null or not is_instance_valid(label):
-			_record("%s bonus panel is missing %s label" % [context, label_key])
-			continue
-		if label.text.strip_edges().is_empty():
-			_record("%s bonus panel left %s label empty" % [context, label_key])
+	var panel: Control = bonus.root
+	if not panel.is_visible_in_tree():
+		_record("%s details are hidden" % context)
+	for key in ["title", "original", "current", "bonuses"]:
+		if str(bonus[key].text).strip_edges().is_empty():
+			_record("%s has empty %s" % [context, key])
+	if panel.get_global_rect().end.y > (card.root as Control).get_global_rect().end.y:
+		_record("%s details overflow the module" % context)
+	detail.call("_clear_activity_stat_popup")
+	scene.call("_update_ui", 0.0, true)
 
 
 func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: String) -> void:
@@ -3138,7 +3141,8 @@ func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: Stri
 			_record("%s %s tap left an action card press stuck: %s" % [context, stat_kind, str(scene.call("_skill_detail_surface").get("action_card_press_key"))])
 			scene.call("_skill_detail_surface").set("action_card_press_key", "")
 		scene.call("_update_ui", 0.0, true)
-		_assert_action_bonus_panel_filled(card, "%s %s" % [context, stat_kind])
+		await _assert_action_information_filled(scene, "%s %s" % [context, stat_kind])
+		await process_frame
 	scene.call("_skill_swipe_activity_surface").call("_collapse_expanded_activity_modules")
 	scene.call("_update_ui", 0.0, true)
 

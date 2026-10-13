@@ -139,6 +139,9 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 		"tier": int(source.get("tier", 1)),
 		"seconds": float(source.get("seconds", 1.0)),
 		"xp": xp_value,
+		"wisdom_skill": str(source.get("wisdom_skill", owner_skill_id)),
+		"wisdom_reward": maxi(0, int(source.get("wisdom_reward", 0))),
+		"wisdom_required": maxi(0, int(source.get("wisdom_required", 0))),
 		"rewards": {"xp": xp_value},
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
@@ -156,6 +159,7 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 	var build := _build_contract_for_load(source.get("build", {}))
 	if not build.is_empty():
 		action_data["build"] = build
+	action_data["mastery_xp_per_completion"] = maxf(1.0, float(source.get("mastery_xp_per_completion", 1.0)))
 	var recovery := _recovery_contract_for_load(source.get("recovery", {}))
 	if not recovery.is_empty():
 		action_data["recovery"] = recovery

@@ -502,12 +502,16 @@ func method_should_show(host, skill_id: String, action_id: String, location_defs
 	if host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id):
 		return true
 	return action_id == global_teaser_action_id(host, skill_id, location_defs, tool_location_actions)
+static func is_xp_training(action: Dictionary) -> bool:
+	return str(action.get("kind", "")) == "fishing_training"
+
+
 func action_should_render_standalone(host, skill_id: String, action: Dictionary) -> bool:
 	if skill_id != "fishing":
 		return false
 	if action.is_empty() or host._passive_modules_runtime().is_passive_action(action):
 		return false
-	return ModuleUiRuntime.action_is_combo_module(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"))
+	return is_xp_training(action) or ModuleUiRuntime.action_is_combo_module(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"))
 func visible_standalone_actions(host, skill_id: String) -> Array:
 	var standalone_actions: Array = []
 	for raw_action in host._activity_unlock_runtime()._visible_actions_for_skill(skill_id):
@@ -1195,6 +1199,8 @@ func tool_warning_text(action_id: String) -> String:
 			return "WEAK TOOL"
 	return ""
 func yield_label(host, action: Dictionary, tool_id := "", net_haul_threshold := 10) -> String:
+	if is_xp_training(action):
+		return "0"
 	var active_tool_id := equipped_tool_id if tool_id.is_empty() else tool_id
 	var action_id := str(action.get("id", ""))
 	var direct_currency_range := direct_fish_currency_range(action)
@@ -1215,6 +1221,8 @@ func yield_label(host, action: Dictionary, tool_id := "", net_haul_threshold := 
 		return GameFormatting.compact_number(maxf(0.0, min_food), 3)
 	return GameFormatting.compact_number_range(min_food, max_food, 3)
 func yield_range(action: Dictionary, tool_id := "") -> Dictionary:
+	if is_xp_training(action):
+		return {"min": 0, "max": 0}
 	var active_tool_id := equipped_tool_id if tool_id.is_empty() else tool_id
 	var action_id := str(action.get("id", ""))
 	if has_direct_fish_currency_reward(action):
@@ -1349,6 +1357,8 @@ static func tool_food_value_for_catches(tool_id: String, action_id: String, catc
 		return 0.0
 	return food_value_for_catches(action_id, catch_count)
 func flat_xp_reward(host, action: Dictionary, skill_id: String) -> int:
+	if is_xp_training(action):
+		return host._action_runtime()._effective_xp(action, skill_id, false)
 	if tool_catches_nothing_for_action(equipped_tool_id, str(action.get("id", ""))):
 		return 0
 	if equipped_tool_id == "net":

@@ -11,7 +11,8 @@ const PROFILE_AVATAR_SHEETS := [
 	"res://assets/content/ui/profile-avatar-game-objects-spritesheet-1080p.png",
 	"res://assets/content/ui/profile-avatar-blue-guy-spritesheet-1080p.png"
 ]
-const PROFILE_AVATAR_COUNT := 20
+const ProfilePortraitCatalog = preload("res://scripts/ui/profile_portrait_catalog.gd")
+const PROFILE_AVATAR_COUNT := ProfilePortraitCatalog.COUNT
 const PROFILE_AVATAR_SHEET_CELL_COUNT := 10
 const PROFILE_AVATAR_COLUMNS := 5
 const PROFILE_AVATAR_CELL_SIZE := 256
@@ -76,6 +77,7 @@ var chat_overlay_notice: Control
 var chat_overlay_row_nodes := {}
 var chat_overlay_row_signatures := {}
 var chat_overlay_shell_ready := false
+var chat_overlay_desktop_shell := false
 var chat_profile_button: Button
 var chat_status_title_labels := []
 var chat_status_detail_labels := []
@@ -343,6 +345,9 @@ func _destroy_chat_overlay_shell() -> void:
 		child.queue_free()
 
 func _ensure_chat_overlay_shell() -> void:
+	var desktop_shell: bool = host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"
+	if chat_overlay_shell_ready and chat_overlay_desktop_shell != desktop_shell:
+		_destroy_chat_overlay_shell()
 	if chat_overlay == null or chat_overlay_body == null:
 		return
 	if (
@@ -364,8 +369,11 @@ func _ensure_chat_overlay_shell() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.set_pull_resistance_enabled(false)
 	chat_overlay_body.add_child(scroll)
+	if desktop_shell: host.desktop_layout.style_scroll(scroll)
 	var list_margin = MarginContainer.new()
 	var viewport_width = host.get_viewport_rect().size.x
+	if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+		viewport_width = host.desktop_layout.SOCIAL_WIDTH - host.desktop_layout.EDGE - 48
 	list_margin.custom_minimum_size = Vector2(viewport_width, 0)
 	list_margin.add_theme_constant_override("margin_left", 32)
 	list_margin.add_theme_constant_override("margin_right", 24)
@@ -380,6 +388,7 @@ func _ensure_chat_overlay_shell() -> void:
 	list_margin.add_child(list)
 	chat_overlay_body.add_child(_chat_expanded_composer())
 	chat_overlay_shell_ready = true
+	chat_overlay_desktop_shell = desktop_shell
 
 func _chat_overlay_row_signature(row_data: Dictionary) -> String:
 	return "%s|%s|%s|%s|%s|%s|%s" % [
@@ -415,7 +424,7 @@ func _sync_chat_overlay_rows() -> void:
 	if chat_overlay == null or not chat_overlay.visible or chat_overlay_list == null:
 		return
 	_sync_chat_overlay_notice()
-	var row_start_index = 1 if chat_overlay_notice != null and is_instance_valid(chat_overlay_notice) else 0
+	var row_start_index = 0
 	var desired_ids: Array[String] = []
 	for raw_row in host._online_runtime().chat_rows:
 		desired_ids.append(str((raw_row as Dictionary).get("message_id", "")))
@@ -444,6 +453,9 @@ func _sync_chat_overlay_rows() -> void:
 			chat_overlay_row_signatures[message_id] = signature
 		if row_widget.get_index() != target_index:
 			chat_overlay_list.move_child(row_widget, target_index)
+	# Keep failures beside the composer, including when history fills the screen.
+	if is_instance_valid(chat_overlay_notice):
+		chat_overlay_list.move_child(chat_overlay_notice, -1)
 
 func _build_chat_strip() -> void:
 	chat_strip = PanelContainer.new()
@@ -613,7 +625,7 @@ func _position_inside_chat_strip_interactive_ui(event_position: Vector2) -> bool
 func _open_chat_overlay() -> void:
 	host.button_press_runtime.play_default_button_sfx()
 	_ensure_chat_overlay()
-	if chat_overlay == null or not _chat_strip_visible_on_current_screen():
+	if chat_overlay == null or (not _chat_strip_visible_on_current_screen() and not host.desktop_layout.enabled()):
 		return
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(chat_overlay, true)
 	chat_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -631,6 +643,8 @@ func _close_chat_overlay(play_sfx := true) -> void:
 		host._online_runtime().mark_chat_opened_to_latest(true)
 	if chat_overlay != null:
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(chat_overlay, false)
+		chat_overlay.color = Color.WHITE
+		chat_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_reset_chat_keyboard_lift()
 	if chat_overlay_body != null and is_instance_valid(chat_overlay_body):
 		chat_overlay_body.offset_bottom = 0.0
@@ -641,7 +655,28 @@ func _close_chat_overlay(play_sfx := true) -> void:
 	if _chat_strip_visible_on_current_screen():
 		_update_chat_strip()
 
+func _desktop_chat_header() -> Control:
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	margin.add_child(row)
+	var title = host._label("Global Chat", 38, host.desktop_layout.panel_ink(), HORIZONTAL_ALIGNMENT_LEFT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(title)
+	var profile := _chat_profile_button()
+	host.desktop_layout.style_button(profile, true)
+	profile.add_theme_font_size_override("font_size", 36)
+	profile.custom_minimum_size.x = 270
+	row.add_child(profile)
+	return margin
+
 func _chat_expanded_header() -> Control:
+	if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+		return _desktop_chat_header()
 	var header = Control.new()
 	header.custom_minimum_size = Vector2(0, 132)
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -678,6 +713,8 @@ func _chat_expanded_notice_visible() -> bool:
 	return _chat_status_actionable() or host._online_runtime().chat_rows.is_empty()
 
 func _chat_status_actionable() -> bool:
+	if not host._online_runtime().chat_send_status_message.is_empty():
+		return true
 	return not host._online_runtime().chat_status_message.is_empty() and host._online_runtime().chat_status_message != "Chat loaded." and host._online_runtime().chat_status_message != "Global chat is live."
 
 func _chat_expanded_notice() -> Control:
@@ -699,6 +736,10 @@ func _chat_expanded_notice() -> Control:
 	detail.custom_minimum_size = Vector2(0, 36)
 	copy.add_child(detail)
 	_track_chat_status_labels(title, detail)
+	if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+		panel.add_theme_stylebox_override("panel", host.desktop_layout.panel_style(host.desktop_layout.inset_fill(), false, 24))
+		title.add_theme_color_override("font_color", host.desktop_layout.panel_ink())
+		detail.add_theme_color_override("font_color", host.desktop_layout.panel_ink().lerp(host.desktop_layout.panel_fill(), 0.22))
 	return panel
 
 func _chat_expanded_row(row_data: Dictionary) -> Control:
@@ -748,6 +789,11 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(0, 44)
 	bubble.add_child(body)
+	if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+		name_settings.font_color = host.desktop_layout.panel_ink()
+		name_settings.outline_size = 0
+		bubble.add_theme_stylebox_override("panel", host.desktop_layout.panel_style(host.desktop_layout.inset_fill(), false, 20))
+		body.add_theme_color_override("font_color", host.desktop_layout.panel_ink())
 	return row
 
 func _chat_time_text(row_data: Dictionary) -> String:
@@ -823,7 +869,12 @@ func _chat_expanded_composer() -> Control:
 	back.add_theme_stylebox_override("normal", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("hover", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("pressed", _chat_back_button_style(true, host.COLOR_INK))
-	back.pressed.connect(_close_chat_overlay)
+	back.pressed.connect(func():
+		if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+			host.desktop_layout.set_social("")
+		else:
+			_close_chat_overlay()
+	)
 	row.add_child(back)
 	chat_message_edit = LineEdit.new()
 	chat_message_edit.placeholder_text = "Send a message..."
@@ -854,6 +905,21 @@ func _chat_expanded_composer() -> Control:
 	row.add_child(chat_message_edit)
 	var send_button = _chat_send_button()
 	row.add_child(send_button)
+	if host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat":
+		var desktop = host.desktop_layout
+		back.hide()
+		bar.add_theme_stylebox_override("panel", desktop.panel_style(desktop.panel_fill(), false, 0))
+		chat_message_edit.add_theme_stylebox_override("normal", desktop.panel_style(desktop.inset_fill(), false, 20))
+		chat_message_edit.add_theme_stylebox_override("read_only", desktop.panel_style(desktop.inset_fill(), false, 20))
+		var focus = desktop.panel_style(desktop.inset_fill(), false, 20)
+		focus.set_border_width_all(2)
+		focus.border_color = desktop.panel_ink().lerp(desktop.panel_fill(), 0.5)
+		chat_message_edit.add_theme_stylebox_override("focus", focus)
+		chat_message_edit.add_theme_color_override("font_color", desktop.panel_ink())
+		chat_message_edit.add_theme_color_override("font_uneditable_color", desktop.panel_ink())
+		chat_message_edit.add_theme_color_override("font_placeholder_color", desktop.panel_ink().lerp(desktop.panel_fill(), 0.35))
+		desktop.style_button(send_button, true)
+		return stack
 	var ribbon_frame = Control.new()
 	ribbon_frame.custom_minimum_size = Vector2(0, NavigationShell.BOTTOM_NAV_HEIGHT)
 	ribbon_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -929,6 +995,12 @@ func _on_chat_shop_nav_pressed() -> void:
 
 
 func _update_chat_strip(force_visibility := false) -> void:
+	if host.desktop_layout.enabled():
+		if is_instance_valid(chat_strip): chat_strip.hide()
+		if host.desktop_layout.social_tab != "chat":
+			host._online_runtime()._chat_stream_disconnect(false)
+			host._online_runtime()._stop_chat_stream_poll_timer()
+		return
 	if chat_strip == null or not is_instance_valid(chat_strip):
 		if _chat_strip_visible_on_current_screen() or force_visibility:
 			_ensure_chat_strip()
@@ -1055,6 +1127,10 @@ func _chat_sender_label(row_data: Dictionary) -> String:
 	return name_text
 
 func _chat_status_title() -> String:
+	if not host._online_runtime().chat_send_status_message.is_empty():
+		if host._online_runtime().chat_send_in_flight or not host._online_runtime().chat_pending_send_after_auth.is_empty():
+			return "Sending..."
+		return "Message not sent"
 	if not host._online_runtime()._leaderboard_firebase_enabled():
 		return "Online chat unavailable"
 	if host._online_runtime().chat_send_in_flight:
@@ -1076,6 +1152,8 @@ func _chat_status_title() -> String:
 	return "Live chat ready"
 
 func _chat_status_detail() -> String:
+	if not host._online_runtime().chat_send_status_message.is_empty():
+		return host._online_runtime().chat_send_status_message
 	if not host._online_runtime()._leaderboard_firebase_enabled():
 		return "Online chat is not connected yet."
 	if not host._online_runtime().chat_status_message.is_empty() and host._online_runtime().chat_status_message != "Chat loaded.":
@@ -1648,7 +1726,7 @@ func _rebuild_profile_overlay() -> void:
 		grid.add_theme_constant_override("v_separation", 12)
 		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		profile_content_stack.add_child(grid)
-		for i in range(PROFILE_AVATAR_COUNT):
+		for i in ProfilePortraitCatalog.picker_order():
 			var avatar_button = _profile_avatar_picker_button(i)
 			profile_avatar_buttons.append(avatar_button)
 			grid.add_child(avatar_button)
@@ -1670,6 +1748,11 @@ func _profile_avatar_change_button() -> Button:
 	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(host.leaderboard_profile.avatar_index), Vector2(155, 155))
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.custom_minimum_size = Vector2.ZERO
+	art.offset_left = 4
+	art.offset_top = 4
+	art.offset_right = -4
+	art.offset_bottom = -4
 	button.add_child(art)
 	button.add_child(_profile_avatar_border_overlay(true))
 	return button
@@ -1690,6 +1773,11 @@ func _profile_avatar_picker_button(index: int) -> Button:
 	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(index), Vector2(125, 125))
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.custom_minimum_size = Vector2.ZERO
+	art.offset_left = 4
+	art.offset_top = 4
+	art.offset_right = -4
+	art.offset_bottom = -4
 	button.add_child(art)
 	button.add_child(_profile_avatar_border_overlay(selected))
 	return button
@@ -1702,6 +1790,10 @@ func _profile_avatar_texture(index: int) -> Texture2D:
 		var headless_fallback = host.visual_texture_cache._visual_fallback_texture()
 		profile_avatar_texture_cache[valid_index] = headless_fallback
 		return headless_fallback
+	if ProfilePortraitCatalog.TEXTURES.has(valid_index):
+		var portrait = host.visual_texture_cache._texture(ProfilePortraitCatalog.TEXTURES[valid_index])
+		profile_avatar_texture_cache[valid_index] = portrait
+		return portrait
 	var sheet_index = clampi(int(floor(float(valid_index) / float(PROFILE_AVATAR_SHEET_CELL_COUNT))), 0, PROFILE_AVATAR_SHEETS.size() - 1)
 	var source = host.visual_texture_cache._texture(str(PROFILE_AVATAR_SHEETS[sheet_index]))
 	if source == null:
@@ -1719,7 +1811,7 @@ func _profile_avatar_texture(index: int) -> Texture2D:
 	profile_avatar_texture_cache[valid_index] = atlas
 	return atlas
 
-func profile_avatar_frame(index: int, minimum_size: Vector2, selected := false) -> PanelContainer:
+func profile_avatar_frame(index: int, minimum_size: Vector2, selected := false, border_width := -1) -> PanelContainer:
 	var frame = PanelContainer.new()
 	frame.custom_minimum_size = minimum_size
 	frame.size = minimum_size
@@ -1730,8 +1822,24 @@ func profile_avatar_frame(index: int, minimum_size: Vector2, selected := false) 
 	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(index), minimum_size)
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.add_child(art)
-	frame.add_child(_profile_avatar_border_overlay(selected))
+	if border_width >= 0:
+		# Thin frames no longer cover the square texture corners. Keep the artwork
+		# inside the authored 12px corner radius without changing other avatars.
+		var inset := MarginContainer.new()
+		inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for side in ["left", "right", "top", "bottom"]:
+			inset.add_theme_constant_override("margin_" + side, 4)
+		art.custom_minimum_size = Vector2.ZERO
+		frame.add_child(inset)
+		inset.add_child(art)
+	else:
+		frame.add_child(art)
+	var border := _profile_avatar_border_overlay(selected)
+	if border_width >= 0:
+		var style := border.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		style.set_border_width_all(border_width)
+		border.add_theme_stylebox_override("panel", style)
+	frame.add_child(border)
 	return frame
 
 func _profile_avatar_border_overlay(selected := false) -> PanelContainer:
@@ -1742,7 +1850,7 @@ func _profile_avatar_border_overlay(selected := false) -> PanelContainer:
 	return overlay
 
 func _profile_avatar_has_colored_background(index: int) -> bool:
-	return LeaderboardProfile.valid_avatar_index(index, PROFILE_AVATAR_COUNT) >= PROFILE_AVATAR_SHEET_CELL_COUNT
+	return ProfilePortraitCatalog.has_colored_background(LeaderboardProfile.valid_avatar_index(index, PROFILE_AVATAR_COUNT))
 
 func _profile_status_text() -> String:
 	if host._online_runtime().leaderboard_name_transfer_required:

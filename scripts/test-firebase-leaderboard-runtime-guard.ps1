@@ -145,9 +145,9 @@ func _init() -> void:
 	online.leaderboard_submit_in_flight = true
 	online.leaderboard_auth_id_token = "live-id-token"
 	online.call("_on_leaderboard_single_score_completed", HTTPRequest.RESULT_SUCCESS, 401)
-	_expect(int(game.leaderboard_state.last_submitted_scores_by_category.get(LeaderboardState.CATEGORY_MEDALS, 0)) == 7, "A denied category should wait until the local score passes the rejected value.")
+	_expect(not game.leaderboard_state.last_submitted_scores_by_category.has(LeaderboardState.CATEGORY_MEDALS), "A denied category must remain unacknowledged so an unchanged score can retry.")
 	_expect(not online.leaderboard_submit_in_flight and online.leaderboard_submit_stage == "", "Finishing the per-category queue must release the submit slot.")
-	_expect(online.leaderboard_auth_id_token == "live-id-token", "A per-category validation denial must not clear the login token.")
+	_expect(online.leaderboard_auth_id_token.is_empty() and online.leaderboard_fresh_start_profile_confirmed_uid.is_empty(), "A denied category must recheck login and profile before retrying.")
 	online.leaderboard_single_score_queue.clear()
 	online.leaderboard_submit_in_flight = false
 	# Gameplay progress alone must not turn a fresh placeholder into a legacy account.

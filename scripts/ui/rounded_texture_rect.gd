@@ -103,6 +103,10 @@ void fragment() {
 	} else {
 		r = min(max(0.0, radius_px - inset), min(half_size.x, half_size.y));
 	}
+	// Expanded information cards keep rounded top corners and a straight divider edge.
+	if (corner_mask_mode == 2 && mask_p.y > half_size.y) {
+		r = 0.0;
+	}
 	vec2 q = abs(mask_p - half_size) - (half_size - vec2(r));
 	float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
 	float alpha = 1.0 - smoothstep(0.0, corner_mask_mode == 1 ? 1.0 : 2.0, distance);

@@ -69,10 +69,22 @@ func _draw_round_rect(rect: Rect2, color: Color, radius: float) -> void:
 	draw_circle(Vector2(rect.end.x - clamped_radius, center_y), clamped_radius, color)
 
 func _draw_partial_round_fill(rect: Rect2, fill_width: float, color: Color, _radius: float) -> void:
-	var clamped_width := clampf(fill_width, 0.0, rect.size.x)
-	if clamped_width <= 0.0 or rect.size.y <= 0.0:
-		return
-	draw_rect(Rect2(rect.position, Vector2(clamped_width, rect.size.y)), color)
+	var right := rect.position.x + clampf(fill_width, 0.0, rect.size.x)
+	var radius := minf(_radius, minf(rect.size.x, rect.size.y) * 0.5)
+	# Clip each one-pixel strip against the whole pill, not a smaller fill pill.
+	var rows := maxi(1, ceili(rect.size.y))
+	var row_height := rect.size.y / float(rows)
+	for index in range(rows):
+		var y0 := rect.position.y + index * row_height
+		var y1 := y0 + row_height
+		var edge_y := y0 if y0 < rect.get_center().y else y1
+		var dy := maxf(0.0, absf(edge_y - rect.get_center().y) - (rect.size.y * 0.5 - radius))
+		var inset := radius - sqrt(maxf(0.0, radius * radius - dy * dy))
+		var left := rect.position.x + inset
+		var end := minf(right, rect.end.x - inset)
+		if end > left:
+			draw_rect(Rect2(left, y0, end - left, row_height), color)
+
 
 func _draw_round_outline(rect: Rect2, color: Color, radius: float, width: float) -> void:
 	var half_width := width * 0.5

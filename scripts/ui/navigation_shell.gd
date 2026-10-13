@@ -647,6 +647,7 @@ func _build_ui_shell() -> void:
 
 
 func _update_page_visibility() -> void:
+	_sync_module_utility_row_visibility()
 	if host.current_screen != "menu":
 		_deactivate_skill_menu_page_cache()
 	host.home_page.visible = host.current_screen == "home"
@@ -839,6 +840,9 @@ func _ensure_nav_icon_stroke(button: Button) -> void:
 
 
 func _sync_bottom_nav_visibility() -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		return
 	if nav_bar == null or not is_instance_valid(nav_bar):
 		return
 	var controls_unlocked: bool = _intro_bottom_controls_unlocked()
@@ -1507,7 +1511,7 @@ func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity:
 		host._settings_surface()._disarm_reset_data_confirmation()
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
 		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
-	if host.current_screen != "skill":
+	if host.current_screen != "skill" and not host.desktop_layout.enabled():
 		host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
 	host.selected_skill_id = skill_id
 	host.current_screen = "skill"
@@ -1714,12 +1718,12 @@ func _capture_skill_menu_swap_refs() -> Dictionary:
 
 func _install_skill_menu_swap_refs(refs: Dictionary) -> void:
 	host.skill_cards = refs.get("skill_cards", {}) as Dictionary
-	skill_menu_total_label = refs.get("total_level_label") as Label
-	host.content_scroll = refs.get("content_scroll") as ScrollContainer
+	skill_menu_total_label = refs.get("total_level_label") as Label if is_instance_valid(refs.get("total_level_label")) else null
+	host.content_scroll = refs.get("content_scroll") as ScrollContainer if is_instance_valid(refs.get("content_scroll")) else null
 	host.action_cards = refs.get("action_cards", {}) as Dictionary
 	host.action_card_keys = refs.get("action_card_keys", []) as Array
 	skill_menu_active_drawers = refs.get("active_drawers", {}) as Dictionary
-	host._skill_detail_surface().detail_shelf_shadow_overlay = refs.get("shadow_overlay") as Control
+	host._skill_detail_surface().detail_shelf_shadow_overlay = refs.get("shadow_overlay") as Control if is_instance_valid(refs.get("shadow_overlay")) else null
 	host._skill_detail_surface().detail_shelf_shadow_alpha = float(refs.get("shadow_alpha", 0.0))
 
 
@@ -1897,6 +1901,10 @@ func _detail_render_signature_current(skill_id: String) -> bool:
 
 
 func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1, boot_async := false):
+	# Change shell visibility before any page construction yields or defers work.
+	_sync_module_utility_row_visibility()
+	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
+		host._fishing_ui_surface()._clear_fishing_tool_circle_menu()
 	if host.current_screen != "menu":
 		_deactivate_skill_menu_page_cache()
 	elif host.skills_content == skill_menu_cache_overlay and not skill_menu_return_state.is_empty():
@@ -1929,7 +1937,7 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		_finish_screen_render_request()
 		return
 	var target_key: String = requested_key
-	if host.current_screen == "skill" and _try_reveal_current_skill_page(target_key, scroll_latest_activity):
+	if host.current_screen == "skill" and not host.desktop_layout.enabled() and _try_reveal_current_skill_page(target_key, scroll_latest_activity):
 		_finish_screen_render_request()
 		return
 	host.visual_texture_cache.begin_runtime_scope()
@@ -1954,7 +1962,10 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	if host.current_screen == "skill":
 		if staged_direct_render:
 			swipe_surface.skill_swipe_defer_initial_lazy_mount = true
-		await host._skill_detail_surface()._render_skill_detail(scroll_latest_activity, restore_detail_scroll, boot_async)
+		if host.desktop_layout.enabled():
+			await host.desktop_layout.render_skills()
+		else:
+			await host._skill_detail_surface()._render_skill_detail(scroll_latest_activity, restore_detail_scroll, boot_async)
 	elif host.current_screen == "pinned":
 		_render_pinned_activities_page()
 	elif host.current_screen == "queue":
@@ -2028,6 +2039,10 @@ func _finish_render_screen_transition(target_key: String) -> void:
 
 
 func _apply_skills_content_layout_for_screen() -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		host.skills_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
 	host.skills_content.offset_left = 0.0
 	host.skills_content.offset_right = 0.0
 	host.skills_content.offset_bottom = 0.0
@@ -2042,6 +2057,7 @@ func _apply_skills_content_layout_for_screen() -> void:
 
 
 func _prepare_skills_page_transition(target_key: String) -> void:
+	host.desktop_layout.before_clear()
 	host._skill_detail_surface()._cancel_boot_detail_completion()
 	var leaving_skill: bool = not target_key.begins_with("skill:")
 	if leaving_skill:
@@ -2362,6 +2378,8 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 
 
 func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	if host.desktop_layout.enabled():
+		return
 	if host._onboarding_runtime().tutorial_active:
 		_remove_page_switch_modules(stack)
 		return
@@ -3211,7 +3229,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		button.add_theme_stylebox_override("hover", _skill_menu_band_style(card_fill))
 		button.add_theme_stylebox_override("pressed", _skill_menu_band_style(card_fill.darkened(0.08), true))
 		host.button_press_runtime.attach_button_depress_animation(button, 0.982)
-		button.pressed.connect(_select_skill.bind(skill_id))
+		button.pressed.connect(_on_skill_menu_card_pressed.bind(skill_id))
 		card_slot.add_child(button)
 		
 		var margin := MarginContainer.new()
@@ -3285,6 +3303,11 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		bottom_spacer.custom_minimum_size = Vector2(0, bottom_pad)
 		stack.add_child(bottom_spacer)
 
+
+func _on_skill_menu_card_pressed(skill_id: String) -> void:
+	if is_instance_valid(host.content_scroll) and host.content_scroll.has_method("is_child_click_suppressed") and host.content_scroll.is_child_click_suppressed():
+		return
+	_select_skill(skill_id)
 
 func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Control:
 	if host._fishing_rework_active_for_skill(skill_id):
@@ -5011,6 +5034,9 @@ func _apply_module_ui_sort_preference_change() -> void:
 		_render_screen()
 
 func _sync_module_utility_row_visibility(animate_buttons := false) -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		return
 	if module_utility_row == null or not is_instance_valid(module_utility_row):
 		return
 	_layout_module_utility_row()

@@ -22,6 +22,7 @@ This project uses Godot and the machine can overheat if too many instances run a
 
 - Phone-visible text must be readable in a 1080px-wide portrait screenshot without zooming: body text at least 48px, help/status body text at least 52px, and titles at least 60px. If it does not fit, enlarge the container or shorten the copy; check wrapping and overlap in the rendered screenshot.
 - Exception (owner request, 2026-09-27): the open chat overlay deliberately uses 30-40px text (`CHAT_*_FONT_SIZE` in `profile_chat_overlay_surface.gd`) to sit close to the 32px chat strip. Do not raise it back to 48px.
+- Exception (owner request, 2026-10-07): module-expanded stat, medal, berry, and fishing-tool help uses compact 32–38px text. Keep it in the expanded module/tool selector, without full-screen help panels or bottom Close buttons.
 - Verify layout changes with `.\scripts\capture-screen-audit.ps1`, which captures every main screen at 1080x1920 from a sandboxed copy of the desktop save.
 
 ## Android Rendering Safety
@@ -57,3 +58,9 @@ This project uses Godot and the machine can overheat if too many instances run a
 ## Audio Safety
 
 - Start new SFX below the regular UI cue volume, avoid stacking loud reward sounds, and validate the combined result in-game rather than only in solo playback.
+
+## Desktop iteration and release packaging
+
+- Brian rejected the initial v0.7.0 desktop UI on October 11, 2026. Continue development in the production game; do not export or package release candidates unless he explicitly asks for them.
+- Desktop navigation should use the mobile game's icon ribbon at the bottom. Avoid a top row of text navigation and duplicate boxed skill selectors.
+- Skill-header colors must blend continuously between columns without visible rectangular gradient edges. Extra space belongs to gameplay; left detail panels and optional right chat are under active design review.

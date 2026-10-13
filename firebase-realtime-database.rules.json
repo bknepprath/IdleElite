@@ -21,7 +21,7 @@
               ".validate": "newData.isString() && newData.val() == $nameKey && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
             },
             "avatar_index": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
             },
             "created_at": {
               ".validate": "newData.isNumber() && ((!data.exists() && newData.val() >= now - 300000 && newData.val() <= now + 60000) || (data.exists() && newData.val() >= data.val()))"
@@ -52,7 +52,7 @@
               ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
             },
             "avatar_index": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
             },
             "profile_claimed": {
               ".validate": "newData.isBoolean() && newData.val() == true"
@@ -118,10 +118,10 @@
                 ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
               },
               "avatar_index": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
               },
               "score": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($category != 'total_level' || newData.val() <= 495) && (!data.exists() || newData.val() >= data.val())"
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($category != 'total_level' || newData.val() <= 495) && (!data.exists() || newData.val() >= data.val() || ($category == 'total_level' && data.isNumber() && data.val() > 495 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.val()))"
               },
               "skill_level": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
@@ -277,7 +277,7 @@
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
             },
             "avatar_index": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
             },
             "text": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"

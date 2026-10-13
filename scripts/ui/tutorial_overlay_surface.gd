@@ -140,6 +140,9 @@ func build() -> void:
 
 
 func _route_tutorial_panel_input(event: InputEvent) -> bool:
+	# Chat sits above the tutorial; its composer and Back button own these clicks.
+	if host._profile_chat_overlay_surface().chat_overlay_visible():
+		return false
 	if blocking_tip_pointer_capture_active and not blocking_tip_active:
 		_clear_blocking_tip_pointer_capture()
 	if not host._onboarding_runtime().tutorial_active and not blocking_tip_active:
@@ -671,6 +674,7 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_to_group(group_name)
+	root.set_meta("tip_skill_id", host.selected_skill_id)
 	root.visible = false
 	if not bool(host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active):
 		call_deferred("_show_blocking_tip_for_note", root, text, group_name, target)
@@ -681,6 +685,10 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 # the page the player is looking at may raise the blocking tip; otherwise an off-screen
 # page's tip swallowed input (including the release of a swipe) and floated over other screens.
 func _show_blocking_tip_for_note(note: Control, text: String, group_name: String, target: Control = null) -> void:
+	var seen_property := group_name.trim_suffix("_notes") + "_seen"
+	if group_name in ["activity_start_tip_notes", "lock_click_tip_notes", "silver_opportunity_tip_notes", "passive_module_tip_notes"]:
+		if bool(host._onboarding_runtime().get(seen_property)):
+			return
 	if note == null or not is_instance_valid(note) or not note.is_inside_tree():
 		return
 	if host.current_screen != "skill":
@@ -690,6 +698,8 @@ func _show_blocking_tip_for_note(note: Control, text: String, group_name: String
 		if node is Control and (node as Control).has_meta("adjacent_skill_page"):
 			return
 		node = node.get_parent()
+	if host.desktop_layout.enabled() and str(note.get_meta("tip_skill_id", "")) != host.selected_skill_id:
+		return
 	show_blocking_tip(text, group_name, target)
 
 

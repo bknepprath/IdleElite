@@ -466,6 +466,8 @@ func _action_matches_pending_unlock_preview(action_id: String) -> bool:
 	var entry := pending_readiness_for_skill(host.selected_skill_id)
 	return not entry.is_empty() and str(entry.get("preview", "")) == action_id
 func _is_action_unlocked(skill_id: String, action: Dictionary) -> bool:
+	if not preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, action):
+		return false
 	if host._is_event_action(action):
 		var event_action_id := str(action.get("id", ""))
 		return not event_action_id.is_empty() and host._temporary_event_runtime()._temporary_event_is_active(event_action_id)
@@ -534,6 +536,8 @@ func _preview_after_manual_activity_unlock(skill_id: String, unlocked_action_id:
 
 
 func _action_blocks_owner_skill_progression(skill_id: String, action: Dictionary) -> bool:
+	if int(action.get("wisdom_required", 0)) > 0:
+		return false
 	if action.is_empty():
 		return false
 	if ModuleUiRuntime.action_is_combo_module(skill_id, action, Callable(self, "_action_unlock_requirements")):
@@ -687,7 +691,7 @@ func _action_lock_cluster_state(owner_skill_id: String, action: Dictionary) -> D
 		"max_level": _action_requirements_max_level(states)
 	}
 func _can_unlock_action(skill_id: String, action: Dictionary) -> bool:
-	return _action_requirements_met(skill_id, action) and host._fighting_runtime().action_boss_requirements_met(action)
+	return _action_requirements_met(skill_id, action) and host._fighting_runtime().action_boss_requirements_met(action) and preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, action)
 func sync_manual_activity_unlocks_from_levels() -> void:
 	_sync_manual_activity_unlocks_from_levels_matching(false)
 func sync_legacy_manual_activity_unlocks_from_levels() -> void:
@@ -727,6 +731,8 @@ func _queue_manual_activity_unlock_for_ceremony(card: Dictionary, skill_id: Stri
 	card["manual_unlock_pending_action_id"] = action_id
 func _finalize_manual_activity_unlock(skill_id: String, action_id: String, save_reason := "activity unlock") -> bool:
 	if skill_id.is_empty() or action_id.is_empty() or host._action_data(skill_id, action_id).is_empty():
+		return false
+	if not preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, host._action_data(skill_id, action_id)):
 		return false
 	_mark_action_manually_unlocked(skill_id, action_id)
 	if host.current_screen == "skill" and host._fishing_rework_active_for_skill(skill_id) and host.selected_skill_id == skill_id:

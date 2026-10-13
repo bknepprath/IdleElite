@@ -99,7 +99,7 @@ function Test-IsInfoIconFontOverride {
 
     $overrideMatch = [regex]::Match(
         $Lines[$LineIndex],
-        '^\s*(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\.add_theme_font_size_override\(\s*"font_size"\s*,\s*29\s*\)\s*$'
+        '^\s*(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\.add_theme_font_size_override\(\s*"font_size"\s*,\s*(?:29|30|42)\s*\)\s*$'
     )
     if (-not $overrideMatch.Success) {
         return $false
@@ -139,6 +139,14 @@ $bodyTextFixture = @(
 )
 Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the reviewed info-icon glyph override."
 Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The mobile font contract must not exempt sub-48 button text."
+$infoIconFixture[3] = '    button.add_theme_font_size_override("font_size", 30)'
+$bodyTextFixture[3] = '    button.add_theme_font_size_override("font_size", 30)'
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the fishing tool info glyph."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The info-glyph exception must not exempt 30px body text."
+$infoIconFixture[3] = '    button.add_theme_font_size_override("font_size", 42)'
+$bodyTextFixture[3] = '    button.add_theme_font_size_override("font_size", 42)'
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the enlarged fishing tool info glyph."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The info-glyph exception must not exempt 42px body text."
 
 $explicitSmallFontHits = @()
 foreach ($script in $productionScripts) {
@@ -176,8 +184,8 @@ Assert-True $cutoverState "Project viewport and BASE_CANVAS must remain 1080 x 1
 	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_EMBOLDEN := 1\.2\r?$') "Fishing area names must retain their audited bold weight."
 	Assert-True ($fishingSurface -notmatch 'variation_transform') "Fishing area names must not use a distorting affine font transform."
 	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_WIDTH := 260\.0\r?$') "Fishing area names must retain their audited single-line width."
-    Assert-True ($skillDetailSurface -match '"original": _format_xp_reward_parts\(base_parts\)') "XP stat details must use compact skill codes at native 1080 width."
-    Assert-True ($skillDetailSurface -match 'bonus_column\.custom_minimum_size = Vector2\(200, 0\)') "Activity stat Boosts text must retain enough width to avoid single-character wrapping."
+    Assert-True ($skillDetailSurface -match '"original": _format_xp_reward_parts\(base_parts, true\)' -and $skillDetailSurface -match '"current": _format_xp_reward_parts\(current_parts, true\)') "Expanded XP help must use the owner-approved full skill names."
+    Assert-True ($skillDetailSurface -match 'bonuses\.autowrap_mode = TextServer\.AUTOWRAP_WORD_SMART' -and $skillDetailSurface -match 'bonuses\.size_flags_horizontal = Control\.SIZE_EXPAND_FILL') "Expanded bonus text must wrap across the module width."
 	Assert-True ($skillDetailSurface -match '(?m)^const ACTIVITY_STAT_VALUE_FONT_WIDTH_AXIS := 75\r?$') "Activity stat values must use the font's real width axis instead of an affine stretch."
 	Assert-True ($skillDetailSurface -notmatch 'ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE') "Activity stat values must not restore the distorting affine width scale."
 	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_FONT_SIZE := 41\r?$') "Activity titles must retain the exact half-scale equivalent of the 82px 4K reference."
@@ -200,7 +208,7 @@ Assert-True $cutoverState "Project viewport and BASE_CANVAS must remain 1080 x 1
 	Assert-True ($skillDetailSurface -match 'host\._label\(main_text, 48, Color\.WHITE') "Tier reward values must retain the visually reviewed typography."
 	Assert-True ($skillDetailSurface -match 'host\._label\(detail_text, 36, Color\.WHITE') "Tier reward details must retain the visually reviewed typography."
 	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MODAL_WIDTH := 960\.0\r?$') "Welcome Back modal width must fit its readable text."
-	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_BASE_HEIGHT := 900\.0\r?$') "Welcome Back modal must size compactly from its visible content."
+	Assert-True ($achievementSurface -match 'panel.minimum_size_changed.connect\(_queue_offline_summary_fit\)' -and $achievementSurface -notmatch 'OFFLINE_SUMMARY_BASE_HEIGHT') "Welcome Back modal must size compactly from its visible content."
 	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MAX_HIGHLIGHTS := 4\r?$') "Welcome Back must cap secondary information instead of creating an unbounded list."
 	Assert-True ($achievementSurface -match 'host\._label\("Away for %s"[^\r\n]+, 52, host\.COLOR_MUTED') "Welcome Back subtitle must retain the visually reviewed typography."
 	Assert-True ($achievementSurface -match 'host\._label\(str\(highlight\.get\("title", ""\)\), 48, host\.COLOR_INK') "Welcome Back progress-row titles must retain the visually reviewed typography."

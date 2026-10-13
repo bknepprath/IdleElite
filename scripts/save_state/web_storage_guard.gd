@@ -17,9 +17,11 @@ static var writes_disabled := false
 var save_owner := true
 var _on_hidden: Callable
 var _on_owner_lost: Callable
+var _on_visible: Callable
 var _on_import_text: Callable
 # JavaScript callbacks must stay referenced or the browser side loses them.
 var _hidden_callback
+var _visible_callback
 var _owner_lost_callback
 var _import_callback
 
@@ -28,17 +30,20 @@ static func is_web() -> bool:
 	return OS.has_feature("web")
 
 
-func setup(on_hidden: Callable, on_owner_lost: Callable) -> void:
+func setup(on_hidden: Callable, on_owner_lost: Callable, on_visible: Callable = Callable()) -> void:
 	if not is_web():
 		return
 	_on_hidden = on_hidden
 	_on_owner_lost = on_owner_lost
+	_on_visible = on_visible
 	if not OS.is_userfs_persistent():
 		show_banner(NOT_PERSISTENT_MESSAGE)
 	_hidden_callback = JavaScriptBridge.create_callback(_js_page_hidden)
+	_visible_callback = JavaScriptBridge.create_callback(_js_page_visible)
 	_owner_lost_callback = JavaScriptBridge.create_callback(_js_owner_lost)
 	var window = JavaScriptBridge.get_interface("window")
 	window.__idleEliteOnHidden = _hidden_callback
+	window.__idleEliteOnVisible = _visible_callback
 	window.__idleEliteOnOwnerLost = _owner_lost_callback
 	JavaScriptBridge.eval("""
 		(function () {
@@ -46,6 +51,10 @@ func setup(on_hidden: Callable, on_owner_lost: Callable) -> void:
 			var notifyHidden = function () { if (window.__idleEliteOnHidden) { window.__idleEliteOnHidden(); } };
 			document.addEventListener('visibilitychange', function () {
 				if (document.visibilityState === 'hidden') { notifyHidden(); }
+				else if (window.__idleEliteOnVisible) { window.__idleEliteOnVisible(); }
+			});
+			window.addEventListener('pageshow', function () {
+				if (document.visibilityState !== 'hidden' && window.__idleEliteOnVisible) { window.__idleEliteOnVisible(); }
 			});
 			window.addEventListener('pagehide', notifyHidden);
 			if (typeof BroadcastChannel === 'undefined') { return; }
@@ -113,6 +122,11 @@ func request_import(on_import_text: Callable) -> void:
 func _js_page_hidden(_args: Array) -> void:
 	if save_owner and _on_hidden.is_valid():
 		_on_hidden.call()
+
+
+func _js_page_visible(_args: Array) -> void:
+	if save_owner and _on_visible.is_valid():
+		_on_visible.call()
 
 
 func _js_owner_lost(_args: Array) -> void:

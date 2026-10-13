@@ -243,7 +243,70 @@ static func event_is_outside_panel_press(event: InputEvent, panel: Control) -> b
 	return false
 
 
+var feedback_help_button: Button
+var feedback_help_press_position := Vector2.ZERO
+
+func _feedback_help_owns_pointer(event: InputEvent) -> bool:
+	if host.current_screen != "skill" or host._onboarding_runtime().tutorial_active:
+		feedback_help_button = null
+		return false
+	var point := Vector2.INF
+	var down := false
+	var up := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		point = event.global_position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventScreenTouch:
+		point = event.position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
+		point = event.position
+	if is_instance_valid(feedback_help_button):
+		var button := feedback_help_button
+		if point != Vector2.INF and point.distance_to(feedback_help_press_position) > 24.0:
+			feedback_help_button = null
+		elif up:
+			feedback_help_button = null
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				button.pressed.emit()
+		host.get_viewport().set_input_as_handled()
+		return true
+	if down:
+		for button in host.get_tree().get_nodes_in_group("feedback_help_buttons"):
+			if (button.name in ["MedalInformationButton", "WisdomInformationButton", "WisdomRewardInformation"] or button.has_meta("wisdom_source")) and not _position_inside_detail_actions_viewport(point):
+				continue
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				feedback_help_button = button
+				feedback_help_press_position = point
+				host.get_viewport().set_input_as_handled()
+				return true
+	return false
+
 func input(event: InputEvent) -> void:
+	# The welcome panel owns the pointer before activity chips or gestures can
+	# intercept a click through it. Its buttons receive normal GUI events.
+	if host._achievement_overlay_surface().offline_summary_visible():
+		if _route_system_back_input(event):
+			host.get_viewport().set_input_as_handled()
+		return
+	var fishing = host._fishing_ui_surface()
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		var pressed: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed)
+		if pressed and not fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+			var circle = host._skill_detail_surface().detail_fish_circle
+			if not is_instance_valid(circle) or not circle.get_global_rect().has_point(event.position):
+				fishing._clear_fishing_tool_circle_menu()
+				host.get_viewport().set_input_as_handled()
+				return
+	if _feedback_help_owns_pointer(event):
+		return
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		if event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag:
+			if fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+				# Keep wallet events in its GUI tree, away from activity and swipe routing.
+				return
 	# Let Godot's GUI handle synthesized pointer events. Custom gesture routing
 	# must not treat the emulated copy as another player gesture.
 	if event.device == InputEvent.DEVICE_ID_EMULATION and _fishing_detail_input_context_active():
@@ -873,7 +936,7 @@ func _handle_system_back_request() -> void:
 	if host._onboarding_runtime().tutorial_active:
 		host._onboarding_runtime()._complete_tutorial_target_intro()
 		return
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		host._profile_chat_overlay_surface()._close_chat_overlay()
 		return
 	if host._achievement_overlay_surface().offline_summary_visible():
@@ -899,7 +962,7 @@ func _handle_system_back_request() -> void:
 
 
 func _any_modal_overlay_visible() -> bool:
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		return true
 	if host.settings_overlay != null and host.settings_overlay.visible:
 		return true

@@ -150,6 +150,10 @@ func _skill_detail_has_fishing_camera_returning() -> bool:
 			return true
 	return false
 
+func request_ui_static_refresh() -> void:
+	ui_static_refresh_elapsed = maxf(ui_static_refresh_elapsed, host.UI_STATIC_REFRESH_INTERVAL_SECONDS)
+
+
 func _consume_ui_static_refresh(delta: float, instant: bool) -> bool:
 	if instant or delta <= 0.0:
 		ui_static_refresh_elapsed = 0.0

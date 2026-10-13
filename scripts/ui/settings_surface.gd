@@ -439,8 +439,8 @@ func _toggle_offline_progress_enabled() -> void:
 	host.offline_progress_enabled = not host.offline_progress_enabled
 	var now: int = host._unix_now()
 	host._save_runtime().last_save_unix_time = now
-	if not host.offline_progress_enabled:
-		host._passive_modules_runtime().reset_passive_module_timestamps(now)
+	# Changing the option starts a new accounting interval in either direction.
+	host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	_refresh_offline_progress_controls()
 	host.save_game()
 
@@ -1096,6 +1096,8 @@ func _disarm_reset_data_confirmation() -> void:
 	reset_data_confirm_armed_at = 0.0
 	reset_data_confirm_button = null
 	for raw_button in reset_data_buttons:
+		if not is_instance_valid(raw_button):
+			continue
 		_clear_reset_button_confirmation(raw_button as Button)
 	_refresh_reset_data_buttons()
 

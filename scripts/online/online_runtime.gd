@@ -38,6 +38,9 @@ const DISABLE_ONLINE_REQUESTS_ENV := "IDLE_ELITE_DISABLE_ONLINE_REQUESTS"
 const LEADERBOARD_HTTP_HEADER_JSON := "Content-Type: application/json"
 const LEADERBOARD_HTTP_HEADER_ACCEPT_JSON := "Accept: application/json"
 const LEADERBOARD_HTTP_HEADER_FORM := "Content-Type: application/x-www-form-urlencoded"
+const CHAT_STREAM_CONNECT_TIMEOUT_MSEC := 15000
+const CHAT_STREAM_IDLE_TIMEOUT_MSEC := 90000
+const CHAT_STREAM_MAX_REDIRECTS := 5
 
 signal cloud_save_loaded(payload)
 signal cloud_save_status_changed()
@@ -90,6 +93,10 @@ var cloud_save_remote_write_blocked := false
 var chat_stream_connected := false
 var chat_stream_connecting := false
 var chat_stream_request_sent := false
+var chat_stream_response_checked := false
+var chat_stream_redirect_count := 0
+var chat_stream_last_activity_msec := 0
+var chat_stream_pending_bytes := PackedByteArray()
 var chat_fetch_in_flight := false
 var chat_stream_retry_unix := 0
 var chat_stream_next_connect_unix := 0
@@ -101,6 +108,9 @@ var leaderboard_auth_in_flight := false
 var leaderboard_auth_mode := ""
 var leaderboard_single_score_queue: Array = []
 var leaderboard_single_score_published := 0
+var leaderboard_single_score_failed := false
+var leaderboard_single_score_needs_profile_check := false
+var leaderboard_refresh_after_submit := ""
 var leaderboard_auth_id_token := ""
 var leaderboard_auth_refresh_token := ""
 var leaderboard_auth_expires_unix := 0
@@ -161,6 +171,7 @@ var chat_rows := []
 var chat_last_send_unix := 0
 var chat_status_message := ""
 var chat_pending_send_after_auth := ""
+var chat_send_status_message := ""
 var chat_pending_send_message_id := ""
 var chat_pending_send_text := ""
 var chat_pending_send_payload := {}
@@ -222,6 +233,7 @@ func reset_chat_runtime_state() -> void:
 	chat_status_message = ""
 	chat_send_stage = ""
 	chat_pending_send_after_auth = ""
+	chat_send_status_message = ""
 	chat_pending_send_message_id = ""
 	chat_pending_send_text = ""
 	chat_pending_send_payload.clear()
@@ -263,7 +275,12 @@ func reset_leaderboard_runtime_state() -> void:
 	leaderboard_submit_in_flight = false
 	leaderboard_submit_stage = ""
 	leaderboard_name_claim_in_flight = false
+	leaderboard_single_score_queue.clear()
+	leaderboard_single_score_published = 0
+	leaderboard_single_score_failed = false
+	leaderboard_single_score_needs_profile_check = false
 	leaderboard_name_claim_pending_name = ""
+	leaderboard_refresh_after_submit = ""
 	leaderboard_name_claim_pending_key = ""
 	leaderboard_name_claim_request_started = false
 	leaderboard_name_recovery_in_flight = false
@@ -679,6 +696,7 @@ func _set_auth_recovery_required(reason: String, definitive_failure_code := "") 
 	_record_auth_diagnostic("recovery_required", leaderboard_auth_recovery_reason)
 	_save_identity_state("online identity recovery required")
 	app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+	app.leaderboard_presentation.update_sync_status()
 
 
 func clear_chat_clock_guard_metadata() -> void:
@@ -771,6 +789,12 @@ func _build_leaderboard_http() -> void:
 	chat_stream_poll_timer.autostart = false
 	chat_stream_poll_timer.timeout.connect(_process_chat_live_sync.bind(app.CHAT_STREAM_POLL_INTERVAL_SECONDS))
 	add_child(chat_stream_poll_timer)
+	# Fetch already decodes Content-Encoding in browsers. Letting HTTPRequest
+	# decode again rejects successful compressed Firebase authentication replies.
+	if OS.has_feature("web"):
+		for child in get_children():
+			if child is HTTPRequest:
+				child.accept_gzip = false
 func _leaderboard_firebase_enabled() -> bool:
 	if OS.get_environment(DISABLE_ONLINE_REQUESTS_ENV) == "1":
 		return false
@@ -967,16 +991,27 @@ func _leaderboard_note_auth_failure(message: String, definitive_identity_failure
 		if not google_auth_pending_id_token.is_empty():
 			var recovery_intent: String = "deleted_auth_transition" if _deleted_auth_google_transition_eligible() else "recover_same_uid"
 			_start_google_firebase_exchange(false, recovery_intent)
+		else:
+			_chat_fail_queued_send(message)
 		return
 	leaderboard_auth_last_error_class = "transient"
+	app.leaderboard_state.submission_error = message
 	_record_auth_diagnostic("auth_transient_failure", message)
 	leaderboard_state.status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS))]
 	leaderboard_auth_retry_after_unix = app._unix_now() + LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS
+	_chat_fail_queued_send("Chat login failed. Press Send to retry.")
+	app.leaderboard_presentation.update_sync_status()
 	if _save_restore_complete():
 		app._mark_save_dirty("leaderboard auth retry")
 
 func _leaderboard_note_submit_failure(message: String) -> void:
 	var leaderboard_state = app.leaderboard_state
+	if leaderboard_single_score_needs_profile_check:
+		leaderboard_auth_id_token = ""
+		leaderboard_auth_expires_unix = 0
+		leaderboard_fresh_start_profile_confirmed_uid = ""
+		leaderboard_fresh_start_profile_check_unix = 0
+	leaderboard_state.submission_error = message
 	leaderboard_state.status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(LeaderboardState.SUBMIT_INTERVAL_SECONDS))]
 	app.leaderboard_state.last_submit_unix = app._unix_now()
 	app.leaderboard_state.last_submit_payload_categories.clear()
@@ -984,6 +1019,7 @@ func _leaderboard_note_submit_failure(message: String) -> void:
 	app.leaderboard_state.pending_repair_publish_version = 0
 	leaderboard_submit_stage = ""
 	app._mark_save_dirty("leaderboard submit retry")
+	app.leaderboard_presentation.update_sync_status()
 
 func _leaderboard_note_fetch_failure(category_id: String, message: String) -> void:
 	var leaderboard_state = app.leaderboard_state
@@ -1655,8 +1691,8 @@ func _cloud_save_payload_conflicts_with_local(remote_payload: Dictionary) -> boo
 	var local_payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
 	var comparison_payload: Dictionary = IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
 	return (
-		SaveStateNormalizers.payload_regresses_game_progress(local_payload, comparison_payload, app.skill_defs)
-		and SaveStateNormalizers.payload_regresses_game_progress(comparison_payload, local_payload, app.skill_defs)
+		_cloud_progress_regresses(local_payload, comparison_payload)
+		and _cloud_progress_regresses(comparison_payload, local_payload)
 	)
 
 
@@ -1678,7 +1714,10 @@ func _apply_cloud_save_candidate(remote_payload: Dictionary, revision: int, sour
 	var local_xp: int = int(app._save_runtime()._save_total_skill_xp_evidence(app._save_runtime()._save_payload(app._unix_now())))
 	if _cloud_save_payload_should_replace_local(cloud_save_last_remote_payload):
 		cloud_save_dirty = false
-		_restore_cloud_save_payload(cloud_save_last_remote_payload)
+		if not _restore_cloud_save_payload(cloud_save_last_remote_payload):
+			cloud_save_dirty = true
+			cloud_save_status_message = "Save failed. Existing progress was preserved."
+			return
 		cloud_save_status_message = "%s save restored. Remote XP: %s." % ["Backup" if source_label == "history" else "Cloud", GameFormatting.compact_number(float(remote_xp), 4)]
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		return
@@ -1750,6 +1789,10 @@ func _upload_cloud_save(force = true) -> void:
 	if not force and cloud_save_last_upload_unix > 0 and now - cloud_save_last_upload_unix < CLOUD_SAVE_UPLOAD_INTERVAL_SECONDS:
 		return
 	var payload = app._save_runtime()._save_payload(now)
+	if not cloud_save_last_remote_payload.is_empty() and _cloud_progress_regresses(cloud_save_last_remote_payload, payload):
+		cloud_save_conflict_detected = true
+		cloud_save_status_message = "Cloud progress is ahead of this device. The cloud save was preserved."
+		return
 	var record = _cloud_save_record(payload, now)
 	if str(record.get("payload_json", "")).is_empty():
 		cloud_save_status_message = "Cloud save is too large to upload."
@@ -2071,12 +2114,14 @@ func _process_cloud_save_sync() -> void:
 func _cloud_save_payload_should_replace_local(remote_payload: Dictionary) -> bool:
 	var local_payload: Dictionary = app._save_runtime()._save_payload(app._unix_now())
 	var comparison_payload: Dictionary = IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
-	# A hard reset on another device bumps save_reset_generation. That may pick
-	# between local files, but it must never let a cloud copy silently discard
-	# progress this device has and the cloud copy lacks.
-	if SaveStateNormalizers.payload_regresses_game_progress(local_payload, comparison_payload, app.skill_defs):
+	if _cloud_progress_regresses(local_payload, comparison_payload):
 		return false
-	return SaveRuntime.should_replace_best_save(local_payload, comparison_payload, app.skill_defs)
+	if _cloud_progress_regresses(comparison_payload, local_payload):
+		return true
+	# Revision counters are local to each device. Equal permanent progress must
+	# not restore older consumables, settings, or mission deadlines just because
+	# another device has saved more often. Equal timestamps keep the local state.
+	return int(remote_payload.get("saved_at", 0)) > int(app._save_runtime().last_save_unix_time)
 
 
 func _maybe_recover_profile_from_legacy_cloud_payload(remote_payload: Dictionary) -> void:
@@ -2101,75 +2146,41 @@ func _maybe_recover_profile_from_legacy_cloud_payload(remote_payload: Dictionary
 	_refresh_profile_references()
 
 
-func _restore_cloud_save_payload(remote_payload: Dictionary) -> void:
+func _restore_cloud_save_payload(remote_payload: Dictionary) -> bool:
 	if not _save_restore_complete():
-		return
-	var auth_id_token: String = leaderboard_auth_id_token
-	var auth_refresh_token: String = leaderboard_auth_refresh_token
-	var auth_expires_unix: int = leaderboard_auth_expires_unix
-	var auth_bound_uid: String = leaderboard_auth_bound_uid
-	var auth_definitive_failure_code: String = leaderboard_auth_definitive_failure_code
-	var player_id: String = app.leaderboard_profile.player_id
-	var display_name: String = app.leaderboard_profile.display_name
-	var name_key: String = app.leaderboard_profile.name_key
-	var profile_claimed: bool = app.leaderboard_profile.profile_claimed
-	var name_claim_verified: bool = app.leaderboard_profile.name_claim_verified
-	var avatar_index: int = app.leaderboard_profile.avatar_index
-	var legacy_old_uid: String = leaderboard_legacy_authless_old_uid
-	var deleted_auth_transition_pending: bool = leaderboard_deleted_auth_transition_pending
-	var name_transfer_required: bool = leaderboard_name_transfer_required
-	var legacy_username_recovery_required: bool = leaderboard_legacy_username_recovery_required
-	var legacy_name_hint_display: String = leaderboard_legacy_name_hint_display
-	var legacy_name_hint_key: String = leaderboard_legacy_name_hint_key
-	var released_name_key: String = leaderboard_released_name_key
-	var restored_payload := remote_payload.duplicate(true)
-	restored_payload["leaderboard_released_name_key"] = released_name_key
-	restored_payload["leaderboard_player_id"] = player_id
-	restored_payload["leaderboard_display_name"] = display_name
-	restored_payload["leaderboard_name_key"] = name_key
-	restored_payload["leaderboard_profile_claimed"] = profile_claimed
-	restored_payload["leaderboard_name_claim_verified"] = name_claim_verified
-	restored_payload["leaderboard_avatar_index"] = avatar_index
-	restored_payload["leaderboard_auth_provider"] = "google"
-	restored_payload["leaderboard_auth_refresh_token"] = auth_refresh_token
-	restored_payload["leaderboard_auth_bound_uid"] = auth_bound_uid
-	restored_payload["leaderboard_auth_recovery_required"] = false
-	restored_payload["leaderboard_auth_recovery_reason"] = ""
-	restored_payload["leaderboard_auth_definitive_failure_code"] = auth_definitive_failure_code
-	restored_payload["leaderboard_auth_retry_after_unix"] = 0
-	restored_payload["leaderboard_legacy_authless_old_uid"] = legacy_old_uid
-	restored_payload["leaderboard_deleted_auth_transition_pending"] = deleted_auth_transition_pending
-	restored_payload["leaderboard_name_transfer_required"] = name_transfer_required
-	restored_payload["leaderboard_legacy_username_recovery_required"] = legacy_username_recovery_required
-	restored_payload["leaderboard_legacy_name_hint_display"] = legacy_name_hint_display
-	restored_payload["leaderboard_legacy_name_hint_key"] = legacy_name_hint_key
+		return false
 	var save_runtime = app._save_runtime()
+	var local_payload: Dictionary = save_runtime._save_payload(app._unix_now())
+	var restored_payload := IdentitySafety.payload_with_preserved_identity_for_comparison(remote_payload, local_payload)
+	if _cloud_progress_regresses(local_payload, restored_payload):
+		return false
+	restored_payload["save_reset_generation"] = local_payload.get("save_reset_generation", 0)
+	restored_payload["save_repair_generation"] = local_payload.get("save_repair_generation", 0)
+
+	if not save_runtime._preserve_payload_as_recovery_snapshot(local_payload):
+		return false
+	var auth_id_token := leaderboard_auth_id_token
+	var auth_expires_unix := leaderboard_auth_expires_unix
+	var pending_refresh_token := leaderboard_auth_recovery_pending_refresh_token
+	app.save_restore_complete = false
 	save_runtime._clear_pending_save_restore_work()
-	save_runtime._init_state()
+
+	save_runtime._init_state(false)
 	save_runtime._load_game_core(restored_payload)
 	save_runtime.pending_save_restore_data = restored_payload
+	save_runtime.pending_save_has_achievement_toast_seen_ids = restored_payload.has("achievement_toast_seen_ids")
 	save_runtime._restore_boot_render_save_fields(restored_payload)
 	save_runtime._load_game_secondary_restore()
-	save_runtime._apply_post_load_simulation()
+	if not _save_restore_complete() or not save_runtime.pending_save_restore_data.is_empty():
+		app.save_restore_complete = false
+		return false
 	leaderboard_auth_id_token = auth_id_token
-	leaderboard_auth_refresh_token = auth_refresh_token
 	leaderboard_auth_expires_unix = auth_expires_unix
-	leaderboard_auth_provider = "google"
-	leaderboard_auth_bound_uid = auth_bound_uid
-	leaderboard_auth_recovery_required = false
-	leaderboard_auth_recovery_reason = ""
-	leaderboard_auth_definitive_failure_code = auth_definitive_failure_code
-	leaderboard_legacy_authless_old_uid = legacy_old_uid
-	leaderboard_deleted_auth_transition_pending = deleted_auth_transition_pending
-	leaderboard_name_transfer_required = name_transfer_required
-	leaderboard_legacy_username_recovery_required = legacy_username_recovery_required
-	leaderboard_legacy_name_hint_display = legacy_name_hint_display
-	leaderboard_legacy_name_hint_key = legacy_name_hint_key
-	leaderboard_released_name_key = released_name_key
-	app.leaderboard_profile.player_id = player_id
-	cloud_save_remote_checked = true
-	_save_identity_state("cloud save restored")
+	leaderboard_auth_recovery_pending_refresh_token = pending_refresh_token
+	save_runtime._apply_post_load_simulation()
+	var persisted := _save_identity_state("cloud save restored")
 	app._update_ui(0.0, true)
+	return persisted
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh = false) -> void:
 	ensure_leaderboard_http()
 	var leaderboard_state = app.leaderboard_state
@@ -2206,20 +2217,13 @@ func _leaderboard_finalize_fetch_rows(category_id: String, rows: Array) -> void:
 func _leaderboard_store_fetch_rows(category_id: String, rows: Array) -> void:
 	var leaderboard_state = app.leaderboard_state
 	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var score_a = int(a.get("score", 0))
-		var score_b = int(b.get("score", 0))
-		if score_a != score_b:
-			return score_a > score_b
-		if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL:
-			var total_xp_a = int(a.get("total_xp", 0))
-			var total_xp_b = int(b.get("total_xp", 0))
-			if total_xp_a != total_xp_b:
-				return total_xp_a > total_xp_b
-		return str(a.get("name", "")) < str(b.get("name", ""))
+		return LeaderboardPresentation.row_precedes(a, b, category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL)
 	)
 	if rows.size() > LeaderboardState.TOP_COUNT:
 		rows = rows.slice(0, LeaderboardState.TOP_COUNT)
 	leaderboard_state.rows_by_category[category_id] = rows
+	if not leaderboard_submit_in_flight and leaderboard_state.reconcile_published_rows(category_id, rows):
+		app._mark_save_dirty("leaderboard server reconciliation")
 	leaderboard_state.fetch_unix_by_category[category_id] = app._unix_now()
 	var had_retry_cooldown = leaderboard_state.fetch_retry_unix_by_category.has(category_id)
 	if had_retry_cooldown:
@@ -2246,6 +2250,8 @@ func _leaderboard_submit_scores() -> void:
 		return
 	var leaderboard_state = app.leaderboard_state
 	if leaderboard_submit_in_flight or not leaderboard_state.submit_ready():
+		return
+	if profile_reference_update_in_flight or profile_recovery_fetch_in_flight or leaderboard_name_claim_in_flight:
 		return
 	if IdentitySafety.LEADERBOARD_FRESH_START and leaderboard_fresh_start_profile_confirmed_uid != app.leaderboard_profile.player_id:
 		# Score rules require this UID to own the name claim and canonical profile.
@@ -2275,6 +2281,8 @@ func _leaderboard_submit_scores() -> void:
 			continue
 		var score = maxi(0, leaderboard_state.score_for_category(category_id))
 		var last_score = int(app.leaderboard_state.last_submitted_scores_by_category.get(category_id, 0))
+		if not (category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL and leaderboard_state.total_level_score_looks_legacy_xp(last_score)):
+			score = maxi(score, last_score)
 		if score <= 0:
 			continue
 		if not repair_publish_due and score <= last_score:
@@ -2287,7 +2295,7 @@ func _leaderboard_submit_scores() -> void:
 			"avatar_index": app.leaderboard_profile.avatar_index,
 			"score": score,
 			"skill_level": leaderboard_state.skill_level_for_category(category_id),
-			"total_xp": leaderboard_state.total_xp_for_category(category_id),
+			"total_xp": maxi(leaderboard_state.total_xp_for_category(category_id), leaderboard_state.last_submitted_total_xp) if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL else 0,
 			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
@@ -2302,6 +2310,10 @@ func _leaderboard_submit_scores() -> void:
 	if repair_publish_due:
 		app.leaderboard_state.pending_repair_publish_version = LeaderboardState.REPAIR_PUBLISH_VERSION
 	leaderboard_submit_stage = "gate"
+	leaderboard_single_score_failed = false
+	leaderboard_single_score_needs_profile_check = false
+	leaderboard_single_score_published = 0
+	leaderboard_state.submission_error = ""
 	var gate_payload = {
 		"updated_at": server_timestamp,
 		"submitted_at_unix": now_unix
@@ -2323,24 +2335,20 @@ func _leaderboard_submit_scores() -> void:
 
 func _leaderboard_start_single_score_writes() -> void:
 	leaderboard_single_score_queue.clear()
-	var categories: Array = app.leaderboard_state.last_submit_payload_categories.duplicate()
-	var paths: Array = app.leaderboard_state.pending_score_updates.keys()
-	for index in range(mini(categories.size(), paths.size())):
-		leaderboard_single_score_queue.append({"category_id": str(categories[index]), "path": str(paths[index])})
+	for raw_category_id in app.leaderboard_state.last_submit_payload_categories:
+		var category_id := str(raw_category_id)
+		var path := "scores/%s/%s" % [_leaderboard_category_key(category_id), app.leaderboard_profile.player_id]
+		if app.leaderboard_state.pending_score_updates.has(path):
+			leaderboard_single_score_queue.append({"category_id": category_id, "path": path})
 	leaderboard_single_score_published = 0
+	leaderboard_single_score_failed = false
+	leaderboard_single_score_needs_profile_check = false
 	_leaderboard_send_next_single_score()
 
 
 func _leaderboard_send_next_single_score() -> void:
 	if leaderboard_single_score_queue.is_empty():
-		leaderboard_submit_in_flight = false
-		leaderboard_submit_stage = ""
-		app.leaderboard_state.last_submit_unix = app._unix_now()
-		app.leaderboard_state.last_submit_payload_categories.clear()
-		app.leaderboard_state.pending_score_updates.clear()
-		app.leaderboard_state.pending_repair_publish_version = 0
-		app.leaderboard_state.status_message = "Leaderboard published." if leaderboard_single_score_published > 0 else "Leaderboard already has higher scores for this account."
-		app.save_game()
+		_leaderboard_finish_submit(not leaderboard_single_score_failed)
 		return
 	var entry: Dictionary = leaderboard_single_score_queue.front()
 	var path := str(entry.get("path", ""))
@@ -2367,17 +2375,41 @@ func _on_leaderboard_single_score_completed(result: int, response_code: int) -> 
 		return
 	var leaderboard_state = app.leaderboard_state
 	var category_id = leaderboard_state.valid_category_id(str(entry.get("category_id", "")))
-	var attempted := int((app.leaderboard_state.pending_score_updates.get(str(entry.get("path", "")), {}) as Dictionary).get("score", 0))
+	var payload: Dictionary = app.leaderboard_state.pending_score_updates.get(str(entry.get("path", "")), {})
 	if response_code >= 200 and response_code < 300:
 		leaderboard_single_score_published += 1
-		leaderboard_state.last_submitted_scores_by_category[category_id] = leaderboard_state.score_for_category(category_id)
-	elif response_code == 401 or response_code == 403:
-		# The server already holds a higher value for this category. Hold this
-		# category until the local score passes the rejected value.
-		leaderboard_state.last_submitted_scores_by_category[category_id] = maxi(attempted, int(leaderboard_state.last_submitted_scores_by_category.get(category_id, 0)))
-	if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL:
-		leaderboard_state.last_submitted_total_xp = leaderboard_state.score()
+		leaderboard_state.acknowledge_score_update(category_id, payload)
+	else:
+		# A denial is not proof of a higher stored score: expired auth, a missing
+		# claim, or an outdated canonical profile can produce the same response.
+		leaderboard_single_score_failed = true
+		if response_code == 401 or response_code == 403:
+			leaderboard_single_score_needs_profile_check = true
 	_leaderboard_send_next_single_score()
+
+
+func _leaderboard_finish_submit(all_accepted: bool) -> void:
+	leaderboard_submit_in_flight = false
+	leaderboard_submit_stage = ""
+	var leaderboard_state = app.leaderboard_state
+	if not all_accepted:
+		_leaderboard_note_submit_failure("Some leaderboard scores were not accepted.")
+	else:
+		leaderboard_state.last_submit_unix = app._unix_now()
+		leaderboard_state.session_publish_confirmed = true
+		leaderboard_state.repair_publish_version = maxi(leaderboard_state.repair_publish_version, leaderboard_state.pending_repair_publish_version)
+		leaderboard_state.submission_error = ""
+		leaderboard_state.clear_pending_submit()
+		leaderboard_state.status_message = "Leaderboard published."
+	app.save_game()
+	if app.current_screen == "leaderboard":
+		# Successful categories must become visible even if another was refused.
+		if all_accepted or leaderboard_single_score_published > 0:
+			if leaderboard_state.fetch_in_flight:
+				leaderboard_refresh_after_submit = leaderboard_state.category_id
+			else:
+				_leaderboard_fetch_category(leaderboard_state.category_id, true)
+		app.leaderboard_presentation._refresh_if_visible()
 
 
 func _process_leaderboard_sync(delta: float) -> void:
@@ -2388,6 +2420,8 @@ func _process_leaderboard_sync(delta: float) -> void:
 	leaderboard_state.process_seconds = 0.0
 	if not _leaderboard_firebase_enabled():
 		return
+	if not leaderboard_auth_refresh_token.is_empty() and not _leaderboard_auth_ready():
+		_leaderboard_ensure_auth()
 	if leaderboard_name_claim_in_flight and not leaderboard_name_claim_request_started:
 		_start_queued_name_claim()
 	if app.current_screen == "leaderboard":
@@ -2397,12 +2431,20 @@ func _process_leaderboard_sync(delta: float) -> void:
 	if leaderboard_state.submit_ready():
 		_leaderboard_submit_scores()
 	_process_cloud_save_sync()
+	app.leaderboard_presentation.update_sync_status()
 
 func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	var leaderboard_state = app.leaderboard_state
 	var category_id = leaderboard_state.fetch_category_id
 	leaderboard_state.fetch_in_flight = false
 	leaderboard_state.fetch_category_id = ""
+	if not leaderboard_refresh_after_submit.is_empty():
+		# This read began before the accepted upload. Discard its stale snapshot
+		# and perform the single post-publish refresh once the request slot is free.
+		var refresh_category := leaderboard_refresh_after_submit
+		leaderboard_refresh_after_submit = ""
+		_leaderboard_fetch_category(refresh_category, true)
+		return
 	if result != HTTPRequest.RESULT_SUCCESS:
 		_leaderboard_note_fetch_failure(category_id, "Leaderboard read failed.")
 		return
@@ -2410,6 +2452,9 @@ func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: 
 		_leaderboard_note_fetch_failure(category_id, "Leaderboard read returned HTTP %s." % response_code)
 		return
 	var parsed = _parse_json_silent(body.get_string_from_utf8())
+	if typeof(parsed) != TYPE_DICTIONARY and body.get_string_from_utf8().strip_edges() != "null":
+		_leaderboard_note_fetch_failure(category_id, "Leaderboard read returned an invalid response.")
+		return
 	var rows = []
 	if typeof(parsed) == TYPE_DICTIONARY:
 		for raw_player_id in (parsed as Dictionary).keys():
@@ -2457,6 +2502,7 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		return
 	var response_provider := "anonymous" if mode in ["sign_up", "anonymous_legacy_authless_transition", "fresh_start_anonymous_restart"] else str(leaderboard_auth_provider)
 	if not _apply_firebase_auth_response(parsed as Dictionary, response_provider, mode):
+		_chat_fail_queued_send(app.leaderboard_state.status_message)
 		return
 	if not google_auth_pending_id_token.is_empty():
 		var resume_intent := google_auth_exchange_intent
@@ -2582,6 +2628,7 @@ func _on_leaderboard_name_claim_completed(result: int, response_code: int, _head
 	app.leaderboard_profile.profile_claimed = true
 	app.leaderboard_profile.name_claim_verified = true
 	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
+	call_deferred("_resume_pending_online_writes")
 	app.leaderboard_state.status_message = "Leaderboard name saved."
 	_save_identity_state("leaderboard username claimed")
 	_refresh_profile_references()
@@ -2673,6 +2720,7 @@ func _fetch_profile_recovery_record() -> void:
 		elif profile_recovery_blocks_username_edit():
 			app.leaderboard_state.status_message = "Saved username check failed to start. Try again."
 			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Could not verify your username. Press Send to retry.")
 
 
 func _on_profile_recovery_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -2684,6 +2732,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		elif profile_recovery_blocks_username_edit():
 			app.leaderboard_state.status_message = "Saved username check failed. Try again."
 			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Could not verify your username. Press Send to retry.")
 		return
 	var raw_body := body.get_string_from_utf8().strip_edges()
 	var parsed = _parse_json_silent(raw_body)
@@ -2694,6 +2743,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 	if record_is_conclusively_missing:
 		if recovery_refresh_verification:
 			_note_recovery_profile_verification_failure("No canonical saved username was found for this account. Contact support.")
+			_chat_fail_queued_send("Your saved username could not be recovered. Open your profile to reconnect.")
 			return
 		profile_recovery_lookup_gate = false
 		profile_recovery_lookup_conclusive_missing = true
@@ -2712,6 +2762,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
 		if leaderboard_name_claim_in_flight and not leaderboard_name_claim_request_started:
 			_start_queued_name_claim()
+		call_deferred("_resume_pending_online_writes")
 		return
 	if (
 		IdentitySafety.LEADERBOARD_FRESH_START
@@ -2729,6 +2780,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		elif profile_recovery_blocks_username_edit():
 			app.leaderboard_state.status_message = "Saved username could not be verified. Try again."
 			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Could not verify your username. Press Send to retry.")
 		return
 	var record := parsed as Dictionary
 	var record_uid := LeaderboardProfile.sanitize_player_id(str(record.get("uid", "")))
@@ -2740,6 +2792,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		elif profile_recovery_blocks_username_edit():
 			app.leaderboard_state.status_message = "Saved username data needs support review."
 			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Could not verify your username. Press Send to retry.")
 		return
 	if not bool(record.get("profile_claimed", false)) or not bool(record.get("name_claim_verified", false)):
 		if recovery_refresh_verification:
@@ -2747,6 +2800,7 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		elif profile_recovery_blocks_username_edit():
 			app.leaderboard_state.status_message = "Saved username data needs support review."
 			app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Could not verify your username. Press Send to retry.")
 		return
 	var previous_recovery_state: Dictionary = {}
 	if recovery_refresh_verification:
@@ -2805,8 +2859,10 @@ func _on_profile_recovery_fetch_completed(result: int, response_code: int, _head
 		google_auth_status_message = app.leaderboard_state.status_message
 		_record_auth_diagnostic("refresh_recovery_verification_not_saved")
 		app._profile_chat_overlay_surface()._rebuild_profile_overlay_if_visible()
+		_chat_fail_queued_send("Your verified username could not be saved. Press Send to retry.")
 		return
 	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
+	call_deferred("_resume_pending_online_writes")
 	_refresh_local_profile_references()
 	if _cloud_save_account_ready():
 		_fetch_cloud_save()
@@ -2890,6 +2946,7 @@ func _on_leaderboard_name_recovery_completed(result: int, response_code: int, _h
 		app.leaderboard_profile.profile_claimed = true
 		app.leaderboard_profile.name_claim_verified = true
 		leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
+		call_deferred("_resume_pending_online_writes")
 		if completed_legacy_transfer:
 			leaderboard_name_transfer_required = false
 			leaderboard_legacy_username_recovery_required = false
@@ -2921,6 +2978,19 @@ func _on_leaderboard_name_recovery_completed(result: int, response_code: int, _h
 		app.leaderboard_state.status_message = "%s %s" % [app.leaderboard_state.status_message, detail]
 
 func _on_leaderboard_submit_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	# Ignore a late response from an identity that has since changed or reset.
+	if app.leaderboard_state.pending_score_updates.is_empty():
+		leaderboard_submit_in_flight = false
+		leaderboard_submit_stage = ""
+		leaderboard_single_score_queue.clear()
+		return
+	for path in app.leaderboard_state.pending_score_updates:
+		if not str(path).ends_with("/" + app.leaderboard_profile.player_id):
+			leaderboard_submit_in_flight = false
+			leaderboard_submit_stage = ""
+			leaderboard_single_score_queue.clear()
+			app.leaderboard_state.clear_pending_submit()
+			return
 	var stage = leaderboard_submit_stage
 	if stage == "gate":
 		if result != HTTPRequest.RESULT_SUCCESS:
@@ -2962,10 +3032,8 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 	if response_code < 200 or response_code >= 300:
 		var detail = _firebase_error_detail(body)
 		if response_code == 401 or response_code == 403:
-			# The write gate just accepted this token, so a denial here is a rules
-			# validation failure (a category below its stored best), not a login
-			# problem. Retry category by category so one stale value cannot freeze
-			# every other category.
+			# Try the categories separately so one rejected value cannot block all
+			# others. A denial is kept pending until success or an observed server row.
 			_leaderboard_start_single_score_writes()
 			return
 		if not detail.is_empty():
@@ -2973,25 +3041,13 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 		else:
 			_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s." % response_code)
 		return
-	app.leaderboard_state.last_submit_unix = app._unix_now()
 	var leaderboard_state = app.leaderboard_state
-	app.leaderboard_state.last_submitted_score = leaderboard_state.score()
-	app.leaderboard_state.last_submitted_total_xp = leaderboard_state.score()
 	for raw_category_id in app.leaderboard_state.last_submit_payload_categories:
 		var category_id = leaderboard_state.valid_category_id(str(raw_category_id))
-		app.leaderboard_state.last_submitted_scores_by_category[category_id] = leaderboard_state.score_for_category(category_id)
-	if app.leaderboard_state.pending_repair_publish_version > app.leaderboard_state.repair_publish_version:
-		app.leaderboard_state.repair_publish_version = clampi(app.leaderboard_state.pending_repair_publish_version, 0, LeaderboardState.REPAIR_PUBLISH_VERSION)
-		app.leaderboard_state.status_message = "Leaderboard rows repaired."
-	app.leaderboard_state.last_submit_payload_categories.clear()
-	app.leaderboard_state.pending_score_updates.clear()
-	app.leaderboard_state.pending_repair_publish_version = 0
-	if app.leaderboard_state.status_message != "Leaderboard rows repaired.":
-		app.leaderboard_state.status_message = "Leaderboard published."
-	app.save_game()
-	if app.current_screen == "leaderboard":
-		_leaderboard_fetch_category(app.leaderboard_state.category_id, true)
-		app.leaderboard_presentation._refresh_if_visible()
+		var path := "scores/%s/%s" % [_leaderboard_category_key(category_id), app.leaderboard_profile.player_id]
+		if leaderboard_state.pending_score_updates.has(path):
+			leaderboard_state.acknowledge_score_update(category_id, leaderboard_state.pending_score_updates[path])
+	_leaderboard_finish_submit(true)
 func _on_profile_reference_update_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
 	if profile_reference_update_stage == "fresh_start_claim_probe":
 		_on_fresh_start_claim_probe_completed(result, response_code)
@@ -3032,9 +3088,15 @@ func _finish_profile_reference_update() -> void:
 	if profile_reference_refresh_queued:
 		profile_reference_refresh_queued = false
 		call_deferred("_refresh_profile_references")
+		return
+	if leaderboard_fresh_start_profile_confirmed_uid == app.leaderboard_profile.player_id and _leaderboard_auth_ready() and app.leaderboard_state.submit_ready():
+		_leaderboard_submit_scores()
+	if leaderboard_fresh_start_profile_confirmed_uid == app.leaderboard_profile.player_id:
+		call_deferred("_resume_pending_online_writes")
 
 
 func _chat_stream_connect(force_reconnect = false) -> void:
+	if app.desktop_layout.enabled() and app.desktop_layout.social_tab != "chat": return
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
 		return
@@ -3063,19 +3125,8 @@ func _chat_stream_connect(force_reconnect = false) -> void:
 	if chat_stream_client == null:
 		_chat_note_stream_failure("Chat stream client is not ready yet.")
 		return
-	var err = chat_stream_client.connect_to_host(str(target.get("host", "")), 443, TLSOptions.client())
-	if err != OK:
-		_chat_note_stream_failure("Chat stream failed to connect: %s" % error_string(err))
-		return
+	_chat_stream_open_target(target)
 	chat_stream_next_connect_unix = now + app.CHAT_STREAM_RECONNECT_MIN_SECONDS
-	chat_stream_connecting = true
-	chat_stream_request_sent = false
-	chat_stream_buffer = ""
-	chat_stream_event_name = ""
-	chat_stream_event_data_lines.clear()
-	chat_stream_client.set_meta("request_path", str(target.get("path", "/")))
-	chat_status_message = "Connecting global chat stream..."
-	_start_chat_stream_poll_timer()
 func _start_chat_stream_poll_timer() -> void:
 	ensure_leaderboard_http()
 	if chat_stream_poll_timer == null:
@@ -3087,12 +3138,13 @@ func _stop_chat_stream_poll_timer() -> void:
 	if chat_stream_poll_timer != null:
 		chat_stream_poll_timer.stop()
 func _process_chat_live_sync(delta: float) -> void:
-	if not app._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen():
+	var docked_chat: bool = app.desktop_layout.enabled() and app.desktop_layout.social_tab == "chat" and app._profile_chat_overlay_surface().chat_overlay_visible()
+	if not docked_chat and (app.desktop_layout.enabled() or not app._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen()):
 		_chat_stream_disconnect(false)
 		_stop_chat_stream_poll_timer()
 		return
 	var chat_strip: Control = app._profile_chat_overlay_surface().chat_strip_control()
-	if chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible:
+	if not docked_chat and (chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible):
 		_chat_stream_disconnect(false)
 		return
 	if not _leaderboard_firebase_enabled():
@@ -3119,6 +3171,16 @@ func _process_chat_live_sync(delta: float) -> void:
 		_chat_note_stream_failure("Chat stream failed: %s" % error_string(poll_err))
 		return
 	status = chat_stream_client.get_status()
+	var timeout_msec := CHAT_STREAM_IDLE_TIMEOUT_MSEC if chat_stream_connected else CHAT_STREAM_CONNECT_TIMEOUT_MSEC
+	if Time.get_ticks_msec() - chat_stream_last_activity_msec > timeout_msec:
+		_chat_note_stream_failure("Chat connection timed out.")
+		return
+	if chat_stream_request_sent and not chat_stream_response_checked and chat_stream_client.has_response():
+		if not _chat_stream_check_response(chat_stream_client.get_response_code(), chat_stream_client.get_response_headers()):
+			return
+	if status == HTTPClient.STATUS_CONNECTED and chat_stream_response_checked:
+		_chat_note_stream_failure("Chat stream ended.")
+		return
 	if status == HTTPClient.STATUS_CONNECTED and not chat_stream_request_sent:
 		var request_path = str(chat_stream_client.get_meta("request_path", "/"))
 		var err = chat_stream_client.request(
@@ -3133,6 +3195,8 @@ func _process_chat_live_sync(delta: float) -> void:
 		chat_status_message = "Opening global chat stream..."
 		return
 	if status == HTTPClient.STATUS_BODY:
+		if not chat_stream_response_checked:
+			return
 		if not chat_stream_connected:
 			chat_stream_connected = true
 			chat_stream_connecting = false
@@ -3141,9 +3205,10 @@ func _process_chat_live_sync(delta: float) -> void:
 			app._mark_save_dirty("chat stream connected")
 		var chunk = chat_stream_client.read_response_body_chunk()
 		if chunk.size() > 0:
-			_chat_stream_receive_text(chunk.get_string_from_utf8())
+			chat_stream_last_activity_msec = Time.get_ticks_msec()
+			_chat_stream_receive_bytes(chunk)
 		return
-	if status in [HTTPClient.STATUS_CANT_RESOLVE, HTTPClient.STATUS_CANT_CONNECT, HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR]:
+	if status in [HTTPClient.STATUS_CONNECTION_ERROR, HTTPClient.STATUS_TLS_HANDSHAKE_ERROR, HTTPClient.STATUS_CANT_RESOLVE, HTTPClient.STATUS_CANT_CONNECT]:
 		_chat_note_stream_failure("Chat stream disconnected.")
 
 func _chat_web_polling_enabled() -> bool:
@@ -3215,14 +3280,17 @@ func _chat_send(raw_text: String) -> void:
 	var clean_text = ChatState.sanitize_message(raw_text, app.CHAT_MESSAGE_MAX_CHARS, app.CHAT_CENSORED_WORDS)
 	if clean_text.is_empty():
 		chat_status_message = "Write a message first."
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	if leaderboard_name_transfer_required or leaderboard_legacy_username_recovery_required:
 		chat_status_message = "Complete legacy username recovery before chatting."
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	if not _leaderboard_web_authless_writes_enabled() and not _leaderboard_auth_ready() and _leaderboard_auth_retry_wait_seconds() > 0:
@@ -3231,17 +3299,35 @@ func _chat_send(raw_text: String) -> void:
 		if leaderboard_auth_in_flight:
 			chat_pending_send_after_auth = clean_text
 			chat_status_message = "Connecting chat login, then sending..."
+			chat_send_status_message = chat_status_message
 		else:
 			chat_status_message = app.leaderboard_state.status_message
+			chat_send_status_message = chat_status_message
+		app._profile_chat_overlay_surface()._render_chat_if_visible()
+		return
+	if profile_recovery_fetch_in_flight or profile_recovery_blocks_username_edit() or profile_reference_update_in_flight:
+		chat_pending_send_after_auth = clean_text
+		chat_status_message = "Verifying saved username before sending..."
+		chat_send_status_message = chat_status_message
+		if not profile_recovery_fetch_in_flight and not profile_reference_update_in_flight:
+			_fetch_profile_recovery_record()
+		app._profile_chat_overlay_surface()._render_chat_if_visible()
+		return
+	if IdentitySafety.LEADERBOARD_FRESH_START and LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS) and leaderboard_fresh_start_profile_confirmed_uid != app.leaderboard_profile.player_id:
+		chat_pending_send_after_auth = clean_text
+		chat_send_status_message = "Verifying saved username before sending..."
+		_fetch_profile_recovery_record()
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	if chat_send_in_flight:
 		chat_status_message = "Still sending the previous message..."
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	var wait = _chat_next_send_seconds()
 	if wait > 0:
 		chat_status_message = "Chat is cooling down for %s." % GameFormatting.duration(float(wait))
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	var now_unix = app._unix_now()
@@ -3251,6 +3337,7 @@ func _chat_send(raw_text: String) -> void:
 	var has_claimed_chat_name = LeaderboardProfile.profile_claim_valid(app, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS, app.PROFILE_NAME_KEY_MAX_CHARS)
 	if not has_claimed_chat_name and not LeaderboardProfile.is_guest_display_name(app.leaderboard_profile.display_name, app.PROFILE_GUEST_NAME_PREFIX, app.PROFILE_DISPLAY_NAME_MAX_CHARS):
 		chat_status_message = "Save or recover this username before chatting."
+		chat_send_status_message = chat_status_message
 		app._profile_chat_overlay_surface()._render_chat_if_visible()
 		return
 	var chat_name_key = app.leaderboard_profile.name_key if has_claimed_chat_name else ""
@@ -3263,6 +3350,7 @@ func _chat_send(raw_text: String) -> void:
 	chat_pending_send_text = clean_text
 	chat_pending_send_payload = remote_chat_payload
 	chat_status_message = "Sending chat message..."
+	chat_send_status_message = chat_status_message
 	_chat_upsert_row(message_id, chat_payload)
 	app._profile_chat_overlay_surface().clear_chat_draft_message()
 	app._profile_chat_overlay_surface()._render_chat_if_visible()
@@ -3355,6 +3443,7 @@ func _on_chat_send_completed(result: int, response_code: int, _headers: PackedSt
 	chat_pending_send_text = ""
 	chat_pending_send_payload.clear()
 	chat_status_message = ""
+	chat_send_status_message = chat_status_message
 	app._profile_chat_overlay_surface().clear_chat_draft_message()
 	app.save_game()
 	_chat_stream_connect()
@@ -3376,6 +3465,10 @@ func _chat_stream_disconnect(clear_status = true) -> void:
 	chat_stream_connecting = false
 	chat_stream_request_sent = false
 	chat_stream_visible_count = 0
+	chat_stream_response_checked = false
+	chat_stream_redirect_count = 0
+	chat_stream_last_activity_msec = 0
+	chat_stream_pending_bytes.clear()
 	chat_stream_buffer = ""
 	chat_stream_event_name = ""
 	chat_stream_event_data_lines.clear()
@@ -3596,18 +3689,29 @@ func _firebase_stream_target(url: String) -> Dictionary:
 		return {}
 	var host := rest.substr(0, slash_index)
 	var path := rest.substr(slash_index)
+	if not _leaderboard_database_url_allowed(FIREBASE_URL_SCHEME + host):
+		return {}
 	return {
 		"host": host,
 		"path": path
 	}
 
 func _chat_note_send_failure(message: String) -> void:
-	chat_status_message = "%s Trying again in %s." % [message, GameFormatting.duration(float(app.CHAT_SEND_INTERVAL_SECONDS))]
+	chat_status_message = "%s Press Send to retry." % message
+	chat_send_status_message = chat_status_message
 	app._mark_save_dirty("chat send retry")
 
 func _chat_note_send_rejected(message: String) -> void:
 	chat_status_message = message
+	chat_send_status_message = message
 	app._mark_save_dirty("chat send rejected")
+
+func _chat_fail_queued_send(message: String) -> void:
+	if chat_pending_send_after_auth.is_empty():
+		return
+	chat_pending_send_after_auth = ""
+	_chat_note_send_rejected(message)
+	app._profile_chat_overlay_surface()._render_chat_if_visible()
 
 func _chat_restore_failed_send() -> void:
 	chat_pending_send_message_id = ""
@@ -3633,6 +3737,7 @@ func _fresh_start_reclaim_saved_name() -> void:
 
 func _fresh_start_name_reclaimed() -> void:
 	leaderboard_fresh_start_profile_confirmed_uid = app.leaderboard_profile.player_id
+	call_deferred("_resume_pending_online_writes")
 	# The server holds no rows for this identity yet: republish every category.
 	app.leaderboard_state.repair_publish_version = 0
 	app.leaderboard_state.last_submit_unix = 0
@@ -3840,7 +3945,7 @@ func _profile_reference_updates() -> Dictionary:
 			"avatar_index": app.leaderboard_profile.avatar_index,
 			"score": int(category_scores[category_id]),
 			"skill_level": leaderboard_state.skill_level_for_category(category_id),
-			"total_xp": leaderboard_state.total_xp_for_category(category_id),
+			"total_xp": maxi(leaderboard_state.total_xp_for_category(category_id), leaderboard_state.last_submitted_total_xp) if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL else 0,
 			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
@@ -3865,3 +3970,92 @@ func _profile_reference_updates() -> Dictionary:
 			"deleted": false
 		}
 	return updates
+
+
+func _chat_stream_open_target(target: Dictionary) -> void:
+	var err = chat_stream_client.connect_to_host(str(target.get("host", "")), 443, TLSOptions.client())
+	if err != OK:
+		_chat_note_stream_failure("Chat stream failed to connect: %s" % error_string(err))
+		return
+	chat_stream_connected = false
+	chat_stream_connecting = true
+	chat_stream_request_sent = false
+	chat_stream_response_checked = false
+	chat_stream_last_activity_msec = Time.get_ticks_msec()
+	chat_stream_pending_bytes.clear()
+	chat_stream_buffer = ""
+	chat_stream_event_name = ""
+	chat_stream_event_data_lines.clear()
+	chat_stream_client.set_meta("request_path", str(target.get("path", "/")))
+	chat_status_message = "Connecting global chat stream..."
+	_start_chat_stream_poll_timer()
+
+
+
+
+func _chat_stream_check_response(response_code: int, headers: PackedStringArray) -> bool:
+	var location := ""
+	var content_type := ""
+	for header in headers:
+		var separator := header.find(":")
+		if separator < 0:
+			continue
+		var key := header.substr(0, separator).strip_edges().to_lower()
+		var value := header.substr(separator + 1).strip_edges()
+		if key == "location":
+			location = value
+		elif key == "content-type":
+			content_type = value.to_lower().split(";")[0].strip_edges()
+	if response_code in [301, 302, 303, 307, 308]:
+		var target := _firebase_stream_target(location)
+		if target.is_empty() or chat_stream_redirect_count >= CHAT_STREAM_MAX_REDIRECTS:
+			_chat_note_stream_failure("Chat returned an invalid redirect.")
+			return false
+		chat_stream_redirect_count += 1
+		chat_stream_client.close()
+		_chat_stream_open_target(target)
+		return false
+	if response_code != 200 or content_type != "text/event-stream":
+		_chat_note_stream_failure("Chat stream returned HTTP %s." % response_code)
+		return false
+	chat_stream_response_checked = true
+	return true
+
+
+
+
+func _chat_stream_receive_bytes(chunk: PackedByteArray) -> void:
+	# Decode only complete lines so UTF-8 characters split across packets survive.
+	chat_stream_pending_bytes.append_array(chunk)
+	if chat_stream_pending_bytes.size() > app.CHAT_STREAM_MAX_BUFFER_CHARS * 4:
+		_chat_note_stream_failure("Chat stream sent too much pending data.")
+		return
+	var last_newline := chat_stream_pending_bytes.rfind(10)
+	if last_newline < 0:
+		return
+	var complete := chat_stream_pending_bytes.slice(0, last_newline + 1)
+	chat_stream_pending_bytes = chat_stream_pending_bytes.slice(last_newline + 1)
+	_chat_stream_receive_text(complete.get_string_from_utf8())
+
+
+
+
+func _cloud_progress_regresses(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	return SaveStateNormalizers.payload_regresses_game_progress(
+		SaveStateNormalizers.payload_with_canonical_action_keys(existing_payload, app.FISHING_ACTION_ID_ALIASES),
+		SaveStateNormalizers.payload_with_canonical_action_keys(next_payload, app.FISHING_ACTION_ID_ALIASES),
+		app.skill_defs
+	)
+
+
+
+
+func _resume_pending_online_writes() -> void:
+	if not _leaderboard_auth_ready() or profile_recovery_fetch_in_flight or profile_recovery_blocks_username_edit() or profile_reference_update_in_flight:
+		return
+	if app.leaderboard_state.submit_ready():
+		_leaderboard_submit_scores()
+	if not chat_pending_send_after_auth.is_empty():
+		var queued_chat := chat_pending_send_after_auth
+		chat_pending_send_after_auth = ""
+		_chat_send(queued_chat)

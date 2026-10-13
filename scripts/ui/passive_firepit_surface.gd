@@ -1228,6 +1228,7 @@ func _passive_info_controls(pop_card: Control, module_id: String, info_text: Str
 	if interactive:
 		info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
 		info_button.pressed.connect(_toggle_passive_info_popover.bind(info_popover))
+	host.desktop_layout.style_info_button(info_button)
 	pop_card.add_child(info_button)
 	return {"button": info_button, "popover": info_popover, "label": info_label}
 
@@ -1259,6 +1260,8 @@ func _hide_passive_info_popover(info_popover: Control) -> void:
 
 
 func _prewarm_passive_info_popover(info_popover: Control) -> void:
+	if host.desktop_layout.enabled():
+		return
 	if info_popover == null or not is_instance_valid(info_popover):
 		return
 	if bool(info_popover.get_meta("info_popover_prewarm_started", false)):
