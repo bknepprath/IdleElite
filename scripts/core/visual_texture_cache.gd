@@ -1,6 +1,57 @@
 var texture_cache := {}
 var atlas_texture_cache := {}
 var fishing_ablation_enabled := Callable()
+var runtime_scope_generation := 0
+var texture_scope_generation := {}
+var atlas_scope_generation := {}
+
+
+func begin_runtime_scope() -> void:
+	runtime_scope_generation += 1
+
+
+func finish_runtime_scope() -> void:
+	if runtime_scope_generation <= 0:
+		return
+	for raw_key in texture_cache.keys().duplicate():
+		var key := str(raw_key)
+		if key.begins_with("__"):
+			continue
+		if int(texture_scope_generation.get(key, -1)) == runtime_scope_generation:
+			continue
+		texture_cache.erase(key)
+		texture_scope_generation.erase(key)
+	for raw_key in atlas_texture_cache.keys().duplicate():
+		var key := str(raw_key)
+		if int(atlas_scope_generation.get(key, -1)) == runtime_scope_generation:
+			continue
+		atlas_texture_cache.erase(key)
+		atlas_scope_generation.erase(key)
+
+
+func clear_runtime_cache() -> void:
+	texture_cache.clear()
+	atlas_texture_cache.clear()
+	texture_scope_generation.clear()
+	atlas_scope_generation.clear()
+	runtime_scope_generation = 0
+
+
+func runtime_cache_counts() -> Dictionary:
+	return {
+		"textures": texture_cache.size(),
+		"atlases": atlas_texture_cache.size(),
+	}
+
+
+func _touch_texture_scope(key: String) -> void:
+	if runtime_scope_generation > 0 and not key.begins_with("__"):
+		texture_scope_generation[key] = runtime_scope_generation
+
+
+func _touch_atlas_scope(key: String) -> void:
+	if runtime_scope_generation > 0:
+		atlas_scope_generation[key] = runtime_scope_generation
 
 
 func _res_path(path: String) -> String:
@@ -44,36 +95,45 @@ func _texture_from_image(path: String, image: Image) -> Texture2D:
 
 func _atlas_texture(path: String, region: Rect2, filter_clip := false, fishing_ablation_enabled := Callable()) -> Texture2D:
 	var normalized := _res_path(path)
+	var active_fishing_ablation_enabled := fishing_ablation_enabled if fishing_ablation_enabled.is_valid() else self.fishing_ablation_enabled
+	var fishing_no_art := active_fishing_ablation_enabled.is_valid() and _path_is_fishing_visual(normalized) and bool(active_fishing_ablation_enabled.call("no_art"))
 	var cache_key := "%s|atlas|%.3f,%.3f,%.3f,%.3f|%s" % [
 		normalized,
 		region.position.x,
 		region.position.y,
 		region.size.x,
 		region.size.y,
-		str(filter_clip)
+		str(filter_clip) + "|" + str(fishing_no_art)
 	]
 	if atlas_texture_cache.has(cache_key):
+		_touch_atlas_scope(cache_key)
 		return atlas_texture_cache[cache_key] as Texture2D
 	if DisplayServer.get_name() == "headless":
 		var headless_fallback := _visual_fallback_texture()
 		atlas_texture_cache[cache_key] = headless_fallback
+		_touch_atlas_scope(cache_key)
 		return headless_fallback
 	var source := _texture(normalized, fishing_ablation_enabled)
 	if source == null:
 		var fallback := _visual_fallback_texture()
 		atlas_texture_cache[cache_key] = fallback
+		_touch_atlas_scope(cache_key)
 		return fallback
 	var atlas := AtlasTexture.new()
 	atlas.atlas = source
 	atlas.region = region
 	atlas.filter_clip = filter_clip
 	atlas_texture_cache[cache_key] = atlas
+	_touch_atlas_scope(cache_key)
 	return atlas
 
 
 func _image(path: String, minimum_size: Vector2, fishing_ablation_enabled := Callable()) -> TextureRect:
-	var image := TextureRect.new()
-	image.texture = _texture_or_visual_fallback(path, fishing_ablation_enabled)
+	return _configure_image(TextureRect.new(), _texture_or_visual_fallback(path, fishing_ablation_enabled), minimum_size)
+
+
+func _configure_image(image: TextureRect, texture: Texture2D, minimum_size: Vector2) -> TextureRect:
+	image.texture = texture
 	image.custom_minimum_size = minimum_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -152,21 +212,15 @@ func _first_texture_or_visual_fallback(paths: Array, fishing_ablation_enabled :=
 
 
 func _image_from_texture(texture: Texture2D, minimum_size: Vector2, texture_path := "", fishing_ablation_enabled := Callable()) -> TextureRect:
-	var image := TextureRect.new()
 	var loaded_texture := _texture(texture_path, fishing_ablation_enabled) if not texture_path.is_empty() else texture
-	image.texture = loaded_texture if loaded_texture != null else _visual_fallback_texture()
-	image.custom_minimum_size = minimum_size
-	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	image.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return image
+	return _configure_image(TextureRect.new(), loaded_texture if loaded_texture != null else _visual_fallback_texture(), minimum_size)
 
 
 func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D:
 	if path.is_empty():
 		return null
 	var normalized := _res_path(path)
+	_touch_texture_scope(normalized)
 	var active_fishing_ablation_enabled := fishing_ablation_enabled if fishing_ablation_enabled.is_valid() else self.fishing_ablation_enabled
 	if active_fishing_ablation_enabled.is_valid() and bool(active_fishing_ablation_enabled.call("no_art")) and _path_is_fishing_visual(normalized):
 		var ablation_key := "__fishing_ablation_no_art__"
@@ -177,7 +231,7 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		return fallback
 	if texture_cache.has(normalized):
 		return texture_cache[normalized] as Texture2D
-	if DisplayServer.get_name() == "headless" and not _headless_should_load_real_texture(normalized):
+	if DisplayServer.get_name() == "headless":
 		var headless_fallback := _visual_fallback_texture()
 		texture_cache[normalized] = headless_fallback
 		return headless_fallback
@@ -191,7 +245,8 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		var fallback := _visual_fallback_texture()
 		texture_cache[normalized] = fallback
 		return fallback
-	return _texture_from_image(normalized, image)
+	var texture := _texture_from_image(normalized, image)
+	return texture
 
 
 func _path_is_fishing_visual(normalized_path: String) -> bool:
@@ -201,7 +256,3 @@ func _path_is_fishing_visual(normalized_path: String) -> bool:
 		or lower_path.contains("/combo/fishing/")
 		or lower_path.contains("fish")
 	)
-
-
-func _headless_should_load_real_texture(normalized_path: String) -> bool:
-	return false

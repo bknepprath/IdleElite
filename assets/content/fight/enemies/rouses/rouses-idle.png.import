@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dkkfl12xdiepb"
-path="res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.ctex"
+path.bptc="res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.bptc.ctex"
+path.astc="res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/rouses/rouses-idle.png"
-dest_files=["res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.ctex"]
+dest_files=["res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.bptc.ctex", "res://.godot/imported/rouses-idle.png-15b89c78ff1d93945e9f0c314f0de262.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

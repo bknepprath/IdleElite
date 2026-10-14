@@ -273,33 +273,6 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 	var max_entry_height := 0.0
 	var max_root_height := 0.0
 	var sample_detail := ""
-	var cards := scene.get("action_cards") as Dictionary
-	for raw_key in cards.keys():
-		var key := str(raw_key)
-		var raw_card = cards[raw_key]
-		var card := raw_card as Dictionary
-		if not bool(card.get("locked_preview_hidden", false)):
-			continue
-		var root_control := _valid_control(card.get("root"))
-		var entry_control := _valid_control(card.get("entry"))
-		if root_control == null or entry_control == null:
-			continue
-		if not root_control.is_inside_tree() or not entry_control.is_inside_tree():
-			continue
-		hidden_count += 1
-		if sample_detail.is_empty():
-			sample_detail = "%s same=%s root_min=%.1f root_size=%.1f entry_min=%.1f entry_size=%.1f target=%s entry_target=%s" % [
-				key,
-				str(root_control == entry_control),
-				root_control.custom_minimum_size.y,
-				root_control.size.y,
-				entry_control.custom_minimum_size.y,
-				entry_control.size.y,
-				str(card.get("locked_preview_target_height", "none")),
-				str(card.get("locked_preview_entry_target_height", "none"))
-			]
-		max_root_height = maxf(max_root_height, _allocated_control_height(root_control))
-		max_entry_height = maxf(max_entry_height, _allocated_control_height(entry_control))
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	var detail_surface = scene.call("_skill_detail_surface")
 	var visible_content := detail_surface.call("_detail_authoritative_scrollable_module_bottom") as Dictionary

@@ -3,6 +3,7 @@ extends SceneTree
 const BOOT_TIMEOUT_FRAMES := 720
 const CLICK_SETTLE_FRAMES := 16
 const MAX_BUTTONS_PER_SCENARIO := 80
+const AUDIT_VIEWPORT := Vector2i(1080, 1920)
 
 var scene: Node
 var clicked_count := 0
@@ -18,7 +19,11 @@ func _init() -> void:
 func _run() -> void:
 	print("button-census-clicks-start")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
-	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
+	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "840")
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.content_scale_size = AUDIT_VIEWPORT
+	root.size = AUDIT_VIEWPORT
 	var packed := load("res://scenes/main.tscn") as PackedScene
 	if packed == null:
 		_fail("main scene did not load")
@@ -33,7 +38,7 @@ func _run() -> void:
 	scene.call("_test_state_runtime")._god_mode_max_skills_state()
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("module_utility_collapsed", false)
-	scene.set("module_ui_pinned_order", _first_module_keys(["woodcutting", "fishing", "thieving"], 4))
+	scene.module_ui_runtime.pinned_order = _first_module_keys(["woodcutting", "fishing", "thieving"], 4)
 	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	for _i in range(8):
 		await process_frame
@@ -116,7 +121,7 @@ func _stage_scenario(scenario: Dictionary) -> bool:
 	scene.call("_fishing_ui_surface")._clear_fishing_tool_circle_menu()
 	scene.set("hub_detail_open", false)
 	scene.set("module_utility_collapsed", false)
-	scene.set("module_ui_pinned_order", _first_module_keys(["woodcutting", "fishing", "thieving"], 4))
+	scene.module_ui_runtime.pinned_order = _first_module_keys(["woodcutting", "fishing", "thieving"], 4)
 	scene.set("_last_rendered_screen_key", "")
 	var screen := str(scenario.get("screen", "home"))
 	var skill := str(scenario.get("skill", ""))
@@ -190,8 +195,8 @@ func _button_is_clickable(button: BaseButton) -> bool:
 	var rect := button.get_global_rect()
 	if rect.size.x < 4.0 or rect.size.y < 4.0:
 		return false
-	var canvas_size := Vector2(1440, 2560)
-	if rect.end.x < 0.0 or rect.end.y < 0.0 or rect.position.x > canvas_size.x or rect.position.y > canvas_size.y:
+	var canvas_size := Vector2(AUDIT_VIEWPORT)
+	if not Rect2(Vector2.ZERO, canvas_size).has_point(rect.get_center()):
 		return false
 	return true
 
@@ -207,12 +212,13 @@ func _should_skip_button(button: BaseButton) -> bool:
 		"copy crash report",
 		"play store",
 		"rate",
-		"ad",
 		"rewarded",
 		"delete",
 		"remove",
 		"prune",
 	]
+	if label.split(" ").has("ad") or label.split(" ").has("ads"):
+		return true
 	for needle in skip_needles:
 		if label.contains(needle):
 			return true
@@ -237,18 +243,13 @@ func _button_label(button: BaseButton) -> String:
 func _click_button(button: BaseButton, context: String) -> void:
 	var before_summary := _scene_summary()
 	var center := button.get_global_rect().get_center()
-	var local_center := button.get_global_transform().affine_inverse() * center
 	print("button-census-click context=%s button=%s point=%s before=%s" % [context, _button_label(button), str(center), before_summary])
-	var local_press := _mouse_button_event(local_center, center, true)
-	var local_release := _mouse_button_event(local_center, center, false)
 	var global_press := _mouse_button_event(center, center, true)
 	var global_release := _mouse_button_event(center, center, false)
-	button.emit_signal("gui_input", local_press)
-	root.push_input(global_press, false)
+	root.push_input(global_press, true)
 	for _i in range(2):
 		await process_frame
-	button.emit_signal("gui_input", local_release)
-	root.push_input(global_release, false)
+	root.push_input(global_release, true)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		if scene != null and is_instance_valid(scene):
 			scene.call("_update_ui", 0.016, false)

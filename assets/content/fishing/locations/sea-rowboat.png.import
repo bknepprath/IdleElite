@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct0cjm2k0ogpj"
-path="res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.ctex"
+path.bptc="res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.bptc.ctex"
+path.astc="res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/locations/sea-rowboat.png"
-dest_files=["res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.ctex"]
+dest_files=["res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.bptc.ctex", "res://.godot/imported/sea-rowboat.png-b3438c81369f6906f703bd79b4cfe5e9.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

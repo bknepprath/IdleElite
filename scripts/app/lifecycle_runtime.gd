@@ -4,11 +4,17 @@ const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const PROCESS_SUSPENSION_MIN_MSEC := 5000
+const LIFECYCLE_SAVE_DEBOUNCE_MSEC := 1500
 
 var host
 var lazy_overlays_built := {}
 var last_process_unix_time := 0
 var last_process_monotonic_msec := -1
+var last_lifecycle_save_monotonic_msec := -1
+var last_lifecycle_save_succeeded := false
+var last_lifecycle_save_was_deferred := false
+var suspended_at_unix := -1
+var resume_repair_waiting_for_frame := false
 
 
 func _init(host_ref) -> void:
@@ -36,66 +42,35 @@ func state_object_ref(value) -> Object:
 
 
 func valid_control_ref(value) -> Control:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as Control
+	return state_object_ref(value) as Control
 
 
 func valid_texture_button_ref(value) -> TextureButton:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureButton
+	return state_object_ref(value) as TextureButton
 
 
 func valid_node_ref(value) -> Node:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as Node
+	return state_object_ref(value) as Node
 
 
 func valid_canvas_item_ref(value) -> CanvasItem:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as CanvasItem
+	return state_object_ref(value) as CanvasItem
 
 
 func valid_texture_rect_ref(value) -> TextureRect:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureRect
-
-
-func valid_texture_progress_ref(value) -> TextureProgressBar:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureProgressBar
+	return state_object_ref(value) as TextureRect
 
 
 func valid_label_ref(value) -> Label:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as Label
+	return state_object_ref(value) as Label
 
 
 func valid_base_button_ref(value) -> BaseButton:
-	var object := state_object_ref(value)
-	if object == null:
-		return null
-	return object as BaseButton
+	return state_object_ref(value) as BaseButton
 
 
 func valid_button_ref(value) -> Button:
-	var control := valid_control_ref(value)
-	if control == null:
-		return null
-	return control as Button
+	return state_object_ref(value) as Button
 
 
 func meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
@@ -128,7 +103,7 @@ func control_effectively_visible(control: Control, minimum_alpha := 0.05) -> boo
 	while current != null:
 		if current is CanvasItem:
 			var canvas_item := current as CanvasItem
-			alpha *= canvas_item.modulate.a
+			alpha *= canvas_item.modulate.a * canvas_item.self_modulate.a
 			if alpha <= minimum_alpha:
 				return false
 		current = current.get_parent()
@@ -136,12 +111,12 @@ func control_effectively_visible(control: Control, minimum_alpha := 0.05) -> boo
 
 
 func set_label_text_if_changed(label: Label, next_text: String) -> void:
-	if label != null and label.text != next_text:
+	if label != null and is_instance_valid(label) and not label.is_queued_for_deletion() and label.text != next_text:
 		label.text = next_text
 
 
 func set_button_text_if_changed(button: Button, next_text: String) -> void:
-	if button != null and button.text != next_text:
+	if button != null and is_instance_valid(button) and not button.is_queued_for_deletion() and button.text != next_text:
 		button.text = next_text
 
 
@@ -155,7 +130,8 @@ func colors_close_enough(current: Color, next: Color) -> bool:
 
 
 func set_canvas_item_visible_if_changed(item: CanvasItem, should_show: bool) -> void:
-	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and item.visible != should_show:
+	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and (item.visible != should_show or (should_show and bool(item.get_meta("desktop_closing", false)))):
+		if item is Control and host.desktop_layout.animate_modal_visibility(item, should_show): return
 		item.visible = should_show
 
 
@@ -181,17 +157,11 @@ func set_base_button_disabled_if_changed(button: BaseButton, should_disable: boo
 
 
 func set_canvas_item_alpha_safe(alpha: float, canvas_item_id: int) -> void:
-	var canvas_item := valid_canvas_item_ref(instance_from_id(canvas_item_id))
-	if canvas_item == null or canvas_item.is_queued_for_deletion():
-		return
-	set_canvas_item_alpha_if_changed(canvas_item, alpha)
+	set_canvas_item_alpha_if_changed(valid_canvas_item_ref(instance_from_id(canvas_item_id)), alpha)
 
 
 func set_control_minimum_height_safe(height: float, control_id: int) -> void:
-	var control := valid_control_ref(instance_from_id(control_id))
-	if control == null or control.is_queued_for_deletion():
-		return
-	set_control_minimum_height(control, height)
+	set_control_minimum_height(valid_control_ref(instance_from_id(control_id)), height)
 
 
 func set_control_minimum_height(control: Control, height: float) -> void:
@@ -272,16 +242,21 @@ func handle_notification(what: int) -> void:
 		_save_for_app_suspend()
 		_prepare_for_shutdown()
 	elif what == host.NOTIFICATION_APPLICATION_FOCUS_OUT:
-		_save_for_app_suspend()
+		_save_for_focus_loss()
 	elif what == host.NOTIFICATION_APPLICATION_FOCUS_IN:
-		if _app_lifecycle_uses_focus_resume():
-			_resume_from_app_suspend()
+		if suspended_at_unix >= 0 or _app_lifecycle_uses_focus_resume():
+			call_deferred("_resume_from_app_suspend")
 		else:
 			host._crash_report_runtime().write_session_marker("running")
+			if is_instance_valid(host.audio_director):
+				host.audio_director._ensure_music_playing()
+	elif what == host.NOTIFICATION_WM_MOUSE_EXIT:
+		if host.startup_initialized:
+			_cancel_interrupted_pointer()
 	elif what == host.NOTIFICATION_APPLICATION_PAUSED:
 		_save_for_app_suspend()
 	elif what == host.NOTIFICATION_APPLICATION_RESUMED:
-		_resume_from_app_suspend()
+		call_deferred("_resume_from_app_suspend")
 	elif what == host.NOTIFICATION_PREDELETE:
 		_prepare_for_shutdown()
 
@@ -290,9 +265,7 @@ func _prepare_for_shutdown() -> void:
 	if host.shutdown_cleanup_started:
 		return
 	host.shutdown_cleanup_started = true
-	if _runtime_save_is_safe():
-		host.save_game()
-	host._crash_report_runtime().write_session_marker("clean")
+	_write_lifecycle_save_marker(_persist_for_lifecycle())
 	host._skill_detail_surface()._clear_detail_lazy_cached_roots()
 	host._skill_swipe_activity_surface()._free_global_swipe_real_card_cache()
 	host._navigation_shell().pending_skill_detail_refresh_request.clear()
@@ -306,7 +279,6 @@ func _prepare_for_shutdown() -> void:
 	_kill_action_card_shutdown_tweens()
 	if host.achievement_overlay_surface != null:
 		host.achievement_overlay_surface.invalidate_home_page()
-	host._skill_swipe_activity_surface()._cancel_preview_prewarm()
 	host._skill_swipe_activity_surface().preview_module_reveal_token += 1
 	host.app_boot_warmup_runtime = null
 	clear_lazy_overlay_registry()
@@ -343,8 +315,7 @@ func _prepare_for_shutdown() -> void:
 	if host.achievement_overlay_surface != null:
 		host.achievement_overlay_surface.reset_home_scroll_ref()
 	host.skills_content = null
-	host.visual_texture_cache.texture_cache.clear()
-	host.visual_texture_cache.atlas_texture_cache.clear()
+	host.visual_texture_cache.clear_runtime_cache()
 	AchievementPresentation.clear_cache()
 	host.paper_button_style_textures.clear()
 	ActivityCardStyles.clear_cache()
@@ -359,7 +330,7 @@ func _prepare_for_shutdown() -> void:
 
 
 func _runtime_save_is_safe() -> bool:
-	return host.startup_initialized or host.loaded_save_this_boot
+	return host.save_restore_complete
 
 
 func _mobile_lifecycle_uses_focus_resume() -> bool:
@@ -367,32 +338,106 @@ func _mobile_lifecycle_uses_focus_resume() -> bool:
 
 
 func _app_lifecycle_uses_focus_resume() -> bool:
-	return _mobile_lifecycle_uses_focus_resume() or OS.get_name() == "Web" or OS.has_feature("web")
+	return _mobile_lifecycle_uses_focus_resume()
+
+
+func _save_for_focus_loss() -> void:
+	if _mobile_lifecycle_uses_focus_resume():
+		_save_for_app_suspend()
+		return
+	if not host.is_node_ready() or not host.startup_initialized or host.shutdown_cleanup_started:
+		return
+	# Desktop/browser focus is not suspension. Continue simulation and music;
+	# real application pause and measured frame gaps still use offline recovery.
+	_cancel_interrupted_pointer()
+	var outcome := _persist_for_lifecycle()
+	if outcome > 0:
+		host._crash_report_runtime().write_session_marker("running")
+	else:
+		_write_lifecycle_save_marker(outcome)
 
 
 func _save_for_app_suspend() -> void:
+	# Focus notifications can arrive while Godot is still attaching the scene.
+	# Do not create audio/input children while the parent is locked for setup.
+	if not host.is_node_ready() or not host.startup_initialized or host.shutdown_cleanup_started:
+		return
+	if suspended_at_unix < 0:
+		suspended_at_unix = host._unix_now()
+	host._save_runtime().suspend_saved_at_unix = suspended_at_unix
+	_cancel_interrupted_pointer()
+	if is_instance_valid(host.audio_director):
+		host.audio_director._pause_music_for_app_suspend()
+	if is_instance_valid(host.online_runtime):
+		host.online_runtime._chat_stream_disconnect(false)
+	_write_lifecycle_save_marker(_persist_for_lifecycle())
+
+
+func _cancel_interrupted_pointer() -> void:
+	host.desktop_layout.cancel_carousel()
 	host._clear_page_transient_input_state(true)
-	host._audio_director()._pause_music_for_app_suspend()
-	if _runtime_save_is_safe():
-		host.save_game()
-	host._crash_report_runtime().write_session_marker("clean")
+	var swipe = host._skill_swipe_activity_surface()
+	if swipe.skill_swipe_tracking:
+		swipe._cancel_skill_swipe_feedback(false)
+
+
+func _persist_for_lifecycle() -> int:
+	if host._save_runtime().save_writes_blocked:
+		last_lifecycle_save_was_deferred = false
+		last_lifecycle_save_succeeded = false
+		return -1
+	if not _runtime_save_is_safe():
+		last_lifecycle_save_was_deferred = true
+		last_lifecycle_save_succeeded = false
+		return 0
+	if suspended_at_unix >= 0 and last_lifecycle_save_succeeded:
+		return 1
+	var now_msec := Time.get_ticks_msec()
+	if last_lifecycle_save_succeeded and last_lifecycle_save_monotonic_msec >= 0 and now_msec - last_lifecycle_save_monotonic_msec <= LIFECYCLE_SAVE_DEBOUNCE_MSEC:
+		return 1
+	last_lifecycle_save_monotonic_msec = now_msec
+	last_lifecycle_save_was_deferred = false
+	last_lifecycle_save_succeeded = host.save_game()
+	return 1 if last_lifecycle_save_succeeded else -1
+
+
+func _write_lifecycle_save_marker(outcome: int) -> void:
+	if outcome > 0:
+		host._crash_report_runtime().write_session_marker("clean")
+	elif outcome == 0:
+		host._crash_report_runtime().write_session_marker("clean_save_deferred")
+	else:
+		host._crash_report_runtime().write_session_marker("save_failed")
 
 
 func _resume_from_app_suspend(offline_from_unix := -1) -> void:
+	if not host.is_node_ready() or not host.startup_initialized:
+		host.app_resume_repair_pending = true
+		return
+	# Focus-in and resumed may both arrive. Only a recorded suspension or an
+	# observed process gap may earn offline time, never a foreground autosave gap.
+	if suspended_at_unix < 0 and offline_from_unix < 0:
+		var missed_seconds := process_suspension_seconds(last_process_unix_time, host._unix_now(), last_process_monotonic_msec, Time.get_ticks_msec())
+		if missed_seconds > 0:
+			offline_from_unix = host._unix_now() - missed_seconds
+	host._save_runtime().suspend_saved_at_unix = -1
 	last_process_unix_time = host._unix_now()
 	last_process_monotonic_msec = Time.get_ticks_msec()
+	last_lifecycle_save_monotonic_msec = -1
+	last_lifecycle_save_succeeded = false
+	last_lifecycle_save_was_deferred = false
 	host._crash_report_runtime().write_session_marker("running")
 	host._performance_runtime()._record_battery_governor_activity()
 	host._navigation_shell()._clear_page_switch_input_state(true)
-	if not host.startup_initialized:
-		host.app_resume_repair_pending = true
-		host._audio_director()._restart_music_after_app_resume()
-		return
 	if not _runtime_save_is_safe():
+		suspended_at_unix = -1
 		host._audio_director()._restart_music_after_app_resume()
 		return
 	var now: int = host._unix_now()
-	var saved_at: int = host._save_runtime().last_save_unix_time if offline_from_unix < 0 else offline_from_unix
+	var saved_at: int = now if offline_from_unix < 0 else offline_from_unix
+	if suspended_at_unix >= 0:
+		saved_at = suspended_at_unix
+	suspended_at_unix = -1
 	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(saved_at) > 0
 	if host.offline_progress_enabled:
 		host._passive_modules_runtime().apply_passive_module_production(now)
@@ -401,19 +446,30 @@ func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 		host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	if offline_progressed:
 		host._update_ui(0.0, true)
+	# Persist the consumed interval even when offline rewards are disabled.
+	if saved_at > 0 and now > saved_at:
 		host.save_game()
 	call_deferred("_repair_after_app_resume")
 	host._audio_director()._restart_music_after_app_resume()
 
 
 func _repair_after_app_resume():
-	if not host.is_inside_tree():
+	if not host.is_inside_tree() or host.shutdown_cleanup_started:
 		return
 	if not host.startup_initialized:
 		host.app_resume_repair_pending = true
 		return
 	if host._boot_warmup_runtime().active or host.boot_detail_render_in_progress or host._navigation_shell().screen_render_in_progress:
 		host.app_resume_repair_pending = true
+		if resume_repair_waiting_for_frame:
+			return
+		resume_repair_waiting_for_frame = true
+		# Deferred calls run until the queue is empty. Retrying immediately here
+		# starves the render frame we are waiting for and can crash the engine.
+		await host.get_tree().process_frame
+		resume_repair_waiting_for_frame = false
+		if not host.is_inside_tree() or host.shutdown_cleanup_started:
+			return
 		call_deferred("_repair_after_app_resume")
 		return
 	host.app_resume_repair_pending = false
@@ -422,11 +478,11 @@ func _repair_after_app_resume():
 	if host.current_screen != "home" and host.skills_content != null and host.skills_content.get_child_count() == 0:
 		await host._navigation_shell()._render_screen(false, -1, false)
 	elif host.current_screen == "skill":
-		var stack := host._detail_actions_stack() as Control
-		if stack == null or not host._skill_detail_stack_is_presentable(stack):
+		var stack := host._skill_detail_surface()._detail_actions_stack() as Control
+		if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 			host._skill_swipe_activity_surface()._force_skill_detail_reveal_mount_under_cover()
-			stack = host._detail_actions_stack() as Control
-			if stack == null or not host._skill_detail_stack_is_presentable(stack):
+			stack = host._skill_detail_surface()._detail_actions_stack() as Control
+			if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 				await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(-1, host.selected_skill_id, true, true)
 	host._navigation_shell()._update_page_visibility()
 	host._update_ui(0.0, true)
@@ -443,24 +499,20 @@ func _queue_resume_redraw(node: Node) -> void:
 func _kill_transient_tweens_in_subtree(node: Node) -> void:
 	if node == null or not is_instance_valid(node):
 		return
-	if node is Control:
+	# Most descendants are static art or labels. Inspect their existing metadata
+	# once rather than making every tween-cleanup call on every descendant.
+	var restore_reveal := false
+	for meta_name in node.get_meta_list():
+		match String(meta_name):
+			"detail_lazy_reveal_tween", "detail_lazy_reveal_base_y", "detail_lazy_reveal_base_scale", "activity_reveal_cover":
+				restore_reveal = true
+			"reset_feedback_active":
+				if node is Button:
+					node.remove_meta(meta_name)
+			"depress_tween", "reset_feedback_tween", "bonus_tween", "bonus_content_tween", "medal_ceremony_tween", "medal_outgoing_tween", "medal_tap_pop_tween", "medal_tap_effect_tween", "mastery_bar_tween", "activity_crit_text_tween", "hub_decor_pop_tween", "mat_flyer_tween", "mat_pulse_tween", "fishing_net_offer_idle_tween":
+				_kill_meta_tween(node, meta_name)
+	if restore_reveal and node is Control:
 		host._skill_detail_surface()._kill_detail_lazy_reveal_tween(node as Control)
-	_kill_meta_tween(node, "depress_tween")
-	if node is Button:
-		host._settings_surface()._kill_reset_data_feedback_tween(node as Button)
-	else:
-		_kill_meta_tween(node, "reset_feedback_tween")
-	_kill_meta_tween(node, "bonus_tween")
-	_kill_meta_tween(node, "bonus_content_tween")
-	_kill_meta_tween(node, "medal_ceremony_tween")
-	_kill_meta_tween(node, "medal_outgoing_tween")
-	_kill_meta_tween(node, "medal_tap_pop_tween")
-	_kill_meta_tween(node, "medal_tap_effect_tween")
-	_kill_meta_tween(node, "mastery_bar_tween")
-	_kill_meta_tween(node, "activity_crit_text_tween")
-	_kill_meta_tween(node, "hub_decor_pop_tween")
-	_kill_meta_tween(node, "mat_flyer_tween")
-	_kill_meta_tween(node, "mat_pulse_tween")
 	for child in node.get_children():
 		_kill_transient_tweens_in_subtree(child)
 
@@ -480,18 +532,14 @@ func _kill_shutdown_global_tweens() -> void:
 	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
 	host._activity_unlock_ceremony_surface().clear_visual_scroll_tween()
 	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
-	if host._skill_detail_surface().detail_unlock_scroll_spacer_tween != null and host._skill_detail_surface().detail_unlock_scroll_spacer_tween.is_valid():
-		host._skill_detail_surface().detail_unlock_scroll_spacer_tween.kill()
+	_kill_tween_value(host._skill_detail_surface().detail_unlock_scroll_spacer_tween)
 	host._skill_detail_surface().detail_unlock_scroll_spacer_tween = null
 	var nav: NavigationShell = host._navigation_shell()
-	if nav.hero_nav_fade_tween != null and nav.hero_nav_fade_tween.is_valid():
-		nav.hero_nav_fade_tween.kill()
+	_kill_tween_value(nav.hero_nav_fade_tween)
 	nav.hero_nav_fade_tween = null
-	if nav.hub_nav_fade_tween != null and nav.hub_nav_fade_tween.is_valid():
-		nav.hub_nav_fade_tween.kill()
+	_kill_tween_value(nav.hub_nav_fade_tween)
 	nav.hub_nav_fade_tween = null
-	if nav.shop_nav_fade_tween != null and nav.shop_nav_fade_tween.is_valid():
-		nav.shop_nav_fade_tween.kill()
+	_kill_tween_value(nav.shop_nav_fade_tween)
 	nav.shop_nav_fade_tween = null
 	host._fishing_ui_surface().kill_wallet_pop_tween()
 	host.button_press_runtime.clear_all_nav_pop_tweens()
@@ -514,6 +562,8 @@ func _kill_card_tween(card: Dictionary, key: String) -> void:
 	var tween = card.get(key, null)
 	_kill_tween_value(tween)
 	card.erase(key)
+	if key == "preview_fade_tween":
+		preload("res://scripts/ui/reveal_cover.gd").apply(valid_control_ref(card.get("root")), 1.0, host)
 
 
 func _queue_free_instance_id(instance_id: int) -> void:
@@ -537,9 +587,7 @@ func _kill_meta_tween(node: Node, meta_name: String) -> void:
 
 
 func _hide_control_bound(control_id: int) -> void:
-	var control: Control = valid_control_ref(instance_from_id(control_id))
-	if control != null:
-		set_canvas_item_visible_if_changed(control, false)
+	set_canvas_item_visible_if_changed(valid_control_ref(instance_from_id(control_id)), false)
 
 
 func _kill_tween_value(tween) -> void:

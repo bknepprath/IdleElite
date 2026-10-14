@@ -4,8 +4,10 @@
 
 ## Current Build Artifacts
 
-- Play upload bundle: `builds/android/idle-elite-release-v0.4.66-code34.aab`
-- Bundletool test package: `builds/android/idle-elite-release-v0.4.66-code34.apks`
+- Stability candidate: **0.6.2 / code41**, built and artifact-verified; physical-device acceptance is pending. See `launch-readiness-2026-10-11-v0.6.2.md`.
+- Candidate build/output root: `E:\IdleElite-v0.6.2` because C: is low on space.
+- Play upload bundle: `E:\IdleElite-v0.6.2\build-source\builds\android\idle-elite-release-v0.6.2-code41.aab`.
+- Bundletool test package: `E:\IdleElite-v0.6.2\build-source\builds\android\idle-elite-release-v0.6.2-code41.apks`.
 - Debug APK used for emulator testing: `builds/android/idle-elite-debug.apk`
 - Upload keystore: `release/idle-elite-upload.keystore`
 - Local keystore details: `release/local-release-notes.md`
@@ -16,9 +18,19 @@
 
 The `release/` and `builds/` folders are ignored by Git because they contain local signing material and generated binaries.
 
-## Verified Locally
+## Current Update Workflow
 
-- Godot project parses; `.\scripts\check-project.ps1` currently reaches the save-normalization suite and fails on auto-unlock lockpad assertions.
+The October 11 stability candidate preserves the current account system and targets API 36. Use `build-android-release.ps1 -ExistingReleaseBaselineAab <code40-aab>`. The Firebase login was refreshed and the live rules/configuration check passed for code40 to code41. No Firebase rules or player records were changed. Publishing this candidate has not been requested. Complete the current readiness note's device/update/ad tests before publication.
+
+## Previous Update Status
+
+Play Console was checked October 10, 2026: production is code39 / 0.6.0 at 100%. The 0.6.1 / code40 candidate uses the existing Firebase configuration and deployed authenticated rules. Use `build-android-release.ps1 -ExistingReleaseBaselineAab <published-code39-aab>` after reviewing identity compatibility. Do not repeat the old leaderboard reset, freeze, or migration deployment. Code40 has now been submitted for a 100% public production rollout, with automatic publication after Google approval. See `launch-readiness-2026-10-10.md` for current evidence, warnings, owner authorization, and review status.
+
+## Historical Verified v0.5.3 Baseline
+
+These statements describe the historical code38 artifact. They are not evidence that code40 or a future existing-player transition release has passed.
+
+- Headless validation is pinned to the verified Godot 4.7.1 binary through `run-godot-safe.ps1` and uses isolated user data. Godot 4.5.1 is not used for this project validation.
 - Android Gradle export template is installed under `android/build`.
 - Poing Studios AdMob plugin is installed under `addons/admob`.
 - Android AdMob plugin binaries are present under `addons/admob/android/bin`.
@@ -26,8 +38,20 @@ The `release/` and `builds/` folders are ignored by Git because they contain loc
 - Release AAB converts to APKs with official Google `bundletool-all-1.18.3`.
 - Bundletool-generated APKs are ready for device install testing.
 - Debug build ad button reaches the AdMob rewarded loader.
-- Release manifest reports `versionCode=34`, `versionName=0.4.66`, `minSdk=24`, and `targetSdk=35`.
+- Release manifest reports `versionCode=38`, `versionName=0.5.3`, `minSdk=24`, and `targetSdk=36`.
 - Exported manifest contains AdMob app ID `ca-app-pub-3570919669688101~3616255490`.
+- Both native libraries and the generated APK pass the Android 16 KB page-size alignment checks.
+- The isolated preview package completed eight cold starts on a physical Samsung phone with no fatal, native, OOM, or ANR log entries.
+
+## Future Existing-Player Transition Go/No-Go
+
+- `.\scripts\check-firebase-migration-readiness.ps1` passes against a fresh ignored receipt bound to the explicitly approved transition version.
+- Identity Platform anonymous cleanup is disabled; current Auth and RTDB backups are access-controlled; final Auth reconciliation and canonical-profile backfill are clean; authenticated rules are deployed.
+- Firebase has an Android app for `com.idleelite.game`. The Play App Signing SHA-1 and upload-key SHA-1 are registered, Google sign-in is enabled, and the configured Web client belongs to the same project.
+- A disposable locally signed production install updates to the transition build without uninstalling and retains its exact username, stable UID, XP, unlocks, and built modules.
+- A Play-signed production install updates from the closed track and retains the same profile and progress after first launch and restart.
+- Google linking in the Play-delivered build keeps the existing Firebase UID and username; cloud upload and second-install restore both pass.
+- The frozen pre-migration save decoder regression reads a newly written save with the exact username, UID, XP, mastery, unlocks, and built modules intact. Any emergency rollback build must retain that compatibility result.
 
 ## Account Items Before Public Upload
 
@@ -59,7 +83,7 @@ Use this helper when the real AdMob IDs are available:
 1. Create a Google Play app named `Idle Elite`.
 2. Package name must be `com.idleelite.game`.
 3. Enroll in Play App Signing.
-4. Upload `builds/android/idle-elite-release-v0.4.66-code34.aab`.
+4. Upload `builds/android/idle-elite-release-v0.5.3-code38.aab` only for the current production baseline. A future update must use its separately approved higher version code and artifact path.
 5. Store listing:
    - App icon: `play-store/assets/app-icon-512.png`
    - Feature graphic: `play-store/assets/feature-graphic-1024x500.png`
@@ -85,10 +109,10 @@ To install the latest debug build on a connected phone (preview package, keeps r
 
 `install-android-debug.ps1` forwards to the same preview installer.
 
-To test an AAB locally with bundletool:
+To test an update from a previous locally signed build with bundletool:
 
 ```powershell
-.\scripts\test-release-aab.ps1 -UninstallExisting
+.\scripts\test-release-aab.ps1
 ```
 
-If a production package is already installed and app data should be preserved, run `.\scripts\test-release-aab.ps1` without `-UninstallExisting` to test the update path.
+Do not use `-UninstallExisting` for update validation. A locally generated APK cannot replace the Play-signed production app because the certificates differ; test that path by updating through the Play closed track.

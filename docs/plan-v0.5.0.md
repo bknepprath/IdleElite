@@ -1,5 +1,7 @@
 # Plan v0.5.0
 
+Status note, 2026-08-10: this is a historical implementation plan. Buildable modules, recovery activities, Fighting arenas and bosses, Berry Prep, and mission completion feedback now have runtime implementations. Use `planning-system.md` for current priorities and `early-game-relationships-and-treats.md` for the active first-hour plan.
+
 ## Intent
 
 v0.5.0 should make the skill pages feel more authored, more gated, and less bloated internally. The update is built around four pillars:
@@ -231,6 +233,17 @@ Design notes:
 ## Phase 5: Berries Resource and Apply System
 
 Goal: add berries as a woodcutting resource with a unique prep/buff identity.
+
+Current implementation baseline:
+
+- Prune Orchard Row at Woodcutting 13 awards Berries.
+- Berry Mode can mark activities as prepared targets.
+- A successful prepared completion consumes one Berry, doubles XP, and doubles material rewards.
+- Prepared targets persist, including when the player has no Berries.
+- Prune Orchard Row can currently prepare itself and multiply its own guaranteed Berry reward. The active plan requires Berry-source ineligibility and non-recursive reward handling before the treat loop expands.
+- Split-XP actions currently receive the full Berry bonus on the owning skill. The active plan requires proportional doubling of every authored skill reward.
+- Fishing completions currently bypass Berry consumption and bonuses. The active plan requires one eligibility contract across standard activities, Fishing, queue, offline retention, and save restore; offline consumption waits for base reward parity.
+- The first-hour plan proposes three milestone Berry awards, a simplified first-target flow, and an anti-hoarding rule. Those changes are not current runtime behavior.
 
 Resource source:
 

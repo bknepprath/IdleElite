@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://w3bkyxhc1i3d"
-path="res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.ctex"
+path.bptc="res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.bptc.ctex"
+path.astc="res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/blue-guy-ko-02.png"
-dest_files=["res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.ctex"]
+dest_files=["res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.bptc.ctex", "res://.godot/imported/blue-guy-ko-02.png-6c1cf3397a377319daa1bf8d66827f4c.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

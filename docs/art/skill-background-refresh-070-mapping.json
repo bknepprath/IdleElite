@@ -1,0 +1,177 @@
+[
+  {
+    "skill": "fight",
+    "id": "wrap-hands",
+    "field": "art",
+    "before": "assets/content/fight/actions/02-kick-mud-off-boot.png",
+    "after": "assets/content/fight/actions/wrap-hands.png"
+  },
+  {
+    "skill": "thieving",
+    "id": "count-the-coins",
+    "field": "background",
+    "before": "assets/content/thieving/backgrounds/01-early.png",
+    "after": "assets/content/thieving/backgrounds/quiet-market-lane.png"
+  },
+  {
+    "skill": "thieving",
+    "id": "hide-in-plain-sight",
+    "field": "background",
+    "before": "assets/content/thieving/backgrounds/02-rising.png",
+    "after": "assets/content/thieving/backgrounds/quiet-market-lane.png"
+  },
+  {
+    "skill": "thieving",
+    "id": "case-the-quiet-corner",
+    "field": "background",
+    "before": "assets/content/thieving/backgrounds/03-mid.png",
+    "after": "assets/content/thieving/backgrounds/quiet-market-lane.png"
+  },
+  {
+    "skill": "thieving",
+    "id": "nap-behind-the-market-stall",
+    "field": "background",
+    "before": "assets/content/thieving/backgrounds/05-finale.png",
+    "after": "assets/content/thieving/backgrounds/quiet-market-lane.png"
+  },
+  {
+    "skill": "build",
+    "id": "hammer-nails",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "build",
+    "id": "patch-fence",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "saw-planks",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "study-blueprint",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "build",
+    "id": "repair-small-shack",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "sharpen-the-pencil",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "build",
+    "id": "sharpen-the-pencil",
+    "field": "art",
+    "before": "assets/content/build/actions/03-study-blueprint.png",
+    "after": "assets/content/build/actions/sharpen-the-pencil.png"
+  },
+  {
+    "skill": "build",
+    "id": "install-door-that-mostly-opens",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/01-early.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "roof-the-roofless",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/02-rising.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "frame-a-treehouse-platform",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/02-rising.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "sit-on-the-toolbox",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/02-rising.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "build",
+    "id": "raise-a-two-story-barn",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/03-mid.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "sweep-the-worksite",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/03-mid.png",
+    "after": "assets/content/build/backgrounds/timber-yard.png"
+  },
+  {
+    "skill": "build",
+    "id": "inspect-the-blueprints-again",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/04-late.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "build",
+    "id": "measure-twice-again",
+    "field": "background",
+    "before": "assets/content/build/backgrounds/05-finale.png",
+    "after": "assets/content/build/backgrounds/workbench.png"
+  },
+  {
+    "skill": "woodcutting",
+    "id": "lean-on-the-axe",
+    "field": "background",
+    "before": "assets/content/woodcutting/backgrounds/01-early.png",
+    "after": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
+  },
+  {
+    "skill": "woodcutting",
+    "id": "snack-on-trail-mix",
+    "field": "background",
+    "before": "assets/content/woodcutting/backgrounds/02-rising.png",
+    "after": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
+  },
+  {
+    "skill": "woodcutting",
+    "id": "oil-the-axe-handle",
+    "field": "background",
+    "before": "assets/content/woodcutting/backgrounds/03-mid.png",
+    "after": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
+  },
+  {
+    "skill": "woodcutting",
+    "id": "stretch-the-splinters-out",
+    "field": "background",
+    "before": "assets/content/woodcutting/backgrounds/04-late.png",
+    "after": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
+  },
+  {
+    "skill": "woodcutting",
+    "id": "rest-under-the-stump",
+    "field": "background",
+    "before": "assets/content/woodcutting/backgrounds/05-finale.png",
+    "after": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
+  }
+]

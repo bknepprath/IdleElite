@@ -3,6 +3,7 @@ extends RefCounted
 const ActionRuntime = preload("res://scripts/gameplay/action_runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
+const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 
 const BLUE_GUY_HEALTH_MAX := 30
 const BLUE_GUY_HEALTH_REGEN_SECONDS := 2.0
@@ -13,6 +14,45 @@ var host
 var completed_bosses := {}
 var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
 var blue_guy_health_bank := 0.0
+var parked_combat_stage: Control
+# Arena XP banked toward medal progress, per fight action.
+var arena_completion_xp_progress := {}
+var fighting_display_xp_remainder := 0.0
+var parked_combat_action_id := ""
+
+
+func park_running_combat_stage() -> void:
+	if not action_is_free_fighting_proto(host.running_skill_id, host.running_action_id):
+		return
+	var card: Dictionary = host.action_cards.get(host._action_key("fight", host.running_action_id), {})
+	var stage := card.get("blue_guy_chicken_stage") as Control
+	if stage == null or not is_instance_valid(stage) or stage.is_queued_for_deletion() or not bool(stage.get("active")):
+		return
+	parked_combat_stage = stage
+	parked_combat_action_id = host.running_action_id
+	stage.reparent(host, false)
+	stage.visible = false
+
+
+func take_parked_combat_stage(action_id: String) -> Control:
+	if not is_instance_valid(parked_combat_stage) or parked_combat_action_id != action_id:
+		return null
+	var stage := parked_combat_stage
+	stage.get_parent().remove_child(stage)
+	stage.visible = true
+	parked_combat_stage = null
+	parked_combat_action_id = ""
+	return stage
+
+
+func sync_parked_combat_stage() -> void:
+	if not is_instance_valid(parked_combat_stage):
+		return
+	if host.running_skill_id == "fight" and host.running_action_id == parked_combat_action_id:
+		return
+	parked_combat_stage.queue_free()
+	parked_combat_stage = null
+	parked_combat_action_id = ""
 
 
 func _init(host_node = null) -> void:
@@ -67,15 +107,11 @@ func is_boss_fight_action(action: Dictionary) -> bool:
 
 
 func boss_id(action: Dictionary) -> String:
-	if not is_boss_fight_action(action):
-		return ""
-	return str((action.get("boss", {}) as Dictionary).get("id", "")).strip_edges()
+	return str((action.get("boss", {}) as Dictionary).get("id", "")).strip_edges() if is_boss_fight_action(action) else ""
 
 
 func boss_name(action: Dictionary) -> String:
-	if not is_boss_fight_action(action):
-		return ""
-	return str((action.get("boss", {}) as Dictionary).get("name", str(action.get("name", "Boss")))).strip_edges()
+	return str((action.get("boss", {}) as Dictionary).get("name", str(action.get("name", "Boss")))).strip_edges() if is_boss_fight_action(action) else ""
 
 
 func boss_is_completed(action: Dictionary) -> bool:
@@ -84,27 +120,26 @@ func boss_is_completed(action: Dictionary) -> bool:
 
 
 func completed_bosses_for_save() -> Dictionary:
-	var saved := {}
-	for raw_id in completed_bosses.keys():
-		var id := str(raw_id)
-		if not id.is_empty() and bool(completed_bosses.get(raw_id, false)):
-			saved[id] = true
-	return saved
+	return _normalized_completed_bosses(completed_bosses)
 
 
 func restore_completed_bosses_from_save(value: Variant) -> void:
-	completed_bosses.clear()
+	completed_bosses = _normalized_completed_bosses(value)
+
+
+func _normalized_completed_bosses(value: Variant) -> Dictionary:
+	var normalized := {}
 	if typeof(value) != TYPE_DICTIONARY:
-		return
+		return normalized
 	for raw_id in (value as Dictionary).keys():
 		var id := str(raw_id).strip_edges()
 		if not id.is_empty() and bool((value as Dictionary).get(raw_id, false)):
-			completed_bosses[id] = true
+			normalized[id] = true
+	return normalized
 
 
 func action_boss_requirements_met(action: Dictionary) -> bool:
 	return action_missing_boss_requirements(action).is_empty()
-
 
 func action_missing_boss_requirements(action: Dictionary) -> Array:
 	var missing := []
@@ -117,7 +152,6 @@ func action_missing_boss_requirements(action: Dictionary) -> Array:
 			missing.append(id)
 	return missing
 
-
 func complete_boss_if_needed(action: Dictionary) -> String:
 	if not is_boss_fight_action(action):
 		return ""
@@ -127,41 +161,21 @@ func complete_boss_if_needed(action: Dictionary) -> String:
 	completed_bosses[id] = true
 	return "%s cleared." % boss_name(action)
 
-
-func action_uses_blue_guy_chicken_brawl_stage(action: Dictionary) -> bool:
-	return ActionRuntime.uses_diamond_arena(action)
-
-
 func action_uses_rooster_punch_out_stage(action: Dictionary) -> bool:
 	return str(action.get("id", "")) == "face-the-rooster"
-
 
 func rooster_required_stamina(action_cost: float) -> float:
 	return maxf(ROOSTER_MIN_STAMINA, action_cost)
 
-
 func action_uses_diamond_combat_arena(action: Dictionary) -> bool:
 	return ActionRuntime.uses_diamond_arena(action)
 
-
 func action_is_free_fighting_proto(skill_id: String, action_id: String) -> bool:
-	if skill_id != "fight":
-		return false
-	match action_id:
-		"fight-chickens", \
-		"chicken-sparring-pit", \
-		"fight-goblins", \
-		"fight-r.o.u.s.es", \
-		"fight-rouses", \
-		"fight-guys", \
-		"fight-werewolves", \
-		"fight-cave-trolls", \
-		"fight-giants", \
-		"fight-vampires", \
-		"fight-dragons":
-			return true
-	return false
+	return skill_id == "fight" and action_id in ["fight-chickens", "chicken-sparring-pit", "fight-goblins", "fight-r.o.u.s.es", "fight-rouses", "fight-guys", "fight-werewolves", "fight-cave-trolls", "fight-giants", "fight-vampires", "fight-dragons"]
 
+func _connect_signal_once(stage: Control, signal_name: StringName, callback: Callable) -> void:
+	if stage.has_signal(signal_name) and not stage.is_connected(signal_name, callback):
+		stage.connect(signal_name, callback)
 
 func configure_blue_guy_chicken_brawl_stage(stage: Control) -> void:
 	if stage == null or host == null:
@@ -171,20 +185,10 @@ func configure_blue_guy_chicken_brawl_stage(stage: Control) -> void:
 	if stage.has_method("setup_blue_guy_health"):
 		stage.call("setup_blue_guy_health", blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, blue_guy_health_regen_fraction())
 	if stage.has_method("set_active_fight"):
-		stage.call("set_active_fight", action_is_free_fighting_proto(host.running_skill_id, host.running_action_id))
-	if stage.has_signal("chicken_killed"):
-		var callback := Callable(self, "on_blue_guy_chicken_brawl_chicken_killed").bind(stage)
-		if not stage.is_connected("chicken_killed", callback):
-			stage.connect("chicken_killed", callback)
-	if stage.has_signal("punch_landed"):
-		var punch_callback := Callable(self, "on_blue_guy_chicken_brawl_punch_landed")
-		if not stage.is_connected("punch_landed", punch_callback):
-			stage.connect("punch_landed", punch_callback)
-	if stage.has_signal("knocked_out"):
-		var ko_callback := Callable(self, "on_blue_guy_chicken_brawl_knocked_out")
-		if not stage.is_connected("knocked_out", ko_callback):
-			stage.connect("knocked_out", ko_callback)
-
+		stage.call("set_active_fight", action_is_free_fighting_proto(host.running_skill_id, host.running_action_id) and str(stage.get_meta("combat_action_id", "")) == host.running_action_id)
+	_connect_signal_once(stage, "chicken_killed", Callable(self, "on_blue_guy_chicken_brawl_chicken_killed").bind(stage))
+	_connect_signal_once(stage, "punch_landed", Callable(self, "on_blue_guy_chicken_brawl_punch_landed"))
+	_connect_signal_once(stage, "knocked_out", Callable(self, "on_blue_guy_chicken_brawl_knocked_out"))
 
 func configure_rooster_punch_out_stage(stage: Control) -> void:
 	if stage == null or host == null:
@@ -195,15 +199,8 @@ func configure_rooster_punch_out_stage(stage: Control) -> void:
 		stage.call("setup_required_stamina", rooster_required_stamina(host._action_runtime()._effective_stamina("fight", host._action_data("fight", "face-the-rooster"))))
 	if stage.has_method("set_active_fight"):
 		stage.call("set_active_fight", host.running_skill_id == "fight" and host.running_action_id == "face-the-rooster")
-	if stage.has_signal("boss_defeated"):
-		var defeated_callback := Callable(self, "on_rooster_punch_out_boss_defeated")
-		if not stage.is_connected("boss_defeated", defeated_callback):
-			stage.connect("boss_defeated", defeated_callback)
-	if stage.has_signal("stamina_damage"):
-		var callback := Callable(self, "on_rooster_punch_out_stamina_damage").bind(stage)
-		if not stage.is_connected("stamina_damage", callback):
-			stage.connect("stamina_damage", callback)
-
+	_connect_signal_once(stage, "boss_defeated", Callable(self, "on_rooster_punch_out_boss_defeated"))
+	_connect_signal_once(stage, "stamina_damage", Callable(self, "on_rooster_punch_out_stamina_damage").bind(stage))
 
 func on_rooster_punch_out_boss_defeated() -> void:
 	if host == null or host.running_skill_id != "fight" or host.running_action_id != "face-the-rooster":
@@ -249,8 +246,6 @@ func on_rooster_punch_out_stamina_damage(amount: int, stage: Control) -> void:
 			stage.call("close_after_stamina_loss")
 	host._update_ui(0.0, false)
 	host.save_game()
-
-
 func on_blue_guy_chicken_brawl_punch_landed(shield_dropped: bool) -> void:
 	if host == null:
 		return
@@ -260,8 +255,6 @@ func on_blue_guy_chicken_brawl_punch_landed(shield_dropped: bool) -> void:
 	if randf() <= FIGHT_PUNCH_STAMINA_COST_CHANCE:
 		SkillState.spend_action_stamina(host.stamina, host.stamina_bank, "fight", 1.0, Callable(SkillState, "host_max_stamina").bind(host))
 		host._update_ui(0.0, false)
-
-
 func on_blue_guy_chicken_brawl_knocked_out() -> void:
 	if host == null:
 		return
@@ -271,8 +264,6 @@ func on_blue_guy_chicken_brawl_knocked_out() -> void:
 	host._reward_feedback_surface()._set_result("Blue Guy was knocked out. -1 stamina.")
 	host._update_ui(0.0, false)
 	host.save_game()
-
-
 func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) -> void:
 	if host == null:
 		return
@@ -280,19 +271,41 @@ func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) ->
 	host._audio_director()._play_chicken_death_sfx()
 	if amount <= 0:
 		return
+	if stage == null or not is_instance_valid(stage):
+		return
+	var action_id := str(stage.get_meta("combat_action_id", ""))
+	if host.running_skill_id != "fight" or host.running_action_id != action_id:
+		return
+	# A kill is one mission unit regardless of its XP reward or wave size.
+	host._hub_runtime().record_mission_action_completion("fight", action_id)
 	_award_fighting_xp(amount, stage)
+	_record_arena_completion_progress(amount)
 
-
+# Arena fights have no fixed completion, so every activity-XP's worth of kill XP
+# earns one completion of medal mastery. Mission progress is counted per kill.
+func _record_arena_completion_progress(amount: int) -> void:
+	var action_id: String = host.running_action_id
+	if host.running_skill_id != "fight" or not action_is_free_fighting_proto("fight", action_id):
+		return
+	var action: Dictionary = host._action_data("fight", action_id)
+	var xp_per_completion := maxf(1.0, float(action.get("xp", 1)))
+	var banked := float(arena_completion_xp_progress.get(action_id, 0.0)) + float(amount)
+	while banked >= xp_per_completion:
+		banked -= xp_per_completion
+		MasteryState.add_host_xp(host, "fight", action_id, MasteryState.reward_for_action(host, "fight", action_id, action))
+	arena_completion_xp_progress[action_id] = banked
 func _award_fighting_xp(amount: int, stage: Control) -> void:
 	if not host.skills.has("fight"):
 		host.skills["fight"] = {"xp": 0, "level": 1}
-	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount
+	# Preserve small per-enemy bonuses instead of rounding each one down to zero.
+	fighting_display_xp_remainder += float(amount) * host._hub_runtime().fighting_xp_bonus()
+	var bonus := floori(fighting_display_xp_remainder + 0.000001)
+	fighting_display_xp_remainder = maxf(0.0, fighting_display_xp_remainder - bonus)
+	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount + bonus
 	SkillState.recalculate_level(host, "fight")
 	if stage != null and is_instance_valid(stage) and stage.has_method("setup_fighting_level"):
 		stage.call("setup_fighting_level", SkillState.host_skill_level(host, "fight"))
 	host.save_game()
-
-
 func sync_blue_guy_chicken_brawl_stage_active(card: Dictionary, skill_id: String, action_id: String, running: bool) -> void:
 	if host == null:
 		return
@@ -304,10 +317,7 @@ func sync_blue_guy_chicken_brawl_stage_active(card: Dictionary, skill_id: String
 	if stage.has_method("setup_blue_guy_health"):
 		stage.call("setup_blue_guy_health", blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, blue_guy_health_regen_fraction())
 	if stage.has_method("set_active_fight"):
-		var globally_running := bool(host.running_skill_id == skill_id and host.running_action_id == action_id)
-		stage.call("set_active_fight", (running or globally_running) and action_is_free_fighting_proto(skill_id, action_id))
-
-
+		stage.call("set_active_fight", (running or (host.running_skill_id == skill_id and host.running_action_id == action_id)) and action_is_free_fighting_proto(skill_id, action_id))
 func sync_rooster_punch_out_stage_active(card: Dictionary, skill_id: String, action_id: String, running: bool) -> void:
 	if host == null:
 		return
@@ -319,5 +329,4 @@ func sync_rooster_punch_out_stage_active(card: Dictionary, skill_id: String, act
 	if stage.has_method("setup_required_stamina"):
 		stage.call("setup_required_stamina", rooster_required_stamina(host._action_runtime()._effective_stamina("fight", host._action_data("fight", "face-the-rooster"))))
 	if stage.has_method("set_active_fight"):
-		var globally_running := bool(host.running_skill_id == skill_id and host.running_action_id == action_id)
-		stage.call("set_active_fight", (running or globally_running) and action_id == "face-the-rooster")
+		stage.call("set_active_fight", (running or (host.running_skill_id == skill_id and host.running_action_id == action_id)) and action_id == "face-the-rooster")

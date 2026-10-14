@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://tr032eghlvq8"
-path="res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.ctex"
+path.bptc="res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.bptc.ctex"
+path.astc="res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/rouses/rouses-hit.png"
-dest_files=["res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.ctex"]
+dest_files=["res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.bptc.ctex", "res://.godot/imported/rouses-hit.png-f842e0ed186d7611dfe40cd0e37d455c.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

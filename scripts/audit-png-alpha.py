@@ -6,6 +6,32 @@ import zlib
 from pathlib import Path
 
 
+def paeth(a: int, b: int, c: int) -> int:
+    estimate = a + b - c
+    distances = abs(estimate - a), abs(estimate - b), abs(estimate - c)
+    return (a, b, c)[distances.index(min(distances))]
+
+
+def unfilter(raw: bytes, width: int, height: int, bpp: int) -> bytes:
+    stride = width * bpp
+    rows, prior = [], bytes(stride)
+    for y in range(height):
+        start = y * (stride + 1)
+        filter_type, row = raw[start], bytearray(raw[start + 1 : start + stride + 1])
+        if filter_type > 4:
+            raise ValueError(f"unknown PNG filter {filter_type}")
+        if filter_type:
+            for i, value in enumerate(row):
+                left = row[i - bpp] if i >= bpp else 0
+                above = prior[i]
+                upper_left = prior[i - bpp] if i >= bpp else 0
+                predictor = left if filter_type == 1 else above if filter_type == 2 else (left + above) // 2 if filter_type == 3 else paeth(left, above, upper_left)
+                row[i] = (value + predictor) & 0xFF
+        rows.append(row)
+        prior = row
+    return b"".join(rows)
+
+
 def read_png(path: Path) -> dict:
     if not path.exists():
         return {"error": "missing"}
@@ -21,7 +47,7 @@ def read_png(path: Path) -> dict:
         chunk = data[pos + 8 : pos + 8 + ln]
         pos += 12 + ln
         if typ == b"IHDR":
-            width, height, bit_depth, color_type, *_ = struct.unpack(">IIBBBBB", chunk[:13])
+            width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(">IIBBBBB", chunk[:13])
         elif typ == b"IDAT":
             idat += chunk
         elif typ == b"IEND":
@@ -29,16 +55,18 @@ def read_png(path: Path) -> dict:
     has_alpha = color_type in (4, 6)
     if not has_alpha:
         return {"path": path.name, "size": (width, height), "has_alpha": False}
-    raw = zlib.decompress(idat)
+    if bit_depth != 8 or compression or filter_method or interlace:
+        return {"error": "unsupported PNG format"}
     bpp = 4 if color_type == 6 else 2
-    stride = width * bpp + 1
+    raw = unfilter(zlib.decompress(idat), width, height, bpp)
+    stride = width * bpp
     total = width * height
     a0 = a255 = semi = 0
     mag_opaque = green_opaque = black_opaque = 0
     mag_hidden = green_hidden = 0
     mag_semi = green_semi = 0
     for y in range(height):
-        row_start = y * stride + 1
+        row_start = y * stride
         for x in range(width):
             i = row_start + x * bpp
             if color_type == 6:

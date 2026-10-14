@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bs5flo4o3v5rc"
-path="res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.ctex"
+path.bptc="res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.bptc.ctex"
+path.astc="res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/woodcutting/modules/woodcutting-firepit-warm-glow.png"
-dest_files=["res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.ctex"]
+dest_files=["res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.bptc.ctex", "res://.godot/imported/woodcutting-firepit-warm-glow.png-31ef0369d4ddb67acc5e0f41b10a9207.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

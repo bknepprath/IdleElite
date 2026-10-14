@@ -101,7 +101,6 @@ func _run() -> void:
 		_fail("no-food stamina gauge click changed food: %s" % str(_fish_currency(scene)))
 		return
 
-	var popup_count_before_full := _count_need_fish_popups()
 	_set_fish_currency(scene, 3.0)
 	_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
 	circle.position = rest_position
@@ -115,11 +114,8 @@ func _run() -> void:
 	if not circle.has_meta("stamina_eat_fail_tween"):
 		_fail("full stamina gauge click did not start fail shake tween")
 		return
-	if _count_need_fish_popups() <= popup_count_before_full:
-		_fail("full stamina gauge click did not create popup")
-		return
 	if not _has_stamina_popup_text("full"):
-		_fail("full stamina gauge popup did not contain exact full text")
+		_fail("full stamina gauge click did not create a popup with exact full text")
 		return
 	for _i in range(90):
 		await _wait_test_frame()

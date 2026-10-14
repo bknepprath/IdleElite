@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cjydntwk41f3"
-path="res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.ctex"
+path.bptc="res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.bptc.ctex"
+path.astc="res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/backgrounds/04-frozen-lake.png"
-dest_files=["res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.ctex"]
+dest_files=["res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.bptc.ctex", "res://.godot/imported/04-frozen-lake.png-1be34cdaa71161fbf40e082c5eb2b512.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -108,7 +108,7 @@ func _close_settings() -> void:
 
 
 func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
-	if not (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()):
+	if not host._onboarding_runtime().tutorial_active:
 		return false
 	if host.settings_tab == null or not is_instance_valid(host.settings_tab) or not host.settings_tab.is_visible_in_tree():
 		return false
@@ -172,10 +172,10 @@ func _settings_copy_crash_report_pressed() -> void:
 func _apply_god_mode_toggle_style(button: Button) -> void:
 	var fill: Color = Color("#48dd6c") if host._test_state_runtime()._god_mode_active() else host.COLOR_BLUE
 	var pressed_fill: Color = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 44))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 44))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 44, 64, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 44, 64, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 22))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 22))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 22, 32, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 22, 32, true))
 
 
 func _refresh_god_mode_controls() -> void:
@@ -215,80 +215,102 @@ func render_page() -> void:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 18)
+	stack.add_theme_constant_override("separation", 9)
 	host.content_scroll.add_child(stack)
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, 32)
+	top_spacer.custom_minimum_size = Vector2(0, 16)
 	stack.add_child(top_spacer)
-	stack.add_child(host._label("Settings", 124, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	stack.add_child(host._label("Settings", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var audio_top_spacer := Control.new()
-	audio_top_spacer.custom_minimum_size = Vector2(0, 8)
+	audio_top_spacer.custom_minimum_size = Vector2(0, 4)
 	stack.add_child(audio_top_spacer)
-	stack.add_child(audio_volume_control("Music", true, 1400))
-	stack.add_child(audio_volume_control("SFX", false, 1400))
-	stack.add_child(offline_progress_toggle_button(1320, 132))
-	stack.add_child(auto_unlock_lockpad_toggle_button(1320, 132))
-	stack.add_child(stamina_decimal_toggle_button(1320, 132))
-	stack.add_child(offline_progress_cap_notification_toggle_button(1320, 132))
-	stack.add_child(dark_mode_toggle_button(1320, 132))
+	stack.add_child(audio_volume_control("Music", true, 700))
+	stack.add_child(audio_volume_control("SFX", false, 700))
+	stack.add_child(offline_progress_toggle_button(660, 66))
+	stack.add_child(auto_unlock_lockpad_toggle_button(660, 66))
+	stack.add_child(stamina_decimal_toggle_button(660, 66))
+	stack.add_child(offline_progress_cap_notification_toggle_button(660, 66))
+	stack.add_child(dark_mode_toggle_button(660, 66))
 	var fill_spacer := Control.new()
 	fill_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	fill_spacer.custom_minimum_size = Vector2(0, 12)
+	fill_spacer.custom_minimum_size = Vector2(0, 6)
 	stack.add_child(fill_spacer)
 	var action_stack := VBoxContainer.new()
-	action_stack.custom_minimum_size = Vector2(1320, 424)
+	action_stack.custom_minimum_size = Vector2(660, 212)
 	action_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	action_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_stack.add_theme_constant_override("separation", 28)
-	var discord := settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 1320, 170, 220)
-	discord.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 54))
-	discord.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 54))
-	discord.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 54, 72, true))
+	action_stack.add_theme_constant_override("separation", 14)
+	var discord := settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 660, 85, 110)
+	discord.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 27))
+	discord.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 27))
+	discord.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 27, 36, true))
 	discord.pressed.connect(_settings_discord_pressed)
 	if host._crash_report_runtime().pending_report_exists():
-		var crash_report := settings_page_button("Copy Crash Report", "", 1320, 128, 132)
+		var crash_report := settings_page_button("Copy Crash Report", "", 660, 64, 66)
 		crash_report.tooltip_text = ""
-		crash_report.add_theme_stylebox_override("normal", host._paper_button_style(Color("#ffd94d"), 48))
-		crash_report.add_theme_stylebox_override("hover", host._paper_button_style(Color("#ffd94d"), 48))
-		crash_report.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#f0c23a"), 48, 72, true))
+		crash_report.add_theme_stylebox_override("normal", host._paper_button_style(Color("#ffd94d"), 24))
+		crash_report.add_theme_stylebox_override("hover", host._paper_button_style(Color("#ffd94d"), 24))
+		crash_report.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#f0c23a"), 24, 36, true))
 		crash_report.pressed.connect(_settings_copy_crash_report_pressed)
 		stack.add_child(crash_report)
-	var reset := settings_page_button("Hard Reset", "", 940, 128, 176)
-	reset.add_theme_stylebox_override("normal", host._paper_button_style(Color("#ff6b6b"), 48))
-	reset.add_theme_stylebox_override("hover", host._paper_button_style(Color("#ff6b6b"), 48))
-	reset.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#ef5656"), 48, 72, true))
+	var reset := settings_page_button("Hard Reset", "", 470, 64, 88)
+	reset.add_theme_stylebox_override("normal", host._paper_button_style(Color("#ff6b6b"), 24))
+	reset.add_theme_stylebox_override("hover", host._paper_button_style(Color("#ff6b6b"), 24))
+	reset.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#ef5656"), 24, 36, true))
 	_register_reset_button(reset, "Hard Reset")
+	if OS.has_feature("web"):
+		# Browsers can drop site storage, and the web build has no cloud save.
+		var transfer_row := HBoxContainer.new()
+		transfer_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		transfer_row.add_theme_constant_override("separation", 20)
+		var export_button := settings_page_button("Export Save", "", 320, 64, 88)
+		export_button.pressed.connect(_settings_export_save_pressed)
+		transfer_row.add_child(export_button)
+		var import_button := settings_page_button("Import Save", "", 320, 64, 88)
+		import_button.pressed.connect(_settings_import_save_pressed.bind(import_button))
+		transfer_row.add_child(import_button)
+		action_stack.add_child(transfer_row)
 	action_stack.add_child(reset)
-	action_stack.add_child(discord)
+	var contact_gap := Control.new()
+	contact_gap.custom_minimum_size.y = 64
+	stack.add_child(contact_gap)
+	stack.move_child(contact_gap, fill_spacer.get_index())
+	stack.add_child(discord)
+	stack.move_child(discord, fill_spacer.get_index())
 	stack.add_child(action_stack)
+	var version_text := str(ProjectSettings.get_setting("application/config/version", ""))
+	if not version_text.is_empty():
+		var version_label: Label = host._label("Version %s" % version_text, 36, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(version_label)
 	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, 12)
+	bottom_spacer.custom_minimum_size = Vector2(0, 6)
 	stack.add_child(bottom_spacer)
 
-func audio_volume_control(title: String, music: bool, min_width := 1120, bottom_padding := 0) -> Control:
-	var mute_size := 128
-	var control_gap := 32
+func audio_volume_control(title: String, music: bool, min_width := 560, bottom_padding := 0) -> Control:
+	var mute_size := 64
+	var control_gap := 16
 	var stack := VBoxContainer.new()
-	stack.custom_minimum_size = Vector2(min_width, 252 + bottom_padding)
+	stack.custom_minimum_size = Vector2(min_width, 126 + bottom_padding)
 	stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	stack.add_theme_constant_override("separation", 10)
+	stack.add_theme_constant_override("separation", 5)
 	var label_row := HBoxContainer.new()
-	label_row.add_theme_constant_override("separation", 18)
+	label_row.add_theme_constant_override("separation", 9)
 	stack.add_child(label_row)
 	var label_indent := Control.new()
 	label_indent.custom_minimum_size = Vector2(mute_size + control_gap, 1)
 	label_row.add_child(label_indent)
-	var name_label: Label = host._label(title, 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var name_label: Label = host._label(title, 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	if host.app_bold_font != null:
 		name_label.add_theme_font_override("font", host.app_bold_font)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label_row.add_child(name_label)
-	var value_label: Label = host._label("", 62, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-	value_label.custom_minimum_size = Vector2(210, 76)
+	var value_label: Label = host._label("", 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	value_label.custom_minimum_size = Vector2(105, 38)
 	label_row.add_child(value_label)
 	var control_padding := MarginContainer.new()
-	control_padding.add_theme_constant_override("margin_top", 6)
-	control_padding.add_theme_constant_override("margin_bottom", 10)
+	control_padding.add_theme_constant_override("margin_top", 3)
+	control_padding.add_theme_constant_override("margin_bottom", 5)
 	stack.add_child(control_padding)
 	var control_row := HBoxContainer.new()
 	control_row.add_theme_constant_override("separation", control_gap)
@@ -307,12 +329,12 @@ func audio_volume_control(title: String, music: bool, min_width := 1120, bottom_
 	mute_toggle.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	host.button_press_runtime.attach_button_depress_animation(mute_toggle, 0.92)
 	control_row.add_child(mute_toggle)
-	var mute_mark: Label = host._label("", 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var mute_mark: Label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	mute_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
 	mute_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mute_toggle.add_child(mute_mark)
 	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(maxi(320, min_width - mute_size - control_gap), 128)
+	slider.custom_minimum_size = Vector2(maxi(160, min_width - mute_size - control_gap), 64)
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider.min_value = 0.0
 	slider.max_value = 100.0
@@ -353,12 +375,12 @@ func style_audio_slider(slider: HSlider) -> void:
 		slider.add_theme_icon_override("grabber_highlight", grabber_highlight)
 	var track := StyleBoxFlat.new()
 	track.bg_color = host.COLOR_INK
-	track.corner_radius_top_left = 7
-	track.corner_radius_top_right = 7
-	track.corner_radius_bottom_left = 7
-	track.corner_radius_bottom_right = 7
-	track.content_margin_top = 9
-	track.content_margin_bottom = 9
+	track.corner_radius_top_left = 3.5
+	track.corner_radius_top_right = 3.5
+	track.corner_radius_bottom_left = 3.5
+	track.corner_radius_bottom_right = 3.5
+	track.content_margin_top = 4.5
+	track.content_margin_bottom = 4.5
 	slider.add_theme_stylebox_override("slider", track)
 
 func audio_mute_toggle_style(pressed: bool, _hovered: bool) -> StyleBoxTexture:
@@ -393,7 +415,7 @@ func _set_sfx_muted_from_toggle(pressed: bool) -> void:
 	_refresh_audio_volume_controls()
 	host.save_game()
 
-func offline_progress_toggle_button(min_width := 1120, min_height := 180) -> Control:
+func offline_progress_toggle_button(min_width := 560, min_height := 90) -> Control:
 	var row := settings_labeled_toggle_row("Offline Progress:", offline_progress_toggle_text(), min_width, min_height)
 	var button := row.get_meta("toggle_button") as Button
 	apply_offline_progress_toggle_style(button)
@@ -407,22 +429,22 @@ func offline_progress_toggle_text() -> String:
 func apply_offline_progress_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.offline_progress_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 48, 72, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 
 func _toggle_offline_progress_enabled() -> void:
 	host.offline_progress_enabled = not host.offline_progress_enabled
 	var now: int = host._unix_now()
 	host._save_runtime().last_save_unix_time = now
-	if not host.offline_progress_enabled:
-		host._passive_modules_runtime().reset_passive_module_timestamps(now)
+	# Changing the option starts a new accounting interval in either direction.
+	host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	_refresh_offline_progress_controls()
 	host.save_game()
 
-func auto_unlock_lockpad_toggle_button(min_width := 1120, min_height := 180) -> Control:
+func auto_unlock_lockpad_toggle_button(min_width := 560, min_height := 90) -> Control:
 	var row := settings_labeled_toggle_row("Auto Unlock Lockpads:", auto_unlock_lockpad_toggle_text(), min_width, min_height)
 	var button := row.get_meta("toggle_button") as Button
 	apply_auto_unlock_lockpad_toggle_style(button)
@@ -436,20 +458,20 @@ func auto_unlock_lockpad_toggle_text() -> String:
 func apply_auto_unlock_lockpad_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.auto_unlock_lockpads_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 48, 72, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func toggle_auto_unlock_lockpads_enabled() -> void:
 	host.auto_unlock_lockpads_enabled = not host.auto_unlock_lockpads_enabled
 	_refresh_auto_unlock_lockpad_controls()
-	if host.auto_unlock_lockpads_enabled and not host._onboarding_runtime()._onboarding_path_active():
+	if host.auto_unlock_lockpads_enabled:
 		host._activity_unlock_runtime()._auto_unlock_retroactive_lockpads()
 		host._activity_unlock_runtime()._auto_unlock_pending_lockpads()
 	host.save_game()
 
-func stamina_decimal_toggle_button(min_width := 1120, min_height := 180) -> Control:
+func stamina_decimal_toggle_button(min_width := 560, min_height := 90) -> Control:
 	var row := settings_labeled_toggle_row("Show Stamina Decimal:", stamina_decimal_toggle_text(), min_width, min_height)
 	var button := row.get_meta("toggle_button") as Button
 	apply_stamina_decimal_toggle_style(button)
@@ -463,10 +485,10 @@ func stamina_decimal_toggle_text() -> String:
 func apply_stamina_decimal_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.show_stamina_decimal else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 48, 72, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func _toggle_stamina_decimal_enabled() -> void:
 	host.show_stamina_decimal = not host.show_stamina_decimal
@@ -475,7 +497,7 @@ func _toggle_stamina_decimal_enabled() -> void:
 	host.save_game()
 
 
-func offline_progress_cap_notification_toggle_button(min_width := 1120, min_height := 180) -> Control:
+func offline_progress_cap_notification_toggle_button(min_width := 560, min_height := 90) -> Control:
 	var row := settings_labeled_toggle_row("Offline Cap Notification:", offline_progress_cap_notification_toggle_text(), min_width, min_height)
 	var button := row.get_meta("toggle_button") as Button
 	apply_offline_progress_cap_notification_toggle_style(button)
@@ -489,10 +511,10 @@ func offline_progress_cap_notification_toggle_text() -> String:
 func apply_offline_progress_cap_notification_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.offline_progress_cap_notifications_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 48, 72, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func _toggle_offline_progress_cap_notifications_enabled() -> void:
 	host.offline_progress_cap_notifications_enabled = not host.offline_progress_cap_notifications_enabled
@@ -510,7 +532,7 @@ func request_notification_permission_if_available() -> void:
 		OS.request_permissions()
 
 
-func dark_mode_toggle_button(min_width := 1120, min_height := 180) -> Control:
+func dark_mode_toggle_button(min_width := 560, min_height := 90) -> Control:
 	var row := settings_labeled_toggle_row("Dark Mode:", dark_mode_toggle_text(), min_width, min_height)
 	var button := row.get_meta("toggle_button") as Button
 	apply_dark_mode_toggle_style(button)
@@ -524,10 +546,10 @@ func dark_mode_toggle_text() -> String:
 func apply_dark_mode_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.dark_mode_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 48, 72, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func toggle_dark_mode_enabled() -> void:
 	host.dark_mode_enabled = not host.dark_mode_enabled
@@ -560,22 +582,22 @@ func rebuild_visible_ui_after_dark_mode_changed() -> void:
 	else:
 		host._navigation_shell()._render_screen(false, -1, false)
 
-func settings_labeled_toggle_row(label_text: String, button_text: String, min_width := 1120, min_height := 180) -> HBoxContainer:
+func settings_labeled_toggle_row(label_text: String, button_text: String, min_width := 560, min_height := 90) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(min_width, min_height)
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 48)
-	var label: Label = host._label(label_text, 84, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	row.add_theme_constant_override("separation", 24)
+	var label: Label = host._label(label_text, 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	label.custom_minimum_size = Vector2(0, min_height)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var button: Button = host._menu_button(button_text)
-	button.custom_minimum_size = Vector2(250, min_height)
+	button.custom_minimum_size = Vector2(125, min_height)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	button.tooltip_text = ""
-	button.add_theme_font_size_override("font_size", 64)
+	button.add_theme_font_size_override("font_size", 48)
 	row.add_child(button)
 	row.set_meta("toggle_button", button)
 	return row
@@ -587,9 +609,9 @@ func audio_slider_grabber(highlighted := false) -> Texture2D:
 		return audio_slider_grabber_texture
 	if not host.visual_texture_cache._can_create_image_textures():
 		return null
-	var diameter := 106 if highlighted else 96
+	var diameter := 53 if highlighted else 48
 	var radius := float(diameter) * 0.5
-	var border := 14.0
+	var border := 7.0
 	var border_color = host.COLOR_BLUE if highlighted else host.COLOR_INK
 	var fill_color = host.COLOR_PANEL.lightened(0.08) if highlighted else host.COLOR_PANEL
 	var image := Image.create(diameter, diameter, false, Image.FORMAT_RGBA8)
@@ -940,8 +962,8 @@ func _show_notification_settings_notice() -> void:
 		notification_permission_notice.queue_free()
 
 	var canvas_size: Vector2 = host._current_canvas_size()
-	var base_size := Vector2(1180, 250)
-	var fitted_scale: float = host._fit_scale_to_canvas(base_size, Vector2(48, 48))
+	var base_size := Vector2(920, 260)
+	var fitted_scale: float = host._fit_scale_to_canvas(base_size, Vector2(24, 24))
 	var notice_size: Vector2 = base_size * fitted_scale
 	var target_position := Vector2(
 		(canvas_size.x - notice_size.x) * 0.5,
@@ -965,10 +987,10 @@ func _show_notification_settings_notice() -> void:
 	card.custom_minimum_size = base_size
 	card.size = base_size
 	card.scale = Vector2(fitted_scale, fitted_scale)
-	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6d8"), 42, 52, true))
+	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6d8"), 21, 26, true))
 	banner.add_child(card)
 
-	var body: Label = host._label("Turn on notifications in your phone settings if they are not already on.", 56, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var body: Label = host._label("Turn on notifications in your phone settings if they are not already on.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1025,50 +1047,6 @@ func _clear_notification_settings_notice_immediate() -> void:
 	notification_permission_notice_tween = null
 
 
-func _navigation_state() -> Dictionary:
-	return {
-		"music_volume_sliders": music_volume_sliders,
-		"music_volume_labels": music_volume_labels,
-		"music_mute_toggles": music_mute_toggles,
-		"music_mute_labels": music_mute_labels,
-		"sfx_volume_sliders": sfx_volume_sliders,
-		"sfx_volume_labels": sfx_volume_labels,
-		"sfx_mute_toggles": sfx_mute_toggles,
-		"sfx_mute_labels": sfx_mute_labels,
-		"offline_progress_toggles": offline_progress_toggles,
-		"auto_unlock_lockpad_toggles": auto_unlock_lockpad_toggles,
-		"stamina_decimal_toggles": stamina_decimal_toggles,
-		"offline_progress_cap_notification_toggles": offline_progress_cap_notification_toggles,
-		"dark_mode_toggles": dark_mode_toggles,
-		"audio_controls_sync_key": audio_controls_sync_key,
-		"reset_data_buttons": reset_data_buttons,
-		"reset_data_confirm_until": reset_data_confirm_until,
-		"reset_data_confirm_armed_at": reset_data_confirm_armed_at,
-		"reset_data_confirm_button": reset_data_confirm_button,
-	}
-
-
-func _apply_navigation_state(state: Dictionary) -> void:
-	music_volume_sliders = state.get("music_volume_sliders", []) as Array
-	music_volume_labels = state.get("music_volume_labels", []) as Array
-	music_mute_toggles = state.get("music_mute_toggles", []) as Array
-	music_mute_labels = state.get("music_mute_labels", []) as Array
-	sfx_volume_sliders = state.get("sfx_volume_sliders", []) as Array
-	sfx_volume_labels = state.get("sfx_volume_labels", []) as Array
-	sfx_mute_toggles = state.get("sfx_mute_toggles", []) as Array
-	sfx_mute_labels = state.get("sfx_mute_labels", []) as Array
-	offline_progress_toggles = state.get("offline_progress_toggles", []) as Array
-	auto_unlock_lockpad_toggles = state.get("auto_unlock_lockpad_toggles", []) as Array
-	stamina_decimal_toggles = state.get("stamina_decimal_toggles", []) as Array
-	offline_progress_cap_notification_toggles = state.get("offline_progress_cap_notification_toggles", []) as Array
-	dark_mode_toggles = state.get("dark_mode_toggles", []) as Array
-	audio_controls_sync_key = str(state.get("audio_controls_sync_key", ""))
-	reset_data_buttons = state.get("reset_data_buttons", []) as Array
-	reset_data_confirm_until = float(state.get("reset_data_confirm_until", 0.0))
-	reset_data_confirm_armed_at = float(state.get("reset_data_confirm_armed_at", 0.0))
-	reset_data_confirm_button = host._app_lifecycle_runtime().state_object_ref(state.get("reset_data_confirm_button")) as Button
-
-
 func _register_reset_button(button: Button, default_text: String) -> void:
 	button.set_meta("reset_default_text", default_text)
 	button.set_meta("reset_confirm_until", 0.0)
@@ -1118,6 +1096,8 @@ func _disarm_reset_data_confirmation() -> void:
 	reset_data_confirm_armed_at = 0.0
 	reset_data_confirm_button = null
 	for raw_button in reset_data_buttons:
+		if not is_instance_valid(raw_button):
+			continue
 		_clear_reset_button_confirmation(raw_button as Button)
 	_refresh_reset_data_buttons()
 
@@ -1191,7 +1171,10 @@ func _refresh_reset_data_buttons() -> void:
 	reset_data_buttons = live_buttons
 
 
+# Called every frame; only does work once an armed confirmation has timed out.
 func _expire_reset_data_confirm_if_needed() -> void:
+	if reset_data_confirm_until <= 0.0 or Time.get_ticks_msec() / 1000.0 < reset_data_confirm_until:
+		return
 	reset_data_confirm_until = 0.0
 	reset_data_confirm_armed_at = 0.0
 	reset_data_confirm_button = null
@@ -1240,7 +1223,7 @@ func _play_reset_data_wiped_feedback(feedback_button: Button = null) -> void:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button) or not button.is_visible_in_tree():
 			continue
-		host._reward_feedback_surface()._float_reward(host, button, "data wiped!", 72, Color("#ff6b6b"), Vector2(0, -72), Vector2(0, -190), 0.0)
+		host._reward_feedback_surface()._float_reward(host, button, "data wiped!", 52, Color("#ff6b6b"), Vector2(0, -36), Vector2(0, -95), 0.0)
 
 
 func _kill_reset_data_feedback_tween(button: Button) -> void:
@@ -1250,27 +1233,27 @@ func _kill_reset_data_feedback_tween(button: Button) -> void:
 	if button.has_meta("reset_feedback_active"):
 		button.remove_meta("reset_feedback_active")
 
-func settings_page_button(text: String, icon_path := "", min_width := 900, icon_max_width := 128, min_height := 250) -> Button:
+func settings_page_button(text: String, icon_path := "", min_width := 450, icon_max_width := 64, min_height := 125) -> Button:
 	var button: Button = host._menu_button(text if icon_path.is_empty() else "")
 	button.custom_minimum_size = Vector2(min_width, min_height)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.add_theme_font_size_override("font_size", 70)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 54))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 54))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 54, 72, true))
+	button.add_theme_font_size_override("font_size", 48)
+	button.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 27))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 27))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 27, 36, true))
 	if not icon_path.is_empty():
 		var content := MarginContainer.new()
 		content.set_anchors_preset(Control.PRESET_FULL_RECT)
 		content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		content.add_theme_constant_override("margin_left", 54)
-		content.add_theme_constant_override("margin_right", 68)
-		content.add_theme_constant_override("margin_top", 18)
-		content.add_theme_constant_override("margin_bottom", 18)
+		content.add_theme_constant_override("margin_left", 27)
+		content.add_theme_constant_override("margin_right", 34)
+		content.add_theme_constant_override("margin_top", 9)
+		content.add_theme_constant_override("margin_bottom", 9)
 		button.add_child(content)
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 38)
+		row.add_theme_constant_override("separation", 19)
 		content.add_child(row)
 		var icon_holder := CenterContainer.new()
 		icon_holder.custom_minimum_size = Vector2(icon_max_width, icon_max_width)
@@ -1283,9 +1266,24 @@ func settings_page_button(text: String, icon_path := "", min_width := 900, icon_
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon_holder.add_child(icon)
-		var label: Label = host._label(text, 70, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+		var label: Label = host._label(text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 		label.add_theme_constant_override("outline_size", host.DEFAULT_BUTTON_TEXT_OUTLINE_SIZE)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(label)
 	return button
+
+
+func _settings_export_save_pressed() -> void:
+	var text: String = host._save_runtime().export_save_text()
+	if text.is_empty():
+		return
+	host._save_runtime().web_storage_guard.download_text("idle-elite-save-%s.json" % Time.get_date_string_from_system(), text)
+
+
+func _settings_import_save_pressed(button: Button) -> void:
+	host._save_runtime().web_storage_guard.request_import(func(text: String):
+		var error: String = host._save_runtime().import_save_text(text)
+		if not error.is_empty() and is_instance_valid(button):
+			button.text = error
+	)

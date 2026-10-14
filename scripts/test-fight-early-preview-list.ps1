@@ -8,6 +8,7 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\fight-early-preview-list"
 $testScript = Join-Path $testDir "fight_early_preview_list_test.gd"
 
+Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 @'
@@ -34,6 +35,18 @@ func _run() -> void:
 	scene.call("_save_runtime").call("_init_state")
 
 	var fight := (scene.skills.get("fight", {}) as Dictionary).duplicate(true)
+	var level_two_action := scene.call("_action_data", "fight", scene.TUTORIAL_LEVEL_TWO_ACTION_ID) as Dictionary
+	_expect(str(level_two_action.get("name", "")) == "Practice Kicking", "level 2 module display name did not update")
+	fight["level"] = 1
+	fight["xp"] = scene.call("_activity_unlock_runtime").LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD - 1
+	scene.skills["fight"] = fight
+	var level_one_visible_ids := []
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", "fight") as Array:
+		level_one_visible_ids.append(str((raw_action as Dictionary).get("id", "")))
+	_expect(level_one_visible_ids.has(scene.TUTORIAL_LEVEL_TWO_ACTION_ID), "level 2 module should already be visible below the legacy preview threshold: %s" % str(level_one_visible_ids))
+	fight["xp"] = scene.call("_activity_unlock_runtime").LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD
+	scene.skills["fight"] = fight
+
 	fight["level"] = 2
 	fight["xp"] = SkillState.xp_for_level(2)
 	scene.skills["fight"] = fight
@@ -64,6 +77,14 @@ func _fail(message: String) -> void:
 	print("fight-early-preview-list-failed: %s" % message)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-$output = & $runner --path $projectRoot --script "res://.codex-tmp/fight-early-preview-list/fight_early_preview_list_test.gd" 2>&1
-$output | Write-Output
-Assert-True (($output | Out-String) -match "fight-early-preview-list-ok") "Fight early preview list test did not report success."
+try {
+    $output = & $runner --path $projectRoot --script "res://.codex-tmp/fight-early-preview-list/fight_early_preview_list_test.gd" 2>&1
+    $output | Write-Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fight early preview list test failed with exit code $LASTEXITCODE."
+    }
+    Assert-True (($output | Out-String) -match "fight-early-preview-list-ok") "Fight early preview list test did not report success."
+}
+finally {
+    Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+}

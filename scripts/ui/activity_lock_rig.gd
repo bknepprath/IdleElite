@@ -5,35 +5,32 @@ signal padlock_clicked
 signal padlock_hovered
 
 const LINKS_PER_SIDE := 5
-const LINK_SIZE := Vector2(210, 130)
-const PADLOCK_SIZE := Vector2(540, 590)
-const PADLOCK_SOURCE_CROP_RIGHT := 3.0
-const PADLOCK_SHADOW_OFFSET := Vector2(0, 16)
+const LINK_SIZE := Vector2(105, 65)
+const PADLOCK_SIZE := Vector2(270, 295)
+const PADLOCK_SOURCE_CROP_RIGHT := 1.5
+const PADLOCK_SHADOW_OFFSET := Vector2(0, 8)
 const CONSTRAINT_PASSES := 14
 const LOCK_CHAIN_TAUT_RATIO := 1.16
-const LOCK_CHAIN_TAUT_SLACK_PIXELS := 18.0
+const LOCK_CHAIN_TAUT_SLACK_PIXELS := 9.0
 const LOCK_CHAIN_LIMIT_PASSES := 5
 const CHAIN_METAL_TINT := Color("#b9c0c3")
 const CHAIN_STROKE_TINT := Color(0.02, 0.018, 0.016, 0.82)
 const CHAIN_LINK_SHADE_TINT := Color(0.05, 0.052, 0.054, 0.18)
 const CHAIN_LINK_SHADE_START := 0.62
-const CHAIN_SHADOW_OFFSET := Vector2(0, 12)
-const CHAIN_SLACK_SAG_PIXELS := 66.0
+const CHAIN_SHADOW_OFFSET := Vector2(0, 6)
+const CHAIN_SLACK_SAG_PIXELS := 33.0
 const CHAIN_SLACK_PULL_RANGE_RATIO := 0.22
-const CHAIN_SLACK_GRAVITY_PIXELS := 620.0
+const CHAIN_SLACK_GRAVITY_PIXELS := 310.0
 const CHAIN_SLACK_REST_PULL_MIN := 0.18
 const CHAIN_SLACK_REST_PULL_MAX := 0.52
 const CHAIN_EDGE_ANCHOR_INSET_RATIO := 0.30
 const LOCK_DRAG_DEADZONE := 14.0
 const CHAIN_SFX_COOLDOWN_MSEC := 170
-const CHAIN_SFX_MOVE_DISTANCE := 38.0
+const CHAIN_SFX_MOVE_DISTANCE := 19.0
 const LOCK_CLICK_SHAKE_SECONDS := 0.26
 const UNLOCK_DROP_SECONDS := 0.96
 const UNLOCK_POP_SECONDS := 0.30
-const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
-const UNLOCK_CHAIN_LEFT_TEXTURE := "res://assets/content/ui/unlock-chain-left.png"
-const UNLOCK_CHAIN_RIGHT_TEXTURE := "res://assets/content/ui/unlock-chain-right.png"
 const UNLOCK_PADLOCK_TEXTURE := "res://assets/content/ui/unlock-padlock.png"
 const UNLOCK_LOCK_BODY_TEXTURE := "res://assets/content/ui/unlock-lock-body.png"
 const UNLOCK_LOCK_SHACKLE_CLOSED_TEXTURE := "res://assets/content/ui/unlock-lock-shackle-closed.png"
@@ -41,8 +38,8 @@ const UNLOCK_LOCK_SHACKLE_OPEN_TEXTURE := "res://assets/content/ui/unlock-lock-s
 const UNLOCK_LOCK_TINT_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-tint-mask.png"
 const UNLOCK_LOCK_PULSE_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-pulse-mask.png"
 const READY_OPEN_CLINK_SECONDS := 0.30
-const READY_OPEN_SHACKLE_LIFT := 86.0
-const READY_OPEN_HANG_DROP := 86.0
+const READY_OPEN_SHACKLE_LIFT := 43.0
+const READY_OPEN_HANG_DROP := 43.0
 const READY_OPEN_HANG_ROTATION := 0.16
 const DROP_CHAIN_CAPTURE_BLEND_END := 0.42
 const UNLOCK_SUCCESS_GREEN := Color("#45f08a")
@@ -55,8 +52,8 @@ const LOCK_STATE_GONE := "gone"
 class _ActivityLockNumber extends Control:
 	var text := "1"
 	var font: Font
-	var font_size := 250
-	var outline_size := 46
+	var font_size := 125
+	var outline_size := 23
 	var fill_color := Color.WHITE
 
 	func set_text(next_text: String) -> void:
@@ -71,13 +68,13 @@ class _ActivityLockNumber extends Control:
 		var active_font := font if font != null else ThemeDB.fallback_font
 		var fitted := font_size
 		var max_width := size.x * 0.86
-		while fitted > 72 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
-			fitted -= 4
+		while fitted > 60 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
+			fitted -= 2
 		var text_size := active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted)
 		var baseline := size.y * 0.5 + (active_font.get_ascent(fitted) - active_font.get_descent(fitted)) * 0.5
 		var text_position := Vector2((size.x - text_size.x) * 0.5, baseline)
-		for x in range(-outline_size, outline_size + 1, 3):
-			for y in range(-outline_size, outline_size + 1, 3):
+		for x in range(-outline_size, outline_size + 1, 2):
+			for y in range(-outline_size, outline_size + 1, 2):
 				if x == 0 and y == 0:
 					continue
 				var offset := Vector2(x, y)
@@ -103,6 +100,8 @@ var padlock_shadow: TextureRect
 var padlock: TextureRect
 var padlock_shackle: TextureRect
 var padlock_tint: TextureRect
+var unlock_progress_enabled := false
+var unlock_progress: Control
 var level_label: _ActivityLockNumber
 var level := 1
 var theme_color := Color("#ffd238")
@@ -115,6 +114,7 @@ var physics_active := false
 var pressing_lock := false
 var dragging_lock := false
 var press_position := Vector2.ZERO
+var pointer_position := Vector2.ZERO
 var drag_start_lock_offset := Vector2.ZERO
 var last_chain_sound_msec := 0
 var last_chain_sound_offset := Vector2.ZERO
@@ -156,6 +156,14 @@ func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, next_p
 	set_process(false)
 	call_deferred("_layout_base")
 
+func set_unlock_progress(amount: float) -> void:
+	if not is_instance_valid(unlock_progress): return
+	if not unlock_progress_enabled:
+		unlock_progress_enabled = true
+		_apply_lock_state_visuals()
+		_layout_base()
+	unlock_progress.set_progress(amount)
+
 func set_unlock_level(next_level: int) -> void:
 	level = next_level
 	if level_label != null:
@@ -167,7 +175,11 @@ func set_theme_color(next_theme_color: Color) -> void:
 	if padlock_tint != null:
 		padlock_tint.modulate = _padlock_tint_modulate()
 	if level_label != null:
-		level_label.set_fill_color(_lock_number_fill_color())
+		level_label.set_fill_color(Color.WHITE)
+	if unlock_progress != null:
+		unlock_progress.fill_color = theme_color
+		unlock_progress.track_color = theme_color.darkened(0.6)
+		unlock_progress.queue_redraw()
 
 
 func set_lock_state(next_state: String) -> void:
@@ -255,7 +267,7 @@ func play_unlock_drop_animation() -> void:
 	set_lock_state(LOCK_STATE_DROPPING)
 	unlock_drop_active = true
 	click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
-	_pull_chains_from_lock(Vector2(0.0, -1.0), 36.0)
+	_pull_chains_from_lock(Vector2(0.0, -1.0), 18.0)
 	_wake_motion_process()
 	unlock_drop_tween = create_tween()
 	unlock_drop_tween.tween_method(_set_unlock_drop_progress, 0.0, 1.0, UNLOCK_DROP_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -269,7 +281,7 @@ func _set_unlock_drop_progress(progress: float) -> void:
 	var fallover := smoothstep(0.18, 1.0, fall_progress)
 	var settling_wobble := sin(fall_progress * PI * 1.75) * 0.045 * (1.0 - fall_progress)
 	var pop_wiggle := _unlock_pop_wiggle()
-	lock_offset = Vector2(click_shake_direction * 14.0 * fall_progress + pop_wiggle * 6.0, size.y * 0.46 * gravity - absf(pop_wiggle) * 2.0)
+	lock_offset = Vector2(click_shake_direction * 7.0 * fall_progress + pop_wiggle * 3.0, size.y * 0.46 * gravity - absf(pop_wiggle))
 	lock_rotation = (0.78 * click_shake_direction * fallover) + settling_wobble + pop_wiggle * 0.10
 	_set_padlock_pop_scale(_unlock_pop_scale())
 	_place_padlock(lock_offset, lock_rotation)
@@ -303,9 +315,9 @@ func _build(font: Font, fallback_font: Font) -> void:
 		add_child(padlock_tint)
 	level_label = _ActivityLockNumber.new()
 	level_label.set_text(str(level))
-	level_label.font_size = 206
-	level_label.outline_size = 24
-	level_label.set_fill_color(_lock_number_fill_color())
+	level_label.font_size = 103
+	level_label.outline_size = 12
+	level_label.set_fill_color(Color.WHITE)
 	if font != null:
 		level_label.font = font
 	elif fallback_font != null:
@@ -313,6 +325,12 @@ func _build(font: Font, fallback_font: Font) -> void:
 	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	level_label.z_index = 7
 	add_child(level_label)
+	unlock_progress = preload("res://scripts/ui/lock_progress_bar.gd").new()
+	unlock_progress.setup(level_label.font)
+	unlock_progress.fill_color = theme_color
+	unlock_progress.track_color = theme_color.darkened(0.6)
+	unlock_progress.z_index = 7
+	add_child(unlock_progress)
 	_apply_lock_state_visuals()
 	_layout_base()
 
@@ -340,10 +358,6 @@ func _padlock_tint_modulate() -> Color:
 	return color
 
 
-func _lock_number_fill_color() -> Color:
-	return Color.WHITE
-
-
 func _uses_split_padlock() -> bool:
 	return padlock_body_texture != null and padlock_shackle_closed_texture != null
 
@@ -361,6 +375,8 @@ func _apply_lock_state_visuals() -> void:
 		padlock_shackle.texture = _active_shackle_texture()
 	if level_label != null:
 		level_label.visible = lock_visible and padlock_visible
+	if unlock_progress != null:
+		unlock_progress.visible = unlock_progress_enabled and lock_visible and padlock_visible
 	mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible and padlock_visible else Control.MOUSE_FILTER_IGNORE
 	if not lock_visible or not padlock_visible:
 		pressing_lock = false
@@ -375,7 +391,7 @@ func _play_ready_open_animation() -> void:
 		return
 	_stop_ready_open_animation(false)
 	ready_open_progress = 0.0
-	_pull_chains_from_lock(Vector2(0.0, -1.0), 20.0)
+	_pull_chains_from_lock(Vector2(0.0, -1.0), 10.0)
 	chain_moved.emit("ready_open", 0.32)
 	_wake_motion_process()
 	ready_open_tween = create_tween()
@@ -456,7 +472,7 @@ func _alpha_mask_texture(source: Texture2D) -> Texture2D:
 
 static func _placeholder_texture_for_source(source: Texture2D) -> Texture2D:
 	var placeholder := PlaceholderTexture2D.new()
-	var source_size := source.get_size() if source != null else Vector2(8, 8)
+	var source_size := source.get_size() if source != null else Vector2(4, 4)
 	placeholder.size = Vector2(maxf(1.0, source_size.x), maxf(1.0, source_size.y))
 	return placeholder
 
@@ -523,7 +539,7 @@ func _process(delta: float) -> void:
 	if unlock_drop_active:
 		return
 	if pressing_lock and dragging_lock:
-		var target := _limit_lock_offset(get_local_mouse_position() - press_position + drag_start_lock_offset)
+		var target := _limit_lock_offset(pointer_position - press_position + drag_start_lock_offset)
 		var next_offset := lock_offset.lerp(target, 1.0 - exp(-30.0 * delta))
 		next_offset = _limit_lock_offset(next_offset)
 		lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
@@ -536,7 +552,7 @@ func _process(delta: float) -> void:
 		var next_offset := _limit_lock_offset(lock_offset + lock_velocity * delta)
 		lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
 		lock_offset = next_offset
-		if lock_offset.length() <= 0.35 and lock_velocity.length() <= 3.0 and _chains_settled() and click_shake_remaining <= 0.0:
+		if lock_offset.length() <= 0.175 and lock_velocity.length() <= 1.5 and _chains_settled() and click_shake_remaining <= 0.0:
 			lock_offset = Vector2.ZERO
 			lock_velocity = Vector2.ZERO
 			lock_rotation = 0.0
@@ -546,10 +562,10 @@ func _process(delta: float) -> void:
 		click_shake_remaining = maxf(0.0, click_shake_remaining - delta)
 	if physics_active:
 		_simulate_chains(delta)
-		lock_rotation = clampf(lock_velocity.x * 0.00055, -0.10, 0.10)
+		lock_rotation = clampf(lock_velocity.x * 0.0011, -0.10, 0.10)
 		var shake_pct := click_shake_remaining / LOCK_CLICK_SHAKE_SECONDS
 		var shake_wave := sin((1.0 - shake_pct) * PI * 7.0) * shake_pct * click_shake_direction
-		var visual_offset := lock_offset + Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
+		var visual_offset := lock_offset + Vector2(shake_wave * 5.0, absf(shake_wave) * 1.5)
 		var visual_rotation := lock_rotation + shake_wave * 0.085
 		_place_padlock(visual_offset, visual_rotation)
 		queue_redraw()
@@ -568,7 +584,7 @@ func _process_padlock_hover() -> void:
 func _layout_base() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
-	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5 + base_lock_x_shift, 48.0)
+	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5 + base_lock_x_shift, 24.0)
 	_reset_chain_points(not _drop_motion_should_be_preserved())
 	_place_padlock(lock_offset, lock_rotation)
 	queue_redraw()
@@ -748,12 +764,13 @@ func _chains_settled() -> bool:
 		var points := chain_points[side] as Array
 		var base_points := chain_base_points[side] as Array
 		for i in range(points.size()):
-			if ((points[i] as Vector2) - (base_points[i] as Vector2)).length() > 1.4:
+			if ((points[i] as Vector2) - (base_points[i] as Vector2)).length() > 0.7:
 				return false
 	return true
 
 func _on_padlock_gui_input(event: InputEvent) -> void:
 	var pointer_position := _event_local_position(event)
+	self.pointer_position = pointer_position
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			pressing_lock = true
@@ -827,14 +844,14 @@ func _emit_chain_moved_if_ready(force := false, kind := "drag") -> void:
 		return
 	last_chain_sound_msec = now
 	last_chain_sound_offset = lock_offset
-	var intensity := clampf(lock_velocity.length() / 620.0, 0.25, 1.0)
+	var intensity := clampf(lock_velocity.length() / 310.0, 0.25, 1.0)
 	chain_moved.emit(kind, intensity)
 
 func _click_rattle_lock() -> void:
 	click_shake_remaining = LOCK_CLICK_SHAKE_SECONDS
 	click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
-	lock_velocity += Vector2(220.0 * click_shake_direction, rng.randf_range(-60.0, 70.0))
-	_pull_chains_from_lock(Vector2(1.0 * click_shake_direction, 0.18), 44.0)
+	lock_velocity += Vector2(110.0 * click_shake_direction, rng.randf_range(-30.0, 35.0))
+	_pull_chains_from_lock(Vector2(1.0 * click_shake_direction, 0.18), 22.0)
 	_emit_chain_moved_if_ready(true, "click")
 	physics_active = true
 	_wake_motion_process()
@@ -853,7 +870,7 @@ func _pull_chains_from_lock(direction: Vector2, force: float) -> void:
 		for i in range(1, points.size()):
 			var t := float(i) / float(points.size() - 1)
 			var weight := t * t
-			var local_pull := pull * force * weight + Vector2(float(side) * 12.0, rng.randf_range(-8.0, 8.0)) * weight
+			var local_pull := pull * force * weight + Vector2(float(side) * 6.0, rng.randf_range(-4.0, 4.0)) * weight
 			previous[i] = (previous[i] as Vector2) - local_pull
 		chain_prev_points[side] = previous
 
@@ -871,6 +888,8 @@ func _padlock_contains_local_point(point: Vector2) -> bool:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
 		return true
 	var fit_scale := minf(padlock.size.x / texture_size.x, padlock.size.y / texture_size.y)
+	if fit_scale <= 0.0:
+		return false
 	var drawn_size := texture_size * fit_scale
 	var drawn_position := (padlock.size - drawn_size) * 0.5
 	var drawn_rect := Rect2(drawn_position, drawn_size)
@@ -882,12 +901,12 @@ func _padlock_contains_local_point(point: Vector2) -> bool:
 	return padlock_hit_image.get_pixel(sample_x, sample_y).a >= PADLOCK_HIT_ALPHA_THRESHOLD
 
 func _rattle_lock() -> void:
-	lock_velocity += Vector2(rng.randf_range(-260.0, 260.0), rng.randf_range(-70.0, 110.0))
+	lock_velocity += Vector2(rng.randf_range(-130.0, 130.0), rng.randf_range(-35.0, 55.0))
 	for side in [-1, 1]:
 		var points := chain_points[side] as Array
 		var previous := chain_prev_points[side] as Array
 		for i in range(1, points.size()):
-			var impulse := Vector2(rng.randf_range(-18.0, 18.0), rng.randf_range(-8.0, 12.0)) * float(i)
+			var impulse := Vector2(rng.randf_range(-9.0, 9.0), rng.randf_range(-4.0, 6.0)) * float(i)
 			previous[i] = (previous[i] as Vector2) - impulse
 		chain_prev_points[side] = previous
 	physics_active = true
@@ -918,12 +937,12 @@ func _draw_success_pulse() -> void:
 		return
 	var alpha := pow(1.0 - pulse_progress, 1.35)
 	var center := base_lock_position + lock_offset + PADLOCK_SIZE * 0.5
-	var base_grow := lerpf(10.0, 72.0, pulse_progress)
+	var base_grow := lerpf(5.0, 36.0, pulse_progress)
 	var tint := UNLOCK_SUCCESS_GREEN
 	var layers := [
-		{"grow": base_grow + 34.0, "alpha": 0.08},
-		{"grow": base_grow + 22.0, "alpha": 0.13},
-		{"grow": base_grow + 11.0, "alpha": 0.20},
+		{"grow": base_grow + 17.0, "alpha": 0.08},
+		{"grow": base_grow + 11.0, "alpha": 0.13},
+		{"grow": base_grow + 5.5, "alpha": 0.20},
 		{"grow": base_grow, "alpha": 0.30},
 	]
 	for layer in layers:
@@ -1014,7 +1033,7 @@ func _dropped_chain_path_points(side: int) -> Array:
 		var point := outer_anchor.lerp(inner_anchor, t)
 		point.y += sin(t * PI) * (size.y * 0.07 + drop * size.y * 0.16)
 		if t > 0.38:
-			var laid_y := ground_y - sin((1.0 - t) * PI) * 22.0
+			var laid_y := ground_y - sin((1.0 - t) * PI) * 11.0
 			point.y = lerpf(point.y, laid_y, rest)
 		points.append(point)
 	var start_points := drop_chain_start_points.get(side, []) as Array
@@ -1090,13 +1109,13 @@ func _draw_chain_with_depth(render_links: Array) -> void:
 
 func _chain_shadow_layers() -> Array:
 	return [
-		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 7), "inflate": Vector2(20, 20), "tint": Color(0, 0, 0, 0.045)},
-		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3), "inflate": Vector2(12, 12), "tint": Color(0, 0, 0, 0.075)},
-		{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.09)},
+		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3.5), "inflate": Vector2(10, 10), "tint": Color(0, 0, 0, 0.045)},
+		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 1.5), "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.075)},
+		{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(3, 3), "tint": Color(0, 0, 0, 0.09)},
 	]
 
 func _chain_stroke_offsets() -> Array:
-	var stroke := 8.0
+	var stroke := 4.0
 	return [
 		Vector2(-stroke, 0),
 		Vector2(stroke, 0),
@@ -1220,7 +1239,7 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 	var open_amount := _lock_band_open_amount()
 	var ready_pop := sin(ready_open_progress * PI)
 	var ready_settle := sin(ready_open_progress * TAU * 1.6) * (1.0 - ready_open_progress)
-	var shackle_slide := Vector2(0.0, -open_amount * READY_OPEN_SHACKLE_LIFT - ready_pop * 4.0)
+	var shackle_slide := Vector2(0.0, -open_amount * READY_OPEN_SHACKLE_LIFT - ready_pop * 2.0)
 	var shared_rotation := next_lock_rotation + open_amount * READY_OPEN_HANG_ROTATION + ready_settle * 0.012
 	var shared_pivot := PADLOCK_SIZE * 0.5
 	if open_amount > 0.0:
@@ -1252,11 +1271,17 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 		padlock_tint.rotation = shared_rotation
 		padlock_tint.scale = Vector2.ONE * pop_scale
 	if level_label != null:
-		level_label.size = Vector2(240, 210)
-		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 15.0, PADLOCK_SIZE.y * 0.52)
+		level_label.size = Vector2(120, 105)
+		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 7.5, PADLOCK_SIZE.y * 0.52 - (18.0 if unlock_progress_enabled else 0.0))
 		level_label.pivot_offset = shared_pivot - (level_label.position - lock_position)
 		level_label.rotation = shared_rotation
 		level_label.scale = Vector2.ONE * pop_scale
+	if unlock_progress != null:
+		unlock_progress.size = Vector2(164, 26)
+		unlock_progress.position = lock_position + Vector2(45, 248)
+		unlock_progress.pivot_offset = shared_pivot - (unlock_progress.position - lock_position)
+		unlock_progress.rotation = shared_rotation
+		unlock_progress.scale = Vector2.ONE * pop_scale
 
 func _unlock_pop_scale() -> float:
 	if not unlock_drop_active:
@@ -1304,9 +1329,10 @@ func _set_padlock_pop_scale(next_scale: float) -> void:
 		padlock_tint.scale = Vector2.ONE * next_scale
 	if level_label != null:
 		level_label.scale = Vector2.ONE * next_scale
+	if unlock_progress != null:
+		unlock_progress.scale = Vector2.ONE * next_scale
 
 func _clear_children() -> void:
 	for child in get_children():
 		child.queue_free()
-
 

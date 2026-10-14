@@ -101,6 +101,10 @@ func set_lock_state(next_state: String) -> void:
 	_update_shared_chain_path()
 
 
+func set_requirement_progress(requirement_states: Array) -> void:
+	for index in range(mini(rigs.size(), requirement_states.size())):
+		rigs[index].set_unlock_progress(float(requirement_states[index].get("xp_progress", 0.0)))
+
 func set_requirement_states(requirement_states: Array) -> void:
 	var all_ready := not requirement_states.is_empty()
 	for index in range(rigs.size()):
@@ -110,6 +114,7 @@ func set_requirement_states(requirement_states: Array) -> void:
 			var state := requirement_states[index] as Dictionary
 			met = bool(state.get("met", false))
 			dismissed = bool(state.get("dismissed", false))
+			rigs[index].set_unlock_progress(float(state.get("xp_progress", 0.0)))
 		if rigs[index].lock_state == ActivityLockRig.LOCK_STATE_DROPPING:
 			continue
 		if dismissed:
@@ -585,7 +590,7 @@ func _shared_motion_source_can_settle() -> bool:
 		return false
 	if not _rig_can_share_motion(shared_motion_source):
 		return false
-	return shared_motion_source.physics_active or shared_motion_source.lock_offset.length() > 0.75 or shared_motion_source.lock_velocity.length() > 4.0
+	return shared_motion_source.physics_active or shared_motion_source.lock_offset.length() > 0.375 or shared_motion_source.lock_velocity.length() > 2.0
 
 
 func _chain_carried_lock_offset(source: ActivityLockRig, target: ActivityLockRig) -> Vector2:

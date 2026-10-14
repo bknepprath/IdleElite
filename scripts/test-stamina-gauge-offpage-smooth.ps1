@@ -21,6 +21,7 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const SAMPLE_FRAMES := 54
@@ -58,9 +59,9 @@ func _run() -> void:
 		_fail("build stamina gauge did not become ready")
 		return
 
-	var max_stamina := float(scene.call("_max_stamina", "build"))
+	var max_stamina := float(SkillState.host_max_stamina("build", scene))
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 2.0))
-	scene.call("_sync_stamina_bank", "build")
+	SkillState.host_sync_stamina_bank("build", scene)
 	scene.call("_update_ui", 0.0, true)
 	await _wait_test_frame()
 

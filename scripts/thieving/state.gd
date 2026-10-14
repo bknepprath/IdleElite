@@ -1,9 +1,9 @@
 extends RefCounted
 
-const HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-wide.png"
+const HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-1080p.png"
 const HEIST_TROPHY_SHEET := "res://assets/content/thieving/trophies/thieving-trophy-sheet.png"
 const HEIST_JAIL_BARS_TEXTURE := "res://assets/content/thieving/heists/thieving-jail-bars-overlay.png"
-const HEIST_BACKGROUND_CELL := Vector2(1536, 880)
+const HEIST_BACKGROUND_CELL := Vector2(1080, 619)
 const HEIST_TROPHY_CELL := Vector2(256, 256)
 const HEIST_LEVEL_SUCCESS_BONUS := 0.75
 const HEIST_MAX_SUCCESS := 95.0
@@ -89,6 +89,9 @@ func visible_heists_for_render() -> Array:
 	var pending_key := str(pending_trophy_reward_float.get("key", "")) if not pending_trophy_reward_float.is_empty() else ""
 	if pending_key.begins_with("thieving_heist:"):
 		pending_heist_id = pending_key.substr("thieving_heist:".length())
+		# Finish the trophy flight and card exit before revealing its successor.
+		var pending_heist := heist_def(pending_heist_id)
+		return [pending_heist] if not pending_heist.is_empty() else []
 	for i in range(HEIST_DEFS.size()):
 		var heist := HEIST_DEFS[i] as Dictionary
 		var heist_id := str(heist.get("id", ""))

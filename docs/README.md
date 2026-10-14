@@ -1,4 +1,5 @@
 # Idle Elite Godot Documentation
+
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
 This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Markdown page and HTML page here as support material for the Godot project: product requirements, activity data, UI references, feature plans, audio auditions, Android release work, and Play Store operations.
@@ -6,7 +7,7 @@ This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Mar
 ## How To Read These Docs
 
 - **Agent orientation:** Start with `agent-onboarding-checklist.md`, `agent-codebase-map.md`, `main-gd-ownership-map.md`, `ui-runtime-boundary-map.md`, `activity-ui-boundary-map.md`, `audio-structure-guide.md`, and `generated-file-hygiene.md` before broad code, asset, UI, metadata, audio, or validation changes.
-- **Planning home:** Start with `planning-system.md` for the active module direction and current planning notes.
+- **Planning home:** Start with `planning-system.md`, then use `early-game-relationships-and-treats.md` for the active first-hour product plan.
 - **Live implementation references:** `activity-database.html`, `activity-database.json`, `activity-database-contract.md`, `product-requirements.md`, and the Play Store runbooks describe the current Godot build or release pipeline.
 - **Godot implementation references:** Active HTML files at the top of `docs/` should describe the current Godot implementation.
 - **Feature planning:** active plans should map back to `docs/activity-database.json`, `scripts/main.gd`, Godot scenes, exported Android builds, or assets under `assets/`.
@@ -16,7 +17,8 @@ This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Mar
 ## Guardrails
 
 - Run Godot validation only through `.\scripts\check-project.ps1` or `.\run-godot-safe.ps1`.
+- Use `python .\scripts\simulate-first-hour-relationships.py --scenario all --runs 100 --duration 3600 --check-determinism` for the active first-hour relationship matrix. Use `--trace` with one scenario for the complete event sequence, `--fish-spend-cap N` for Fish-budget sensitivity, and `--mastery-contract database` for the documented mastery formula.
 - Use `.\scripts\test-everything.ps1` for the broad whole-game sweep that orchestrates the release gate plus specialized gameplay, fishing, thieving, UI, data, asset, Firebase, and performance tests. Use `-List` to see the selected suite, `-Aspect fishing,ui` to narrow the run, and `-Mode release -IncludeExternal` when release-only and live external checks are intentional.
 - Use `.\scripts\test-button-census-clicks.ps1` when you specifically want a crawler-style survivability test that stages major screens, clicks visible enabled buttons, and skips destructive or external buttons such as hard reset, Discord, ads, and crash-report actions.
-- After editing fishing data, run `.\scripts\check-activity-database-contracts.ps1`, `.\scripts\audit-activity-database.ps1`, and preview `activity-database.html` over HTTP when needed.
+- After editing activity data, run `.\scripts\check-activity-database-contracts.ps1` and `.\scripts\audit-activity-database.ps1`; preview `activity-database.html` over HTTP when needed. Fishing changes must also follow `fishing-rework-status.md`.
 - Keep public-facing Play Store and privacy-policy text accurate to the Godot app: local Godot saves, optional rewarded ads, optional Firebase leaderboard/chat, optional Google-backed cloud saves only when configured and device-tested, no purchases unless implemented.

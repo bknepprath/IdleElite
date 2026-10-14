@@ -4,7 +4,7 @@ extends Control
 const ACTION_STOP_HOLD_ARM_DELAY_SECONDS := 0.16
 const ACTION_STOP_HOLD_SECONDS := 0.45
 const ACTION_STOP_HOLD_UNLOAD_SECONDS := 0.18
-const ACTION_STOP_HOLD_RING_SIZE := Vector2(380, 380)
+const ACTION_STOP_HOLD_RING_SIZE := Vector2(190, 190)
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 
 var progress := 0.0
@@ -149,11 +149,16 @@ func process_action(delta: float) -> void:
 		action_stop_hold_elapsed += delta
 		if action_stop_hold_elapsed < ACTION_STOP_HOLD_ARM_DELAY_SECONDS:
 			return
+		var swipe = host._skill_swipe_activity_surface()
+		if swipe.skill_swipe_tracking and swipe.skill_swipe_horizontal:
+			# The finger is already swiping pages; this is not a hold on the card.
+			cancel_action()
+			return
 		action_stop_hold_armed = true
 		action_stop_hold_elapsed = 0.0
-		host._skill_swipe_activity_surface().skill_swipe_tracking = false
-		host._skill_swipe_activity_surface().skill_swipe_horizontal = false
-		host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
+		# Put any small drag offset back at rest instead of leaving the page
+		# shifted with tracking switched off.
+		swipe._cancel_skill_swipe_feedback(true)
 		if action_stop_hold_kind == "action":
 			host._skill_swipe_activity_surface()._press_action_card_3d(action_stop_hold_card_key)
 			show_ring(ThemeStyles.skill_theme_color(action_stop_hold_skill_id, host.COLOR_BLUE), action_stop_hold_position)
@@ -299,4 +304,4 @@ func _draw() -> void:
 		draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * visible_progress, 40, fill, width, true)
 	if show_question:
 		fill.a *= 1.0 - unload_progress
-		draw_string(ThemeDB.fallback_font, Vector2(center.x - radius, center.y + 36.0), "?", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 112, fill)
+		draw_string(ThemeDB.fallback_font, Vector2(center.x - radius, center.y + 18.0), "?", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 56, fill)

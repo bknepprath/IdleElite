@@ -81,9 +81,9 @@ static func text_color(color: Color, dark_mode_enabled: bool, color_ink: Color, 
 static func menu_button(text: String, app_font: Font, app_bold_font: Font, color_ink: Color, color_blue: Color, disabled_fill: Color, outline_size: int, paper_style: Callable, press_attach: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, 220)
+	button.custom_minimum_size = Vector2(0, 110)
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 72)
+	button.add_theme_font_size_override("font_size", 48)
 	if app_bold_font != null:
 		button.add_theme_font_override("font", app_bold_font)
 	elif app_font != null:
@@ -94,10 +94,10 @@ static func menu_button(text: String, app_font: Font, app_bold_font: Font, color
 	button.add_theme_color_override("font_disabled_color", Color("#efe8dc"))
 	button.add_theme_color_override("font_outline_color", color_ink)
 	button.add_theme_constant_override("outline_size", outline_size)
-	button.add_theme_stylebox_override("normal", paper_style.call(color_blue, 48))
-	button.add_theme_stylebox_override("hover", paper_style.call(color_blue, 48))
-	button.add_theme_stylebox_override("pressed", paper_style.call(color_blue.darkened(0.10), 48, 72, true))
-	button.add_theme_stylebox_override("disabled", paper_style.call(disabled_fill, 48, 72, false, true))
+	button.add_theme_stylebox_override("normal", paper_style.call(color_blue, 24))
+	button.add_theme_stylebox_override("hover", paper_style.call(color_blue, 24))
+	button.add_theme_stylebox_override("pressed", paper_style.call(color_blue.darkened(0.10), 24, 36, true))
+	button.add_theme_stylebox_override("disabled", paper_style.call(disabled_fill, 24, 36, false, true))
 	press_attach.call(button, 0.97)
 	return button
 
@@ -166,7 +166,7 @@ static func skill_detail_xp_bar(skill_id: String, value := 0.0, fallback_color :
 	var bar := progress_bar(theme_color, height, value)
 	bar.custom_minimum_size.x = width
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	bar.border_width = 12.0
+	bar.border_width = 6.0
 	apply_xp_progress_bar_theme(bar, theme_color, color_ink)
 	return bar
 
@@ -236,8 +236,9 @@ static func apply_activity_progress_rail_action_theme(bar: ActivityProgressRail,
 	for segment_color in segment_theme_colors:
 		fill_colors.append(progress_fill_color(segment_color))
 		empty_colors.append(progress_empty_color(segment_color, color_ink))
+	var empty := progress_empty_color(theme_color, color_ink)
 	bar.fill_color = fill_colors[0]
-	bar.empty_color = empty_colors[0]
+	bar.empty_color = empty
 	bar.set_color_segments(fill_colors, empty_colors)
 
 
@@ -324,8 +325,8 @@ static func surface_style(color: Color, radius: int, margin := 28, elevated := f
 	style.corner_radius_bottom_right = radius
 	if elevated:
 		style.shadow_color = Color(0.0, 0.0, 0.0, 0.34 if dark_mode_enabled else 0.16)
-		style.shadow_size = 12
-		style.shadow_offset = Vector2(0, 8)
+		style.shadow_size = 6
+		style.shadow_offset = Vector2(0, 4)
 	style.content_margin_left = margin
 	style.content_margin_right = margin
 	style.content_margin_top = margin

@@ -6,45 +6,33 @@ const PREFIX_THIEVING_HEIST := "thieving_heist:"
 const PREFIX_FISHING_AREA := "fishing_area:"
 const PREFIX_FISHING_OFFER := "fishing_offer:"
 const PREFIX_HUB := "hub:"
-const VALID_PREFIXES := [
-	PREFIX_ACTION,
-	PREFIX_THIEVING_HEIST,
-	PREFIX_FISHING_AREA,
-	PREFIX_FISHING_OFFER,
-	PREFIX_HUB,
-]
+const VALID_PREFIXES := [PREFIX_ACTION, PREFIX_THIEVING_HEIST, PREFIX_FISHING_AREA, PREFIX_FISHING_OFFER, PREFIX_HUB]
 const SORT_LEVEL := "level"
 const SORT_LEVEL_REVERSE := "level_reverse"
 const COLLAPSE_SAVE_VERSION := 3
 const MODULE_PIN_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/pin.png"
-const MODULE_PIN_COLOR_TEXTURES := [
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-blue.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-green.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-orange.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-pink.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-purple.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-red.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-teal.png",
-	"res://assets/content/ui/navigation-controls/pin-color/pin-color-yellow.png",
-]
-const MODULE_PIN_BADGE_SIZE := Vector2(320, 320)
-const MODULE_PIN_BADGE_HIT_MIN := Vector2(35, 2)
-const MODULE_PIN_BADGE_HIT_MAX := Vector2(284, 316)
-const MODULE_PIN_BADGE_CLIP_ORIGIN := Vector2(-220, -330)
-const MODULE_PIN_BADGE_CLIP_SIZE := Vector2(520, 388)
-const MODULE_PIN_BADGE_SETTLED_POSITION := Vector2(198, 128)
-const MODULE_PIN_BADGE_PULL_OUT_POSITION := Vector2(236, 14)
+const MODULE_PIN_COLOR_TEXTURES := ["res://assets/content/ui/navigation-controls/pin-color/pin-color-blue.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-green.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-orange.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-pink.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-purple.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-red.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-teal.png", "res://assets/content/ui/navigation-controls/pin-color/pin-color-yellow.png"]
+const MODULE_PIN_BADGE_SIZE := Vector2(160, 160)
+const MODULE_PIN_BADGE_HIT_MIN := Vector2(17.5, 1)
+const MODULE_PIN_BADGE_HIT_MAX := Vector2(142, 158)
+const MODULE_PIN_BADGE_CLIP_ORIGIN := Vector2(-110, -165)
+const MODULE_PIN_BADGE_CLIP_SIZE := Vector2(260, 194)
+const MODULE_PIN_BADGE_SETTLED_POSITION := Vector2(99, 64)
+const MODULE_PIN_BADGE_PULL_OUT_POSITION := Vector2(118, 7)
+const MODULE_PIN_ENTRY_Y := MODULE_PIN_BADGE_CLIP_ORIGIN.y + MODULE_PIN_BADGE_CLIP_SIZE.y
+const MODULE_PIN_ENTRY_SEAM_POINTS := [Vector2(26, MODULE_PIN_ENTRY_Y), Vector2(62, MODULE_PIN_ENTRY_Y)]
+const MODULE_PIN_ENTRY_SEAM_WIDTH := 4.0
 const MODULE_PIN_CONFIRM_ANIMATION_SECONDS := 0.315
 const MODULE_PIN_UNPIN_ANIMATION_SECONDS := 0.27
 const MODULE_PIN_SOURCE_PRUNE_HOLD_SECONDS := 4.0
-const MODULE_PIN_BADGE_Z_INDEX := 350
+const MODULE_PIN_BADGE_Z_INDEX := 1000
 const MODULE_PIN_CONFIRM_STILL_SECONDS := 0.07
 const MODULE_PIN_CONFIRM_ANTICIPATION_SECONDS := 0.075
 const MODULE_PIN_CONFIRM_TURNAROUND_SECONDS := 0.03
 const MODULE_PIN_CONFIRM_POKE_SECONDS := 0.14
-const MODULE_PIN_CONFIRM_APPEAR_OFFSET := Vector2(26, -78)
-const MODULE_PIN_CONFIRM_ANTICIPATION_OFFSET := Vector2(34, -104)
-const MODULE_PIN_EXIT_LIFT_OFFSET := Vector2(9, -29)
+const MODULE_PIN_CONFIRM_APPEAR_OFFSET := Vector2(13, -39)
+const MODULE_PIN_CONFIRM_ANTICIPATION_OFFSET := Vector2(17, -52)
+const MODULE_PIN_EXIT_LIFT_OFFSET := Vector2(4.5, -14.5)
 
 var pinned_order: Array = []
 var pin_color_paths := {}
@@ -69,7 +57,6 @@ var module_ui_collapse_press_position := Vector2.ZERO
 var module_ui_collapse_press_touch_index := -1
 var module_ui_collapse_press_dragged := false
 
-
 static func normalize(value: Variant) -> String:
 	var key := str(value).strip_edges()
 	if key.is_empty():
@@ -79,21 +66,15 @@ static func normalize(value: Variant) -> String:
 			return key
 	return ""
 
-
 static func action(skill_id: String, action_id: String, aliases := {}) -> String:
 	var id := canonical_action_id(skill_id, action_id, aliases)
-	if skill_id.is_empty() or id.is_empty():
-		return ""
-	return "%s%s:%s" % [PREFIX_ACTION, skill_id, id]
-
+	return "" if skill_id.is_empty() or id.is_empty() else "%s%s:%s" % [PREFIX_ACTION, skill_id, id]
 
 static func action_for_record(skill_id: String, action_record: Dictionary, aliases := {}) -> String:
 	return action(skill_id, str(action_record.get("id", "")), aliases)
 
-
 static func thieving_heist(heist_id: String) -> String:
 	return _prefix(PREFIX_THIEVING_HEIST, heist_id)
-
 
 static func fishing_area(area_key: String) -> String:
 	return _prefix(PREFIX_FISHING_AREA, area_key)
@@ -248,7 +229,10 @@ static func action_is_combo_module(owner_skill_id: String, action: Dictionary, u
 		return true
 	if not unlock_requirements.is_valid():
 		return false
-	for raw_requirement in unlock_requirements.call(owner_skill_id, action):
+	var requirements = unlock_requirements.call(owner_skill_id, action)
+	if typeof(requirements) != TYPE_ARRAY:
+		return false
+	for raw_requirement in requirements:
 		if typeof(raw_requirement) != TYPE_DICTIONARY:
 			continue
 		var requirement := raw_requirement as Dictionary
@@ -312,15 +296,11 @@ func update_pending_module_pin_drag(event: InputEvent, tap_slop: float, drag_sup
 	if event_position == Vector2.INF:
 		return
 	update_pending_module_pin_drag_at_position(event_position, tap_slop, drag_suppressed)
-
-
 func update_pending_module_pin_drag_at_position(event_position: Vector2, tap_slop: float, drag_suppressed: bool) -> void:
 	if not module_ui_pin_press_active:
 		return
 	if event_position.distance_to(module_ui_pin_press_position) > tap_slop or drag_suppressed:
 		module_ui_pin_press_dragged = true
-
-
 func module_pin_press_event_belongs_to_active_press(event: InputEvent) -> bool:
 	if module_ui_pin_press_touch_index < 0:
 		return event is InputEventMouseButton or event is InputEventMouseMotion
@@ -329,8 +309,6 @@ func module_pin_press_event_belongs_to_active_press(event: InputEvent) -> bool:
 	if event is InputEventScreenDrag:
 		return (event as InputEventScreenDrag).index == module_ui_pin_press_touch_index
 	return false
-
-
 func clear_module_pin_press() -> void:
 	module_ui_pin_press_active = false
 	module_ui_pin_press_module_key = ""
@@ -338,8 +316,6 @@ func clear_module_pin_press() -> void:
 	module_ui_pin_press_position = Vector2.ZERO
 	module_ui_pin_press_touch_index = -1
 	module_ui_pin_press_dragged = false
-
-
 func begin_module_collapse_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int, allow_key: Callable) -> bool:
 	var normalized_key := normalize(module_key)
 	if not _allowed(normalized_key, allow_key):
@@ -351,8 +327,6 @@ func begin_module_collapse_press(module_key: String, card_host_id: int, press_po
 	module_ui_collapse_press_touch_index = touch_index
 	module_ui_collapse_press_dragged = false
 	return true
-
-
 func update_pending_module_collapse_press(event: InputEvent, tap_slop: float, drag_suppressed: bool, click_suppressed: bool, commit_tap: Callable) -> bool:
 	if not module_ui_collapse_press_active:
 		return false
@@ -377,22 +351,16 @@ func update_pending_module_collapse_press(event: InputEvent, tap_slop: float, dr
 	if should_commit and commit_tap.is_valid():
 		commit_tap.call(pressed_module_key, pressed_card_host_id)
 	return true
-
-
 func update_pending_module_collapse_drag(event: InputEvent, tap_slop: float, drag_suppressed: bool) -> void:
 	var event_position := press_event_position(event)
 	if event_position == Vector2.INF:
 		return
 	update_pending_module_collapse_drag_at_position(event_position, tap_slop, drag_suppressed)
-
-
 func update_pending_module_collapse_drag_at_position(event_position: Vector2, tap_slop: float, drag_suppressed: bool) -> void:
 	if not module_ui_collapse_press_active:
 		return
 	if event_position.distance_to(module_ui_collapse_press_position) > tap_slop or drag_suppressed:
 		module_ui_collapse_press_dragged = true
-
-
 func module_collapse_press_event_belongs_to_active_press(event: InputEvent) -> bool:
 	if module_ui_collapse_press_touch_index < 0:
 		return event is InputEventMouseButton or event is InputEventMouseMotion
@@ -401,8 +369,6 @@ func module_collapse_press_event_belongs_to_active_press(event: InputEvent) -> b
 	if event is InputEventScreenDrag:
 		return (event as InputEventScreenDrag).index == module_ui_collapse_press_touch_index
 	return false
-
-
 func clear_module_collapse_press() -> void:
 	module_ui_collapse_press_active = false
 	module_ui_collapse_press_module_key = ""
@@ -410,8 +376,6 @@ func clear_module_collapse_press() -> void:
 	module_ui_collapse_press_position = Vector2.ZERO
 	module_ui_collapse_press_touch_index = -1
 	module_ui_collapse_press_dragged = false
-
-
 func reset() -> void:
 	pinned_order.clear()
 	pin_color_paths.clear()
@@ -425,20 +389,14 @@ func reset() -> void:
 	recent_pin_prune_hold_until_msec = 0
 	clear_module_pin_press()
 	clear_module_collapse_press()
-
-
 func set_sort_mode(next_mode: String) -> bool:
 	var normalized := normalized_sort_mode(next_mode)
 	if sort_mode == normalized:
 		return false
 	sort_mode = normalized
 	return true
-
-
 func toggle_level_sort() -> bool:
 	return set_sort_mode(SORT_LEVEL if sort_mode == SORT_LEVEL_REVERSE else SORT_LEVEL_REVERSE)
-
-
 func toggle_sort_priority(priority_kind: String) -> bool:
 	match priority_kind:
 		"combo":
@@ -449,24 +407,27 @@ func toggle_sort_priority(priority_kind: String) -> bool:
 			return false
 	return true
 
-
 func sort_detail_entries(entries: Array, skill_id: String, level_sort_value: Callable, unlock_requirements: Callable) -> Array:
 	if entries.size() > 1:
 		entries.sort_custom(func(left, right): return _detail_entry_sort_less(left, right, skill_id, level_sort_value, unlock_requirements))
 	return entries
 
-
 func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: float, level_sort_value: Callable, unlock_requirements: Callable) -> Array:
 	if plan.size() > 1:
-		plan.sort_custom(func(left, right):
-			return _detail_entry_sort_less(
-				_lazy_entry_detail_sort_proxy(left as Dictionary),
-				_lazy_entry_detail_sort_proxy(right as Dictionary),
-				skill_id,
-				level_sort_value,
-				unlock_requirements
-			)
+		# Resolve visibility-dependent sort values once per entry, not per comparison.
+		var ranked: Array = []
+		for entry in plan:
+			var proxy := _lazy_entry_detail_sort_proxy(entry as Dictionary)
+			ranked.append({"entry": entry, "bucket": _detail_entry_priority_bucket(proxy, skill_id, unlock_requirements), "level": int(level_sort_value.call(proxy, skill_id)), "tie": _detail_entry_tiebreaker(proxy)})
+		ranked.sort_custom(func(left, right):
+			if left.bucket != right.bucket:
+				return left.bucket < right.bucket
+			if left.level != right.level:
+				return left.level > right.level if sort_mode == SORT_LEVEL_REVERSE else left.level < right.level
+			return left.tie > right.tie if sort_mode == SORT_LEVEL_REVERSE else left.tie < right.tie
 		)
+		for index in range(ranked.size()):
+			plan[index] = ranked[index].entry
 	var y := 0.0
 	for raw_entry in plan:
 		var entry := raw_entry as Dictionary
@@ -474,11 +435,9 @@ func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: flo
 		y += float(entry.get("height", 0.0)) + stack_separation
 	return plan
 
-
 func is_collapsed(module_key: String, allow_key: Callable) -> bool:
 	var key := normalize(module_key)
-	return _allowed(key, allow_key) and bool(collapsed.get(key, false))
-
+	return bool(collapsed.get(key, false)) and _allowed(key, allow_key)
 
 func collapse_key(module_key: String, allow_key: Callable) -> String:
 	var key := normalize(module_key)
@@ -487,7 +446,6 @@ func collapse_key(module_key: String, allow_key: Callable) -> String:
 	collapsed[key] = true
 	return key
 
-
 func expand_key(module_key: String) -> String:
 	var key := normalize(module_key)
 	if key.is_empty():
@@ -495,27 +453,20 @@ func expand_key(module_key: String) -> String:
 	collapsed.erase(key)
 	return key
 
-
 func is_pinned(module_key: String, allow_key: Callable) -> bool:
 	var key := normalize(module_key)
-	return _allowed(key, allow_key) and pinned_order.has(key)
-
+	return pinned_order.has(key) and _allowed(key, allow_key)
 
 func pinned_order_for_save(allow_key: Callable) -> Array:
 	return pinned_order_unlocked_only(normalized_order(pinned_order), allow_key)
 
-
 func pin_color_paths_for_save(valid_paths: Array, allow_key: Callable) -> Dictionary:
 	return pin_color_paths_unlocked_only(normalized_paths(pin_color_paths, valid_paths), valid_paths, allow_key)
-
 
 func random_pin_texture_path(valid_paths: Array, fallback_path: String) -> String:
 	if valid_paths.is_empty():
 		return fallback_path
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	return str(valid_paths[rng.randi_range(0, valid_paths.size() - 1)])
-
+	return str(valid_paths[randi_range(0, valid_paths.size() - 1)])
 
 func pin_texture_path_for_key(module_key: String, valid_paths: Array, fallback_path: String) -> String:
 	var key := normalize(module_key)
@@ -545,7 +496,8 @@ func pin_module_key(module_key: String, skill_id: String, valid_paths: Array, fa
 	if key.is_empty():
 		return
 	assign_random_pin_texture_path(key, valid_paths, fallback_path)
-	pinned_order.append(key)
+	if not pinned_order.has(key):
+		pinned_order.append(key)
 	hold_recent_pinned_source(key, skill_id)
 	pin_preview_tokens.erase(key)
 

@@ -1,3 +1,4 @@
+# Requires a *debug* web export: the codex_fishing_perf probe is disabled in release builds.
 param(
     [int]$Port = 8123,
     [double]$MaxFrameMs = 50.0,
@@ -9,15 +10,12 @@ param(
     [string]$NodePath = "",
     [string]$NodeModulesPath = ""
 )
-
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $webRoot = Join-Path $projectRoot "builds\web"
 $tmpDir = Join-Path $projectRoot ".codex-tmp"
 $probeScript = Join-Path $tmpDir "fishing-web-touch-scroll-probe.mjs"
-
 if ([string]::IsNullOrWhiteSpace($NodePath)) {
     $bundledNode = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
     if (Test-Path -LiteralPath $bundledNode) {
@@ -26,20 +24,17 @@ if ([string]::IsNullOrWhiteSpace($NodePath)) {
         $NodePath = "node"
     }
 }
-
 if ([string]::IsNullOrWhiteSpace($NodeModulesPath)) {
     $bundledNodeModules = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
     if (Test-Path -LiteralPath $bundledNodeModules) {
         $NodeModulesPath = $bundledNodeModules
     }
 }
-
 Assert-True (Test-Path -LiteralPath $webRoot) "Missing builds\web. Run scripts\package-itch-web.ps1 first."
 Assert-True (Test-Path -LiteralPath (Join-Path $webRoot "index.html")) "Missing builds\web\index.html. Run scripts\package-itch-web.ps1 first."
 if (-not (Test-Path -LiteralPath $tmpDir)) {
     New-Item -ItemType Directory -Path $tmpDir | Out-Null
 }
-
 $webRootForJs = $webRoot.Replace("\", "/")
 $nodeModulesForJs = $NodeModulesPath.Replace("\", "/")
 
@@ -51,6 +46,7 @@ import { createRequire } from 'node:module';
 
 const projectRequire = createRequire(import.meta.url);
 const webRoot = '$webRootForJs';
+const webRootPath = path.resolve(webRoot);
 const nodeModulesPath = '$nodeModulesForJs';
 const port = $Port;
 const maxFrameMs = $MaxFrameMs;
@@ -97,7 +93,6 @@ async function importPlaywright() {
     throw firstError;
   }
 }
-
 function serveFile(req, res) {
   try {
     const parsed = new URL(req.url || '/', 'http://127.0.0.1');
@@ -105,8 +100,8 @@ function serveFile(req, res) {
     if (pathname === '/') {
       pathname = '/index.html';
     }
-    const requested = path.normalize(path.join(webRoot, pathname));
-    if (!requested.startsWith(path.normalize(webRoot))) {
+    const requested = path.resolve(webRootPath, '.' + pathname);
+    if (requested !== webRootPath && !requested.startsWith(webRootPath + path.sep)) {
       res.writeHead(403);
       res.end('forbidden');
       return;
@@ -130,10 +125,8 @@ function serveFile(req, res) {
     res.end(String(error && error.stack || error));
   }
 }
-
 const server = http.createServer(serveFile);
 await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
-
 let browser = null;
 try {
   const { chromium } = await importPlaywright();
@@ -153,7 +146,6 @@ try {
   if (!browser) {
     throw new Error('Unable to launch Chromium: ' + launchErrors.join('\n'));
   }
-
   async function startRafProbe(page) {
     await page.evaluate(() => {
     window.__rafProbe = { samples: [], last: performance.now(), active: true, phase: 'drag' };
@@ -179,7 +171,7 @@ try {
   }
 
   async function stopRafProbe(page) {
-    return await page.evaluate(() => {
+    return page.evaluate(() => {
       const probe = window.__rafProbe;
       if (!probe) {
         return [];
@@ -213,7 +205,6 @@ try {
       phase: worst.phase
     };
   }
-
   async function runTouchProbe(page, client, box) {
     const x = box.x + box.width * 0.5;
     const y0 = box.y + box.height * 0.76;
@@ -277,7 +268,6 @@ try {
       { timeout: 90000 }
     );
     await page.waitForTimeout(2500);
-
     const before = await page.evaluate(() => ({ ...window.__idleEliteFishingPerf }));
     const beforeFrame = Number(before.frame || 0);
     const box = await page.locator('canvas').boundingBox();
@@ -311,7 +301,6 @@ try {
     const raf = await stopRafProbe(page);
     const after = await page.evaluate(() => ({ ...window.__idleEliteFishingPerf }));
     await context.close();
-
     const scrollDelta = Number(after.scroll || 0) - Number(before.scroll || 0);
     const scrollPerf = after.scrollPerfLast || {};
     const rafSummary = summarizeRaf(raf);
@@ -342,7 +331,6 @@ try {
       rafSettleMaxMsec: rafSettleSummary.max,
       rafSettleOver50: rafSettleSummary.over50
     };
-
     if (result.plan <= 0 || result.mounted <= 0) {
       throw new Error(label + ': expected mounted fishing modules, got ' + result.mounted + '/' + result.plan);
     }
@@ -372,7 +360,6 @@ try {
     }
     return result;
   }
-
   const results = [];
   for (let iteration = 1; iteration <= repeatCount; iteration++) {
     results.push(await runScenario('mobile-touch-drag', {
@@ -390,7 +377,6 @@ try {
   }
   const worstGodot = results.reduce((worst, result) => Math.max(worst, result.maxFrameMsec), 0);
   const worstRaf = results.reduce((worst, result) => Math.max(worst, result.rafMaxMsec), 0);
-
   console.log(JSON.stringify({
     status: 'ok',
     repeatCount,

@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brejp658kdpfp"
-path="res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.ctex"
+path.bptc="res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.bptc.ctex"
+path.astc="res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/mastery-medals/mastery-medal-16-elite-emerald.png"
-dest_files=["res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.ctex"]
+dest_files=["res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.bptc.ctex", "res://.godot/imported/mastery-medal-16-elite-emerald.png-a5c8ff491d7c3474c08d83f4aedc815b.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

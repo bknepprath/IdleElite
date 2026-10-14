@@ -88,7 +88,7 @@ func set_max_scroll_override(next_max_scroll: int) -> void:
 
 func set_scroll_enabled_by_content(enabled: bool) -> void:
 	content_scroll_enabled = enabled
-	vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if enabled else ScrollContainer.SCROLL_MODE_DISABLED
+	vertical_scroll_mode = (ScrollContainer.SCROLL_MODE_AUTO if bool(get_meta("desktop_scrollbar", false)) else ScrollContainer.SCROLL_MODE_SHOW_NEVER) if enabled else ScrollContainer.SCROLL_MODE_DISABLED
 	if not enabled:
 		drag_tracking = false
 		drag_scrolling = false
@@ -394,7 +394,13 @@ func _pin_scroll_to_active_pull_edge(max_scroll := -1) -> void:
 	scroll_vertical = int(round(boundary))
 
 func _contains_global_point(point: Vector2) -> bool:
-	return Rect2(global_position, size).has_point(point)
+	if not is_visible_in_tree() or not Rect2(global_position, size).has_point(point): return false
+	# A mounted carousel neighbor must not receive wheel/drag input through a dock.
+	var ancestor := get_parent()
+	while ancestor != null:
+		if ancestor is Control and ancestor.clip_contents and not ancestor.get_global_rect().has_point(point): return false
+		ancestor = ancestor.get_parent()
+	return true
 
 func _reset_drag_velocity_samples(pointer_position: Vector2) -> void:
 	drag_velocity_samples.clear()

@@ -212,10 +212,6 @@ func release_bottom_nav_transition_button() -> void:
 	animate_button_release(button)
 
 
-func _release_bottom_nav_transition_button() -> void:
-	release_bottom_nav_transition_button()
-
-
 func _schedule_bottom_nav_transition_button_idle_release() -> void:
 	if bottom_nav_transition_release_queued:
 		return

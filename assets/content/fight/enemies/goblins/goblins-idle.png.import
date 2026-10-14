@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8k07illdxwnp"
-path="res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.ctex"
+path.bptc="res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.bptc.ctex"
+path.astc="res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/goblins/goblins-idle.png"
-dest_files=["res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.ctex"]
+dest_files=["res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.bptc.ctex", "res://.godot/imported/goblins-idle.png-4abd0839bb61b93d2e474b7de3f9da4a.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

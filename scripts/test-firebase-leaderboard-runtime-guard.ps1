@@ -1,24 +1,20 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
-$testDir = Join-Path $projectRoot ".codex-tmp\firebase-runtime-guard"
+$testDir = Join-Path $projectRoot (".codex-tmp\firebase-runtime-guard-{0}" -f [guid]::NewGuid().ToString("N"))
 $testScript = Join-Path $testDir "leaderboard_runtime_guard_test.gd"
+$testUserDataDir = Join-Path $testDir "user-data"
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
-if (Test-Path -LiteralPath $testDir) {
-    Remove-Item -LiteralPath $testDir -Recurse -Force
-}
+$baselineHeadlessProcessIds = @(Get-HeadlessGodotProcesses | ForEach-Object ProcessId)
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
 try {
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
     @'
 extends SceneTree
-
 const LeaderboardState = preload("res://scripts/leaderboard/state.gd")
-
 var failures: Array[String] = []
 
 func _init() -> void:
@@ -87,7 +83,7 @@ func _init() -> void:
 	game.leaderboard_profile.profile_claimed = false
 	game.leaderboard_profile.name_claim_verified = false
 	online.call("_start_google_account_sign_in")
-	_expect(online.google_auth_status_message == "Save a username before connecting Google.", "Google sign-in should require a claimed username first.")
+	_expect(online.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "A wiped username must not hide the missing Google client configuration.")
 	game.leaderboard_profile.display_name = "Validation Player"
 	game.leaderboard_profile.name_key = "validation_player"
 	game.leaderboard_profile.profile_claimed = true
@@ -95,6 +91,9 @@ func _init() -> void:
 	online.call("_start_google_account_sign_in")
 	_expect(online.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "Google sign-in without a client id should explain the missing config key.")
 	online.google_auth_web_client_id = "1234567890-validationonly.apps.googleusercontent.com"
+	online.call("_start_google_account_sign_in")
+	_expect(online.google_auth_status_message == "Google sign-in is waiting for save recovery.", "Google sign-in must wait until the complete save and identity restore finishes.")
+	game.save_restore_complete = true
 	online.call("_start_google_account_sign_in")
 	_expect(online.google_auth_status_message == "Google sign-in is not available in this build yet.", "Non-Android Google sign-in should explain that this build has no native Google auth.")
 	online.call("_on_google_sign_in_failed", "")
@@ -107,6 +106,76 @@ func _init() -> void:
 	_expect(online.google_auth_status_message == "Google sign-in needs an internet connection. Try again in a moment.", "Network Google failure should be actionable.")
 	online.call("_on_google_sign_in_failed", "provider exploded")
 	_expect(online.google_auth_status_message == "Google sign-in failed: provider exploded", "Unknown Google failure should preserve useful details.")
+	game.leaderboard_profile.player_id = "firebaseUidOriginal123"
+	game.leaderboard_profile.display_name = "Validation Player"
+	game.leaderboard_profile.name_key = "validation_player"
+	online.leaderboard_auth_bound_uid = "firebaseUidDifferent456"
+	online.leaderboard_auth_id_token = "current-id-token"
+	online.leaderboard_auth_expires_unix = game._unix_now() + 3600
+	online.leaderboard_auth_recovery_required = false
+	_expect(not online.call("_leaderboard_auth_ready"), "Auth readiness must reject a token bound to a different UID.")
+	online.leaderboard_auth_bound_uid = "firebaseUidOriginal123"
+	_expect(online.call("_leaderboard_auth_ready"), "Auth readiness should accept an unexpired token bound to the saved UID.")
+	game.save_restore_complete = false
+	online.leaderboard_auth_refresh_token = "original-refresh-token"
+	var same_uid_recovery := {
+		"idToken": "recovered-id-token",
+		"refreshToken": "recovered-refresh-token",
+		"localId": "firebaseUidOriginal123",
+		"expiresIn": "3600"
+	}
+	_expect(online.call("_apply_firebase_auth_response", same_uid_recovery, "google", "google_recover"), "Google recovery must accept the same bound UID.")
+	_expect(game.leaderboard_profile.display_name == "Validation Player", "Same-UID Google recovery must preserve the username.")
+	var wrong_uid_recovery := {
+		"idToken": "wrong-id-token",
+		"refreshToken": "wrong-refresh-token",
+		"localId": "firebaseUidWrong999",
+		"expiresIn": "3600"
+	}
+	_expect(not online.call("_apply_firebase_auth_response", wrong_uid_recovery, "google", "google_recover"), "Google recovery must reject a different Firebase UID.")
+	_expect(game.leaderboard_profile.player_id == "firebaseUidOriginal123", "Rejected Google recovery must preserve the saved player UID.")
+	_expect(game.leaderboard_profile.display_name == "Validation Player", "Rejected Google recovery must preserve the username.")
+	_expect(online.leaderboard_auth_refresh_token == "recovered-refresh-token", "Rejected Google recovery must not install the wrong account refresh token.")
+	# A category the server already holds higher must not block the others.
+	var medals_path := "scores/medals_earned/firebaseUidOriginal123"
+	var total_path := "scores/total_level/firebaseUidOriginal123"
+	game.leaderboard_state.last_submitted_scores_by_category.clear()
+	game.leaderboard_state.pending_score_updates = {medals_path: {"score": 7}, total_path: {"score": 40}}
+	online.leaderboard_single_score_queue = [{"category_id": LeaderboardState.CATEGORY_MEDALS, "path": medals_path}]
+	online.leaderboard_submit_in_flight = true
+	online.leaderboard_auth_id_token = "live-id-token"
+	online.call("_on_leaderboard_single_score_completed", HTTPRequest.RESULT_SUCCESS, 401)
+	_expect(not game.leaderboard_state.last_submitted_scores_by_category.has(LeaderboardState.CATEGORY_MEDALS), "A denied category must remain unacknowledged so an unchanged score can retry.")
+	_expect(not online.leaderboard_submit_in_flight and online.leaderboard_submit_stage == "", "Finishing the per-category queue must release the submit slot.")
+	_expect(online.leaderboard_auth_id_token.is_empty() and online.leaderboard_fresh_start_profile_confirmed_uid.is_empty(), "A denied category must recheck login and profile before retrying.")
+	online.leaderboard_single_score_queue.clear()
+	online.leaderboard_submit_in_flight = false
+	# Gameplay progress alone must not turn a fresh placeholder into a legacy account.
+	game.leaderboard_profile.player_id = "p0123456789abcdef0123456789abcdef"
+	game.leaderboard_profile.display_name = "guest1234"
+	game.leaderboard_profile.name_key = ""
+	game.leaderboard_profile.profile_claimed = false
+	game.leaderboard_profile.name_claim_verified = false
+	online.leaderboard_auth_bound_uid = ""
+	online.leaderboard_auth_refresh_token = ""
+	online.leaderboard_auth_provider = ""
+	online.leaderboard_auth_recovery_required = false
+	online.leaderboard_legacy_name_hint_display = ""
+	online.leaderboard_legacy_name_hint_key = ""
+	_expect(not online.call("legacy_authless_google_transition_required"), "A fresh install with progress must not be treated as a legacy account.")
+	_expect(online.call("_anonymous_signup_allowed"), "A fresh install with progress must be allowed to create an anonymous login.")
+	_expect(online.call("_anonymous_sign_up_mode") == "sign_up", "A brand-new player must keep the plain anonymous sign-up.")
+	# Leaderboard fresh start: a claimed legacy authless profile signs in anonymously
+	# on every platform instead of being forced through Google or support recovery.
+	game.leaderboard_profile.display_name = "Legacy Player"
+	game.leaderboard_profile.name_key = "legacy_player"
+	game.leaderboard_profile.profile_claimed = true
+	game.leaderboard_profile.name_claim_verified = true
+	_expect(not online.call("legacy_authless_google_transition_required"), "Fresh start must not force Google for a claimed legacy authless profile.")
+	_expect(online.call("_anonymous_sign_up_mode") == "fresh_start_anonymous_restart", "A claimed legacy authless profile must request a fresh anonymous login.")
+	online.leaderboard_auth_provider = "google"
+	_expect(online.call("_anonymous_sign_up_mode") == "", "A Google profile must never be replaced by an anonymous login.")
+	online.leaderboard_auth_provider = ""
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")
@@ -131,16 +200,22 @@ func _expect_leaderboard_requests_idle(game: Node, context: String) -> void:
 	_expect(not online.cloud_save_upload_in_flight, "%s should not start a cloud save write." % context)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-    & $runner --headless --path $projectRoot --script $testScript
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
+    $output | ForEach-Object { Write-Host $_ }
+    if ($LASTEXITCODE -ne 0) { throw "Firebase runtime guard failed with exit code $LASTEXITCODE." }
+    # The safe runner does not always propagate quit(1); require the success line.
+    if (($output | Out-String) -notmatch "firebase-runtime-guard-ok") { throw "Firebase runtime guard did not report success." }
 
-    $headless = @(Get-HeadlessGodotProcesses)
+    $headless = @(Get-HeadlessGodotProcesses | Where-Object { $baselineHeadlessProcessIds -notcontains $_.ProcessId })
     if ($headless.Count -gt 0) {
         $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after the runtime guard test."
     }
 } finally {
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }

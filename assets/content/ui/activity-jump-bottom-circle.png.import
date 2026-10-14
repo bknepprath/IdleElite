@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4cn3uesgqnbd"
-path="res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.ctex"
+path.bptc="res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.bptc.ctex"
+path.astc="res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/activity-jump-bottom-circle.png"
-dest_files=["res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.ctex"]
+dest_files=["res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.bptc.ctex", "res://.godot/imported/activity-jump-bottom-circle.png-7d91eeabafd2cb0b47a2604e0066920d.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

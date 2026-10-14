@@ -1,5 +1,7 @@
 extends RefCounted
 
+var skill_menu_total_label: Label
+
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
 const FishCircle = preload("res://scripts/ui/fish_circle.gd")
@@ -18,15 +20,15 @@ const HUB_UNLOCK_BUILD_LEVEL := 3
 const HUB_LOCKED_MESSAGE := "Lv 3 Building required!"
 const SHOP_UNLOCK_BRONZE_MEDALS := 5
 const SHOP_LOCKED_MESSAGE := "5 Bronze medals\nrequired!"
-const HUB_NAV_LOCKED_MODULATE := Color("#3f3f3f")
+const HUB_NAV_LOCKED_MODULATE := Color(0, 0, 0, 0.38)
 const HUB_NAV_UNLOCK_FADE_SECONDS := 0.62
 const TOP_LEVEL_NAV_DEBOUNCE_MSEC := 120
-const MODULE_UTILITY_ROW_HEIGHT := 344
-const MODULE_UTILITY_ROW_GAP := 28
-const MODULE_UTILITY_BUTTON_SIZE := Vector2(390, 312)
+const MODULE_UTILITY_ROW_HEIGHT := 172
+const MODULE_UTILITY_ROW_GAP := 14
+const MODULE_UTILITY_BUTTON_SIZE := Vector2(195, 156)
 const NAV_BUTTON_DEPTH_OFFSET := ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET * 2.0
-const MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE := Vector2(146, 146)
-const MODULE_UTILITY_BUTTONS_SLIDE_PIXELS := 156.0
+const MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE := Vector2(73, 73)
+const MODULE_UTILITY_BUTTONS_SLIDE_PIXELS := 78.0
 const MODULE_UTILITY_BUTTONS_ENTER_SECONDS := 0.26
 const MODULE_UTILITY_BUTTONS_EXIT_SECONDS := 0.18
 const MODULE_UTILITY_BUTTONS_STAGGER_STEP := 0.16
@@ -35,30 +37,30 @@ const MODULE_SORT_MENU_UNWRAP_SECONDS := 0.24
 const MODULE_SORT_MENU_WRAP_SECONDS := 0.16
 const MODULE_SORT_MENU_COLLAPSED_SCALE_Y := 0.14
 const MODULE_QUEUE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/queue.png"
-const BOTTOM_NAV_HEIGHT := 420
-const BOTTOM_NAV_SAFE_PAD := 96
+const BOTTOM_NAV_HEIGHT := 210
+const BOTTOM_NAV_SAFE_PAD := 48
 const NAV_OPEN_CLOSE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/nav-open-close.png"
 const PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT := 7
-const SKILL_MENU_COPY_WIDTH := 840
-const SKILL_MENU_SHELF_HEIGHT := 368
-const SKILL_MENU_TOP_SCROLL_PAD := 54
-const SKILL_MENU_BOTTOM_SCROLL_CLEARANCE := 180
-const SKILL_MENU_HEADER_HEIGHT := 610
-const SKILL_MENU_ACTIVE_DRAWER_TOP_PAD := 18
-const SKILL_MENU_ACTIVE_DRAWER_BOTTOM_PAD := 44
+const SKILL_MENU_COPY_WIDTH := 420
+const SKILL_MENU_SHELF_HEIGHT := 184
+const SKILL_MENU_TOP_SCROLL_PAD := 27
+const SKILL_MENU_BOTTOM_SCROLL_CLEARANCE := 90
+const SKILL_MENU_HEADER_HEIGHT := 305
+const SKILL_MENU_ACTIVE_DRAWER_TOP_PAD := 9
+const SKILL_MENU_ACTIVE_DRAWER_BOTTOM_PAD := 22
 const SKILL_MENU_LIGHT_PASTEL_MIX := 0.68
 const SKILL_MENU_DARK_THEME_DARKEN := 0.18
 const SKILL_MENU_DARK_PANEL_MIX := 0.10
-const PAGE_SWITCH_MODULE_HEIGHT := 340
-const PAGE_SWITCH_SKILL_ICON_STAGE_SIZE := Vector2(430, 430)
-const PAGE_SWITCH_SKILL_ICON_SYMBOL_BASE_SIZE := Vector2(446, 446)
-const PAGE_SWITCH_SKILL_ICON_EDGE_CROP := 54.0
-const PAGE_SWITCH_SKILL_ICON_VERTICAL_SHIFT := -4.0
+const PAGE_SWITCH_MODULE_HEIGHT := 170
+const PAGE_SWITCH_SKILL_ICON_STAGE_SIZE := Vector2(215, 215)
+const PAGE_SWITCH_SKILL_ICON_SYMBOL_BASE_SIZE := Vector2(223, 223)
+const PAGE_SWITCH_SKILL_ICON_EDGE_CROP := 27.0
+const PAGE_SWITCH_SKILL_ICON_VERTICAL_SHIFT := -2.0
 
 class _ModuleSortMenuBuilder:
 	static func build(z_index: int, level_toggle: Callable, priority_toggle: Callable, depress: Callable, app_font: Font, bold_font: Font, ink: Color) -> Dictionary:
 		var menu := Control.new()
-		menu.custom_minimum_size = Vector2(560, 720)
+		menu.custom_minimum_size = Vector2(280, 360)
 		menu.size = menu.custom_minimum_size
 		menu.z_index = z_index
 		menu.z_as_relative = false
@@ -74,7 +76,7 @@ class _ModuleSortMenuBuilder:
 		var row := VBoxContainer.new()
 		row.set_anchors_preset(Control.PRESET_FULL_RECT)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 34)
+		row.add_theme_constant_override("separation", 17)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		visual.add_child(row)
 
@@ -112,11 +114,11 @@ class _ModuleSortMenuBuilder:
 
 	static func _button(label_text: String, callback: Callable, depress: Callable, app_font: Font, bold_font: Font, ink: Color) -> Button:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(560, 195)
+		button.custom_minimum_size = Vector2(280, 97.5)
 		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		_apply_text(button, label_text, 60, app_font, bold_font, ink)
+		_apply_text(button, label_text, 48, app_font, bold_font, ink)
 		if callback.is_valid():
 			button.pressed.connect(callback)
 		if depress.is_valid():
@@ -131,7 +133,7 @@ class _ModuleSortMenuBuilder:
 		button.add_theme_color_override("font_hover_color", ink)
 		button.add_theme_color_override("font_pressed_color", ink)
 		button.add_theme_color_override("font_outline_color", Color.WHITE)
-		button.add_theme_constant_override("outline_size", 6)
+		button.add_theme_constant_override("outline_size", 3)
 		if bold_font != null:
 			button.add_theme_font_override("font", bold_font)
 		elif app_font != null:
@@ -151,12 +153,12 @@ class _ModuleSortMenuBuilder:
 		if pressed:
 			style.bg_color = style.bg_color.darkened(0.06)
 		style.border_color = ink
-		style.set_border_width_all(10)
+		style.set_border_width_all(5)
 		style.set_corner_radius_all(999)
-		style.content_margin_left = 44
-		style.content_margin_right = 44
-		style.content_margin_top = 20
-		style.content_margin_bottom = 20
+		style.content_margin_left = 22
+		style.content_margin_right = 22
+		style.content_margin_top = 10
+		style.content_margin_bottom = 10
 		style.shadow_size = 0
 		style.shadow_color = Color.TRANSPARENT
 		return style
@@ -165,8 +167,8 @@ class _UtilityCollapseArrow:
 	extends Control
 
 	var direction := -1
-	var ink_color := Color("#8a6f4e")
-	var stroke_width := 13.0
+	var ink_color := Color.BLACK
+	var stroke_width := 6.5
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -209,7 +211,7 @@ class _ModuleUtilityRowBuilder:
 		var row := HBoxContainer.new()
 		row.set_anchors_preset(Control.PRESET_FULL_RECT)
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 36)
+		row.add_theme_constant_override("separation", 18)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(row)
 
@@ -259,10 +261,10 @@ class _ModuleUtilityRowBuilder:
 		icon.anchor_right = 1.0
 		icon.anchor_top = 0.0
 		icon.anchor_bottom = 1.0
-		icon.offset_left = 24
-		icon.offset_right = -24
-		icon.offset_top = 18
-		icon.offset_bottom = -34
+		icon.offset_left = 12
+		icon.offset_right = -12
+		icon.offset_top = 9
+		icon.offset_bottom = -17
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.z_index = 210
 		pop.add_child(icon)
@@ -287,10 +289,10 @@ class _ModuleUtilityRowBuilder:
 		var arrow := _UtilityCollapseArrow.new()
 		arrow.name = "ActivityButtonArrow"
 		arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
-		arrow.offset_left = 28
-		arrow.offset_right = -28
-		arrow.offset_top = 28
-		arrow.offset_bottom = -28
+		arrow.offset_left = 14
+		arrow.offset_right = -14
+		arrow.offset_top = 14
+		arrow.offset_bottom = -14
 		arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		arrow.z_index = 210
 		button.add_child(arrow)
@@ -300,8 +302,8 @@ class _ModuleUtilityRowBuilder:
 	static func collapse_toggle_style(pressed := false) -> StyleBoxFlat:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("#eadfca") if pressed else Color("#fff4dd")
-		style.border_color = Color("#8a6f4e")
-		style.set_border_width_all(10)
+		style.border_color = Color.BLACK
+		style.set_border_width_all(5)
 		style.set_corner_radius_all(999)
 		style.content_margin_left = 0
 		style.content_margin_right = 0
@@ -316,8 +318,8 @@ class PageSwitchChevronIcon:
 	var ink_color := Color("#171615")
 	var fill_color := Color.WHITE
 	var shadow_color := Color(0.0, 0.0, 0.0, 0.18)
-	var stroke_width := 50.0
-	var fill_width := 31.0
+	var stroke_width := 25.0
+	var fill_width := 15.5
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -335,7 +337,7 @@ class PageSwitchChevronIcon:
 			return
 		var shadow_points := PackedVector2Array()
 		for point in points:
-			shadow_points.append(point + Vector2(7.0, 8.0))
+			shadow_points.append(point + Vector2(3.5, 4.0))
 		_draw_round_chevron(shadow_points, shadow_color, stroke_width)
 		_draw_round_chevron(points, ink_color, stroke_width)
 		_draw_round_chevron(points, fill_color, fill_width)
@@ -358,11 +360,11 @@ class PageSwitchChevronIcon:
 	func _draw_round_chevron(points: PackedVector2Array, color: Color, width: float) -> void:
 		if points.size() != 3:
 			return
-		var radius := width * 0.5
-		draw_line(points[0], points[1], color, width, true)
-		draw_line(points[1], points[2], color, width, true)
-		for point in points:
-			draw_circle(point, radius, color)
+		# One continuous contour prevents translucent caps and joins from being
+		# painted repeatedly, which otherwise produces dark dots while fading.
+		var contours := Geometry2D.offset_polyline(points, width * 0.5, Geometry2D.JOIN_ROUND, Geometry2D.END_ROUND)
+		for contour in contours:
+			draw_colored_polygon(contour, color)
 
 class SkillMenuPanelChrome:
 	extends Control
@@ -551,6 +553,46 @@ func _fade_in_post_onboarding_bottom_chrome() -> void:
 	post_onboarding_bottom_chrome_fade_tween.finished.connect(_finish_post_onboarding_bottom_chrome_fade)
 
 
+const POST_ONBOARDING_REVEAL_SECONDS := 1.4
+const POST_ONBOARDING_REVEAL_LAYER := 140
+const POST_ONBOARDING_REVEAL_CARD_PAD := 10.0
+
+
+# The first activity unlocks the header, the other cards, skill tiles, chat and
+# navigation in the same frame. Paper-colored panels around the starter card hide
+# that jump cut and fade away: the area above the card first, then below it.
+func play_post_onboarding_reveal_veil() -> void:
+	var canvas_size: Vector2 = host._current_canvas_size()
+	var card_rect := Rect2(Vector2(0.0, canvas_size.y * 0.1), Vector2(canvas_size.x, 0.0))
+	var starter_card := host.action_cards.get(host._action_key(host.TUTORIAL_STARTER_SKILL_ID, host.TUTORIAL_STARTER_ACTION_ID), {}) as Dictionary
+	var card_root := starter_card.get("root") as Control
+	if card_root != null and is_instance_valid(card_root) and card_root.is_visible_in_tree():
+		card_rect = card_root.get_global_rect().grow(POST_ONBOARDING_REVEAL_CARD_PAD)
+	var layer := CanvasLayer.new()
+	layer.name = "PostOnboardingRevealVeil"
+	layer.layer = POST_ONBOARDING_REVEAL_LAYER
+	host.add_child(layer)
+	var paper: Color = host._theme_paper_color()
+	var panels := {
+		"above": Rect2(0.0, 0.0, canvas_size.x, maxf(0.0, card_rect.position.y)),
+		"below": Rect2(0.0, card_rect.end.y, canvas_size.x, maxf(0.0, canvas_size.y - card_rect.end.y)),
+		"left": Rect2(0.0, card_rect.position.y, maxf(0.0, card_rect.position.x), card_rect.size.y),
+		"right": Rect2(card_rect.end.x, card_rect.position.y, maxf(0.0, canvas_size.x - card_rect.end.x), card_rect.size.y),
+	}
+	var tween: Tween = host.create_tween().set_parallel(true)
+	for panel_name in panels.keys():
+		var rect: Rect2 = panels[panel_name]
+		var veil := ColorRect.new()
+		veil.color = paper
+		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		veil.position = rect.position
+		veil.size = rect.size
+		layer.add_child(veil)
+		var delay := 0.35 if panel_name == "below" else 0.0
+		tween.tween_property(veil, "modulate:a", 0.0, POST_ONBOARDING_REVEAL_SECONDS).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.chain().tween_callback(layer.queue_free)
+
+
 func _finish_post_onboarding_bottom_chrome_fade() -> void:
 	post_onboarding_bottom_chrome_fade_tween = null
 
@@ -602,10 +644,10 @@ func _build_ui_shell() -> void:
 	host.skills_page.offset_bottom = -BOTTOM_NAV_HEIGHT
 	host.skills_page.clip_contents = true
 	host.add_child(host.skills_page)
-	host._skill_swipe_activity_surface()._ensure_skill_swipe_paper_fade_overlay()
 
 
 func _update_page_visibility() -> void:
+	_sync_module_utility_row_visibility()
 	if host.current_screen != "menu":
 		_deactivate_skill_menu_page_cache()
 	host.home_page.visible = host.current_screen == "home"
@@ -636,13 +678,13 @@ func _build_nav_bar() -> void:
 	row.name = "BottomNavButtonsRow"
 	bottom_nav_buttons_row = row
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 120)
+	row.add_theme_constant_override("separation", 60)
 	row.clip_contents = true
 	row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	nav_bar.add_child(row)
 	hero_tab = _nav_button(host.PROGRESS_STAR_ICON_TEXTURE, true)
-	hero_tab.custom_minimum_size = Vector2(318, 318)
-	hero_tab.add_theme_constant_override("icon_max_width", 244)
+	hero_tab.custom_minimum_size = Vector2(159, 159)
+	hero_tab.add_theme_constant_override("icon_max_width", 122)
 	_register_nav_new_symbol_dot(hero_tab, "hero")
 	hero_tab.set_meta("bottom_nav_builtin_pressed_route", true)
 	hero_tab.pressed.connect(_activate_bottom_nav_target.bind("home", hero_tab))
@@ -650,7 +692,7 @@ func _build_nav_bar() -> void:
 	row.add_child(hero_tab)
 	_sync_hero_nav_button(true)
 	hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png", true)
-	hub_tab.add_theme_constant_override("icon_max_width", 220)
+	hub_tab.add_theme_constant_override("icon_max_width", 110)
 	_register_nav_new_symbol_dot(hub_tab, "hub")
 	hub_tab.set_meta("bottom_nav_builtin_pressed_route", true)
 	hub_tab.pressed.connect(_activate_bottom_nav_target.bind("hub", hub_tab))
@@ -669,7 +711,7 @@ func _build_nav_bar() -> void:
 	host.settings_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("settings", host.settings_tab))
 	row.add_child(host.settings_tab)
 	shop_tab = _nav_button(host.SHOP_ICON_TEXTURE, true)
-	shop_tab.add_theme_constant_override("icon_max_width", 232)
+	shop_tab.add_theme_constant_override("icon_max_width", 116)
 	_register_nav_new_symbol_dot(shop_tab, "shop")
 	shop_tab.set_meta("bottom_nav_builtin_pressed_route", true)
 	shop_tab.pressed.connect(_activate_bottom_nav_target.bind("shop", shop_tab))
@@ -696,7 +738,7 @@ func _ensure_nav_bar_icons() -> void:
 func _nav_button(path: String, defer_icon := false) -> Button:
 	var button := Button.new()
 	button.text = ""
-	button.custom_minimum_size = Vector2(268, 268)
+	button.custom_minimum_size = Vector2(134, 134)
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.set_meta("nav_default_icon_path", path)
@@ -707,7 +749,7 @@ func _nav_button(path: String, defer_icon := false) -> Button:
 		button.set_meta("nav_current_icon_path", path)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", 184)
+	button.add_theme_constant_override("icon_max_width", 92)
 	_apply_nav_style(button, false)
 	var button_id := button.get_instance_id()
 	host.button_press_runtime.attach_button_depress_animation(button, 0.92, false)
@@ -745,10 +787,10 @@ func _nav_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = host.COLOR_NAV
 	style.border_color = host.COLOR_INK
-	style.border_width_top = 15
-	style.content_margin_left = 96
-	style.content_margin_right = 96
-	style.content_margin_top = 36
+	style.border_width_top = 7.5
+	style.content_margin_left = 48
+	style.content_margin_right = 48
+	style.content_margin_top = 18
 	style.content_margin_bottom = BOTTOM_NAV_SAFE_PAD
 	return style
 
@@ -798,6 +840,9 @@ func _ensure_nav_icon_stroke(button: Button) -> void:
 
 
 func _sync_bottom_nav_visibility() -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		return
 	if nav_bar == null or not is_instance_valid(nav_bar):
 		return
 	var controls_unlocked: bool = _intro_bottom_controls_unlocked()
@@ -921,7 +966,6 @@ func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
 	_on_bottom_nav_button_gui_input(event, target_screen, button)
 	if not host._skill_swipe_activity_surface().skill_swipe_tracking:
 		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-	host._fishing_ui_surface()._clear_active_fishing_method_button_press()
 	host._skill_detail_surface().action_card_press_key = ""
 	return true
 
@@ -1230,33 +1274,56 @@ func _float_nav_locked_message(anchor: Control, text: String) -> void:
 		or not anchor.is_visible_in_tree()
 	):
 		return
-	var holder_size := Vector2(430, 112)
-	var holder := Control.new()
-	holder.z_index = ProfileChatOverlaySurface.CHAT_UI_Z + 20
+	# One message at a time, including repeated taps on locked icons.
+	for child in host.get_children():
+		if child.name == "LockedRequirementFloat":
+			child.name = "ExpiredLockedRequirementFloat"
+			child.hide()
+			child.queue_free()
+	var font: Font = host.app_bold_font
+	var width := minf(980.0, host._current_canvas_size().x - 64.0)
+	width = minf(width, font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, 52).x + 48.0)
+	var measured := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, width - 48.0, 52)
+	var holder_size := Vector2(width, maxf(100.0, measured.y + 40.0))
+	var holder := Panel.new()
+	holder.name = "LockedRequirementFloat"
+	holder.z_index = 4090
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = holder_size
+	holder.add_theme_stylebox_override("panel", host.desktop_layout.panel_style(host.desktop_layout.panel_fill(), true, 0))
 	host.add_child(holder)
-	var shadow: Label = host._label(text, 58, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
-	shadow.size = holder_size
-	shadow.position = Vector2(4, 5)
-	shadow.modulate = Color(1, 1, 1, 0.58)
-	holder.add_child(shadow)
-	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	label.size = holder_size
+	var label: Label = host._label(text, 52, host.desktop_layout.panel_ink(), HORIZONTAL_ALIGNMENT_CENTER)
+	label.size = holder_size - Vector2(48, 32)
+	label.position = Vector2(24, 16)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(label)
 	var local_pos: Vector2 = anchor.global_position - host.global_position
 	var desired_position := local_pos + Vector2(
 		anchor.size.x * 0.5 - holder_size.x * 0.5,
 		-holder_size.y - 8.0
 	)
+	# Keep the entire message above chat and navigation, even for two-line requirements.
+	var obstacles := [host._profile_chat_overlay_surface().chat_strip_control(), module_utility_row]
+	if is_instance_valid(host.desktop_layout.skill_navigation):
+		obstacles.append(host.desktop_layout.skill_navigation.hint)
+	for obstacle in obstacles:
+		if obstacle != null and is_instance_valid(obstacle) and obstacle.is_visible_in_tree():
+			desired_position.y = minf(desired_position.y, obstacle.global_position.y - host.global_position.y - holder_size.y - 24.0)
 	var canvas_size: Vector2 = host._current_canvas_size()
 	var margin := 14.0
 	holder.position = Vector2(
 		clampf(desired_position.x, margin, maxf(margin, canvas_size.x - holder_size.x - margin)),
 		clampf(desired_position.y, margin, maxf(margin, canvas_size.y - holder_size.y - margin))
 	)
-	host._reward_feedback_surface()._start_reward_float_tween(holder, Vector2(0, -34), 0.0)
+	holder.modulate.a = 0.0
+	var tween := holder.create_tween()
+	tween.tween_property(holder, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(3.0)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_callback(holder.queue_free)
 
 
 func _is_bottom_nav_button(button: Control) -> bool:
@@ -1407,10 +1474,6 @@ func _complete_show_skills() -> void:
 
 
 func _select_launch_skill_page() -> void:
-	if host._onboarding_runtime()._onboarding_path_active():
-		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
-		host.current_screen = "skill"
-		return
 	if not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
 		host.selected_skill_id = host.running_skill_id
 		host.current_screen = "skill"
@@ -1440,12 +1503,6 @@ func _select_skill(skill_id: String) -> void:
 func _select_skill_from_page_switch(skill_id: String, source_button: Button = null) -> void:
 	if _page_switch_transition_active():
 		return
-	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_swipe_to_other_skills_allowed():
-		if not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
-			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-		_release_page_switch_transition_button()
-		return
-	_complete_onboarding_swipe_navigation_attempt(skill_id)
 	if source_button != null and is_instance_valid(source_button) and page_switch_transition_button_id == 0:
 		_hold_page_switch_transition_button(source_button, skill_id)
 	_begin_page_switch_scroll_cover()
@@ -1463,31 +1520,14 @@ func _select_skill_from_page_switch(skill_id: String, source_button: Button = nu
 	})
 
 
-func _complete_onboarding_swipe_navigation_attempt(target_skill_id: String) -> void:
-	if not host._onboarding_runtime()._onboarding_path_active():
-		return
-	if host.selected_skill_id != host.TUTORIAL_STARTER_SKILL_ID or target_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-		return
-	if not host._onboarding_runtime().onboarding_swipe_navigation_unlocked:
-		return
-	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
-	host._tutorial_overlay_surface().fade_out_onboarding_swipe_overlay_tip()
-	host._onboarding_runtime()._mark_skill_swipe_tip_seen()
-
-
 func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
 	if screen_render_in_progress or (host._skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
-		return
-	if not host._onboarding_runtime()._onboarding_skill_accessible(skill_id):
-		var card := host.skill_cards.get(skill_id, {}) as Dictionary
-		var source := card.get("button") as Control
-		host._onboarding_runtime()._show_onboarding_skill_locked_message(source)
 		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
 		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
-	if host.current_screen != "skill":
+	if host.current_screen != "skill" and not host.desktop_layout.enabled():
 		host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
 	host.selected_skill_id = skill_id
 	host.current_screen = "skill"
@@ -1525,12 +1565,10 @@ func _show_skills_module() -> void:
 		_select_launch_skill_page()
 	else:
 		host.current_screen = "skill"
-	if can_reveal_current_skill_page and not host._onboarding_runtime()._onboarding_path_active():
+	if can_reveal_current_skill_page:
 		if _try_reveal_current_skill_page(_screen_page_cache_key(host.current_screen), true):
 			return
 	_render_screen(true)
-	if host._onboarding_runtime()._onboarding_path_active():
-		host._onboarding_runtime().call_deferred("_resync_onboarding_skill_detail_after_navigation")
 
 
 func _show_hub(source_button: Control = null) -> void:
@@ -1655,15 +1693,12 @@ func _reset_page_control_refs() -> void:
 	host._skill_detail_surface().detail_lazy_stack = null
 	host._skill_detail_surface().detail_lazy_refresh_token += 1
 	host._skill_detail_surface()._cancel_detail_card_texture_prewarm()
-	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
 	host._skill_swipe_activity_surface().skill_swipe_frame = null
 	host._skill_swipe_activity_surface().skill_swipe_page = null
 	host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = 0.0
 	host._skill_swipe_activity_surface().skill_swipe_gap_render_offset_x = 0.0
 	host._skill_swipe_activity_surface().skill_swipe_animating = false
-	host._skill_swipe_activity_surface().skill_strip_ids.clear()
-	host._skill_swipe_activity_surface().skill_strip_index = 0
-	host._skill_swipe_activity_surface().skill_strip_refs.clear()
+	host._skill_swipe_activity_surface()._adjacent_pages().reset()
 	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 	host._hub_surface()._clear_hub_page_control_refs()
 	host._settings_surface()._clear_settings_page_control_refs()
@@ -1687,6 +1722,7 @@ func _flush_skill_swipe_handoff_for_navigation() -> void:
 func _capture_skill_menu_swap_refs() -> Dictionary:
 	return {
 		"skill_cards": host.skill_cards,
+		"total_level_label": skill_menu_total_label,
 		"content_scroll": host.content_scroll,
 		"action_cards": host.action_cards,
 		"action_card_keys": host.action_card_keys,
@@ -1698,11 +1734,12 @@ func _capture_skill_menu_swap_refs() -> Dictionary:
 
 func _install_skill_menu_swap_refs(refs: Dictionary) -> void:
 	host.skill_cards = refs.get("skill_cards", {}) as Dictionary
-	host.content_scroll = refs.get("content_scroll") as ScrollContainer
+	skill_menu_total_label = refs.get("total_level_label") as Label if is_instance_valid(refs.get("total_level_label")) else null
+	host.content_scroll = refs.get("content_scroll") as ScrollContainer if is_instance_valid(refs.get("content_scroll")) else null
 	host.action_cards = refs.get("action_cards", {}) as Dictionary
 	host.action_card_keys = refs.get("action_card_keys", []) as Array
 	skill_menu_active_drawers = refs.get("active_drawers", {}) as Dictionary
-	host._skill_detail_surface().detail_shelf_shadow_overlay = refs.get("shadow_overlay") as Control
+	host._skill_detail_surface().detail_shelf_shadow_overlay = refs.get("shadow_overlay") as Control if is_instance_valid(refs.get("shadow_overlay")) else null
 	host._skill_detail_surface().detail_shelf_shadow_alpha = float(refs.get("shadow_alpha", 0.0))
 
 
@@ -1714,9 +1751,17 @@ func _ensure_skill_menu_cache_overlay() -> bool:
 	skill_menu_cache_overlay = Control.new()
 	skill_menu_cache_overlay.name = "SkillMenuCacheOverlay"
 	skill_menu_cache_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	skill_menu_cache_overlay.z_index = 1
+	skill_menu_cache_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	skill_menu_cache_overlay.visible = false
 	skill_menu_cache_overlay.process_mode = Node.PROCESS_MODE_DISABLED
 	host.skills_page.add_child(skill_menu_cache_overlay)
+	var backdrop := ColorRect.new()
+	backdrop.name = "SkillMenuCacheBackdrop"
+	backdrop.color = host._theme_paper_color()
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skill_menu_cache_overlay.add_child(backdrop)
 	return true
 
 
@@ -1872,6 +1917,10 @@ func _detail_render_signature_current(skill_id: String) -> bool:
 
 
 func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1, boot_async := false):
+	# Change shell visibility before any page construction yields or defers work.
+	_sync_module_utility_row_visibility()
+	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
+		host._fishing_ui_surface()._clear_fishing_tool_circle_menu()
 	if host.current_screen != "menu":
 		_deactivate_skill_menu_page_cache()
 	elif host.skills_content == skill_menu_cache_overlay and not skill_menu_return_state.is_empty():
@@ -1887,6 +1936,16 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		return
 	screen_render_in_progress = true
 	screen_render_target_key = requested_key
+	var swipe_surface = host._skill_swipe_activity_surface()
+	var staged_direct_render: bool = host.current_screen == "skill" and swipe_surface.direct_skill_nav_cover_active and not boot_async
+	if staged_direct_render:
+		var cover_wait_frames := 0
+		while swipe_surface._skill_swipe_handoff_cover_is_cream_transition() and not swipe_surface._skill_swipe_handoff_cover_is_opaque_cream_transition() and cover_wait_frames < 30:
+			cover_wait_frames += 1
+			await host.get_tree().process_frame
+			if _screen_page_cache_key(host.current_screen) != requested_key:
+				_finish_screen_render_request()
+				return
 	if host.skills_content == null:
 		_finish_screen_render_request()
 		return
@@ -1894,9 +1953,12 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		_finish_screen_render_request()
 		return
 	var target_key: String = requested_key
-	if host.current_screen == "skill" and _try_reveal_current_skill_page(target_key, scroll_latest_activity):
+	# A desktop column has different bounds and cannot be reused as a phone page.
+	if host.current_screen == "skill" and not host.desktop_layout.enabled() and not is_instance_valid(host.desktop_layout.carousel_frame) and _try_reveal_current_skill_page(target_key, scroll_latest_activity):
 		_finish_screen_render_request()
 		return
+	host.visual_texture_cache.begin_runtime_scope()
+	host._fighting_runtime().park_running_combat_stage()
 	host._skill_swipe_activity_surface().skill_swipe_animating = false
 	host._skill_swipe_activity_surface().skill_swipe_animation_mode = ""
 	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
@@ -1915,7 +1977,12 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	_reset_page_control_refs()
 	_clear_skills_content_orphans()
 	if host.current_screen == "skill":
-		await host._skill_detail_surface()._render_skill_detail(scroll_latest_activity, restore_detail_scroll, boot_async)
+		if staged_direct_render:
+			swipe_surface.skill_swipe_defer_initial_lazy_mount = true
+		if host.desktop_layout.enabled():
+			await host.desktop_layout.render_skills()
+		else:
+			await host._skill_detail_surface()._render_skill_detail(scroll_latest_activity, restore_detail_scroll, boot_async)
 	elif host.current_screen == "pinned":
 		_render_pinned_activities_page()
 	elif host.current_screen == "queue":
@@ -1934,6 +2001,9 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		_render_skill_menu_shelf()
 		_render_skill_menu_page()
 	_finish_render_screen_transition(target_key)
+	if staged_direct_render:
+		swipe_surface.skill_swipe_defer_initial_lazy_mount = false
+	host.visual_texture_cache.finish_runtime_scope()
 	_finish_screen_render_request()
 
 
@@ -1972,13 +2042,7 @@ func _finish_render_screen_transition(target_key: String) -> void:
 	_update_page_visibility()
 	host._profile_chat_overlay_surface()._update_chat_strip(true)
 	host.call_deferred("_update_ui", 0.0, true)
-	if host.current_screen == "skill":
-		if host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-			if host._onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
-				host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
-		else:
-			host._onboarding_runtime().call_deferred("_maybe_show_onboarding_explore_tip")
-	elif host.current_screen == "hub":
+	if host.current_screen == "hub":
 		host._hub_surface().call_deferred("_maybe_show_hub_tutorial_tip")
 	if (
 		host.current_screen == "skill"
@@ -1987,9 +2051,15 @@ func _finish_render_screen_transition(target_key: String) -> void:
 	):
 		if host._skill_detail_surface().detail_lazy_plan.size() > 0 and not host._skill_detail_surface()._detail_lazy_all_mounted():
 			host._skill_detail_surface().call_deferred("_detail_lazy_refresh_after_page_ready", host._skill_detail_surface().detail_lazy_refresh_token)
+	if host.current_screen == "skill":
+		host._skill_swipe_activity_surface()._adjacent_pages().schedule_build()
 
 
 func _apply_skills_content_layout_for_screen() -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		host.skills_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		return
 	host.skills_content.offset_left = 0.0
 	host.skills_content.offset_right = 0.0
 	host.skills_content.offset_bottom = 0.0
@@ -2004,8 +2074,13 @@ func _apply_skills_content_layout_for_screen() -> void:
 
 
 func _prepare_skills_page_transition(target_key: String) -> void:
+	host.desktop_layout.before_clear()
 	host._skill_detail_surface()._cancel_boot_detail_completion()
 	var leaving_skill: bool = not target_key.begins_with("skill:")
+	if leaving_skill:
+		host._skill_swipe_activity_surface().skill_swipe_real_card_prewarm_token += 1
+		host._skill_swipe_activity_surface()._free_global_swipe_real_card_cache()
+		host._skill_detail_surface()._clear_detail_lazy_cached_roots()
 	host._skill_swipe_activity_surface()._cancel_skill_swipe_finalize_for_navigation()
 	if not target_key.begins_with("skill:"):
 		_flush_skill_swipe_handoff_for_navigation()
@@ -2300,14 +2375,14 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 	module.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 118)
-	margin.add_theme_constant_override("margin_right", 118)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 59)
+	margin.add_theme_constant_override("margin_right", 59)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 9)
 	module.add_child(margin)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 	var previous_button := _page_switch_button(previous_skill, "right")
@@ -2320,7 +2395,9 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 
 
 func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
-	if (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()) and not _onboarding_page_switch_module_visible():
+	if host.desktop_layout.enabled():
+		return
+	if host._onboarding_runtime().tutorial_active:
 		_remove_page_switch_modules(stack)
 		return
 	var entry: Control = null
@@ -2347,46 +2424,6 @@ func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_
 		if child != entry and child.name == "DetailActionsBottomSpacer":
 			stack.move_child(entry, i)
 			return
-
-
-func _ensure_onboarding_page_switch_module_faded_in(stack: VBoxContainer) -> Control:
-	if stack == null or not is_instance_valid(stack):
-		return null
-	if not _onboarding_page_switch_module_visible():
-		return null
-	for raw_child in stack.get_children():
-		var child := raw_child as Control
-		if child == null:
-			continue
-		if child.name == "PageSwitchModule" or child.find_child("PageSwitchModule", true, false) != null:
-			return child
-	var content_width: float = host._skill_content_width()
-	var module: Control = _build_page_switch_module(host.selected_skill_id, content_width)
-	if module == null:
-		return null
-	var entry: Control = host._skill_detail_surface()._detail_stack_entry(module, content_width, content_width)
-	var target_height := maxf(1.0, entry.custom_minimum_size.y)
-	entry.custom_minimum_size.y = 0.0
-	entry.modulate.a = 0.0
-	entry.clip_contents = true
-	stack.add_child(entry)
-	var insert_index := maxi(0, stack.get_child_count() - 1)
-	for i in range(stack.get_child_count()):
-		var child := stack.get_child(i)
-		if child == entry:
-			continue
-		if child.name == "DetailActionsBottomSpacer":
-			insert_index = i
-			break
-	stack.move_child(entry, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
-	var tween: Tween = host.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(entry, "custom_minimum_size:y", target_height, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(entry, "modulate:a", 1.0, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.set_parallel(false)
-	tween.tween_callback(Callable(host._skill_detail_surface(), "_finish_smooth_tutorial_tip_entry_reveal").bind(entry.get_instance_id()))
-	Callable(host._skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-	return entry
 
 
 func _remove_page_switch_modules(root_node: Node) -> void:
@@ -2497,14 +2534,6 @@ func _set_skill_page_switch_modules_alpha(alpha: float) -> void:
 
 func _sync_skill_page_switch_modules_for_drag(abs_x: float) -> void:
 	_set_skill_page_switch_modules_alpha(1.0)
-
-
-func _onboarding_page_switch_module_visible() -> bool:
-	return (
-		host._onboarding_runtime()._onboarding_path_active()
-		and not host._onboarding_runtime().tutorial_active
-		and host._onboarding_runtime().onboarding_swipe_navigation_unlocked
-	)
 
 
 func _build_queue_activities_module(module_key: String, content_width: float) -> Control:
@@ -2637,7 +2666,7 @@ func _remove_registered_card_collapse_zone(card_key: String) -> void:
 		card["module_action_zones"] = zones
 
 
-func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
+func _page_switch_button(skill_id: String, diagonal_side := "", carousel_callback := Callable()) -> Button:
 	var button := Button.new()
 	button.text = ""
 	button.tooltip_text = ""
@@ -2647,9 +2676,13 @@ func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.set_meta("page_switch_target_skill_id", skill_id)
-	button.add_to_group("page_switch_buttons")
-	button.gui_input.connect(Callable(self, "_on_page_switch_button_gui_input").bind(skill_id, button))
-	button.pressed.connect(Callable(self, "_on_page_switch_button_pressed").bind(skill_id, button))
+	if carousel_callback.is_valid():
+		button.pressed.connect(carousel_callback)
+		button.focus_mode = Control.FOCUS_ALL
+	else:
+		button.add_to_group("page_switch_buttons")
+		button.gui_input.connect(Callable(self, "_on_page_switch_button_gui_input").bind(skill_id, button))
+		button.pressed.connect(Callable(self, "_on_page_switch_button_pressed").bind(skill_id, button))
 	var theme: Color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	var activity_surface = host._skill_swipe_activity_surface()
 	var pop: Control = activity_surface._install_activity_button_shell(button, theme, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER, NAV_BUTTON_DEPTH_OFFSET, diagonal_side)
@@ -2662,18 +2695,18 @@ func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
 		chevron.z_index = 250
 		chevron.anchor_top = 0.0
 		chevron.anchor_bottom = 1.0
-		chevron.offset_top = 18.0
-		chevron.offset_bottom = -46.0
+		chevron.offset_top = 9.0
+		chevron.offset_bottom = -23.0
 		if diagonal_side == "right":
 			chevron.anchor_left = 0.0
 			chevron.anchor_right = 0.0
-			chevron.offset_left = 52.0
-			chevron.offset_right = 206.0
+			chevron.offset_left = 26.0
+			chevron.offset_right = 103.0
 		else:
 			chevron.anchor_left = 1.0
 			chevron.anchor_right = 1.0
-			chevron.offset_left = -206.0
-			chevron.offset_right = -52.0
+			chevron.offset_left = -103.0
+			chevron.offset_right = -26.0
 		pop.add_child(chevron)
 		var outline = ActivityCardStyles.page_switch_button_face()
 		outline.name = "PageSwitchFaceOutline"
@@ -2722,7 +2755,7 @@ func _recover_stale_page_switch_input_lock() -> void:
 	_recover_stale_page_switch_transition()
 
 
-func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := false) -> void:
+func _clear_page_switch_button_press_state(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	if button.has_meta("page_switch_press_active"):
@@ -2731,8 +2764,6 @@ func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := fals
 		button.remove_meta("page_switch_press_position")
 	if button.has_meta("page_switch_press_dragged"):
 		button.remove_meta("page_switch_press_dragged")
-	if keep_nav_hold:
-		return
 	if button.has_meta("activity_button_hold_nav_press"):
 		button.remove_meta("activity_button_hold_nav_press")
 	if button.has_meta("activity_button_hold_nav_target_active"):
@@ -2836,7 +2867,8 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 			button.remove_meta("activity_button_hold_nav_target_active")
 		_release_page_switch_button_shell(button)
 		return
-	_clear_page_switch_button_press_state(button, true)
+	_clear_page_switch_button_press_state(button)
+	_release_page_switch_button_shell(button)
 	_suppress_page_switch_pressed_signal(button)
 	_select_skill_from_page_switch(skill_id, button)
 
@@ -2865,9 +2897,6 @@ func _hold_page_switch_transition_button(button: Button, target_skill_id: String
 	page_switch_transition_button_id = button.get_instance_id()
 	page_switch_transition_target_skill_id = target_skill_id
 	button.set_meta("page_switch_transition_hold", true)
-	button.set_meta("activity_button_hold_nav_press", true)
-	button.set_meta("activity_button_hold_nav_target_active", true)
-	_press_page_switch_button_shell(button)
 
 
 func _release_page_switch_transition_button() -> void:
@@ -2887,36 +2916,6 @@ func _release_page_switch_transition_button() -> void:
 		button.remove_meta("activity_button_hold_nav_target_active")
 	_clear_page_switch_button_press_state(button)
 	host.button_press_runtime.force_button_unpressed(button)
-	host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
-
-
-func _release_page_switch_transition_button_visual_hold() -> void:
-	var button_id := page_switch_transition_button_id
-	if button_id == 0:
-		return
-	var button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(button_id))
-	if button == null:
-		return
-	if _page_switch_scroll_cover_active():
-		if button.has_meta("activity_button_hold_nav_press"):
-			button.remove_meta("activity_button_hold_nav_press")
-		if button.has_meta("activity_button_hold_nav_target_active"):
-			button.remove_meta("activity_button_hold_nav_target_active")
-		_clear_page_switch_button_press_state(button, false)
-		host.button_press_runtime.force_button_unpressed(button)
-		host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
-		return
-	if button.has_meta("activity_button_hold_nav_press"):
-		button.remove_meta("activity_button_hold_nav_press")
-	if button.has_meta("activity_button_hold_nav_target_active"):
-		button.remove_meta("activity_button_hold_nav_target_active")
-	_clear_page_switch_button_press_state(button, false)
-	host.button_press_runtime.force_button_unpressed(button)
-	host._skill_swipe_activity_surface().forget_depressed_activity_shell_button(button_id)
-	var pop := host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
-	if pop != null:
-		host._skill_swipe_activity_surface()._kill_activity_button_shell_tween(button)
-		host._skill_swipe_activity_surface()._set_activity_button_pop_depth_offset_bound(Vector2.ZERO, pop.get_instance_id())
 	host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
 
 
@@ -3012,8 +3011,8 @@ func _page_switch_skill_symbol_base_size(skill_id: String, diagonal_side: String
 	match skill_id:
 		"fight":
 			if diagonal_side == "right":
-				return Vector2(392, 392)
-			return Vector2(386, 386)
+				return Vector2(196, 196)
+			return Vector2(193, 193)
 		_:
 			return PAGE_SWITCH_SKILL_ICON_SYMBOL_BASE_SIZE
 
@@ -3022,24 +3021,24 @@ func _page_switch_skill_symbol_focus_offset(skill_id: String, diagonal_side: Str
 	match skill_id:
 		"build":
 			if diagonal_side == "right":
-				return Vector2(-74, 42)
-			return Vector2(112, 42)
+				return Vector2(-37, 21)
+			return Vector2(56, 21)
 		"woodcutting":
 			if diagonal_side == "right":
-				return Vector2(-80, 34)
-			return Vector2(70, 34)
+				return Vector2(-40, 17)
+			return Vector2(35, 17)
 		"fishing":
 			if diagonal_side == "right":
-				return Vector2(-190, -8)
-			return Vector2(104, -8)
+				return Vector2(-95, -4)
+			return Vector2(52, -4)
 		"thieving":
 			if diagonal_side == "left":
-				return Vector2(168, 8)
-			return Vector2(-70, 8)
+				return Vector2(84, 4)
+			return Vector2(-35, 4)
 		"fight":
 			if diagonal_side == "left":
-				return Vector2(132, -36)
-			return Vector2(-136, -36)
+				return Vector2(66, -18)
+			return Vector2(-68, -18)
 		_:
 			return Vector2.ZERO
 
@@ -3138,12 +3137,6 @@ func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest
 	if skill_id.is_empty():
 		_fade_clear_page_switch_scroll_cover()
 		return
-	if not host._onboarding_runtime()._onboarding_skill_accessible(skill_id):
-		var card := host.skill_cards.get(skill_id, {}) as Dictionary
-		var source := card.get("button") as Control
-		host._onboarding_runtime()._show_onboarding_skill_locked_message(source)
-		_fade_clear_page_switch_scroll_cover()
-		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
@@ -3180,7 +3173,7 @@ func _render_skill_menu_page() -> void:
 	var stack := VBoxContainer.new()
 	stack.custom_minimum_size.x = _skill_menu_active_drawer_content_width()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 52)
+	stack.add_theme_constant_override("separation", 26)
 	host.content_scroll.add_child(stack)
 	_render_skill_menu(stack)
 
@@ -3209,19 +3202,20 @@ func _render_skill_menu_shelf() -> void:
 	total_level_header.offset_right = 0.0
 	total_level_header.offset_top = 0.0
 	total_level_header.offset_bottom = SKILL_MENU_SHELF_HEIGHT
-	total_level_header.add_theme_constant_override("margin_top", 150)
-	total_level_header.add_theme_constant_override("margin_bottom", 12)
+	total_level_header.add_theme_constant_override("margin_top", 75)
+	total_level_header.add_theme_constant_override("margin_bottom", 6)
 	total_level_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	total_level_header.z_index = 430
 	host.skills_content.add_child(total_level_header)
 	var total_row := HBoxContainer.new()
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	total_row.add_theme_constant_override("separation", 22)
+	total_row.add_theme_constant_override("separation", 11)
 	total_level_header.add_child(total_row)
-	var total_icon: TextureRect = host.visual_texture_cache._image(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(118, 118))
+	var total_icon: TextureRect = host.visual_texture_cache._image(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(59, 59))
 	total_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	total_row.add_child(total_icon)
-	total_row.add_child(host._label("Total Lv %s" % SkillState.global_level(host.skills), 154, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	skill_menu_total_label = host._label("Total Lv %s" % SkillState.global_level(host.skills), 77, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	total_row.add_child(skill_menu_total_label)
 	host._skill_detail_surface().detail_shelf_shadow_alpha = 0.0
 	host._skill_detail_surface().detail_shelf_shadow_overlay = host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(host.skills_content, SKILL_MENU_SHELF_HEIGHT, host._skill_detail_surface().detail_shelf_shadow_alpha)
 
@@ -3256,22 +3250,22 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		button.add_theme_stylebox_override("hover", _skill_menu_band_style(card_fill))
 		button.add_theme_stylebox_override("pressed", _skill_menu_band_style(card_fill.darkened(0.08), true))
 		host.button_press_runtime.attach_button_depress_animation(button, 0.982)
-		button.pressed.connect(_select_skill.bind(skill_id))
+		button.pressed.connect(_on_skill_menu_card_pressed.bind(skill_id))
 		card_slot.add_child(button)
 		
 		var margin := MarginContainer.new()
 		margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-		margin.add_theme_constant_override("margin_left", 72)
-		margin.add_theme_constant_override("margin_right", 72)
-		margin.add_theme_constant_override("margin_top", 34)
-		margin.add_theme_constant_override("margin_bottom", 72)
+		margin.add_theme_constant_override("margin_left", 36)
+		margin.add_theme_constant_override("margin_right", 36)
+		margin.add_theme_constant_override("margin_top", 17)
+		margin.add_theme_constant_override("margin_bottom", 36)
 		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.z_index = 20
 		button.add_child(margin)
 		
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 16)
+		row.add_theme_constant_override("separation", 8)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(row)
 		row.add_child(SkillIconBadge.menu_icon_badge(host, skill_id, theme_color))
@@ -3279,16 +3273,16 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		copy.custom_minimum_size.x = SKILL_MENU_COPY_WIDTH
 		copy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		copy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		copy.add_theme_constant_override("separation", 30)
+		copy.add_theme_constant_override("separation", 15)
 		copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(copy)
-		var title: Label = host._label("", 132, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+		var title: Label = host._label("", 66, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(title)
-		var meta: Label = host._label("", 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+		var meta: Label = host._label("", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(meta)
-		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 62)
+		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 31)
 		ThemeStyles.apply_xp_progress_bar_theme(xp_bar, theme_color, host.COLOR_INK)
-		xp_bar.custom_minimum_size.x = 760
+		xp_bar.custom_minimum_size.x = 380
 		xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		copy.add_child(xp_bar)
 		var side_gauge: Control = _build_skill_menu_side_gauge(skill_id, theme_color)
@@ -3309,9 +3303,8 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 			"stamina": side_gauge if side_gauge is RegenCircle else null,
 			"fish": side_gauge if side_gauge is FishCircle else null,
 		}
-		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
-		button.disabled = not accessible
-		button.modulate = Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE
+		button.disabled = false
+		button.modulate = Color.WHITE
 		var drawer_slot := Control.new()
 		drawer_slot.name = "SkillMenuActiveDrawer_%s" % skill_id
 		drawer_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3332,15 +3325,20 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		stack.add_child(bottom_spacer)
 
 
+func _on_skill_menu_card_pressed(skill_id: String) -> void:
+	if is_instance_valid(host.content_scroll) and host.content_scroll.has_method("is_child_click_suppressed") and host.content_scroll.is_child_click_suppressed():
+		return
+	_select_skill(skill_id)
+
 func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Control:
 	if host._fishing_rework_active_for_skill(skill_id):
 		var fish_gauge := FishCircle.new()
-		fish_gauge.custom_minimum_size = Vector2(540, 540)
+		fish_gauge.custom_minimum_size = Vector2(270, 270)
 		fish_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		fish_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return fish_gauge
 	var stamina_gauge := RegenCircle.new()
-	stamina_gauge.custom_minimum_size = Vector2(540, 540)
+	stamina_gauge.custom_minimum_size = Vector2(270, 270)
 	stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_STOP
 	stamina_gauge.set_dark_mode(host.dark_mode_enabled)
@@ -3361,6 +3359,10 @@ func _normalize_skill_menu_card_button(card: Dictionary) -> void:
 
 
 func _sync_skill_menu_page(delta: float, instant: bool, static_refresh: bool) -> void:
+	if is_instance_valid(skill_menu_total_label):
+		host._app_lifecycle_runtime().set_label_text_if_changed(skill_menu_total_label, "Total Lv %s" % SkillState.global_level(host.skills))
+		var total_header := skill_menu_total_label.get_parent().get_parent() as MarginContainer
+		total_header.add_theme_constant_override("margin_top", 110 if host.queue_selection_mode else 75)
 	host._skill_detail_surface()._update_skill_detail_shadow(delta, instant)
 	for skill_id in host.skill_cards.keys():
 		var skill_id_text := str(skill_id)
@@ -3379,9 +3381,8 @@ func _sync_skill_menu_page(delta: float, instant: bool, static_refresh: bool) ->
 func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, instant: bool) -> void:
 	var button := card.get("button") as Button
 	if button != null and is_instance_valid(button):
-		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
-		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, not accessible)
-		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE)
+		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, false)
+		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color.WHITE)
 	var activity_running := false
 	var activity_progress := card.get("activity") as ActivityProgressRail
 	if activity_progress != null and is_instance_valid(activity_progress):
@@ -3485,7 +3486,7 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		registered_card_key = card_key
 		registered_card_keys.append(card_key)
 	elif not active_fishing_area_def.is_empty():
-		var built: Dictionary = host._build_fishing_area_module(skill_id, active_fishing_area_def, content_width)
+		var built: Dictionary = host._fishing_ui_surface()._build_fishing_area_module(skill_id, active_fishing_area_def, content_width)
 		module_root = built.get("root") as Control
 		var area_key := str(built.get("area_key", ""))
 		var area_card := built.get("area_card", {}) as Dictionary
@@ -3605,8 +3606,8 @@ func _render_pinned_activities_page() -> void:
 func _refresh_pinned_activities_shelf_after_pin_change() -> void:
 	if host.current_screen != "pinned" or host.content_scroll == null or not is_instance_valid(host.content_scroll):
 		return
-	var existing_shelf: Control = host._find_named_control_descendant(host.content_scroll, "PinnedActivitiesShelf")
-	var existing_empty: Control = host._find_named_control_descendant(host.content_scroll, "PinnedActivitiesEmptyState")
+	var existing_shelf: Control = host._skill_detail_surface()._find_named_control_descendant(host.content_scroll, "PinnedActivitiesShelf")
+	var existing_empty: Control = host._skill_detail_surface()._find_named_control_descendant(host.content_scroll, "PinnedActivitiesEmptyState")
 	var anchor: Control = existing_shelf if existing_shelf != null else existing_empty
 	if anchor == null:
 		return
@@ -3649,7 +3650,7 @@ func _build_pinned_activities_shelf_content(content_width: float) -> Control:
 	shelf.name = "PinnedActivitiesShelf"
 	shelf.custom_minimum_size = Vector2(content_width, 0)
 	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf.add_theme_constant_override("separation", 34)
+	shelf.add_theme_constant_override("separation", 17)
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for raw_key in host.module_ui_runtime.pinned_order:
 		var module_key := ModuleUiRuntime.normalize(raw_key)
@@ -3749,21 +3750,21 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	empty.clip_contents = true
 	_add_pinned_activities_empty_decor_pins(empty, content_width)
 	var label: Label = host._label(
-		"Press the top left of any activity to pin it.\nPinned activities from every skill page will appear here.",
-		72,
+		"Tap the top-left of an activity to pin it.\nPinned activities appear here.",
+		52,
 		host.COLOR_INK,
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
 	label.name = "PinnedActivitiesEmptyStateLabel"
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_left = 48
-	label.offset_right = -48
+	label.offset_left = 24
+	label.offset_right = -24
 	label.offset_top = 0
 	label.offset_bottom = 0
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
-	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.z_index = 20
 	empty.add_child(label)
@@ -3781,8 +3782,8 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 	var badge_visible_height: float = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_SIZE.y - ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION.y
 	var hit_zone_size: Vector2 = ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MAX - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN
 	hit_zone_size.y = minf(hit_zone_size.y, badge_visible_height - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN.y)
-	var horizontal_margin := 30.0
-	var vertical_margin := 26.0
+	var horizontal_margin := 15.0
+	var vertical_margin := 13.0
 	var occupied_rects: Array[Rect2] = []
 	for index in range(PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT):
 		var badge_position := _pinned_activities_empty_decor_pin_position(
@@ -3797,7 +3798,7 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 		)
 		var badge_left := badge_position.x
 		var badge_top := badge_position.y
-		occupied_rects.append(Rect2(badge_position, Vector2(ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(18.0))
+		occupied_rects.append(Rect2(badge_position, Vector2(ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(9.0))
 		var decor_host := Control.new()
 		decor_host.name = "PinnedActivitiesEmptyDecorPin_%s" % index
 		decor_host.anchor_left = 0.0
@@ -3900,6 +3901,7 @@ func _create_pinned_activities_empty_decor_pin_badge(decor_host: Control, index:
 	badge.set_meta("pinned_activities_empty_decor_pin", true)
 	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(badge, 1.0)
 	host._skill_detail_surface()._set_module_pin_badge_clip_enabled(badge, true)
+	host._skill_detail_surface()._set_module_pin_entry_seam_visible(badge, true)
 	return badge
 
 
@@ -3935,6 +3937,7 @@ func _play_pinned_activities_empty_decor_pin_exit_animation(badge: TextureButton
 		return
 	if badge.is_queued_for_deletion() or decor_host.is_queued_for_deletion() or badge.has_meta("module_pin_tween"):
 		return
+	host._skill_detail_surface()._set_module_pin_entry_seam_visible(badge, false)
 	host._skill_detail_surface()._set_module_pin_badge_clip_enabled(badge, true)
 	badge.visible = true
 	badge.disabled = true
@@ -4004,7 +4007,7 @@ func _activity_queue_active_shelf(content_width: float) -> Control:
 	return header
 
 func _activity_queue_static_title() -> Label:
-	var title: Label = host._label("Activity Queue", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label_on_light_panel("Activity Queue", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.name = "ActivityQueueTitle"
 	title.anchor_left = 0.0
 	title.anchor_right = 1.0
@@ -4012,8 +4015,8 @@ func _activity_queue_static_title() -> Label:
 	title.anchor_bottom = 0.0
 	title.offset_left = 0.0
 	title.offset_right = 0.0
-	title.offset_top = 39.0
-	title.offset_bottom = 112.0
+	title.offset_top = 10.0
+	title.offset_bottom = 90.0
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.z_index = 50
@@ -4072,7 +4075,7 @@ func _add_pinned_active_shelf_background(parent: Control, skill_id: String, cont
 	return background
 
 func _pinned_activities_static_title() -> Label:
-	var title: Label = host._label("Pinned Activities", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label("Pinned Activities", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.name = "PinnedActivitiesTitle"
 	title.anchor_left = 0.0
 	title.anchor_right = 1.0
@@ -4080,8 +4083,8 @@ func _pinned_activities_static_title() -> Label:
 	title.anchor_bottom = 0.0
 	title.offset_left = 0.0
 	title.offset_right = 0.0
-	title.offset_top = 39.0
-	title.offset_bottom = 112.0
+	title.offset_top = 10.0
+	title.offset_bottom = 90.0
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.z_index = 50
@@ -4169,16 +4172,16 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 40)
-	margin.add_theme_constant_override("margin_right", 40)
-	margin.add_theme_constant_override("margin_top", host.SKILLS_PAGE_TOP_PAD + 76)
-	margin.add_theme_constant_override("margin_bottom", 74)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", host.SKILLS_PAGE_TOP_PAD + 38)
+	margin.add_theme_constant_override("margin_bottom", 37)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strip.add_child(margin)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 
@@ -4226,15 +4229,15 @@ func _sync_pinned_active_shelf_stamina_gauges(_delta: float, instant := false) -
 func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String) -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 66)
-	margin.add_theme_constant_override("margin_right", 46)
+	margin.add_theme_constant_override("margin_left", 33)
+	margin.add_theme_constant_override("margin_right", 23)
 	margin.add_theme_constant_override("margin_top", host.SKILLS_PAGE_TOP_PAD + 88)
 	margin.add_theme_constant_override("margin_bottom", host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(margin)
 
 	var header_row := HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 66)
+	header_row.add_theme_constant_override("separation", 33)
 	header_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(header_row)
 
@@ -4253,7 +4256,7 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 	title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_block.add_child(title_stack)
 
-	var title: Label = host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title: Label = host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE, host.SKILL_DETAIL_FISHING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(title)
 	pinned_active_shelf_xp_label = host._label(SkillState.level_xp_text(host.skills, skill_id, SkillState.host_skill_level(host, skill_id)), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
@@ -4265,19 +4268,19 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 
 	if host._fishing_rework_active_for_skill(skill_id):
 		pinned_active_shelf_fish_circle = FishCircle.new()
-		pinned_active_shelf_fish_circle.custom_minimum_size = Vector2(552, 552)
+		pinned_active_shelf_fish_circle.custom_minimum_size = Vector2(276, 276)
 		pinned_active_shelf_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pinned_active_shelf_fish_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		header_row.add_child(pinned_active_shelf_fish_circle)
 		host._fishing_ui_surface()._set_fish_circle_for_skill(pinned_active_shelf_fish_circle, skill_id, true)
 	else:
 		var regen_circle_host := Control.new()
-		regen_circle_host.custom_minimum_size = Vector2(552, 552)
+		regen_circle_host.custom_minimum_size = Vector2(276, 276)
 		regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		regen_circle_host.clip_contents = false
 		header_row.add_child(regen_circle_host)
 		pinned_active_shelf_regen_circle = RegenCircle.new()
-		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
+		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(276, 276)
 		pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 		pinned_active_shelf_regen_circle.gui_input.connect(Callable(host._action_runtime(), "_on_stamina_gauge_input").bind(skill_id, pinned_active_shelf_regen_circle))
@@ -4331,7 +4334,7 @@ func _pinned_active_shelf_style(skill_id: String, draw_bottom_border := true) ->
 	var style := StyleBoxFlat.new()
 	style.bg_color = host.COLOR_PAPER
 	style.border_color = Color(0.09, 0.08, 0.07, 0.12)
-	style.border_width_bottom = 5 if draw_bottom_border else 0
+	style.border_width_bottom = 2.5 if draw_bottom_border else 0
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0
@@ -4645,7 +4648,7 @@ func _build_module_utility_row() -> void:
 		"height": MODULE_UTILITY_ROW_HEIGHT,
 		"z_index": ProfileChatOverlaySurface.CHAT_UI_Z + 1,
 		"button_size": MODULE_UTILITY_BUTTON_SIZE,
-		"radius": 36.0,
+		"radius": 18.0,
 		"gutter": host.ACTION_CARD_POP_GUTTER,
 		"depth_offset": NAV_BUTTON_DEPTH_OFFSET,
 		"diagonal_side": "",
@@ -5020,14 +5023,14 @@ func _layout_module_sort_menu() -> void:
 	var menu_size: Vector2 = module_sort_menu.custom_minimum_size
 	module_sort_menu.size = menu_size
 	var center_x: float = host.size.x * 0.5
-	var top_y: float = host.size.y - BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 22.0
+	var top_y: float = host.size.y - BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 11.0
 	if sort_utility_tab != null and is_instance_valid(sort_utility_tab):
 		var sort_rect: Rect2 = host._skill_swipe_activity_surface()._activity_button_target_face_global_rect(sort_utility_tab, true)
 		center_x = sort_rect.position.x + sort_rect.size.x * 0.5
-		top_y = sort_rect.position.y - menu_size.y - 22.0
+		top_y = sort_rect.position.y - menu_size.y - 11.0
 	module_sort_menu.position = Vector2(
-		clampf(center_x - menu_size.x * 0.5, 18.0, maxf(18.0, host.size.x - menu_size.x - 18.0)),
-		maxf(18.0, top_y)
+		clampf(center_x - menu_size.x * 0.5, 9.0, maxf(9.0, host.size.x - menu_size.x - 9.0)),
+		maxf(9.0, top_y)
 	)
 
 func _sync_module_sort_menu_buttons() -> void:
@@ -5052,12 +5055,14 @@ func _apply_module_ui_sort_preference_change() -> void:
 		_render_screen()
 
 func _sync_module_utility_row_visibility(animate_buttons := false) -> void:
+	if host.desktop_layout.enabled():
+		host.desktop_layout.sync_shell()
+		return
 	if module_utility_row == null or not is_instance_valid(module_utility_row):
 		return
 	_layout_module_utility_row()
 	module_utility_row.visible = (
 		_intro_bottom_controls_unlocked()
-		and host._profile_chat_overlay_surface()._global_chat_allowed()
 		and host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen()
 	)
 	if module_utility_buttons_row != null and is_instance_valid(module_utility_buttons_row):
@@ -5207,8 +5212,8 @@ func _layout_module_utility_collapse_toggle() -> void:
 	if arrow != null and arrow.has_method("set_direction"):
 		arrow.set_direction(1 if module_utility_collapsed else -1)
 	module_utility_collapse_toggle.size = MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
-	var expanded_x := 46.0
-	var collapsed_x := 46.0
+	var expanded_x := 23.0
+	var collapsed_x := 23.0
 	module_utility_collapse_toggle.position = Vector2(
 		collapsed_x if module_utility_collapsed else expanded_x,
 		(MODULE_UTILITY_ROW_HEIGHT - MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE.y) * 0.5
@@ -5265,8 +5270,8 @@ func _skill_menu_band_edge_feather(top_edge: bool) -> TextureRect:
 	feather.anchor_bottom = 0.0 if top_edge else 1.0
 	feather.offset_left = 0.0
 	feather.offset_right = 0.0
-	feather.offset_top = -24.0 if top_edge else -236.0
-	feather.offset_bottom = 236.0 if top_edge else 24.0
+	feather.offset_top = -12.0 if top_edge else -118.0
+	feather.offset_bottom = 118.0 if top_edge else 12.0
 	feather.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	feather.z_index = 1
 	var gradient := Gradient.new()

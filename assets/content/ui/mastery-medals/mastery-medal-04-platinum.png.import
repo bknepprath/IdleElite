@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cpolibn1a1lmk"
-path="res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.ctex"
+path.bptc="res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.bptc.ctex"
+path.astc="res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/mastery-medals/mastery-medal-04-platinum.png"
-dest_files=["res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.ctex"]
+dest_files=["res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.bptc.ctex", "res://.godot/imported/mastery-medal-04-platinum.png-0083a5785d8df46d5838d2a762b4a6fe.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

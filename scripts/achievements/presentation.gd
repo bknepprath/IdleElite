@@ -24,6 +24,37 @@ const TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-le
 const CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
 const CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
 const CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
+const ELITE_MEDAL_FIRST_LEVEL := 11
+const ELITE_MEDAL_LAST_PLAIN_LEVEL := 18
+const ELITE_MEDAL_DISPLAY_SCALE := 1.22
+const WINGED_MEDAL_DISPLAY_SCALES := {
+	9: 1.79,
+	10: 1.57,
+	19: 1.77,
+	20: 1.77,
+}
+const MASTERY_MEDAL_ATLAS_REGIONS := [
+	Rect2(212, 204, 344, 360),
+	Rect2(212, 204, 344, 360),
+	Rect2(212, 204, 343, 360),
+	Rect2(214, 204, 339, 360),
+	Rect2(209, 204, 349, 360),
+	Rect2(208, 204, 351, 360),
+	Rect2(211, 204, 346, 360),
+	Rect2(211, 204, 346, 360),
+	Rect2(61, 204, 645, 360),
+	Rect2(100, 204, 567, 360),
+	Rect2(240, 200, 288, 368),
+	Rect2(241, 200, 285, 368),
+	Rect2(241, 200, 286, 368),
+	Rect2(242, 200, 284, 368),
+	Rect2(236, 200, 295, 368),
+	Rect2(239, 200, 290, 368),
+	Rect2(237, 200, 293, 368),
+	Rect2(238, 200, 292, 368),
+	Rect2(120, 200, 527, 368),
+	Rect2(121, 200, 526, 368),
+]
 
 static var mastery_medal_textures := {}
 static var mastery_medal_silhouette_materials := {}
@@ -47,16 +78,13 @@ class MedalSparkleStar:
 		var outer := minf(size.x, size.y) * 0.48
 		var inner := outer * 0.34
 		var points := PackedVector2Array()
-		for i in range(8):
-			var radius := outer if i % 2 == 0 else inner
-			var angle := -PI * 0.5 + float(i) * PI * 0.25
-			points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-		draw_polygon(points, PackedColorArray([outline_color]))
 		var inner_points := PackedVector2Array()
 		for i in range(8):
-			var radius := (outer - 3.5) if i % 2 == 0 else maxf(1.0, inner - 2.0)
 			var angle := -PI * 0.5 + float(i) * PI * 0.25
-			inner_points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+			var direction := Vector2(cos(angle), sin(angle))
+			points.append(center + direction * (outer if i % 2 == 0 else inner))
+			inner_points.append(center + direction * ((outer - 1.75) if i % 2 == 0 else maxf(0.5, inner - 1.0)))
+		draw_polygon(points, PackedColorArray([outline_color]))
 		draw_polygon(inner_points, PackedColorArray([fill_color]))
 
 
@@ -73,15 +101,15 @@ static func toast_queue_badge() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#2f2a21")
 	style.border_color = Color("#fff2c4")
-	style.set_border_width_all(7)
+	style.set_border_width_all(4)
 	style.set_corner_radius_all(999)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 8
-	style.content_margin_bottom = 10
+	style.content_margin_left = 9
+	style.content_margin_right = 9
+	style.content_margin_top = 4
+	style.content_margin_bottom = 5
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.28)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 5)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 2.5)
 	return style
 
 
@@ -89,18 +117,11 @@ static func skill_section() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0)
 	style.draw_center = false
-	style.content_margin_left = 38
-	style.content_margin_right = 38
-	style.content_margin_top = 22
-	style.content_margin_bottom = 30
+	style.content_margin_left = 19
+	style.content_margin_right = 19
+	style.content_margin_top = 11
+	style.content_margin_bottom = 15
 	return style
-
-
-static func skill_level_targets() -> Array:
-	var targets := []
-	for level in range(2, 100):
-		targets.append(level)
-	return targets
 
 
 static func same_tier_medal_count(target: int) -> int:
@@ -117,16 +138,16 @@ static func same_tier_medal_count(target: int) -> int:
 
 static func medal_cluster_positions(count: int) -> Array:
 	if count <= 1:
-		return [Vector2(89, 72)]
+		return [Vector2(44.5, 36)]
 	if count <= 3:
-		return [Vector2(48, 88), Vector2(94, 48), Vector2(140, 88)]
+		return [Vector2(24, 44), Vector2(47, 24), Vector2(70, 44)]
 	if count <= 5:
-		return [Vector2(42, 88), Vector2(70, 50), Vector2(112, 50), Vector2(140, 88), Vector2(91, 112)]
+		return [Vector2(21, 44), Vector2(35, 25), Vector2(56, 25), Vector2(70, 44), Vector2(45.5, 56)]
 	if count <= 7:
-		return [Vector2(34, 88), Vector2(58, 56), Vector2(92, 42), Vector2(126, 56), Vector2(150, 88), Vector2(68, 116), Vector2(116, 116)]
+		return [Vector2(17, 44), Vector2(29, 28), Vector2(46, 21), Vector2(63, 28), Vector2(75, 44), Vector2(34, 58), Vector2(58, 58)]
 	if count <= 8:
-		return [Vector2(28, 88), Vector2(50, 58), Vector2(78, 42), Vector2(110, 42), Vector2(138, 58), Vector2(160, 88), Vector2(68, 116), Vector2(120, 116)]
-	return [Vector2(24, 88), Vector2(44, 62), Vector2(68, 44), Vector2(94, 38), Vector2(120, 44), Vector2(144, 62), Vector2(164, 88), Vector2(58, 116), Vector2(94, 122), Vector2(130, 116)]
+		return [Vector2(14, 44), Vector2(25, 29), Vector2(39, 21), Vector2(55, 21), Vector2(69, 29), Vector2(80, 44), Vector2(34, 58), Vector2(60, 58)]
+	return [Vector2(12, 44), Vector2(22, 31), Vector2(34, 22), Vector2(47, 19), Vector2(60, 22), Vector2(72, 31), Vector2(82, 44), Vector2(29, 58), Vector2(47, 61), Vector2(65, 58)]
 
 
 static func mastery_medal_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
@@ -134,28 +155,36 @@ static func mastery_medal_texture(level: int, max_level: int, texture_loader: Ca
 	if mastery_medal_textures.has(index):
 		return mastery_medal_textures[index]
 	var source := texture_loader.call(str(MASTERY_MEDAL_TEXTURES[index])) as Texture2D
-	var texture := _cropped_texture(source)
+	var texture := _cropped_texture(source, index)
 	if texture == null:
 		return visual_fallback.call() as Texture2D
 	mastery_medal_textures[index] = texture
 	return texture
 
 
-static func _cropped_texture(texture: Texture2D) -> Texture2D:
+static func _cropped_texture(texture: Texture2D, index: int) -> Texture2D:
 	if texture == null:
 		return null
-	var image := texture.get_image()
-	if image == null or image.is_empty():
+	if index < 0 or index >= MASTERY_MEDAL_ATLAS_REGIONS.size():
 		return texture
-	var rect := image.get_used_rect()
-	if rect.size.x <= 0 or rect.size.y <= 0:
+	var region: Rect2 = MASTERY_MEDAL_ATLAS_REGIONS[index]
+	if region.size.x <= 0.0 or region.size.y <= 0.0:
 		return texture
-	return ImageTexture.create_from_image(image.get_region(rect))
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	atlas.region = region
+	atlas.filter_clip = true
+	return atlas
 
 
 static func mastery_medal_visual_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
-	var texture := mastery_medal_texture(level, max_level, texture_loader, visual_fallback)
-	return texture if texture != null else visual_fallback.call() as Texture2D
+	return mastery_medal_texture(level, max_level, texture_loader, visual_fallback)
+
+
+static func mastery_medal_display_scale(level: int) -> float:
+	if WINGED_MEDAL_DISPLAY_SCALES.has(level):
+		return float(WINGED_MEDAL_DISPLAY_SCALES.get(level))
+	return ELITE_MEDAL_DISPLAY_SCALE if level >= ELITE_MEDAL_FIRST_LEVEL and level <= ELITE_MEDAL_LAST_PLAIN_LEVEL else 1.0
 
 
 static func mastery_medal_silhouette_material(color: Color) -> ShaderMaterial:

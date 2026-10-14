@@ -13,24 +13,15 @@ if (-not (Test-Path -LiteralPath $databasePath)) {
 }
 
 $database = Get-Content -LiteralPath $databasePath -Raw | ConvertFrom-Json
-$mainScript = ""
-if (Test-Path -LiteralPath $mainScriptPath) {
-    $mainScript = Get-Content -LiteralPath $mainScriptPath -Raw
-}
+$mainScript = if (Test-Path -LiteralPath $mainScriptPath) { Get-Content -LiteralPath $mainScriptPath -Raw } else { "" }
 $runtimeConstantScripts = @($mainScript)
 foreach ($runtimeScriptPath in @($skillStateScriptPath, $passiveRuntimeScriptPath)) {
     if (Test-Path -LiteralPath $runtimeScriptPath) {
         $runtimeConstantScripts += Get-Content -LiteralPath $runtimeScriptPath -Raw
     }
 }
-$hubSurfaceScript = ""
-if (Test-Path -LiteralPath $hubSurfaceScriptPath) {
-    $hubSurfaceScript = Get-Content -LiteralPath $hubSurfaceScriptPath -Raw
-}
-$exportPresets = ""
-if (Test-Path -LiteralPath $exportPresetsPath) {
-    $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
-}
+$hubSurfaceScript = if (Test-Path -LiteralPath $hubSurfaceScriptPath) { Get-Content -LiteralPath $hubSurfaceScriptPath -Raw } else { "" }
+$exportPresets = if (Test-Path -LiteralPath $exportPresetsPath) { Get-Content -LiteralPath $exportPresetsPath -Raw } else { "" }
 
 $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
@@ -87,10 +78,7 @@ function Has-ObjectProperty {
         [string] $Name
     )
 
-    if ($null -eq $Object) {
-        return $false
-    }
-    return $null -ne $Object.PSObject.Properties[$Name]
+    return $null -ne $Object -and $null -ne $Object.PSObject.Properties[$Name]
 }
 
 function Get-ObjectProperty {
@@ -99,14 +87,8 @@ function Get-ObjectProperty {
         [string] $Name
     )
 
-    if ($null -eq $Object) {
-        return $null
-    }
-    $property = $Object.PSObject.Properties[$Name]
-    if ($null -eq $property) {
-        return $null
-    }
-    return $property.Value
+    if ($null -eq $Object) { return $null }
+    return $Object.PSObject.Properties[$Name].Value
 }
 
 function Get-ArrayProperty {
@@ -149,7 +131,11 @@ function Test-PositiveInteger {
     if ($text -notmatch "^\d+$") {
         return $false
     }
-    return [int]$text -gt 0
+    try {
+        return [int]$text -gt 0
+    } catch {
+        return $false
+    }
 }
 
 function Validate-OptionalPositiveInteger {
@@ -275,7 +261,6 @@ function Validate-RewardMap {
 
     return $rewardProperties.Count
 }
-
 $skillIds = @{}
 $knownSkillIds = @{}
 $globalActionIds = @{}
@@ -292,14 +277,12 @@ $skills = @($database.skills)
 if ($skills.Count -eq 0) {
     Add-Finding $errors "No skills were found in docs/activity-database.json."
 }
-
 foreach ($skill in $skills) {
     $knownSkillId = [string]$skill.id
     if (-not [string]::IsNullOrWhiteSpace($knownSkillId)) {
         $knownSkillIds[$knownSkillId] = $true
     }
 }
-
 foreach ($skill in $skills) {
     $skillId = [string]$skill.id
     if ([string]::IsNullOrWhiteSpace($skillId)) {
@@ -311,7 +294,6 @@ foreach ($skill in $skills) {
         Add-Finding $errors "Duplicate skill id: $skillId."
     }
     $skillIds[$skillId] = $true
-
     $actions = @($skill.actions)
     if ($actions.Count -eq 0) {
         Add-Finding $errors "$skillId has no actions."
@@ -521,26 +503,22 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
     if ($eventKind -ne "event_activity") {
         Add-Finding $warnings "$label kind should be event_activity, found $eventKind."
     }
-
     foreach ($requiredIntegerField in @("target_level", "minimum_level", "unlock", "sort_unlock")) {
         $fieldValue = Get-ObjectProperty $event $requiredIntegerField
         if (-not (Test-PositiveInteger $fieldValue)) {
             Add-Finding $errors "$label $requiredIntegerField must be a positive integer, found $fieldValue."
         }
     }
-
     foreach ($requiredNumberField in @("stamina", "seconds", "xp", "spawn_weight", "active_duration_seconds", "respawn_cooldown_seconds")) {
         $fieldValue = Get-ObjectProperty $event $requiredNumberField
         if (-not (Test-PositiveNumber $fieldValue)) {
             Add-Finding $errors "$label $requiredNumberField must be positive, found $fieldValue."
         }
     }
-
     $eventSuccess = [double]$event.success
     if ($eventSuccess -lt 5 -or $eventSuccess -gt 100) {
         Add-Finding $errors "$label success must be between 5 and 100, found $eventSuccess."
     }
-
     $eventRequirementCount = Validate-RequirementList $event $label $eventPage $true
     if ($eventRequirementCount -gt 0) {
         $requirementEntryCount += $eventRequirementCount
@@ -552,7 +530,6 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
     if ($eventRewardCount -gt 0) {
         $rewardMapCount++
     }
-
     if ((Test-PositiveNumber $event.active_duration_seconds) -and (Test-PositiveNumber $event.respawn_cooldown_seconds)) {
         $activeDuration = [double]$event.active_duration_seconds
         $cooldownDuration = [double]$event.respawn_cooldown_seconds
@@ -560,7 +537,6 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
             Add-Finding $warnings "$label cooldown $cooldownDuration is shorter than active duration $activeDuration."
         }
     }
-
     foreach ($field in @("art", "background")) {
         $assetPath = [string]$event.$field
         if ([string]::IsNullOrWhiteSpace($assetPath)) {
@@ -575,7 +551,6 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
         }
     }
 }
-
 $globalRules = $database.global_rules
 if ($null -ne $globalRules) {
     $tierSupportGoals = Get-ArrayProperty $globalRules "tier_support_goals"
@@ -648,22 +623,12 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
             Add-Finding $errors "scripts/main.gd still contains obsolete raw manual unlock persistence token: $token."
         }
     }
-    if ($mainScript -match '(?m)^\s*"mastery":\s*mastery,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw mastery instead of _mastery_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"skills":\s*skills,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw skills instead of SkillState.skills_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"stamina":\s*stamina,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw stamina instead of SkillState.stamina_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"stamina_bank":\s*stamina_bank,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw stamina_bank instead of SkillState.stamina_bank_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"selected_fishing_locations":\s*selected_fishing_locations,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw selected_fishing_locations instead of FishingState.save_payload().'
-    }
-    foreach ($rawFishingSave in @(
+    foreach ($rawSave in @(
+        @{ Pattern = '(?m)^\s*"mastery":\s*mastery,'; Helper = '_mastery_for_save()' },
+        @{ Pattern = '(?m)^\s*"skills":\s*skills,'; Helper = 'SkillState.skills_for_save()' },
+        @{ Pattern = '(?m)^\s*"stamina":\s*stamina,'; Helper = 'SkillState.stamina_for_save()' },
+        @{ Pattern = '(?m)^\s*"stamina_bank":\s*stamina_bank,'; Helper = 'SkillState.stamina_bank_for_save()' },
+        @{ Pattern = '(?m)^\s*"selected_fishing_locations":\s*selected_fishing_locations,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"equipped_fishing_tool_id":\s*equipped_fishing_tool_id,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"log_currency":\s*log_currency,'; Helper = '_log_currency_for_save()' },
         @{ Pattern = '(?m)^\s*"fish_currency":\s*fish_currency,'; Helper = '_fish_currency_for_save()' },
@@ -674,48 +639,16 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         @{ Pattern = '(?m)^\s*"fishing_boat_stored_fish":\s*fishing_boat_stored_fish,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"fishing_boat_successes":\s*fishing_boat_successes,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"fishing_boat_stored_xp":\s*fishing_boat_stored_xp,'; Helper = 'FishingState.save_payload()' },
-        @{ Pattern = '(?m)^\s*"fishing_boat_stored_mastery":\s*fishing_boat_stored_mastery,'; Helper = 'FishingState.save_payload()' }
-    )) {
-        if ($mainScript -match $rawFishingSave.Pattern) {
-            Add-Finding $errors "scripts/main.gd still saves raw fishing numeric state instead of $($rawFishingSave.Helper)."
-        }
-    }
-    if ($mainScript -match '(?m)^\s*"fishing_net_collected":') {
-        Add-Finding $errors 'scripts/main.gd should not save legacy fishing_net_collected; use fishing_net_collect_completed only.'
-    }
-    foreach ($rawRodSave in @(
+        @{ Pattern = '(?m)^\s*"fishing_boat_stored_mastery":\s*fishing_boat_stored_mastery,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"fishing_rod_collected":\s*fishing_rod_collected,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"fishing_reinforced_rod_collected":\s*fishing_reinforced_rod_collected,'; Helper = 'FishingState.save_payload()' },
-        @{ Pattern = '(?m)^\s*"fishing_star_rod_collected":\s*fishing_star_rod_collected,'; Helper = 'FishingState.save_payload()' }
-    )) {
-        if ($mainScript -match $rawRodSave.Pattern) {
-            Add-Finding $errors "scripts/main.gd still saves raw fishing rod collection state instead of $($rawRodSave.Helper)."
-        }
-    }
-    foreach ($rawAudioSave in @(
+        @{ Pattern = '(?m)^\s*"fishing_star_rod_collected":\s*fishing_star_rod_collected,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"music_volume":\s*music_volume,'; Helper = '_music_volume_for_save()' },
-        @{ Pattern = '(?m)^\s*"sfx_volume":\s*sfx_volume,'; Helper = '_sfx_volume_for_save()' }
-    )) {
-        if ($mainScript -match $rawAudioSave.Pattern) {
-            Add-Finding $errors "scripts/main.gd still saves raw audio setting state instead of $($rawAudioSave.Helper)."
-        }
-    }
-    if ($mainScript -match '(?m)^\s*"is_muted":') {
-        Add-Finding $errors 'scripts/main.gd should not save obsolete global is_muted audio state.'
-    }
-    if ($mainScript -match '(?m)^\s*"god_mode_enabled":\s*god_mode_enabled,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw god_mode_enabled instead of _god_mode_enabled_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"passive_modules":\s*passive_modules,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw passive_modules instead of PassiveModulesRuntime.for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"convergence_modules":\s*convergence_modules,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw convergence_modules instead of _convergence_modules_for_save().'
-    }
-    if ($mainScript -match '(?m)^\s*"hub_modules":\s*hub_modules,') {
-        Add-Finding $errors 'Save payload still saves raw hub_modules instead of HubRuntime.modules_for_save().'
-    }
-    foreach ($rawScalarSave in @(
+        @{ Pattern = '(?m)^\s*"sfx_volume":\s*sfx_volume,'; Helper = '_sfx_volume_for_save()' },
+        @{ Pattern = '(?m)^\s*"god_mode_enabled":\s*god_mode_enabled,'; Helper = '_god_mode_enabled_for_save()' },
+        @{ Pattern = '(?m)^\s*"passive_modules":\s*passive_modules,'; Helper = 'PassiveModulesRuntime.for_save()' },
+        @{ Pattern = '(?m)^\s*"convergence_modules":\s*convergence_modules,'; Helper = '_convergence_modules_for_save()' },
+        @{ Pattern = '(?m)^\s*"hub_modules":\s*hub_modules,'; Helper = 'HubRuntime.modules_for_save()' },
         @{ Pattern = '(?m)^\s*"hub_selected_module_id":\s*hub_selected_module_id,'; Helper = 'HubRuntime.selected_module_id_for_save()' },
         @{ Pattern = '(?m)^\s*"hub_mission_cooldown_until_unix":\s*hub_mission_cooldown_until_unix,'; Helper = '_hub_mission_cooldown_until_unix_for_save()' },
         @{ Pattern = '(?m)^\s*"plank_boost_enabled":\s*plank_boost_enabled,'; Helper = '_plank_boost_enabled_for_save()' },
@@ -728,9 +661,15 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         @{ Pattern = '(?m)^\s*"flow_heat":\s*flow_heat,'; Helper = '_flow_heat_for_save()' },
         @{ Pattern = '(?m)^\s*"flow_active_action_seconds":\s*flow_active_action_seconds,'; Helper = '_flow_active_action_seconds_for_save()' }
     )) {
-        if ($mainScript -match $rawScalarSave.Pattern) {
-            Add-Finding $errors "scripts/main.gd still saves raw scalar progression metadata instead of $($rawScalarSave.Helper)."
+        if ($mainScript -match $rawSave.Pattern) {
+            Add-Finding $errors "scripts/main.gd still saves raw state instead of $($rawSave.Helper)."
         }
+    }
+    if ($mainScript -match '(?m)^\s*"fishing_net_collected":') {
+        Add-Finding $errors 'scripts/main.gd should not save legacy fishing_net_collected; use fishing_net_collect_completed only.'
+    }
+    if ($mainScript -match '(?m)^\s*"is_muted":') {
+        Add-Finding $errors 'scripts/main.gd should not save obsolete global is_muted audio state.'
     }
     $hubSelectedRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_selected_module_id = str\(data\.get\("hub_selected_module_id", hub_selected_module_id\)\)')
     if ($hubSelectedRestoreMatches.Count -gt 1) {
@@ -748,26 +687,19 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($adBonusRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw ad_bonus_seconds_remaining outside AdBonus.restore_seconds_from_save().'
     }
-    $activityStartRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*activity_start_count = maxi\(0, int\(data\.get\("activity_start_count", 0\)\)\)')
-    if ($activityStartRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw activity progress counters outside _restore_activity_progress_counts_from_save().'
+    function Assert-NoDuplicateRestore {
+        param([string] $Pattern, [string] $Message)
+
+        if ([regex]::Matches($mainScript, $Pattern).Count -gt 1) {
+            Add-Finding $errors $Message
+        }
     }
-    $guaranteedSuccessRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*guaranteed_success_action_completions = clampi\(')
-    if ($guaranteedSuccessRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw guaranteed-success completions outside _restore_activity_progress_counts_from_save().'
-    }
-    $staminaTipHoldRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*stamina_gauge_pre_tip_hold_seconds = clampf\(float\(data\.get\("stamina_gauge_pre_tip_hold_seconds", 0\.0\)\), 0\.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS\)')
-    if ($staminaTipHoldRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw stamina_gauge_pre_tip_hold_seconds outside _restore_stamina_gauge_pre_tip_hold_seconds_from_save().'
-    }
-    $flowHeatRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_heat = clampf\(float\(data\.get\("flow_heat", flow_heat\)\), 0\.0, 36\.0\)')
-    if ($flowHeatRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw music flow state outside AudioDirector.'
-    }
-    $flowActiveSecondsRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_active_action_seconds = maxf\(0\.0, float\(data\.get\("flow_active_action_seconds", flow_active_action_seconds\)\)\)')
-    if ($flowActiveSecondsRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw music flow active seconds outside AudioDirector.'
-    }
+
+    Assert-NoDuplicateRestore '(?m)^\s*activity_start_count = maxi\(0, int\(data\.get\("activity_start_count", 0\)\)\)' 'scripts/main.gd still restores raw activity progress counters outside _restore_activity_progress_counts_from_save().'
+    Assert-NoDuplicateRestore '(?m)^\s*guaranteed_success_action_completions = clampi\(' 'scripts/main.gd still restores raw guaranteed-success completions outside _restore_activity_progress_counts_from_save().'
+    Assert-NoDuplicateRestore '(?m)^\s*stamina_gauge_pre_tip_hold_seconds = clampf\(float\(data\.get\("stamina_gauge_pre_tip_hold_seconds", 0\.0\)\), 0\.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS\)' 'scripts/main.gd still restores raw stamina_gauge_pre_tip_hold_seconds outside _restore_stamina_gauge_pre_tip_hold_seconds_from_save().'
+    Assert-NoDuplicateRestore '(?m)^\s*flow_heat = clampf\(float\(data\.get\("flow_heat", flow_heat\)\), 0\.0, 36\.0\)' 'scripts/main.gd still restores raw music flow state outside AudioDirector.'
+    Assert-NoDuplicateRestore '(?m)^\s*flow_active_action_seconds = maxf\(0\.0, float\(data\.get\("flow_active_action_seconds", flow_active_action_seconds\)\)\)' 'scripts/main.gd still restores raw music flow active seconds outside AudioDirector.'
     if ($mainScript -match '(?m)^\s*"hub_decor_layout":\s*hub_decor_layout,') {
         Add-Finding $errors 'scripts/main.gd still saves raw hub_decor_layout instead of _hub_decor_layout_for_save().'
     }
@@ -895,9 +827,6 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($mainScript.Contains('var loaded_seen = data.get("achievement_toast_seen_ids", {})')) {
         Add-Finding $errors 'scripts/main.gd still restores raw achievement_toast_seen_ids instead of _normalized_achievement_toast_seen_ids().'
     }
-    if ($mainScript.Contains('hub_module_positions.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:')) {
-        Add-Finding $errors 'scripts/main.gd restores hub_module_positions inline instead of HubSurface._normalized_hub_module_positions().'
-    }
     if ($mainScript.Contains('hub_decor_layout.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:')) {
         Add-Finding $errors 'scripts/main.gd restores hub_decor_layout inline instead of HubSurface._normalized_hub_decor_layout().'
     }
@@ -938,10 +867,9 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($leaderboardAuthRetryRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth retry state instead of LeaderboardProfile.restore_auth_metadata_from_save().'
     }
-    foreach ($token in @('var loaded_mastery = data.get("mastery", {})')) {
-        if ($mainScript.Contains($token)) {
-            Add-Finding $errors "scripts/main.gd still contains obsolete raw mastery restore token: $token."
-        }
+    $token = 'var loaded_mastery = data.get("mastery", {})'
+    if ($mainScript.Contains($token)) {
+        Add-Finding $errors "scripts/main.gd still contains obsolete raw mastery restore token: $token."
     }
 }
 

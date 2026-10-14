@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://1h3e1iur5y7r"
-path="res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.ctex"
+path.bptc="res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.bptc.ctex"
+path.astc="res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/mastery-medals/mastery-medal-11-elite-bronze.png"
-dest_files=["res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.ctex"]
+dest_files=["res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.bptc.ctex", "res://.godot/imported/mastery-medal-11-elite-bronze.png-6b74dfbf4107782b65cf4d7beac2c9bf.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

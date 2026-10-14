@@ -5,6 +5,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 
 $runner = Join-Path $projectRoot "scripts\run-godot-test.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\performance-monitor"
+$testUserDataDir = Join-Path $testDir "user-data"
 $testScript = "res://scripts/tests/performance_monitor.gd"
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
@@ -19,6 +20,8 @@ if (Test-Path -LiteralPath $testDir) {
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 try {
 
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
@@ -42,5 +45,10 @@ try {
         throw "A new headless Godot process is still running after the performance monitor test."
     }
 } finally {
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }

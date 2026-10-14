@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://35c5iek8w8xh"
-path="res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.ctex"
+path.bptc="res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.bptc.ctex"
+path.astc="res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/giants/giants-attack-01.png"
-dest_files=["res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.ctex"]
+dest_files=["res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.bptc.ctex", "res://.godot/imported/giants-attack-01.png-d7f5c88177e70f4cae3da75361bf58eb.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

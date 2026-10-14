@@ -19,7 +19,7 @@ if (-not (Test-Path -LiteralPath $adb)) {
     throw "adb not found at $adb"
 }
 
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss-fff"
 $outputDir = Join-Path $OutputRoot $timestamp
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
@@ -67,14 +67,14 @@ Invoke-AdbCapture -AdbArgs @("shell", "run-as", $PackageName, "cat", "files/pend
 if ($LiveSeconds -gt 0) {
     $liveLog = Join-Path $outputDir "logcat-live.txt"
     $liveErr = Join-Path $outputDir "logcat-live.stderr.txt"
-    $args = @()
-    $args += $serialArgs
-    $args += @("logcat", "-v", "threadtime")
+    $args = @($serialArgs) + @("logcat", "-v", "threadtime")
     $process = Start-Process -FilePath $adb -ArgumentList $args -RedirectStandardOutput $liveLog -RedirectStandardError $liveErr -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds $LiveSeconds
     if (-not $process.HasExited) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
+    $process.WaitForExit(5000) | Out-Null
+    $process.Dispose()
 }
 
 if ($BugReport) {

@@ -9,13 +9,30 @@ This project uses Godot and the machine can overheat if too many instances run a
 - Keep at most 4 Godot processes running. The wrapper handles slot waiting and headless defaults.
 - After each Godot command, verify no agent-owned headless process remains. Only terminate headless/non-interactive processes launched by that validation command; leave user windows alone and report unclear ownership.
 - Preferred validation: `.\scripts\check-project.ps1`. For one-off commands, use `.\run-godot-safe.ps1 --path . --quit-after 1`.
-- For player-visible changes, capture and visually inspect the real game at the dimensions being judged before presenting it. When confirming via screenshot, embed the exact inspected PNG inline in the final thread response and include its absolute path as supporting detail. Do not present mockups or helper renders as game screenshots, and reject art that spills outside its visible mask.
+- For player-visible changes, capture and visually inspect the real game at the dimensions being judged before presenting it. "Real game" means the current project running `res://scenes/main.tscn` visibly through `.\run-godot-safe.ps1 --visible-game`, with the changed control reached through the actual game UI. Test-state setup may make the state deterministic, but the captured control must remain in its production scene hierarchy and screen.
+- Never use an isolated control render, manually constructed capture layer, helper scene, hidden main scene, mockup, recreated UI, editor viewport, `SubViewport`, prior screenshot, or composited image as proof of a player-visible change.
+- The submitted PNG must be the raw game viewport capture at the requested or judged pixel dimensions. Do not crop, resize, upscale, stretch, or composite it after capture. Verify the PNG's pixel dimensions before presenting it.
+- If the real game does not boot, the target screen cannot be reached, the control is obscured, or capture times out, screenshot verification is blocked. Report that blocker and do not substitute any other render.
+- When confirming via screenshot, embed the exact inspected PNG inline in the final thread response and include its absolute path as supporting detail. Reject art that spills outside its visible mask.
 - For every player-visible change, the proof screenshot must show the exact changed control(s), tightly enough to judge the change. Do not use a broad or unrelated screen capture as proof. If the changed control is not visibly different or is not clearly present, keep iterating on the code and recapture until the screenshot provides definitive proof; embed that exact inspected PNG in the final response so the user can see it.
+- For animation changes, capture raw frames from the same real-game run and viewport at the relevant before, transition, and settled states. Each frame must independently satisfy the real-game and pixel-dimension rules above.
 - Before a headless import, record `git status --short`; afterward use `git status --porcelain=v1` and restore only tracked `.import` files dirtied by that import.
 
 ## Mobile UI Readability
 
 - Phone-visible text must be readable in a 1080px-wide portrait screenshot without zooming: body text at least 48px, help/status body text at least 52px, and titles at least 60px. If it does not fit, enlarge the container or shorten the copy; check wrapping and overlap in the rendered screenshot.
+- Exception (owner request, 2026-09-27): the open chat overlay deliberately uses 30-40px text (`CHAT_*_FONT_SIZE` in `profile_chat_overlay_surface.gd`) to sit close to the 32px chat strip. Do not raise it back to 48px.
+- Exception (owner request, 2026-10-07): module-expanded stat, medal, berry, and fishing-tool help uses compact 32–38px text. Keep it in the expanded module/tool selector, without full-screen help panels or bottom Close buttons.
+- Verify layout changes with `.\scripts\capture-screen-audit.ps1`, which captures every main screen at 1080x1920 from a sandboxed copy of the desktop save.
+
+## Android Rendering Safety
+
+- Permanent screen-tearing rule: any tearing, split-frame bands, full-screen pixel corruption, or unstable canvas rendering on a physical phone is a hard release blocker. Stop immediately; do not accept, mask, defer, or ship it. Revert the responsible display/rendering change, restore the last known-good viewport configuration, and repeat physical-device validation before release work continues.
+- Keep `project.godot` set to `window/stretch/mode="viewport"`. Do not change it to `canvas_items`; that setting has repeatedly caused severe full-screen pixel tearing in Play Store builds on physical Samsung phones.
+- For the native 1080p Android build, keep both `renderer/rendering_method` and `renderer/rendering_method.mobile` set to `gl_compatibility`. Mobile/Vulkan produced repeatable horizontal framebuffer corruption on a Galaxy S24 Ultra after the 1080p cutover. Do not restore it without explicit physical-device proof.
+- Headless, desktop, emulator, and automated checks cannot clear this risk by themselves. Final rendering acceptance requires the real Android build running without tearing on a physical Samsung phone.
+- Treat any proposed change to the stretch mode, viewport size, stretch aspect, renderer, or Android graphics settings as a release-critical device change. Run `\.\scripts\check-crash-audit-contracts.ps1`, install the preview package with `\.\scripts\install-android-phone-debug.ps1`, and inspect the real game on a physical phone before accepting it.
+- Every Android release must pass `\.\scripts\build-android-release.ps1`, which must refuse to export unless the stretch mode remains `viewport` and both rendering methods remain `gl_compatibility`. Do not bypass or remove those guards to make a build succeed.
 
 ## Animation Scale
 
@@ -41,3 +58,31 @@ This project uses Godot and the machine can overheat if too many instances run a
 ## Audio Safety
 
 - Start new SFX below the regular UI cue volume, avoid stacking loud reward sounds, and validate the combined result in-game rather than only in solo playback.
+
+## Desktop iteration and release packaging
+
+- Brian rejected the initial v0.7.0 desktop UI on October 11, 2026. Continue development in the production game; do not export or package release candidates unless he explicitly asks for them.
+- Desktop navigation should use the mobile game's icon ribbon at the bottom. Avoid a top row of text navigation and duplicate boxed skill selectors.
+- Skill-header colors must blend continuously between columns without visible rectangular gradient edges. Extra space belongs to gameplay; left detail panels and optional right chat are under active design review.
+
+## 0.7.0 patch-note tracking
+
+- Maintain `docs/patch-notes-0.7.0-tracker.md` as the ongoing release-change inventory, and `play-store/docs/release-notes-0.7.0.txt` as its concise player-facing draft. Brian requested ongoing tracking on October 13, 2026.
+- After relevant changes, update final behavior, implementation/acceptance status, and evidence. Preserve unresolved issues and planned work separately; do not describe dual training or other unimplemented requests as shipped.
+- The notes are drafts. Do not invent a release date or infer permission to create release candidates, deploy, or publish from maintaining them.
+
+## Halloween decoration art correction
+
+- On October 14, 2026, Brian rejected the first Halloween decoration sheet because the spider was too detailed and the web outlines were too thin in-game. Use very simple silhouettes, minimal internal detail, and heavy black strokes that remain bold at the final small display size. Do not reuse the rejected decorations.png sheet or treat it as a style reference. Validate new decorations at their actual production UI size before acceptance.
+
+- The subsequent overly simplified geometric purple-spider sheet was also rejected. Heavy stroke must retain the game's illustrated, softly painted character; do not reduce assets to flat geometric clipart. Current spider direction: cute brown fuzzy spider, broad soft tufts and restrained fur detail.
+
+
+## Three-tone art direction, October 14
+
+- Brian clarified that Idle Elite art should use one thick bold black stroke and three color areas per object: main color, highlight, shadow. Avoid inner textures, fur strokes, brush texture, gradients and tiny tonal detail. This supersedes earlier suggestions to add painted texture to the Halloween spider. Keep organic friendly shapes; fuzz is conveyed by a few outer silhouette tufts only.
+
+## Blocked activity stroke consistency, October 14
+
+- Judge artwork outlines at their final in-game size beside ordinary activity borders and titles. A bold style does not authorize oversized black perimeters. Small source textures stretched to full module width must account for that magnification when generated.
+- Keep blocked covers, resource holders and their text visually balanced. Do not thicken text or every surrounding element to compensate for an over-heavy generated cover. Preserve the three-tone direction and use ImageGen for illustrated corrections.

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://kw50g5771lok"
-path="res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.ctex"
+path.bptc="res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.bptc.ctex"
+path.astc="res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/chicken-black-hit.png"
-dest_files=["res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.ctex"]
+dest_files=["res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.bptc.ctex", "res://.godot/imported/chicken-black-hit.png-a13e8881aee3ba6d2ecce009a3debaf5.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

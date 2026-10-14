@@ -51,30 +51,29 @@ $boundaries = @{
     "leaderboard page" = @("_render_leaderboard_page")
     "profile/avatar" = @("_build_profile_overlay", "_profile_avatar_picker_button", "_profile_avatar_texture", "profile_avatar_frame")
 }
+$sourceByBoundary = @{
+    "chat transport" = $onlineRuntime
+    "chat presentation" = $profileChatOverlaySurface
+    "leaderboard page" = $leaderboardPresentation
+    "profile/avatar" = $profileChatOverlaySurface
+    "home/navigation" = $navigationShell
+    "shop/ads" = $navigationShell
+}
+$sourceByFunction = @{
+    "_leaderboard_fetch_category" = $onlineRuntime
+    "_leaderboard_submit_scores" = $onlineRuntime
+    "categories" = $leaderboardState
+    "score_for_category" = $leaderboardState
+}
 
 foreach ($boundary in ($boundaries.Keys | Sort-Object)) {
     foreach ($functionName in $boundaries[$boundary]) {
-        $sourceText = $main
-        if ($boundary -eq "chat transport" -or $functionName -in @("_leaderboard_fetch_category", "_leaderboard_submit_scores")) {
-            $sourceText = $onlineRuntime
-        }
-        if ($boundary -eq "leaderboard networking/data" -and $functionName -in @("categories", "score_for_category")) {
-            $sourceText = $leaderboardState
-        }
-        if ($boundary -eq "home/navigation" -and $functionName -in @("_build_nav_bar", "_show_skills", "_show_shop")) {
-            $sourceText = $navigationShell
-        }
-        if ($boundary -eq "shop/ads" -and $functionName -eq "_shop_unlocked") {
-            $sourceText = $navigationShell
-        }
-        if ($boundary -eq "chat presentation" -and $functionName -in @("_build_chat_strip", "_build_chat_overlay", "_chat_strip_visible_on_current_screen", "_chat_expanded_row", "_chat_expanded_composer", "_process_chat_keyboard_lift", "_update_chat_keyboard_preview")) {
-            $sourceText = $profileChatOverlaySurface
-        }
-        if ($boundary -eq "leaderboard page") {
-            $sourceText = $leaderboardPresentation
-        }
-        if ($boundary -eq "profile/avatar") {
-            $sourceText = $profileChatOverlaySurface
+        $sourceText = if ($sourceByFunction.ContainsKey($functionName)) {
+            $sourceByFunction[$functionName]
+        } elseif ($sourceByBoundary.ContainsKey($boundary)) {
+            $sourceByBoundary[$boundary]
+        } else {
+            $main
         }
         Assert-FunctionExists $sourceText $functionName $boundary
         Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "UI boundary map must mention $functionName."
@@ -98,39 +97,36 @@ Assert-True ($navigationShell -match 'shop_tab\.pressed\.connect\(_activate_bott
 Assert-True ($navigationShell -notmatch 'settings_tab\.pressed\.connect\(host\._show_settings\)') "Bottom gray Settings red-X must not be wired directly back to Settings."
 Assert-True ($navigationShell -match 'host\.skills_tab\.pressed\.connect\(_show_skills_module\)') "Bottom gray Skills nav button must open the selected skill module page."
 Assert-True ($navigationShell -notmatch 'skills_tab\.pressed\.connect\(host\._show_skills\)') "Bottom gray Skills nav button must not open the skills overview."
-$activateBottomNavMatch = [regex]::Match($navigationShell, '(?s)func _activate_bottom_nav_target\(target_screen: String, source_button: Control\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$activateBottomNavMatch = [regex]::Match($navigationShell, '(?s)^func _activate_bottom_nav_target\(target_screen: String, source_button: Control\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($activateBottomNavMatch.Success) "Missing _activate_bottom_nav_target body for bottom nav routing contract."
 Assert-True ($activateBottomNavMatch.Groups[1].Value -match '_bottom_nav_open_close_returns_to_skill\(target_screen, source_button\)') "Active red-X bottom nav buttons must route back to the selected skill detail page."
 Assert-True ($activateBottomNavMatch.Groups[1].Value -match '_show_skills_module\(\)') "Active red-X bottom nav buttons must use the skill module/detail route, not the skills overview."
-$bottomNavCloseMatch = [regex]::Match($navigationShell, '(?s)func _bottom_nav_open_close_returns_to_skill\(target_screen: String, source_button: Control\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$bottomNavCloseMatch = [regex]::Match($navigationShell, '(?s)^func _bottom_nav_open_close_returns_to_skill\(target_screen: String, source_button: Control\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($bottomNavCloseMatch.Success) "Missing _bottom_nav_open_close_returns_to_skill body for red-X bottom nav routing contract."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match 'target_screen == "skill"') "Stats/skills nav button must remain exempt from red-X close routing."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match '_is_bottom_nav_button\(nav_button\)') "Red-X close routing must only apply to built-in bottom nav buttons."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match '_bottom_nav_target_for_button\(nav_button\) != target_screen') "Red-X close routing must confirm the pressed button owns the requested target screen."
-$showSkillsModuleMatch = [regex]::Match($navigationShell, '(?s)func _show_skills_module\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$showSkillsModuleMatch = [regex]::Match($navigationShell, '(?s)^func _show_skills_module\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($showSkillsModuleMatch.Success) "Missing _show_skills_module body for bottom Skills nav contract."
 Assert-True ($showSkillsModuleMatch.Groups[1].Value -notmatch '_begin_direct_skill_nav_cover\(\)') "Bottom gray Skills nav button must not show the direct cream transition cover."
 Assert-True ($showSkillsModuleMatch.Groups[1].Value -match 'previous_screen == "home" or previous_screen == "achievements"') "Bottom gray Skills nav button must treat Home/Achievements as revealable top-level pages."
 Assert-True ($showSkillsModuleMatch.Groups[1].Value -match 'current_screen = "skill"') "Bottom gray Skills nav button must commit to the selected skill detail screen before rendering."
-$directSkillNavCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)func _begin_direct_skill_nav_cover\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$directSkillNavCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_direct_skill_nav_cover\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($directSkillNavCoverMatch.Success) "Missing _begin_direct_skill_nav_cover body for direct skill transition contract."
 Assert-True ($directSkillNavCoverMatch.Groups[1].Value -match '_navigation_shell\(\)\._apply_skill_page_cover_bounds\(cover, true\)') "Direct skill transition cover must stop above global chat and bottom nav."
-$paperFadeMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)func _ensure_skill_swipe_paper_fade_overlay\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-Assert-True ($paperFadeMatch.Success) "Missing _ensure_skill_swipe_paper_fade_overlay body for swipe cover layering contract."
-Assert-True ($paperFadeMatch.Groups[1].Value -match '_navigation_shell\(\)\._apply_skill_page_cover_bounds\(skill_swipe_paper_fade_overlay, true\)') "Swipe paper fade overlay must cover bottom interactive UI."
-Assert-True ($paperFadeMatch.Groups[1].Value -match '_ensure_skill_nav_cover_layer\(\)\.add_child\(skill_swipe_paper_fade_overlay\)') "Swipe paper fade overlay must draw above bottom interactive UI."
-$globalBottomCoverMatch = [regex]::Match($navigationShell, '(?s)func _global_chat_nav_cover_bottom_offset\(\) -> float:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$globalBottomCoverMatch = [regex]::Match($navigationShell, '(?s)^func _global_chat_nav_cover_bottom_offset\(\) -> float:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($globalBottomCoverMatch.Success) "Missing _global_chat_nav_cover_bottom_offset body for global bottom UI layering contract."
 Assert-True ($globalBottomCoverMatch.Groups[1].Value -match '\[host\._profile_chat_overlay_surface\(\)\.chat_strip_control\(\), nav_bar\]') "Swipe covers must stop above global chat and bottom nav."
-$outgoingCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)func _begin_skill_swipe_outgoing_cover\(\) -> Control:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$outgoingCoverMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_skill_swipe_outgoing_cover\(\) -> Control:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($outgoingCoverMatch.Success) "Missing _begin_skill_swipe_outgoing_cover body for swipe release handoff contract."
-Assert-True ($outgoingCoverMatch.Groups[1].Value -match 'holder\.modulate = Color\(1\.0, 1\.0, 1\.0, 0\.0\) if _skill_swipe_activity_surface\(\)\._paper_fade_hold_active\(\) else Color\.WHITE') "Committed swipe release must not flash the outgoing page above the paper fade."
-$incomingEntryMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)func _begin_skill_swipe_incoming_entry\(start_x: float\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+Assert-True ($outgoingCoverMatch.Groups[1].Value -match 'holder\.modulate = Color\.WHITE') "Committed swipe release must show the outgoing page at full opacity under the cover."
+$incomingEntryMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)^func _begin_skill_swipe_incoming_entry\(start_x: float\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($incomingEntryMatch.Success) "Missing _begin_skill_swipe_incoming_entry body for directional swipe entry contract."
 Assert-True ($incomingEntryMatch.Groups[1].Value -match 'tween_method\(\s*_apply_skill_swipe_drag_offset,\s*start_x,\s*0\.0,') "Incoming skill page must slide from the swipe direction into center."
-Assert-True ($skillSwipeActivitySurface -match '_begin_skill_swipe_incoming_entry\((?:gap_entry_x if use_gap_load_transition else )?float\(signi\(offset\)\) \* _skill_swipe_page_span\(\)\)') "Normal skill swipe navigation must use a directional incoming entry."
-$fishingOfferRouterMatch = [regex]::Match($fishingUiSurface, '(?s)func _route_fishing_offer_button_global_input\(event: InputEvent\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-Assert-True ($fishingOfferRouterMatch.Success) "Missing fishing offer global input router."
-Assert-True ($fishingOfferRouterMatch.Groups[1].Value -match '_position_inside_bottom_interactive_ui\(event_position\)') "Fishing offer global input must not consume module utility, chat, or nav taps."
+Assert-True ($skillSwipeActivitySurface -match '_begin_skill_swipe_incoming_entry\(gap_entry_x\)') "Normal skill swipe navigation must use a directional incoming entry."
+Assert-True ($skillSwipeActivitySurface -match 'var gap_entry_x := float\(signi\(offset\)\) \* _skill_swipe_page_span\(\) if use_outgoing_animation else 0\.0') "Normal skill swipe incoming entry must start from the swipe direction."
+Assert-True ($fishingUiSurface -match 'func _connect_fishing_button\(') "Fishing controls must share native button handling."
+Assert-True ($fishingUiSurface -notmatch 'func _route_fishing_offer_button_global_input\(') "Fishing offers must not intercept global pointer input."
+Assert-True ($fishingUiSurface -match '_connect_fishing_button\(button, _activate_fishing_offer_button.bind') "Fishing offers must activate through their native button."
 
 Write-Output "ui-boundary-contracts-ok"

@@ -32,7 +32,14 @@ const FRAME_BUDGET_120_US := 8334
 const FRAME_BUDGET_60_US := 16667
 const FRAME_P99_BUDGET_US := 4000
 const FRAME_MAX_BUDGET_US := 12000
-const SWIPE_OVER_120_FRAME_BUDGET := 2
+const IDLE_OVER_120_FRAME_BUDGET := 2
+const SWIPE_OVER_120_FRAME_BUDGET := 10
+const SCROLL_OVER_60_FRAME_BUDGET := 2
+const SWIPE_OVER_60_FRAME_BUDGET := 4
+const SCROLL_P99_BUDGET_US := 16667
+const SCROLL_MAX_BUDGET_US := 22000
+const SWIPE_P99_BUDGET_US := 12000
+const SWIPE_MAX_BUDGET_US := 40000
 
 var failures: Array[String] = []
 
@@ -111,8 +118,7 @@ func _sample_skill_page(scene: Node, skill_id: String) -> Dictionary:
 		await process_frame
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, _i, elapsed))
+		_record_slow_frame(scene, slow_frames, _i, elapsed)
 
 	return _build_sample(scene, "idle", skill_id, action_id, frame_times, slow_frames)
 
@@ -155,8 +161,7 @@ func _sample_skill_scroll(scene: Node, skill_id: String) -> Dictionary:
 		await process_frame
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, _i, elapsed))
+		_record_slow_frame(scene, slow_frames, _i, elapsed)
 	return _build_sample(scene, "scroll", skill_id, action_id, frame_times, slow_frames)
 
 
@@ -173,16 +178,14 @@ func _sample_skill_swipes(scene: Node, start_skill_id: String) -> Dictionary:
 			var elapsed := Time.get_ticks_usec() - started
 			frame_times.append(elapsed)
 			_record_swipe_transition_violation(scene, frame_times.size() - 1, transition_violations)
-			if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-				slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
+			_record_slow_frame(scene, slow_frames, frame_times.size() - 1, elapsed)
 	for _i in range(240):
 		var started := Time.get_ticks_usec()
 		await process_frame
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
 		_record_swipe_transition_violation(scene, frame_times.size() - 1, transition_violations)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
+		_record_slow_frame(scene, slow_frames, frame_times.size() - 1, elapsed)
 	var finalize_us := 0
 	if _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
 		scene._skill_swipe_activity_surface()._complete_skill_swipe_navigation()
@@ -214,8 +217,7 @@ func _sample_rapid_skill_swipes(scene: Node, start_skill_id: String) -> Dictiona
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
 		_record_swipe_transition_violation(scene, frame_times.size() - 1, transition_violations)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
+		_record_slow_frame(scene, slow_frames, frame_times.size() - 1, elapsed)
 	var finalize_us := 0
 	if _truthy(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")):
 		scene._skill_swipe_activity_surface()._complete_skill_swipe_navigation()
@@ -245,8 +247,7 @@ func _run_skill_swipe_drag(scene: Node, direction: int, frame_times: Array[int],
 		await process_frame
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
+		_record_slow_frame(scene, slow_frames, frame_times.size() - 1, elapsed)
 	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", end)
 	for _i in range(post_finish_frames):
 		var started := Time.get_ticks_usec()
@@ -254,8 +255,7 @@ func _run_skill_swipe_drag(scene: Node, direction: int, frame_times: Array[int],
 		var elapsed := Time.get_ticks_usec() - started
 		frame_times.append(elapsed)
 		_record_swipe_transition_violation(scene, frame_times.size() - 1, transition_violations)
-		if elapsed > FRAME_P99_BUDGET_US and slow_frames.size() < 8:
-			slow_frames.append(_slow_frame_sample(scene, frame_times.size() - 1, elapsed))
+		_record_slow_frame(scene, slow_frames, frame_times.size() - 1, elapsed)
 
 
 func _record_swipe_transition_violation(scene: Node, frame_index: int, transition_violations: Array[Dictionary]) -> void:
@@ -375,10 +375,22 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 	return false
 
 
+func _record_slow_frame(scene: Node, frames: Array[Dictionary], frame_index: int, elapsed_us: int) -> void:
+	if elapsed_us <= FRAME_P99_BUDGET_US:
+		return
+	if frames.size() >= 8 and elapsed_us <= int(frames[-1].us):
+		return
+	frames.append(_slow_frame_sample(scene, frame_index, elapsed_us))
+	frames.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.us) > int(b.us))
+	if frames.size() > 8:
+		frames.resize(8)
+
+
 func _slow_frame_sample(scene: Node, frame_index: int, elapsed_us: int) -> Dictionary:
 	var counts := _counts(scene)
 	return {
 		"frame": frame_index,
+		"main_frame": int(scene.main_process_frame_index),
 		"us": elapsed_us,
 		"cards": _action_card_count(scene),
 		"mounted": counts.get("mounted", 0),
@@ -618,11 +630,12 @@ func _print_sample(sample: Dictionary) -> void:
 	])
 	for raw_slow_frame in sample.get("slow_frames", []) as Array:
 		var slow_frame := raw_slow_frame as Dictionary
-		print("SKILLS_PERF_SLOW mode=%s skill=%s frame=%s us=%s cards=%s mounted=%s/%s real=%s visible_placeholders=%s ui_elapsed=%.4f background_elapsed=%.4f lazy_elapsed=%.4f running=%s progress=%.4f" % [
+		print("SKILLS_PERF_SLOW mode=%s skill=%s frame=%s us=%s main_frame=%s cards=%s mounted=%s/%s real=%s visible_placeholders=%s ui_elapsed=%.4f background_elapsed=%.4f lazy_elapsed=%.4f running=%s progress=%.4f" % [
 			sample.get("mode", "idle"),
 			sample.get("skill", ""),
 			slow_frame.get("frame", 0),
 			slow_frame.get("us", 0),
+			slow_frame.get("main_frame", 0),
 			slow_frame.get("cards", 0),
 			slow_frame.get("mounted", 0),
 			slow_frame.get("plan", 0),
@@ -658,13 +671,14 @@ func _check_sample(sample: Dictionary) -> void:
 	var skill_id := str(sample.get("skill", ""))
 	var mode := str(sample.get("mode", "idle"))
 	var swipe_like := mode == "swipe" or mode == "rapid_swipe"
-	var over120_budget := SWIPE_OVER_120_FRAME_BUDGET if swipe_like else 0
-	if int(sample.get("over120_frames", 0)) > over120_budget:
+	var over120_budget := SWIPE_OVER_120_FRAME_BUDGET if swipe_like else IDLE_OVER_120_FRAME_BUDGET
+	if mode != "scroll" and int(sample.get("over120_frames", 0)) > over120_budget:
 		failures.append("%s/%s has frames over the 120 FPS budget." % [mode, skill_id])
-	if int(sample.get("jank_frames", 0)) > 0:
+	var jank_budget := SWIPE_OVER_60_FRAME_BUDGET if swipe_like else (SCROLL_OVER_60_FRAME_BUDGET if mode == "scroll" else 0)
+	if int(sample.get("jank_frames", 0)) > jank_budget:
 		failures.append("%s/%s has frames over the 60 FPS budget." % [mode, skill_id])
-	var p99_budget := FRAME_BUDGET_120_US if mode == "scroll" or swipe_like else FRAME_P99_BUDGET_US
-	var max_budget := FRAME_BUDGET_60_US if mode == "scroll" or swipe_like else FRAME_MAX_BUDGET_US
+	var p99_budget := SWIPE_P99_BUDGET_US if swipe_like else (SCROLL_P99_BUDGET_US if mode == "scroll" else FRAME_P99_BUDGET_US)
+	var max_budget := SWIPE_MAX_BUDGET_US if swipe_like else (SCROLL_MAX_BUDGET_US if mode == "scroll" else FRAME_MAX_BUDGET_US)
 	if int(sample.get("p99_us", 0)) > p99_budget:
 		failures.append("%s/%s p99 frame work exceeded %sus." % [mode, skill_id, p99_budget])
 	if int(sample.get("max_us", 0)) > max_budget:

@@ -1,6 +1,5 @@
 class_name AchievementState
 
-const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
@@ -17,9 +16,9 @@ const TIER_SUPPORT_GOALS := [
 const ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT := 0.01
 const _MEDAL_BUFF_STAMINA_SOFT_CAP := 0.72
 const _MEDAL_BUFF_TIME_SOFT_CAP := 0.62
-
-
 static func skill_medal_counts(host: Node, skill_id: String) -> Dictionary:
+	var cache_key := "skill_medal_counts:%s:%s" % [host._action_runtime().stat_cache_version, skill_id]
+	if host.reward_bonus_cache.has(cache_key): return host.reward_bonus_cache[cache_key]
 	var actions: Array = mastery_actions_for_skill(host, skill_id)
 	var tiers := []
 	for _i in range(host.MASTERY_MAX_LEVEL):
@@ -28,15 +27,21 @@ static func skill_medal_counts(host: Node, skill_id: String) -> Dictionary:
 	for action in actions:
 		var level: int = _mastery_level_for_action(host, skill_id, action as Dictionary)
 		cumulative += level
-		for tier in range(1, host.MASTERY_MAX_LEVEL + 1):
-			if level >= tier:
-				tiers[tier - 1] = int(tiers[tier - 1]) + 1
-	return {
+		if level > 0:
+			var tier_index := mini(level, host.MASTERY_MAX_LEVEL) - 1
+			tiers[tier_index] = int(tiers[tier_index]) + 1
+	# A higher medal also counts toward every lower tier. Accumulate once per tier
+	# instead of visiting every tier for every activity on each completion.
+	for tier_index in range(tiers.size() - 2, -1, -1):
+		tiers[tier_index] = int(tiers[tier_index]) + int(tiers[tier_index + 1])
+	var counts := {
 		"actions": actions.size(),
 		"earned": cumulative,
 		"possible": actions.size() * host.MASTERY_MAX_LEVEL,
 		"tiers": tiers
 	}
+	host.reward_bonus_cache[cache_key] = counts
+	return counts
 
 
 static func skill_medal_max_stamina_bonus(host: Node, skill_id: String) -> int:
@@ -57,14 +62,9 @@ static func all_medal_counts(host: Node) -> Dictionary:
 
 static func skill_level_completion_counts(host: Node) -> Dictionary:
 	var earned := 0
-	var possible := 0
 	for def in host.skill_defs:
-		var level_targets := AchievementPresentation.skill_level_targets()
-		possible += level_targets.size()
-		for target in level_targets:
-			if SkillState.host_skill_level(host, str(def["id"])) >= int(target):
-				earned += 1
-	return {"earned": earned, "possible": possible}
+		earned += clampi(SkillState.host_skill_level(host, str(def["id"])) - 1, 0, 98)
+	return {"earned": earned, "possible": host.skill_defs.size() * 98}
 
 
 static func elite_completion_counts(host: Node) -> Dictionary:
@@ -88,7 +88,7 @@ static func most_impressive_activity(host: Node) -> Dictionary:
 			var level := MasteryState.level(host.mastery, host._action_key(skill_id, action_id))
 			if level <= 0:
 				continue
-			var seconds_required := float(action.get("seconds", 1.0)) * float(MasteryState.xp_for_level(level))
+			var seconds_required := float(action.get("seconds", 1.0)) * ceilf(float(MasteryState.xp_for_level(level)) / MasteryState.xp_reward(action))
 			if seconds_required > best_score or (is_equal_approx(seconds_required, best_score) and level > best_level):
 				best_score = seconds_required
 				best_level = level
@@ -106,9 +106,7 @@ static func most_impressive_activity(host: Node) -> Dictionary:
 
 static func global_medal_buff_lines(host: Node) -> String:
 	var lines := active_global_buff_lines(host)
-	if lines.is_empty():
-		return "Earn your first Bronze medal to unlock the first global buff."
-	return "\n".join(lines)
+	return "\n".join(lines) if not lines.is_empty() else "Earn your first Bronze medal to unlock the first global buff."
 
 
 static func active_global_buff_lines(host: Node) -> Array:
@@ -181,24 +179,20 @@ static func mastery_actions_for_skill(host: Node, skill_id: String) -> Array:
 	var actions := []
 	for action in host.actions_by_skill.get(skill_id, []):
 		var action_data := action as Dictionary
-		if host._passive_modules_runtime().is_passive_action(action_data):
+		if not MasteryState.action_has_mastery(host, action_data):
 			continue
 		actions.append(action_data)
 	return actions
 
 
 static func milestones(host: Node, include_log_only := true) -> Array:
-	return _build_all_milestones(milestone_context(host), include_log_only)
+	return _build_all_milestones(milestone_context(host, include_log_only), include_log_only)
 
 
 static func milestone_context(host: Node, include_action_records := true) -> Dictionary:
-	return {
-		"total_counts": all_medal_counts(host),
+	var context := {
 		"total_level": SkillState.global_level(host.skills),
 		"max_total_level": host.skill_defs.size() * 99,
-		"action_medal_records": action_medal_records(host) if include_action_records else [],
-		"tier_counts": all_medal_tier_counts(host),
-		"total_activity_count": total_activity_count(host),
 		"activity_crit_seen": host.activity_crit_seen,
 		"activity_mega_crit_seen": host.activity_mega_crit_seen,
 		"crit_reward_text": "Reward: +%s%% crit chance" % GameFormatting.percent_points(ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT * 100.0),
@@ -207,6 +201,21 @@ static func milestone_context(host: Node, include_action_records := true) -> Dic
 		"medal_names": MasteryState.MEDAL_NAMES,
 		"medal_accents": medal_accent_hexes()
 	}
+	if include_action_records:
+		context["total_counts"] = all_medal_counts(host)
+		context["action_medal_records"] = action_medal_records(host)
+		context["tier_counts"] = all_medal_tier_counts(host)
+		context["total_activity_count"] = total_activity_count(host)
+	else:
+		var medal_summary: Dictionary = all_medal_summary(host)
+		context["total_counts"] = {
+			"earned": int(medal_summary["earned"]),
+			"possible": int(medal_summary["possible"])
+		}
+		context["action_medal_records"] = []
+		context["tier_counts"] = medal_summary["tiers"]
+		context["total_activity_count"] = int(medal_summary["activity_count"])
+	return context
 
 
 static func action_medal_records(host: Node) -> Array:
@@ -242,21 +251,11 @@ static func medal_accent_hexes() -> Array:
 
 
 static func visible_host_milestones(host: Node, hide_completed: bool) -> Array:
-	if hide_completed:
-		return visible_host_milestones_fast(host)
-	return visible_milestones(milestones(host, false), hide_completed)
+	return visible_host_milestones_fast(host) if hide_completed else visible_milestones(milestones(host, false), false)
 
 
 static func visible_host_milestones_fast(host: Node) -> Array:
-	var context := milestone_context(host, false)
-	var medal_summary: Dictionary = all_medal_summary(host)
-	context["total_counts"] = {
-		"earned": int(medal_summary["earned"]),
-		"possible": int(medal_summary["possible"])
-	}
-	context["tier_counts"] = medal_summary["tiers"]
-	context["total_activity_count"] = int(medal_summary["activity_count"])
-	return _build_visible_fast_milestones(context)
+	return _build_visible_fast_milestones(milestone_context(host, false))
 
 
 static func _build_all_milestones(context: Dictionary, include_log_only := true) -> Array:
@@ -411,15 +410,19 @@ static func _append_crit_milestones(milestone_list: Array, context: Dictionary, 
 	var crit_reward_text := str(context.get("crit_reward_text", "Reward: crit chance"))
 	var crit_reward_amount := float(context.get("crit_reward_amount", 0.0))
 	if not first_incomplete_only or not crit_seen:
-		milestone_list.append(_crit_milestone("activity-crit", "Critical Success", "Land your first CRIT!!", crit_reward_text, crit_reward_amount, crit_seen, 1, "#67b8ff"))
+		milestone_list.append(_crit_milestone("activity-crit", "Critical Success", "Land your first CRIT!!", crit_reward_text, crit_reward_amount, crit_seen, 1, "#67b8ff", "Your first CRIT!", "Lucky roll: that activity earned 3x XP."))
 	if first_incomplete_only and not crit_seen:
 		return
 	if not first_incomplete_only or not mega_crit_seen:
-		milestone_list.append(_crit_milestone("activity-mega-crit", "Mega Critical Success", "Land your first MEGA CRIT!!!!", crit_reward_text, crit_reward_amount, mega_crit_seen, 2, "#fff052"))
+		milestone_list.append(_crit_milestone("activity-mega-crit", "Mega Critical Success", "Land your first MEGA CRIT!!!!", crit_reward_text, crit_reward_amount, mega_crit_seen, 2, "#fff052", "Your first MEGA CRIT!", "Super lucky roll: that activity earned 9x XP."))
 
 
-static func _crit_milestone(id: String, title: String, subtitle: String, reward: String, reward_amount: float, completed: bool, medal_level: int, accent: String) -> Dictionary:
+# toast_title/toast_detail explain surprise events to a player who did not
+# trigger them on purpose; the achievements list keeps the shorter goal copy.
+static func _crit_milestone(id: String, title: String, subtitle: String, reward: String, reward_amount: float, completed: bool, medal_level: int, accent: String, toast_title := "", toast_detail := "") -> Dictionary:
 	return {
+		"toast_title": toast_title,
+		"toast_detail": toast_detail,
 		"id": id,
 		"chain_key": "activity-crits",
 		"kind": "activity_crit",
@@ -453,23 +456,11 @@ static func _stamina_reward_text(amount: int) -> String:
 
 
 static func _total_level_stamina(target: int) -> int:
-	if target >= 250:
-		return 4
-	if target >= 100:
-		return 3
-	if target >= 50:
-		return 2
-	return 1
+	return 4 if target >= 250 else (3 if target >= 100 else (2 if target >= 50 else 1))
 
 
 static func _cumulative_medal_stamina(target: int) -> int:
-	if target >= 500:
-		return 5
-	if target >= 100:
-		return 3
-	if target >= 25:
-		return 2
-	return 1
+	return 5 if target >= 500 else (3 if target >= 100 else (2 if target >= 25 else 1))
 
 
 static func _tier_count_target(tier: int) -> int:
@@ -477,11 +468,7 @@ static func _tier_count_target(tier: int) -> int:
 
 
 static func _tier_count_stamina(tier: int) -> int:
-	if tier >= 9:
-		return 3
-	if tier >= 5:
-		return 2
-	return 1
+	return 3 if tier >= 9 else (2 if tier >= 5 else 1)
 
 
 static func _total_level_reward_text(target: int) -> String:
@@ -509,17 +496,38 @@ static func normalized_seen_ids(value: Variant) -> Dictionary:
 	return seen_ids
 
 
-static func completed_ids(milestones: Array) -> Dictionary:
+static func completed_public_ids_fast(host: Node) -> Dictionary:
 	var completed := {}
-	for raw_achievement in milestones:
-		if typeof(raw_achievement) != TYPE_DICTIONARY:
-			continue
-		var achievement := raw_achievement as Dictionary
-		var id := str(achievement.get("id", ""))
-		if id.is_empty() or not is_completed_public(achievement):
-			continue
-		completed[id] = true
+	var total_level := SkillState.global_level(host.skills)
+	for target in TOTAL_LEVEL_TARGETS:
+		var target_int := int(target)
+		if total_level >= target_int:
+			completed["total-level-%s" % target_int] = true
+	var medal_summary: Dictionary = all_medal_summary(host)
+	var tier_counts: Array = medal_summary.get("tiers", []) as Array
+	for tier_index in range(mini(host.MASTERY_MAX_LEVEL, tier_counts.size())):
+		var tier := tier_index + 1
+		var target := _tier_count_target(tier)
+		if int(tier_counts[tier_index]) >= target:
+			completed["tier-count-%s-%s" % [tier, target]] = true
+	var cumulative := int(medal_summary.get("earned", 0))
+	for target in CUMULATIVE_TARGETS:
+		var target_int := int(target)
+		if cumulative >= target_int:
+			completed["cumulative-%s" % target_int] = true
+	if host.activity_crit_seen:
+		completed["activity-crit"] = true
+	if host.activity_mega_crit_seen:
+		completed["activity-mega-crit"] = true
 	return completed
+
+
+static func newly_completed_fast(host: Node, before: Dictionary) -> Array:
+	var after := completed_public_ids_fast(host)
+	for raw_id in after.keys():
+		if not bool(before.get(raw_id, false)):
+			return newly_completed(milestones(host, false), before)
+	return []
 
 
 static func newly_completed(milestones: Array, before: Dictionary) -> Array:
@@ -568,24 +576,41 @@ static func global_reward_bonus(host: Node, stat: String, skill_id := "") -> flo
 	var cache_key := "%s|%s|%s" % [host._action_runtime().stat_cache_version, stat, skill_id]
 	if host.reward_bonus_cache.has(cache_key):
 		return float(host.reward_bonus_cache[cache_key])
-	var value := global_medal_bonus(host, stat) + reward_bonus(milestones(host), stat, skill_id)
+	var value := global_medal_bonus(host, stat) + reward_bonus(_cached_reward_milestones(host), stat, skill_id)
 	host.reward_bonus_cache[cache_key] = value
 	return value
 
 
+static func _cached_reward_milestones(host: Node) -> Array:
+	# Every stat and skill uses the same achievement snapshot until bonuses change.
+	var version: int = host._action_runtime().stat_cache_version
+	var snapshot: Dictionary = host.reward_bonus_cache.get("milestone_snapshot", {})
+	if int(snapshot.get("version", -1)) != version:
+		snapshot = {"version": version, "milestones": milestones(host, false)}
+		host.reward_bonus_cache["milestone_snapshot"] = snapshot
+	return snapshot["milestones"] as Array
+
+
 static func global_medal_tier_unlocked(host: Node, level: int) -> bool:
-	for key in host.mastery.keys():
-		var entry = host.mastery[key]
-		if typeof(entry) == TYPE_DICTIONARY and int(entry.get("level", 0)) >= level:
-			return true
+	for raw_key in host.mastery.keys():
+		var entry = host.mastery[raw_key]
+		# Most saved activities have no medal. Reject those before resolving
+		# action definitions and mastery eligibility for every global stat.
+		if typeof(entry) != TYPE_DICTIONARY or int(entry.get("level", 0)) < level:
+			continue
+		var parts := str(raw_key).split(":", false, 1)
+		if parts.size() != 2 or not MasteryState.action_has_mastery(host, host._action_data(parts[0], parts[1])):
+			continue
+		return true
 	return false
 
 
 static func global_medal_bonus(host: Node, stat: String) -> float:
 	var total := 0.0
 	for buff in MasteryState.GLOBAL_MEDAL_BUFFS:
-		if str((buff as Dictionary).get("stat", "")) == stat and global_medal_tier_unlocked(host, int((buff as Dictionary).get("level", 0))):
-			total += float((buff as Dictionary).get("amount", 0.0))
+		var buff_def := buff as Dictionary
+		if str(buff_def.get("stat", "")) == stat and global_medal_tier_unlocked(host, int(buff_def.get("level", 0))):
+			total += float(buff_def.get("amount", 0.0))
 	return total
 
 
@@ -633,6 +658,8 @@ static func action_tier(host: Node, action: Dictionary) -> int:
 
 
 static func tier_medal_counts(host: Node, skill_id: String, tier: int) -> Dictionary:
+	var cache_key := "tier_medal_counts:%s:%s:%s" % [host._action_runtime().stat_cache_version, skill_id, tier]
+	if host.reward_bonus_cache.has(cache_key): return host.reward_bonus_cache[cache_key]
 	var earned := 0
 	var possible := 0
 	var gold_plus := 0
@@ -653,7 +680,9 @@ static func tier_medal_counts(host: Node, skill_id: String, tier: int) -> Dictio
 		for medal_tier in range(1, host.MASTERY_MAX_LEVEL + 1):
 			if medal_level >= medal_tier:
 				medal_tiers[medal_tier - 1] = int(medal_tiers[medal_tier - 1]) + 1
-	return {"actions": actions, "earned": earned, "possible": possible, "gold_plus": gold_plus, "tiers": medal_tiers}
+	var counts := {"actions": actions, "earned": earned, "possible": possible, "gold_plus": gold_plus, "tiers": medal_tiers}
+	host.reward_bonus_cache[cache_key] = counts
+	return counts
 
 
 static func _mastery_level_for_action(host: Node, skill_id: String, action: Dictionary) -> int:
@@ -702,48 +731,27 @@ static func tier_support_goals_from_counts(counts: Dictionary, target_tier: int)
 
 
 static func activity_tier_stamina_cost_reduction(host: Node, skill_id: String, action: Dictionary) -> float:
-	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "stamina"), 0.0, 0.30)
+	return clampf(tier_support_bonus(host, skill_id, action_tier(host, action), "stamina"), 0.0, 0.30)
 
 
 static func activity_tier_time_reduction(host: Node, skill_id: String, action: Dictionary) -> float:
-	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "time"), 0.0, 0.25)
+	return clampf(tier_support_bonus(host, skill_id, action_tier(host, action), "time"), 0.0, 0.25)
 
 
 static func activity_tier_accuracy_bonus(host: Node, skill_id: String, action: Dictionary) -> float:
-	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "accuracy"), 0.0, 35.0)
-
-
-static func tier_support_lines(host: Node, skill_id: String, source_tier: int) -> Array:
-	var lines := []
-	for raw_goal in tier_support_goals(host, skill_id, source_tier):
-		var goal := raw_goal as Dictionary
-		if bool(goal.get("completed", false)):
-			lines.append(str(goal.get("reward_text", "")))
-	return lines
-
-
-static func next_tier_support_threshold_line(host: Node, skill_id: String, source_tier: int) -> String:
-	for raw_goal in tier_support_goals(host, skill_id, source_tier):
-		var goal := raw_goal as Dictionary
-		var needed := int(goal.get("possible", 0)) - int(goal.get("earned", 0))
-		if needed > 0:
-			return "%s on %s more Tier %s activities: %s" % [str(goal.get("medal", "Medal")), needed, source_tier, str(goal.get("reward_text", ""))]
-	return "All Tier %s support bonuses active." % source_tier
+	return clampf(tier_support_bonus(host, skill_id, action_tier(host, action), "accuracy"), 0.0, 35.0)
 
 
 static func _tier_threshold_bonus_text(threshold: Dictionary, target_tier: int) -> String:
 	var stat := str(threshold.get("stat", ""))
 	var amount := float(threshold.get("amount", 0.0))
 	if stat == "accuracy":
-		return "+%s%% Tier %s accuracy" % [GameFormatting.percent_points(amount), target_tier]
+		return "+%s%% T%s accuracy" % [GameFormatting.percent_points(amount), target_tier]
 	if stat == "stamina":
-		return "-%s%% Tier %s stamina cost" % [GameFormatting.percent_points(amount * 100.0), target_tier]
+		return "-%s%% T%s stamina cost" % [GameFormatting.percent_points(amount * 100.0), target_tier]
 	if stat == "time":
-		return "+%s%% Tier %s speed" % [GameFormatting.percent_points(amount * 100.0), target_tier]
-	return "Tier %s support" % target_tier
+		return "T%s: %s%% less time" % [target_tier, GameFormatting.percent_points(amount * 100.0)]
+	return "T%s support" % target_tier
 
 
 static func activity_medal_buff_total(host: Node, skill_id: String, action: Dictionary, effect: String) -> float:
@@ -761,9 +769,7 @@ static func activity_medal_buff_total(host: Node, skill_id: String, action: Dict
 
 static func activity_medal_buff_contributions(host: Node, skill_id: String, action: Dictionary, effect: String) -> Array:
 	var action_id := str(action.get("id", ""))
-	if skill_id.is_empty() or action_id.is_empty():
-		return []
-	if host._passive_modules_runtime().is_passive_action(action):
+	if skill_id.is_empty() or action_id.is_empty() or host._passive_modules_runtime().is_passive_action(action):
 		return []
 	var is_event_target: bool = host._is_event_action(action)
 	var playable_actions := playable_actions_for_medal_buffs_including_event(host, skill_id, action) if is_event_target else playable_actions_for_medal_buffs(host, skill_id)
@@ -784,16 +790,16 @@ static func _medal_buff_contributions(playable_actions: Array, target_index: int
 	for i in range(playable_actions.size()):
 		if i == target_index:
 			continue
+		var distance := target_index - i
+		var per_tier := _medal_buff_per_tier(distance, effect)
+		if per_tier <= 0.0:
+			continue
 		var source_action := playable_actions[i] as Dictionary
 		var source_action_id := str(source_action.get("id", ""))
 		if source_action_id.is_empty():
 			continue
 		var medal_tier := clampi(int(mastery_level.call(source_action_id)), 0, max_level)
 		if medal_tier <= 0:
-			continue
-		var distance := target_index - i
-		var per_tier := _medal_buff_per_tier(distance, effect)
-		if per_tier <= 0.0:
 			continue
 		results.append({
 			"source_id": source_action_id,
@@ -853,7 +859,7 @@ static func playable_actions_for_medal_buffs(host: Node, skill_id: String) -> Ar
 		if typeof(raw_action) != TYPE_DICTIONARY:
 			continue
 		var action := raw_action as Dictionary
-		if host._passive_modules_runtime().is_passive_action(action):
+		if not MasteryState.action_has_mastery(host, action):
 			continue
 		if str(action.get("id", "")).is_empty():
 			continue
@@ -867,14 +873,10 @@ static func playable_actions_for_medal_buffs_including_event(host: Node, skill_i
 	var event_id := str(event_action.get("id", ""))
 	if event_id.is_empty():
 		return playable_actions
-	var replaced := false
-	for i in range(playable_actions.size()):
-		var action := playable_actions[i] as Dictionary
-		if str(action.get("id", "")) == event_id:
-			playable_actions[i] = event_action
-			replaced = true
-			break
-	if not replaced:
+	var index := playable_action_index(playable_actions, event_id)
+	if index >= 0:
+		playable_actions[index] = event_action
+	else:
 		playable_actions.append(event_action)
 	playable_actions.sort_custom(func(left, right): return host.activity_data_catalog.activity_action_display_sort_less(left, right))
 	return playable_actions
@@ -897,14 +899,14 @@ static func playable_action_index(playable_actions: Array, action_id: String) ->
 	return -1
 
 
-static func activity_medal_buff_lines(host: Node, skill_id: String, action: Dictionary, effect: String, label: String) -> Array:
+static func activity_medal_buff_lines(host: Node, skill_id: String, action: Dictionary, effect: String, _label: String) -> Array:
 	var lines := []
 	var total := activity_medal_buff_total(host, skill_id, action, effect)
 	if total <= 0.0:
 		return lines
 	var displayed_amount := total if effect == "accuracy" else total * 100.0
-	var effect_name := "neighbor medal bonus"
-	lines.append("%s%s%% %s" % [label, GameFormatting.percent_points(displayed_amount), effect_name])
+	var benefit := str({"time": "%s%% less time", "stamina": "%s%% less stamina", "accuracy": "+%s%% success chance"}.get(effect, "+%s%%"))
+	lines.append("Nearby medals: " + benefit % GameFormatting.percent_points(displayed_amount))
 	return lines
 
 
@@ -912,7 +914,7 @@ static func activity_medal_rate_bonus(host: Node, skill_id: String, action: Dict
 	var action_id := str(action.get("id", ""))
 	if skill_id.is_empty() or action_id.is_empty():
 		return 0.0
-	var own_medal_bonus := 0.0 if host._is_event_action(action) else float(clampi(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)), 0, host.MASTERY_MAX_LEVEL))
+	var own_medal_bonus := 0.0 if not MasteryState.action_has_mastery(host, action) else float(clampi(MasteryState.level(host.mastery, host._action_key(skill_id, action_id)), 0, host.MASTERY_MAX_LEVEL))
 	return own_medal_bonus + activity_medal_accuracy_bonus(host, skill_id, action) + activity_tier_accuracy_bonus(host, skill_id, action)
 
 
@@ -949,10 +951,7 @@ static func visible_milestones(milestones: Array, hide_completed: bool) -> Array
 
 
 static func should_show_in_bonus_log(achievement: Dictionary) -> bool:
-	return (
-		not bool(achievement.get("log_only", false))
-		and not str(achievement.get("reward_stat", "")).is_empty()
-	)
+	return not bool(achievement.get("log_only", false)) and not str(achievement.get("reward_stat", "")).is_empty()
 
 
 static func is_completed_public(achievement: Dictionary) -> bool:

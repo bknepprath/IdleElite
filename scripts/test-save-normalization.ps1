@@ -4,7 +4,10 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\save-normalization"
+$testUserDataDir = Join-Path $testDir "user-data"
 $testScript = Join-Path $testDir "save_normalization_test.gd"
+$testUserData = Join-Path ([System.IO.Path]::GetTempPath()) ("idle-elite-save-normalization-" + $PID)
+$previousTestUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
@@ -14,8 +17,12 @@ if (Test-Path -LiteralPath $testDir) {
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
+$previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 try {
-    @'
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserData
+	@'
 extends SceneTree
 
 const MasteryState := preload("res://scripts/progression/mastery_state.gd")
@@ -86,6 +93,7 @@ func _run() -> void:
 	_check_historical_activity_aliases(game)
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
+	_check_player_progress_persistence_edges(game)
 	_check_fishing_method_unlock_routing(game)
 	_check_module_ui_preferences_save_restore(game)
 	_check_auto_eat_fish_per_skill_save_restore(game)
@@ -1082,8 +1090,8 @@ func _check_hub_module_position_save_restore(game: Node) -> void:
 	_expect(saved.has("barn") and saved.has("trophy"), "Hub position save should preserve valid stored module ids.")
 	var barn := saved.get("barn", {}) as Dictionary
 	var trophy := saved.get("trophy", {}) as Dictionary
-	_expect(float(barn.get("x", 0.0)) == 160.0 and float(barn.get("y", 0.0)) == 180.0, "Hub position save should clamp low coordinates.")
-	_expect(float(trophy.get("x", 0.0)) == 2000.0, "Hub position save should clamp high x coordinates.")
+	_expect(float(barn.get("x", 0.0)) == 80.0 and float(barn.get("y", 0.0)) == 90.0, "Hub position save should clamp low coordinates at native 1080p scale.")
+	_expect(float(trophy.get("x", 0.0)) == 1000.0, "Hub position save should clamp high x coordinates at native 1080p scale.")
 
 	hub_surface.set("hub_module_positions", {"barn": Vector2(300, 300)})
 	hub_surface.call("_restore_hub_module_positions", "bad-entry")
@@ -1100,8 +1108,11 @@ func _check_hub_module_position_save_restore(game: Node) -> void:
 	_expect(restored.has("barn") and restored.has("mission") and restored.has("trophy"), "Hub position restore should preserve valid saved module ids.")
 	var restored_barn := restored.get("barn", Vector2.ZERO) as Vector2
 	var restored_mission := restored.get("mission", Vector2.ZERO) as Vector2
-	_expect(restored_barn == Vector2(160, 180), "Hub position restore should clamp low coordinates.")
+	_expect(restored_barn == Vector2(80, 90), "Hub position restore should clamp low coordinates at native 1080p scale.")
 	_expect(restored_mission == Vector2(500, 600), "Hub position restore should preserve in-bounds coordinates.")
+	hub_surface.call("_restore_hub_module_positions", {"barn": {"x": 600, "y": 700}}, true)
+	restored = hub_surface.get("hub_module_positions") as Dictionary
+	_expect(restored.get("barn", Vector2.ZERO) == Vector2(300, 350), "Pre-migration hub positions should convert once to native 1080p coordinates.")
 
 
 func _check_hub_decor_layout_save_restore(game: Node) -> void:
@@ -1120,11 +1131,11 @@ func _check_hub_decor_layout_save_restore(game: Node) -> void:
 	var decor := saved[1] as Dictionary
 	_expect(str(tree.get("type", "")) == "tree", "Hub decor save should preserve tree entries.")
 	_expect(int(tree.get("index", -1)) == 5, "Hub decor save should clamp tree sprite indexes.")
-	_expect(float(tree.get("w", 0.0)) == 80.0 and float(tree.get("h", 0.0)) == 80.0, "Hub decor save should clamp tiny decor sizes.")
-	_expect(float(tree.get("x", 0.0)) >= 46.0 and float(tree.get("y", 0.0)) >= 80.0, "Hub decor save should clamp tree positions into the field.")
+	_expect(float(tree.get("w", 0.0)) == 40.0 and float(tree.get("h", 0.0)) == 40.0, "Hub decor save should clamp tiny decor sizes at native 1080p scale.")
+	_expect(float(tree.get("x", 0.0)) >= 23.0 and float(tree.get("y", 0.0)) >= 40.0, "Hub decor save should clamp tree positions into the native field.")
 	_expect(str(decor.get("type", "")) == "decor", "Hub decor save should preserve decor entries.")
 	_expect(int(decor.get("index", -1)) == 15, "Hub decor save should clamp decor sprite indexes.")
-	_expect(float(decor.get("w", 0.0)) == 460.0 and float(decor.get("h", 0.0)) == 460.0, "Hub decor save should clamp oversized decor sizes.")
+	_expect(float(decor.get("w", 0.0)) == 230.0 and float(decor.get("h", 0.0)) == 230.0, "Hub decor save should clamp oversized decor sizes at native 1080p scale.")
 
 	hub_surface.set("hub_decor_layout", [{"type": "tree", "index": 1, "x": 100, "y": 100, "w": 120, "h": 120}])
 	hub_surface.call("_restore_hub_decor_layout", "bad-entry")
@@ -1135,7 +1146,12 @@ func _check_hub_decor_layout_save_restore(game: Node) -> void:
 	_expect(restored.size() == 2, "Hub decor restore should only keep valid decor entry types.")
 	tree = restored[0] as Dictionary
 	_expect(int(tree.get("index", -1)) == 5, "Hub decor restore should clamp tree sprite indexes.")
-	_expect(float(tree.get("x", 0.0)) >= 46.0 and float(tree.get("y", 0.0)) >= 80.0, "Hub decor restore should clamp tree positions into the field.")
+	_expect(float(tree.get("x", 0.0)) >= 23.0 and float(tree.get("y", 0.0)) >= 40.0, "Hub decor restore should clamp tree positions into the native field.")
+	hub_surface.call("_restore_hub_decor_layout", [{"type": "tree", "index": 1, "x": 400, "y": 500, "w": 240, "h": 240}], true)
+	restored = hub_surface.get("hub_decor_layout") as Array
+	var converted_tree := restored[0] as Dictionary
+	_expect(float(converted_tree.get("x", 0.0)) == 200.0 and float(converted_tree.get("y", 0.0)) == 250.0, "Pre-migration hub decor positions should convert once to native 1080p coordinates.")
+	_expect(float(converted_tree.get("w", 0.0)) == 120.0 and float(converted_tree.get("h", 0.0)) == 120.0, "Pre-migration hub decor sizes should convert once to native 1080p coordinates.")
 
 
 func _check_hub_mission_save_restore(game: Node) -> void:
@@ -1262,7 +1278,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear guest profile claims.")
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear guest profile verification.")
 
-	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == 19, "Leaderboard avatar save should clamp to a valid avatar index.")
+	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard avatar save should clamp to a valid avatar index.")
 	_expect(str(_save_payload_value(game, "leaderboard_player_id")).is_empty(), "Leaderboard player-id save should drop invalid ids.")
 	_expect(str(_save_payload_value(game, "leaderboard_auth_refresh_token")) == "refresh-token", "Leaderboard refresh-token save should strip whitespace.")
 	_expect(int(_save_payload_value(game, "leaderboard_auth_retry_after_unix")) == 0, "Leaderboard auth retry save should clamp negative timestamps.")
@@ -1278,7 +1294,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(str(game.leaderboard_profile.display_name) == "Mira Stone", "Leaderboard profile restore should preserve valid display names.")
 	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should derive missing verified claim keys.")
 	_expect(_truthy(game.leaderboard_profile.profile_claimed) and _truthy(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should preserve valid verified claims.")
-	_expect(int(game.leaderboard_profile.avatar_index) == 19, "Leaderboard profile restore should clamp avatar indexes.")
+	_expect(int(game.leaderboard_profile.avatar_index) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard profile restore should clamp avatar indexes.")
 	var generated_player_id := str(game.leaderboard_profile.player_id)
 	_expect(not generated_player_id.is_empty() and generated_player_id != " bad id! ", "Leaderboard profile restore should regenerate invalid player ids.")
 
@@ -1297,7 +1313,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 		"leaderboard_profile_claimed": true,
 		"leaderboard_name_claim_verified": false,
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
-	_expect(str(game.leaderboard_profile.name_key).is_empty(), "Leaderboard profile restore should clear unverified claim keys.")
+	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should retain a matching unverified name key as a recovery hint.")
 	_expect(not _truthy(game.leaderboard_profile.profile_claimed), "Leaderboard profile restore should clear unverified profile claims.")
 	LeaderboardProfile.restore_profile_metadata_from_save(game, {
 		"leaderboard_player_id": "player_1234",
@@ -1376,11 +1392,14 @@ func _check_chat_metadata_save_restore(game: Node) -> void:
 	chat_runtime.set("chat_stream_next_connect_unix", -5)
 	chat_runtime.set("chat_last_opened_created_at", -20)
 	chat_runtime.set("chat_last_opened_message_id", long_id)
-	_expect(int(_save_payload_value(game, "chat_last_send_unix")) == 0, "Chat last-send save should clamp negative timestamps.")
-	_expect(int(_save_payload_value(game, "chat_stream_retry_unix")) == now + 30, "Chat retry save should cap future retry timestamps.")
-	_expect(int(_save_payload_value(game, "chat_stream_next_connect_unix")) == now + 30, "Chat next-connect save should stay at least the retry timestamp and cap future timestamps.")
-	_expect(int(_save_payload_value(game, "chat_last_opened_created_at")) == 0, "Chat opened cursor save should clamp negative timestamps.")
-	var saved_id := str(_save_payload_value(game, "chat_last_opened_message_id"))
+	# Use one payload with the captured clock value. Rebuilding it for every field can
+	# cross a wall-clock second and make the exact retry-boundary assertions flaky.
+	var saved_metadata := _save_payload(game, now)
+	_expect(int(saved_metadata.get("chat_last_send_unix", -1)) == 0, "Chat last-send save should clamp negative timestamps.")
+	_expect(int(saved_metadata.get("chat_stream_retry_unix", 0)) == now + 30, "Chat retry save should cap future retry timestamps.")
+	_expect(int(saved_metadata.get("chat_stream_next_connect_unix", 0)) == now + 30, "Chat next-connect save should stay at least the retry timestamp and cap future timestamps.")
+	_expect(int(saved_metadata.get("chat_last_opened_created_at", -1)) == 0, "Chat opened cursor save should clamp negative timestamps.")
+	var saved_id := str(saved_metadata.get("chat_last_opened_message_id", ""))
 	_expect(saved_id.length() == 64, "Chat opened message id save should truncate long ids.")
 	_expect(saved_id.begins_with("abcdefghij"), "Chat opened message id save should strip surrounding whitespace.")
 
@@ -1514,7 +1533,7 @@ func _check_audio_settings_restore(game: Node) -> void:
 		"stamina_bank": {},
 		"saved_at": int(game.call("_unix_now")),
 	})
-	_expect(not _truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default off for existing saves.")
+	_expect(_truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default on when absent from a save.")
 	_expect(not _truthy(game.get("show_stamina_decimal")), "Stamina decimal setting should default off for new saves.")
 
 
@@ -1538,6 +1557,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		maxed_skills[skill_id] = {"xp": level_99_xp, "level": 99}
 		played_maxed_skills[skill_id] = {"xp": level_99_xp + 1234, "level": 99}
 	var maxed_save := {
+		"onboarding_tutorial_complete": true,
 		"skills": maxed_skills,
 		"activity_completion_count": 10,
 		"manual_activity_unlocks": {
@@ -1545,13 +1565,19 @@ func _check_test_profile_save_repair(game: Node) -> void:
 			"build:stack-bricks": true,
 		},
 	}
-	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", maxed_save)), "Regular builds should repair unmarked all-99 test saves with low play evidence.")
-	var repaired_skills := maxed_save.get("skills", {}) as Dictionary
+	var untouched_maxed_save := maxed_save.duplicate(true)
+	_expect(save_runtime.call("_repair_save_for_regular_play", maxed_save) != true, "Ordinary all-99 saves must not trigger a destructive heuristic repair.")
+	_expect(maxed_save == untouched_maxed_save, "Ordinary all-99 XP and unlocks must remain byte-for-byte equivalent in memory.")
+	var authorized_maxed_save := maxed_save.duplicate(true)
+	authorized_maxed_save[SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY] = SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_MARKER
+	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", authorized_maxed_save)), "A support-authorized all-99 repair should still be available.")
+	var repaired_skills := authorized_maxed_save.get("skills", {}) as Dictionary
 	for raw_skill_id in repaired_skills.keys():
 		var repaired_skill := repaired_skills.get(raw_skill_id, {}) as Dictionary
-		_expect(int(repaired_skill.get("level", 99)) < 99, "All-99 repair should lower suspicious maxed skill levels without discarding the save.")
-		_expect(int(repaired_skill.get("xp", level_99_xp)) < level_99_xp, "All-99 repair should lower suspicious maxed skill XP without discarding the save.")
-	_expect(not maxed_save.has("manual_activity_unlocks"), "All-99 repair should drop generated manual unlock maps.")
+		_expect(int(repaired_skill.get("level", 99)) < 99, "Authorized all-99 repair should lower marked test skill levels.")
+		_expect(int(repaired_skill.get("xp", level_99_xp)) < level_99_xp, "Authorized all-99 repair should lower marked test skill XP.")
+	_expect(not authorized_maxed_save.has("manual_activity_unlocks"), "Authorized all-99 repair should drop generated manual unlock maps.")
+	_expect(not authorized_maxed_save.has(SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY), "Destructive repair authorization must be one-shot.")
 	_expect(save_runtime.call("_repair_save_for_regular_play", {
 		"onboarding_tutorial_complete": true,
 		"skills": played_maxed_skills,
@@ -1562,6 +1588,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"god_mode_enabled": false,
 	}) != true, "Regular builds should leave clean saves alone.")
 	var impossible_trophy_save := {
+		"onboarding_tutorial_complete": true,
 		"skills": {
 			"thieving": {"xp": SkillState.xp_for_level(2), "level": 2},
 		},
@@ -1570,8 +1597,13 @@ func _check_test_profile_save_repair(game: Node) -> void:
 			"crown_jewel_replica_replica": {"stolen": false, "cooldown_until_unix": 0},
 		},
 	}
-	_expect(save_runtime.call("_repair_save_for_regular_play", impossible_trophy_save) == true, "Regular builds should repair heist trophies stolen before their Thieving unlock level.")
-	var repaired_trophies := impossible_trophy_save.get("thieving_trophies", {}) as Dictionary
+	var untouched_trophy_save := impossible_trophy_save.duplicate(true)
+	_expect(save_runtime.call("_repair_save_for_regular_play", impossible_trophy_save) != true, "A trophy that conflicts with today's level table must not be erased automatically.")
+	_expect(impossible_trophy_save == untouched_trophy_save, "Unmarked trophy state must survive unchanged.")
+	var authorized_trophy_save := impossible_trophy_save.duplicate(true)
+	authorized_trophy_save[SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY] = SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_MARKER
+	_expect(save_runtime.call("_repair_save_for_regular_play", authorized_trophy_save) == true, "A support-authorized trophy repair should still run.")
+	var repaired_trophies := authorized_trophy_save.get("thieving_trophies", {}) as Dictionary
 	var repaired_spoon := repaired_trophies.get("complimentary_spoon", {}) as Dictionary
 	_expect(not _truthy(repaired_spoon.get("stolen", true)), "Impossible Thieving trophy repair should clear stolen state.")
 	_expect(int(repaired_spoon.get("cooldown_until_unix", -1)) == 0, "Impossible Thieving trophy repair should clear cooldown state.")
@@ -1635,14 +1667,18 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"activity_completion_count": 10,
 	}
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, legacy_save) == true, "Missing current desktop saves should recover known legacy desktop progress.")
-	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", fresh_maxed_save, legacy_save) != true, "Suspicious current desktop saves should be repaired in place instead of recovering legacy desktop progress.")
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", fresh_maxed_save, legacy_save) != true, "Any progressed current desktop save should remain authoritative over a legacy candidate.")
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", legacy_save, legacy_save) != true, "Clean current desktop saves should not be replaced by legacy saves.")
-	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, {"skills": fresh_maxed_skills}) != true, "Legacy all-99 saves should not be used for recovery.")
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, {"skills": fresh_maxed_skills}) == true, "Progressed legacy all-99 saves must remain eligible for recovery.")
 	var old_curve_legacy := {"skills": {"fight": {"xp": level_99_xp, "level": 7}}}
 	game.call("_save_runtime").call("_normalize_legacy_desktop_skill_levels", old_curve_legacy)
 	var normalized_fight := (old_curve_legacy.get("skills", {}) as Dictionary).get("fight", {}) as Dictionary
 	_expect(int(normalized_fight.get("level", 0)) == 7, "Legacy desktop recovery should preserve the saved skill level.")
-	_expect(int(normalized_fight.get("xp", -1)) == SkillState.xp_for_level(7), "Legacy desktop recovery should remap old XP to the current level curve.")
+	_expect(int(normalized_fight.get("xp", -1)) == level_99_xp, "Legacy desktop recovery must preserve valid accumulated XP instead of rounding it down to a level floor.")
+	var level_only_legacy := {"skills": {"fight": {"level": 7}}}
+	game.call("_save_runtime").call("_normalize_legacy_desktop_skill_levels", level_only_legacy)
+	var synthesized_fight := (level_only_legacy.get("skills", {}) as Dictionary).get("fight", {}) as Dictionary
+	_expect(int(synthesized_fight.get("xp", -1)) == SkillState.xp_for_level(7), "Legacy recovery may synthesize XP only when the historical state has no valid XP value.")
 
 
 func _check_hard_reset_pending_restore_cancel(game: Node) -> void:
@@ -1838,6 +1874,17 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 	_expect(not _truthy(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
 
 
+func _check_player_progress_persistence_edges(game: Node) -> void:
+	_prime_core_skill_state(game)
+	var skills := game.get("skills") as Dictionary
+	skills["fight"] = {"xp": SkillState.xp_for_level(2), "level": 2}
+	game.set("skills", skills)
+	var save_runtime := _save_runtime(game)
+	save_runtime.save_dirty = false
+	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "kick-mud-off-boot") == true, "A ready activity lock should finalize successfully.")
+	_expect(not _truthy(save_runtime.save_dirty), "Finalizing an activity lock should persist immediately instead of waiting for autosave.")
+
+
 func _check_fishing_method_unlock_routing(game: Node) -> void:
 	var method_card := {
 		"is_fishing_method": true,
@@ -1888,7 +1935,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 		"unlock_ceremony_pending": true,
 	}
 	game.get("fishing_ui_surface")._sync_fishing_method_card_unlocked_live(live_method_card)
-	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted through the manual fishing hit route.")
+	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_STOP and live_button.pressed.get_connections().size() == 1, "Live fishing method cards should accept native button presses immediately after their lock is accepted.")
 	_expect(not _truthy(live_method_card.get("unlock_ready_pending", true)) and not _truthy(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
 	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
 	_expect(str(game.call("_onboarding_runtime").call("_tutorial_preview_after_manual_unlock", "fishing", "rocks")) == "dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
@@ -2763,12 +2810,12 @@ func _check_save_payload(game: Node) -> void:
 	var payload_positions := payload.get("hub_module_positions", {}) as Dictionary
 	_expect(payload_positions.size() == 2 and payload_positions.has("barn") and payload_positions.has("trophy"), "Save payload should include only storable hub module positions.")
 	var payload_barn_position := payload_positions.get("barn", {}) as Dictionary
-	_expect(float(payload_barn_position.get("x", 0.0)) == 160.0 and float(payload_barn_position.get("y", 0.0)) == 180.0, "Save payload should clamp hub module positions.")
+	_expect(float(payload_barn_position.get("x", 0.0)) == 80.0 and float(payload_barn_position.get("y", 0.0)) == 90.0, "Save payload should clamp hub module positions at native 1080p scale.")
 	var payload_decor := payload.get("hub_decor_layout", []) as Array
 	_expect(payload_decor.size() == 2, "Save payload should include only valid hub decor entries.")
 	var payload_tree := payload_decor[0] as Dictionary
 	_expect(int(payload_tree.get("index", -1)) == 5, "Save payload should clamp hub tree decor indexes.")
-	_expect(float(payload_tree.get("w", 0.0)) == 80.0 and float(payload_tree.get("h", 0.0)) == 80.0, "Save payload should clamp hub decor sizes.")
+	_expect(float(payload_tree.get("w", 0.0)) == 40.0 and float(payload_tree.get("h", 0.0)) == 40.0, "Save payload should clamp hub decor sizes at native 1080p scale.")
 	var payload_missions := payload.get("hub_missions", []) as Array
 	_expect(payload_missions.size() == 1, "Save payload should include only valid hub missions.")
 	var payload_mission := payload_missions[0] as Dictionary
@@ -2783,7 +2830,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(str(payload.get("leaderboard_name_key", "bad")).is_empty(), "Save payload should sanitize leaderboard name keys.")
 	_expect(not _truthy(payload.get("leaderboard_profile_claimed", true)), "Save payload should clear invalid leaderboard profile claims.")
 	_expect(not _truthy(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
-	_expect(int(payload.get("leaderboard_avatar_index", -1)) == 19, "Save payload should clamp leaderboard avatar indexes.")
+	_expect(int(payload.get("leaderboard_avatar_index", -1)) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Save payload should clamp leaderboard avatar indexes.")
 	_expect(str(payload.get("leaderboard_player_id", "bad")).is_empty(), "Save payload should sanitize leaderboard player ids.")
 	_expect(str(payload.get("leaderboard_auth_provider", "")) == "google", "Save payload should preserve sanitized leaderboard auth providers.")
 	_expect(str(payload.get("leaderboard_auth_refresh_token", "")) == "refresh-token", "Save payload should trim leaderboard refresh tokens.")
@@ -2976,7 +3023,6 @@ func _finish() -> void:
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-    $previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
     $env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
     $beforeHeadless = @(Get-HeadlessGodotProcesses)
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
@@ -2995,10 +3041,19 @@ func _finish() -> void:
         throw "A headless Godot process is still running after the save normalization test."
     }
 } finally {
-    if ($null -eq $previousDisableSaveWrites) {
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserData
+	if ($null -eq $previousDisableSaveWrites) {
         Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
     }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $testUserData) {
+        Remove-Item -LiteralPath $testUserData -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

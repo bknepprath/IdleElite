@@ -1,0 +1,11 @@
+{
+	"before_average": "0.643,0.581,0.529",
+	"before_cream_ratio": 0.137777777777778,
+	"enter_cover_alpha": 0.941183149814606,
+	"enter_skill": "fight",
+	"failures": [],
+	"held_button_id_enter": 138999237716,
+	"released_average": "0.867,0.842,0.807",
+	"released_cream_ratio": 0.663888888888889,
+	"released_offset": "(0.0, 0.0)"
+}

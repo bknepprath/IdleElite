@@ -11,9 +11,18 @@ builds/
 release/
 output/
 test-results/
+tmp/spreadsheets/
 android/build/.gradle/
 android/build/build/
 android/build/assetPack*/
+!android/build/assetPackInstallTime/
+android/build/assetPackInstallTime/*
+!android/build/assetPackInstallTime/build.gradle
+!android/build/assetPackInstallTime/src/
+android/build/assetPackInstallTime/src/*
+!android/build/assetPackInstallTime/src/main/
+android/build/assetPackInstallTime/src/main/*
+!android/build/assetPackInstallTime/src/main/AndroidManifest.xml
 android/build/libs/debug/
 android/build/libs/release/
 google key downloads/
@@ -24,6 +33,21 @@ google key downloads/
 local-release-notes.md
 firebase-leaderboard-config\.json
 firebase-leaderboard-config.json
+*firebase-auth-export*.json
+*firebase-rtdb-backup*.json
+firebase-debug*.log
 assets/loading/blue-guy-flex-loading-spritesheet*.png
 !assets/loading/blue-guy-flex-loading-spritesheet.png
 docs/loading-flex-preview.html
+
+# Scratch and generated output. Files already tracked stay tracked until
+# someone deliberately removes them; these only stop new junk being added.
+outputs/
+tmp/
+/.codex-*.png
+/.codex-*.png.import
+.playwright-cli/
+.claude/settings.local.json
+
+# Godot generates import metadata for anything under docs/; it is never exported.
+docs/**/*.import

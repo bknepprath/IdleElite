@@ -1,3 +1,5 @@
+param([switch]$ReleaseEvidenceOnly)
+
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -24,8 +26,14 @@ Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousCaptureDir = $env:IDLE_ELITE_PAGE_SWITCH_VISUAL_DIR
-$env:GODOT_RUN_TIMEOUT_SECONDS = "90"
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousReleaseEvidenceOnly = $env:IDLE_ELITE_PAGE_SWITCH_RELEASE_EVIDENCE_ONLY
+$env:GODOT_RUN_TIMEOUT_SECONDS = "240"
 $env:IDLE_ELITE_PAGE_SWITCH_VISUAL_DIR = $captureDir
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = Join-Path $testDir "user-data"
+$env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
+$env:IDLE_ELITE_PAGE_SWITCH_RELEASE_EVIDENCE_ONLY = if ($ReleaseEvidenceOnly) { "1" } else { "0" }
 $baselineProcessIds = @{}
 foreach ($process in @(Get-GodotProcesses)) {
     $baselineProcessIds[[int]$process.ProcessId] = $true
@@ -49,8 +57,11 @@ func _init() -> void:
 
 
 func _run() -> void:
-	DisplayServer.window_set_size(Vector2i(900, 1600))
-	root.size = Vector2i(900, 1600)
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.content_scale_size = Vector2i(1080, 1920)
+	root.size = Vector2i(1080, 1920)
+	DisplayServer.window_set_size(Vector2i(1080, 1920))
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
 	var packed := load("res://scenes/main.tscn") as PackedScene
@@ -76,20 +87,21 @@ func _run() -> void:
 
 	await _select_skill(scene, "build")
 	await _scroll_detail_to_bottom(scene)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
+	for _i in range(30):
+		scene.call("_update_ui", 0.016, false)
+		await _wait_test_frame()
 	await _capture("before")
 
-	var module := _find_node_by_name(scene, "PageSwitchModule") as Control
-	if module == null or not module.is_visible_in_tree():
-		_fail("PageSwitchModule is not visible after scrolling to bottom")
-		return
-	var buttons := _buttons_under(module)
-	if buttons.size() < 2:
-		_fail("PageSwitchModule did not expose both colored skill buttons")
+	var buttons := _visible_page_switch_buttons(scene)
+	if buttons.is_empty():
+		_fail("production page did not expose a page-switch button")
 		return
 	var before_skill := str(scene.get("selected_skill_id"))
-	var target_button := buttons[1] as Button
+	var target_button := buttons[0] as Button
 	_press_page_switch_button(scene, target_button)
 	await process_frame
+	await _capture("released")
 	var entering_cover := _skill_swipe_handoff_cover(scene)
 	result["enter_cover_alpha"] = 0.0 if entering_cover == null or not is_instance_valid(entering_cover) else entering_cover.modulate.a
 	result["enter_skill"] = str(scene.get("selected_skill_id"))
@@ -98,15 +110,24 @@ func _run() -> void:
 	if entering_cover != null and is_instance_valid(entering_cover):
 		enter_cover_id = entering_cover.get_instance_id()
 		enter_cover_started_msec = int(entering_cover.get_meta("page_switch_scroll_cover_started_msec", 0))
-	var held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
-	var held_offset := Vector2.ZERO
+	var released_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
+	var released_offset := Vector2.ZERO
 	var activity_surface = scene.call("_skill_swipe_activity_surface")
-	if held_pop != null and is_instance_valid(held_pop):
-		held_offset = activity_surface.call("_activity_button_pop_depth_offset", held_pop) as Vector2
-	result["held_offset_enter"] = str(held_offset)
+	if released_pop != null and is_instance_valid(released_pop):
+		released_offset = activity_surface.call("_activity_button_pop_depth_offset", released_pop) as Vector2
+	result["released_offset"] = str(released_offset)
 	result["held_button_id_enter"] = int(scene.call("_navigation_shell").get("page_switch_transition_button_id"))
-	_expect(held_offset.length() > 0.5, "page switch button should remain depressed while the cover fades in: %s" % str(held_offset))
+	_expect(released_offset.length() <= 0.5, "page switch button stayed depressed after release: %s" % str(released_offset))
 	_expect(int(result.get("held_button_id_enter", 0)) == target_button.get_instance_id(), "page switch transition should remember the exiting button")
+	if OS.get_environment("IDLE_ELITE_PAGE_SWITCH_RELEASE_EVIDENCE_ONLY") == "1":
+		_write_result()
+		if failures.is_empty():
+			quit(0)
+		else:
+			for failure in failures:
+				push_error(failure)
+			quit(1)
+		return
 	for _spam in range(4):
 		_press_page_switch_button(scene, target_button)
 		await process_frame
@@ -120,11 +141,11 @@ func _run() -> void:
 	result["spam_same_cover"] = spam_cover_id == enter_cover_id
 	result["spam_same_started_msec"] = spam_cover_started_msec == enter_cover_started_msec
 	result["spam_skill"] = str(scene.get("selected_skill_id"))
-	result["held_offset_after_spam"] = str(spam_held_offset)
+	result["released_offset_after_spam"] = str(spam_held_offset)
 	_expect(bool(result.get("spam_same_cover", false)), "spamming the page switch button restarted the cover")
 	_expect(bool(result.get("spam_same_started_msec", false)), "spamming the page switch button restarted the cover timer")
 	_expect(str(result.get("spam_skill", "")) == before_skill, "selected skill changed before the first cover finished after spam")
-	_expect(spam_held_offset.length() > 0.5, "page switch button should remain depressed after spam: %s" % str(spam_held_offset))
+	_expect(spam_held_offset.length() <= 0.5, "page switch button became depressed again after release: %s" % str(spam_held_offset))
 	_expect(float(result.get("enter_cover_alpha", 1.0)) < 0.95, "page switch cover should fade in instead of appearing fully opaque immediately: %s" % str(result.get("enter_cover_alpha", 1.0)))
 	_expect(str(result.get("enter_skill", "")) == before_skill, "selected skill changed before the cream cover finished fading in")
 	if not await _wait_for_cover_alpha(scene, 0.98):
@@ -236,6 +257,9 @@ func _capture(name: String) -> Dictionary:
 	if image == null or image.is_empty():
 		_fail("empty viewport image for capture %s" % name)
 		return stats
+	if image.get_size() != Vector2i(1080, 1920):
+		_fail("capture %s had size %s instead of 1080x1920" % [name, str(image.get_size())])
+		return stats
 	var capture_dir := OS.get_environment("IDLE_ELITE_PAGE_SWITCH_VISUAL_DIR")
 	if not capture_dir.is_empty():
 		image.save_png("%s/%s.png" % [capture_dir, name])
@@ -297,23 +321,13 @@ func _rect_cream_stats_from_viewport(rect: Rect2) -> Dictionary:
 	}
 
 
-func _buttons_under(node: Node) -> Array:
+func _visible_page_switch_buttons(scene: Node) -> Array:
 	var found := []
-	if node is Button:
-		found.append(node)
-	for child in node.get_children():
-		found.append_array(_buttons_under(child))
+	for raw_node in scene.get_tree().get_nodes_in_group("page_switch_buttons"):
+		var button := raw_node as Button
+		if button != null and is_instance_valid(button) and button.is_visible_in_tree() and not button.disabled:
+			found.append(button)
 	return found
-
-
-func _find_node_by_name(node: Node, wanted_name: String) -> Node:
-	if node.name == wanted_name:
-		return node
-	for child in node.get_children():
-		var found := _find_node_by_name(child, wanted_name)
-		if found != null:
-			return found
-	return null
 
 
 func _write_result() -> void:
@@ -402,10 +416,16 @@ func _fail(message: String) -> void:
     Assert-True (Test-Path -LiteralPath $resultPath) "Page-switch visual test did not write result.json."
     $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
     Assert-True (@($result.failures).Count -eq 0) "Page-switch visual test reported failures. result: $(Get-Content -LiteralPath $resultPath -Raw)"
-    Assert-True ([double]$result.cover_rect_cream_ratio -ge 0.96) "Cover rect is not a plain cream sheet. result: $(Get-Content -LiteralPath $resultPath -Raw)"
-    Assert-True ([double]$result.cover_nav_cream_ratio -lt 0.90) "Nav bar should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
-    Assert-True ([double]$result.cover_chat_cream_ratio -lt 0.90) "Chat strip should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
-    Assert-True (-not [bool]$result.after_cover_visible) "Cover stayed visible after settle. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    if ($ReleaseEvidenceOnly) {
+        Assert-True (Test-Path -LiteralPath (Join-Path $captureDir "before.png")) "Page-switch release evidence is missing before.png."
+        Assert-True (Test-Path -LiteralPath (Join-Path $captureDir "released.png")) "Page-switch release evidence is missing released.png."
+        Assert-True ([string]$result.released_offset -eq "(0.0, 0.0)") "Released page-switch button retained a visual offset. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    } else {
+        Assert-True ([double]$result.cover_rect_cream_ratio -ge 0.96) "Cover rect is not a plain cream sheet. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+        Assert-True ([double]$result.cover_nav_cream_ratio -lt 0.90) "Nav bar should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+        Assert-True ([double]$result.cover_chat_cream_ratio -lt 0.90) "Chat strip should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+        Assert-True (-not [bool]$result.after_cover_visible) "Cover stayed visible after settle. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    }
 
     $newProcesses = @(
         Get-GodotProcesses |
@@ -425,6 +445,21 @@ func _fail(message: String) -> void:
         Remove-Item Env:\IDLE_ELITE_PAGE_SWITCH_VISUAL_DIR -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_PAGE_SWITCH_VISUAL_DIR = $previousCaptureDir
+    }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
+    if ($null -eq $previousDisableSaveWrites) {
+        Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
+    }
+    if ($null -eq $previousReleaseEvidenceOnly) {
+        Remove-Item Env:\IDLE_ELITE_PAGE_SWITCH_RELEASE_EVIDENCE_ONLY -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_PAGE_SWITCH_RELEASE_EVIDENCE_ONLY = $previousReleaseEvidenceOnly
     }
     if (Test-Path -LiteralPath $testDir) {
         Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue

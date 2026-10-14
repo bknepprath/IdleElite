@@ -91,6 +91,11 @@ uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
 uniform float sample_zoom = 1.0;
 uniform vec2 sample_offset_px = vec2(0.0, 0.0);
 
+// Preserve parent fades when sampling the separate background texture.
+varying vec4 item_modulate;
+void vertex() {
+	item_modulate = COLOR;
+}
 void fragment() {
 	vec2 p = UV * control_size;
 	float inset = clamp(mask_inset_px, 0.0, min(control_size.x, control_size.y) * 0.45);
@@ -102,6 +107,10 @@ void fragment() {
 		r = min(radius_px, min(half_size.x, half_size.y));
 	} else {
 		r = min(max(0.0, radius_px - inset), min(half_size.x, half_size.y));
+	}
+	// Expanded information cards keep rounded top corners and a straight divider edge.
+	if (corner_mask_mode == 2 && mask_p.y > half_size.y) {
+		r = 0.0;
 	}
 	vec2 q = abs(mask_p - half_size) - (half_size - vec2(r));
 	float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
@@ -184,7 +193,7 @@ void fragment() {
 		}
 	}
 	color.a = alpha;
-	COLOR = color;
+	COLOR = color * item_modulate;
 }
 """
 		if mask_material == null:
@@ -317,7 +326,7 @@ static func _fallback_texture() -> Texture2D:
 		return shared_fallback_texture
 	if DisplayServer.get_name() == "headless":
 		var placeholder := PlaceholderTexture2D.new()
-		placeholder.size = Vector2(8, 8)
+		placeholder.size = Vector2(4, 4)
 		shared_fallback_texture = placeholder
 		return shared_fallback_texture
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)

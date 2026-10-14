@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dcaejgfvwerxa"
-path="res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.ctex"
+path.bptc="res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.bptc.ctex"
+path.astc="res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/chicken-gray-windup-v2.png"
-dest_files=["res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.ctex"]
+dest_files=["res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.bptc.ctex", "res://.godot/imported/chicken-gray-windup-v2.png-aa5e44cca4d66b5ae905115608c5a67a.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

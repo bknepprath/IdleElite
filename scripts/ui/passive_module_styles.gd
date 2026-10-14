@@ -61,9 +61,9 @@ class SerpentineProgressBar:
 		var points := _serpentine_points()
 		if points.size() < 2:
 			return
-		var base_width := minf(62.0, maxf(52.0, size.y * 0.39))
-		var outline_width := base_width + maxf(11.0, size.y * 0.10)
-		_draw_path(points, shadow_color, outline_width + 5.0, 1.0, Vector2(0, 4))
+		var base_width := minf(31.0, maxf(26.0, size.y * 0.39))
+		var outline_width := base_width + maxf(5.5, size.y * 0.10)
+		_draw_path(points, shadow_color, outline_width + 2.5, 1.0, Vector2(0, 2))
 		_draw_path(points, outline_color, outline_width, 1.0)
 		_draw_path(points, empty_color, base_width, 1.0)
 		var fill_pct := clampf(value / 100.0, 0.0, 1.0)
@@ -72,18 +72,18 @@ class SerpentineProgressBar:
 
 	func _serpentine_points() -> Array[Vector2]:
 		var points: Array[Vector2] = []
-		var inset := 7.0
+		var inset := 3.5
 		var width := maxf(1.0, size.x - inset * 2.0)
-		var amplitude := maxf(24.0, minf(size.y * 0.20, 34.0))
-		var base_width := minf(62.0, maxf(52.0, size.y * 0.39))
-		var outline_width := base_width + maxf(11.0, size.y * 0.10)
-		var center_y := size.y - amplitude - outline_width * 0.5 - 12.0
+		var amplitude := maxf(12.0, minf(size.y * 0.20, 17.0))
+		var base_width := minf(31.0, maxf(26.0, size.y * 0.39))
+		var outline_width := base_width + maxf(5.5, size.y * 0.10)
+		var center_y := size.y - amplitude - outline_width * 0.5 - 6.0
 		var straight_pct := 0.08
 		var wave_start := straight_pct
 		var wave_finish := 1.0 - straight_pct
 		var transition_pct := 0.12
 		var cycles := 4.0
-		var sample_count := maxi(48, int(size.x / 8.0))
+		var sample_count := maxi(48, int(size.x / 4.0))
 		for i in range(sample_count + 1):
 			var t := float(i) / float(sample_count)
 			var x := inset + width * t
@@ -181,40 +181,40 @@ class SerpentineProgressBar:
 
 
 static func currency(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(panel_color, 28, 14, true) as StyleBoxFlat
+	var style := surface_style.call(panel_color, 14, 7, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 12
-	style.border_width_right = 12
-	style.border_width_top = 12
-	style.border_width_bottom = 12
-	style.content_margin_left = 22
-	style.content_margin_right = 16
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.border_width_left = 6
+	style.border_width_right = 6
+	style.border_width_top = 6
+	style.border_width_bottom = 6
+	style.content_margin_left = 11
+	style.content_margin_right = 8
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
 	return style
 
 
 static func stat(ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(Color.WHITE, 22, 18, true) as StyleBoxFlat
+	var style := surface_style.call(Color.WHITE, 11, 9, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 10
-	style.border_width_right = 10
-	style.border_width_top = 10
-	style.border_width_bottom = 10
-	style.content_margin_left = 24
-	style.content_margin_right = 20
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	style.border_width_left = 5
+	style.border_width_right = 5
+	style.border_width_top = 5
+	style.border_width_bottom = 5
+	style.content_margin_left = 12
+	style.content_margin_right = 10
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
 	return style
 
 
 static func popup(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(panel_color, 22, 20, true) as StyleBoxFlat
+	var style := surface_style.call(panel_color, 11, 10, true) as StyleBoxFlat
 	style.border_color = ink_color
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
+	style.border_width_left = 4
+	style.border_width_right = 4
+	style.border_width_top = 4
+	style.border_width_bottom = 4
 	return style
 
 
@@ -222,16 +222,16 @@ static func icon_button(active := false, hovered := false, ink_color := Color.BL
 	var fill := Color("#bff4c9") if active else Color("#f3eee0")
 	if hovered:
 		fill = Color("#d3ffd9") if active else gold_color
-	var style := surface_style.call(fill, 24, 8, true) as StyleBoxFlat
+	var style := surface_style.call(fill, 12, 4, true) as StyleBoxFlat
 	style.border_color = Color("#178b38") if active else ink_color
-	var border_width := 14 if active else 10
+	var border_width := 7 if active else 5
 	style.border_width_left = border_width
 	style.border_width_right = border_width
 	style.border_width_top = border_width
 	style.border_width_bottom = border_width
 	if active:
 		style.shadow_color = Color(0.05, 0.30, 0.12, 0.42)
-		style.shadow_size = 8
+		style.shadow_size = 4
 	return style
 
 
@@ -239,16 +239,16 @@ static func plank_light(active: bool, ink_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#44f078") if active else Color("#e63d35")
 	style.border_color = ink_color
-	style.border_width_left = 6
-	style.border_width_right = 6
-	style.border_width_top = 6
-	style.border_width_bottom = 6
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.border_width_left = 3
+	style.border_width_right = 3
+	style.border_width_top = 3
+	style.border_width_bottom = 3
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	style.shadow_color = Color(0.18, 0.82, 0.28, 0.48) if active else Color(0.78, 0.12, 0.09, 0.42)
-	style.shadow_size = 6
+	style.shadow_size = 3
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -256,13 +256,13 @@ static func plank_light(active: bool, ink_color: Color) -> StyleBoxFlat:
 static func round_button(fill: Color, ink_color: Color, surface_style: Callable, theme_outline_color: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(fill, 999, 0, true) as StyleBoxFlat
 	style.border_color = theme_outline_color.call(ink_color, fill)
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 6
-	style.border_width_bottom = 11
+	style.border_width_left = 4
+	style.border_width_right = 4
+	style.border_width_top = 3
+	style.border_width_bottom = 5.5
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.30)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 4)
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0

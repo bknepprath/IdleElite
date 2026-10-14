@@ -1,88 +1,109 @@
 extends RefCounted
 
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
+
+const MISSION_REP_BALANCE_VERSION := 1
 
 const HUB_BUILD_SECONDS := 15.0
 const HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL := 60 * 60
 const HUB_MODULE_MAX_LEVEL := 4
 const HUB_TROPHY_SUCCESS_BONUS_BY_TIER := [0.0, 0.01, 0.02, 0.03, 0.05]
+# Shared authored ground point: cell center (256, 256) to baseline y450.
+const HUB_ART_GROUND_OFFSETS := [Vector2(0, 194), Vector2(0, 194), Vector2(0, 194), Vector2(0, 194), Vector2(0, 194)]
 const HUB_MODULE_DEFS := {
+	"woodcutting_totem": {
+		"name": "Woodcutting Totem", "skill": "woodcutting",
+		"sheet": "res://assets/content/hub/hub-woodcutting-totem-tiers.png",
+		"cell_count": 5, "cell_size": Vector2(512, 512),
+		"position": Vector2(780, 1240), "size": Vector2(260, 280),
+		"visual_size": Vector2(300, 300), "visual_anchor": Vector2(0, 90),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(-630, -380),
+		"currency": "softwood", "cost_currencies": ["softwood", "hardwood", "hardwood", "hardwood"],
+		"costs": [25, 30, 65, 140], "unlock_levels": [8, 16, 26, 40],
+		"bonus": "Increases collected wood by 10% per level."
+	},
+	"fighting_display": {
+		"name": "Training Dummy", "skill": "fight",
+		"sheet": "res://assets/content/hub/hub-fighting-display-tiers.png",
+		"cell_count": 5, "cell_size": Vector2(512, 512),
+		"position": Vector2(540, 550), "size": Vector2(280, 280),
+		"visual_size": Vector2(280, 280), "visual_anchor": Vector2(0, 90),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(-630, -380),
+		"currency": "softwood", "cost_currencies": ["softwood", "hardwood", "hardwood", "hardwood"],
+		"costs": [30, 35, 70, 150], "unlock_levels": [6, 14, 24, 38],
+		"bonus": "Increases Fighting XP by 5% per level."
+	},
 	"barn": {
 		"name": "Barn",
 		"sheet": "res://assets/content/hub/hub-barn-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(470, 1100),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_sizes": [Vector2(560, 560), Vector2(560, 560), Vector2(650, 650), Vector2(720, 720), Vector2(780, 780)],
-		"visual_anchor": Vector2(0, 206),
-		"cell_bottom_offsets": [Vector2(-2.5, 196), Vector2(0, 180), Vector2(0, 183), Vector2(0, 195), Vector2(0, 211)],
-		"bubble_offset": Vector2(520, -760),
+		"position": Vector2(235, 550),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(350, 350),
+		"visual_anchor": Vector2(0, 103),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(260, -380),
 		"currency": "softwood",
-		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
-		"costs": [60, 360, 90, 260],
-		"unlock_levels": [3, 12, 28, 52],
+		"cost_currencies": ["softwood", "hardwood", "hardwood", "hardwood"],
+		"costs": [40, 45, 90, 180],
+		"unlock_levels": [3, 10, 20, 35],
 		"bonus": "Makes low success rate activities more reliable."
 	},
 	"garden": {
 		"name": "Garden",
 		"sheet": "res://assets/content/hub/hub-garden-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(560, 1660),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_anchor": Vector2(0, 194),
-		"cell_bottom_offsets": [Vector2(-1, 192), Vector2(0, 176), Vector2(0, 182), Vector2(-1, 186), Vector2(-1.5, 201)],
-		"bubble_offset": Vector2(520, -760),
+		"position": Vector2(280, 830),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(310, 310),
+		"visual_anchor": Vector2(0, 97),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(260, -380),
 		"currency": "mixed",
-		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
-		"costs": [45, 280, 80, 220],
-		"fish_costs": [15, 125, 600, 2800],
-		"unlock_levels": [7, 19, 39, 65],
+		"cost_currencies": ["softwood", "hardwood", "hardwood", "hardwood"],
+		"costs": [30, 35, 70, 140],
+		"fish_costs": [15, 80, 320, 1200],
+		"unlock_levels": [7, 15, 27, 42],
 		"bonus": "+1 hour offline progress cap per level."
 	},
 	"pond": {
 		"name": "Fish Pond",
 		"sheet": "res://assets/content/hub/hub-fish-pond-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(1580, 1840),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_sizes": [Vector2(1280, 1280), Vector2(820, 820), Vector2(850, 850), Vector2(880, 880), Vector2(920, 920)],
-		"visual_anchor": Vector2(0, 178),
-		"cell_bottom_offsets": [Vector2(6.5, -10), Vector2(-0.5, 127), Vector2(0.5, 141), Vector2(-1, 169), Vector2(0, 200)],
-		"visible_bounds": [
-			Rect2(Vector2(173, 140), Vector2(179, 106)),
-			Rect2(Vector2(55, 152), Vector2(401, 231)),
-			Rect2(Vector2(69, 132), Vector2(375, 265)),
-			Rect2(Vector2(69, 105), Vector2(372, 320)),
-			Rect2(Vector2(19, 38), Vector2(474, 418))
-		],
-		"bubble_offset": Vector2(-1260, -760),
+		"position": Vector2(790, 920),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(360, 360),
+		"visual_anchor": Vector2(0, 89),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(-630, -380),
 		"currency": "fish",
-		"costs": [8, 320, 1400, 12000],
-		"unlock_levels": [5, 15, 33, 58],
+		"costs": [8, 120, 600, 2800],
+		"unlock_levels": [5, 12, 22, 36],
+		"skill": "fishing",
 		"bonus": "Improves stamina regen speed across all skills."
 	},
 	"mission": {
 		"name": "Mission Sign",
 		"sheet": "res://assets/content/hub/hub-mission-sign-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(520, 2350),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_anchor": Vector2(0, 194),
-		"cell_bottom_offsets": [Vector2(1, 176), Vector2(0, 179), Vector2(1, 185), Vector2(-0.5, 195), Vector2(-0.5, 202)],
-		"bubble_offset": Vector2(520, -760),
+		"position": Vector2(260, 1175),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(290, 290),
+		"visual_anchor": Vector2(0, 97),
+		"cell_bottom_offsets": HUB_ART_GROUND_OFFSETS,
+		"bubble_offset": Vector2(260, -380),
 		"currency": "softwood",
-		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
-		"costs": [35, 250, 70, 190],
-		"unlock_levels": [10, 24, 45, 62],
-		"bonus": "Prepares boosted task missions for a later update."
+		"cost_currencies": ["softwood", "hardwood", "hardwood", "hardwood"],
+		"costs": [25, 30, 60, 120],
+		"unlock_levels": [10, 18, 30, 45],
+		"bonus": "Reduces mission stamina, time, and cooldown while increasing XP."
 	}
 }
-const HUB_MODULE_ORDER := ["barn", "garden", "pond", "mission"]
-const HUB_POSITION_ORDER := ["barn", "garden", "pond", "mission", "trophy"]
+const HUB_MODULE_ORDER := ["barn", "garden", "pond", "mission", "woodcutting_totem", "fighting_display"]
+const HUB_POSITION_ORDER := ["barn", "garden", "pond", "mission", "trophy", "woodcutting_totem", "fighting_display"]
 const HUB_BARN_FAILURE_GAP_FACTORS := [0.0, 0.10, 0.22, 0.38, 0.58]
 const HUB_POND_REGEN_BONUS_BY_LEVEL := [0.0, 0.01, 0.03, 0.06, 0.10]
 const HUB_MISSION_SLOT_COUNT_BY_LEVEL := [0, 1, 2, 3, 4]
@@ -215,7 +236,7 @@ func sync_missions() -> bool:
 
 func normalized_mission(mission: Dictionary) -> Dictionary:
 	var skill_id := str(mission.get("skill_id", ""))
-	var action_id := str(mission.get("action_id", ""))
+	var action_id := ModuleUiRuntime.canonical_action_id(skill_id, str(mission.get("action_id", "")), host.FISHING_ACTION_ID_ALIASES)
 	var action: Dictionary = host._action_data(skill_id, action_id)
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return {}
@@ -223,12 +244,17 @@ func normalized_mission(mission: Dictionary) -> Dictionary:
 		return {}
 	var target := maxi(1, int(mission.get("target", mission.get("count", 1))))
 	var remaining := clampi(int(mission.get("remaining", target)), 1, target)
+	# Migrate once, preserving the proportion of work remaining.
+	if int(mission.get("rep_balance_version", 0)) < MISSION_REP_BALANCE_VERSION:
+		target = mission_target_for_action(action, target)
+		remaining = mini(target, mission_target_for_action(action, remaining))
 	return {
 		"skill_id": skill_id,
-		"action_id": ModuleUiRuntime.canonical_action_id(skill_id, action_id, host.FISHING_ACTION_ID_ALIASES),
+		"action_id": action_id,
 		"target": target,
 		"remaining": remaining,
-		"assigned_unix": maxi(0, int(mission.get("assigned_unix", host._unix_now())))
+		"assigned_unix": maxi(0, int(mission.get("assigned_unix", host._unix_now()))),
+		"rep_balance_version": MISSION_REP_BALANCE_VERSION
 	}
 
 
@@ -241,20 +267,28 @@ func roll_mission() -> Dictionary:
 	if choices.is_empty():
 		return {}
 	var choice := choices[randi_range(0, choices.size() - 1)] as Dictionary
-	var target := randi_range(mission_rep_min(), mission_rep_max())
+	var action: Dictionary = host._action_data(str(choice.get("skill_id", "")), str(choice.get("action_id", "")))
+	var target := mission_target_for_action(action, randi_range(mission_rep_min(), mission_rep_max()))
 	return {
 		"skill_id": str(choice.get("skill_id", "")),
 		"action_id": str(choice.get("action_id", "")),
 		"target": target,
 		"remaining": target,
 		"assigned_unix": host._unix_now(),
-		"level": mission_level()
+		"level": mission_level(),
+		"rep_balance_version": MISSION_REP_BALANCE_VERSION
 	}
+
+
+static func mission_target_for_action(action: Dictionary, repetitions: int) -> int:
+	return maxi(1, ceili(float(repetitions) * 0.25)) if RecoveryModules.has_recovery(action) else maxi(1, repetitions)
 
 
 func mission_eligible_actions(existing_keys: Dictionary) -> Array:
 	var choices := []
 	for raw_def in host.skill_defs:
+		if typeof(raw_def) != TYPE_DICTIONARY:
+			continue
 		var skill_id := str((raw_def as Dictionary).get("id", ""))
 		if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
 			continue
@@ -301,22 +335,17 @@ func mission_stamina_reduction() -> float:
 func mission_xp_bonus() -> float:
 	return float(HUB_MISSION_XP_BONUS_BY_LEVEL[mission_level()])
 
-
 func mission_time_reduction() -> float:
 	return float(HUB_MISSION_TIME_REDUCTION_BY_LEVEL[mission_level()])
-
 
 func mission_cooldown_seconds() -> int:
 	return int(HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[mission_level()])
 
-
 func mission_rep_min() -> int:
 	return int(HUB_MISSION_REP_MIN_BY_LEVEL[mission_level()])
 
-
 func mission_rep_max() -> int:
 	return int(HUB_MISSION_REP_MAX_BY_LEVEL[mission_level()])
-
 
 func mission_for_action(skill_id: String, action_id: String) -> Dictionary:
 	var key: String = host._action_key(skill_id, action_id)
@@ -326,12 +355,14 @@ func mission_for_action(skill_id: String, action_id: String) -> Dictionary:
 			return mission
 	return {}
 
-
 func mission_bonus_applies(skill_id: String, action: Dictionary) -> bool:
 	return mission_level() > 0 and not mission_for_action(skill_id, str(action.get("id", ""))).is_empty()
 
-
 func record_mission_action_completion(skill_id: String, action_id: String) -> bool:
+	host._project_runtime().record_success(skill_id, action_id)
+	host._halloween_runtime().record_success(skill_id, action_id)
+	if skill_id == "fishing" and not preload("res://scripts/fishing/state.gd").is_xp_training(host._action_data(skill_id, action_id)):
+		preload("res://scripts/progression/wisdom_state.gd").award(host, host._action_data(skill_id, action_id))
 	var key: String = host._action_key(skill_id, action_id)
 	for i in range(hub_missions.size()):
 		var mission := hub_missions[i] as Dictionary
@@ -342,12 +373,14 @@ func record_mission_action_completion(skill_id: String, action_id: String) -> bo
 			hub_missions.remove_at(i)
 			hub_mission_cooldown_until_unix = host._unix_now() + mission_cooldown_seconds()
 			host._hub_surface()._show_hub_mission_completion_ceremony(skill_id, action_id)
+			# Save after the complete reward transaction, including offline batches.
+			host.call_deferred("save_game")
 		else:
 			mission["remaining"] = remaining
 			hub_missions[i] = mission
+		host._save_runtime()._mark_save_dirty("mission progress")
 		return true
 	return false
-
 
 func next_trophy_def() -> Dictionary:
 	for raw_heist in host.thieving_state.HEIST_DEFS:
@@ -357,11 +390,9 @@ func next_trophy_def() -> Dictionary:
 			return heist
 	return {}
 
-
 func best_trophy_tier() -> int:
 	var trophy_def := best_trophy_def()
 	return 0 if trophy_def.is_empty() else int(trophy_def.get("tier", 0))
-
 
 func best_trophy_def() -> Dictionary:
 	var best_def := {}
@@ -376,11 +407,9 @@ func best_trophy_def() -> Dictionary:
 			best_tier = tier
 	return best_def
 
-
 func trophy_success_bonus() -> float:
 	var tier := clampi(best_trophy_tier(), 0, HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
 	return float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
-
 
 func module_wood_currency_for_level(module_id: String, level: int) -> String:
 	if not HUB_MODULE_DEFS.has(module_id):
@@ -389,14 +418,13 @@ func module_wood_currency_for_level(module_id: String, level: int) -> String:
 	var cost_currencies := def.get("cost_currencies", []) as Array
 	if level >= 0 and level < cost_currencies.size():
 		var tier_currency: String = host.material_runtime.normalize_id(str(cost_currencies[level]))
-		if host.MAT_COLLECTION_DEFS.has(tier_currency):
+		if host.material_runtime.has_definition(tier_currency):
 			return tier_currency
 	var base_currency := str(def.get("currency", "softwood"))
 	if base_currency == "mixed":
 		return "softwood"
 	var normalized_currency: String = host.material_runtime.normalize_id(base_currency)
-	return normalized_currency if host.MAT_COLLECTION_DEFS.has(normalized_currency) else "softwood"
-
+	return normalized_currency if host.material_runtime.has_definition(normalized_currency) else "softwood"
 
 func can_afford_module(module_id: String) -> bool:
 	if not module_next_level_unlocked(module_id):
@@ -425,8 +453,22 @@ func module_next_unlock_level(module_id: String) -> int:
 
 
 func module_next_level_unlocked(module_id: String) -> bool:
-	return SkillState.host_skill_level(host, "build") >= module_next_unlock_level(module_id)
+	return SkillState.host_skill_level(host, module_skill(module_id)) >= module_next_unlock_level(module_id)
 
+
+func module_skill(module_id: String) -> String:
+	return str((HUB_MODULE_DEFS.get(module_id, {}) as Dictionary).get("skill", "build"))
+
+func module_requirement_text(module_id: String) -> String:
+	var skill_id := module_skill(module_id)
+	var skill_name: String = {"build": "Building", "fight": "Fighting", "woodcutting": "Woodcutting", "fishing": "Fishing"}.get(skill_id, skill_id.capitalize())
+	return "%s Lv %s" % [skill_name, module_next_unlock_level(module_id)]
+
+func wood_collection_multiplier() -> float:
+	return 1.0 + 0.10 * module_level("woodcutting_totem")
+
+func fighting_xp_bonus() -> float:
+	return 0.05 * module_level("fighting_display")
 
 func upgrade_module(module_id: String) -> Dictionary:
 	if not HUB_MODULE_DEFS.has(module_id):
@@ -446,12 +488,14 @@ func upgrade_module(module_id: String) -> Dictionary:
 		spent_fish = cost
 	elif module_id == "garden":
 		var fish_cost := int((HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", [])[level])
-		host.material_runtime.spend_amount(wood_currency, float(cost))
+		if not bool(host.material_runtime.spend_amount(wood_currency, float(cost))):
+			return {"blocked": true}
 		host.fishing_runtime.fish_currency = maxf(0.0, host.fishing_runtime.fish_currency - float(fish_cost))
 		spent_logs = cost
 		spent_fish = fish_cost
 	else:
-		host.material_runtime.spend_amount(wood_currency, float(cost))
+		if not bool(host.material_runtime.spend_amount(wood_currency, float(cost))):
+			return {"blocked": true}
 		spent_logs = cost
 	state["building"] = true
 	state["build_started_unix_msec"] = int(round(Time.get_unix_time_from_system() * 1000.0))
@@ -519,12 +563,10 @@ func module_positions_for_save() -> Dictionary:
 			saved[module_id] = {"x": module_position.x, "y": module_position.y}
 	return saved
 
+func restore_module_positions(raw_positions: Variant, pre_migration_layout := false) -> void:
+	host._hub_surface().hub_module_positions = normalized_module_positions(raw_positions, pre_migration_layout)
 
-func restore_module_positions(raw_positions: Variant) -> void:
-	host._hub_surface().hub_module_positions = normalized_module_positions(raw_positions)
-
-
-func normalized_module_positions(raw_positions: Variant) -> Dictionary:
+func normalized_module_positions(raw_positions: Variant, pre_migration_layout := false) -> Dictionary:
 	var normalized := {}
 	if typeof(raw_positions) != TYPE_DICTIONARY:
 		return normalized
@@ -534,15 +576,18 @@ func normalized_module_positions(raw_positions: Variant) -> Dictionary:
 			continue
 		var fallback: Vector2 = host._hub_surface()._hub_default_module_center(module_id)
 		var raw_position: Variant = (raw_positions as Dictionary).get(raw_module_id)
-		var module_position: Vector2 = fallback
+		var module_position: Vector2
 		if raw_position is Vector2:
 			module_position = raw_position as Vector2
 		elif typeof(raw_position) == TYPE_DICTIONARY:
 			var raw_dict := raw_position as Dictionary
 			module_position = Vector2(float(raw_dict.get("x", fallback.x)), float(raw_dict.get("y", fallback.y)))
+		else:
+			continue
+		if pre_migration_layout:
+			module_position *= 0.5
 		normalized[module_id] = host._hub_surface()._clamp_hub_module_center(module_position)
 	return normalized
-
 
 func validate_module_positions() -> void:
 	var clean := {}
@@ -552,7 +597,6 @@ func validate_module_positions() -> void:
 		if can_store_position(module_id) and raw_position is Vector2:
 			clean[module_id] = host._hub_surface()._clamp_hub_module_center(raw_position as Vector2)
 	host._hub_surface().hub_module_positions = clean
-
 
 func can_store_position(module_id: String) -> bool:
 	return HUB_MODULE_DEFS.has(module_id) or module_id == "trophy"

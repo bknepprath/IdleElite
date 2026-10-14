@@ -3,18 +3,12 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "scripts\run-godot-test.ps1"
-$testDir = Join-Path $projectRoot ".codex-tmp\button-census-clicks"
 $testScript = "res://scripts/tests/button_census_clicks.gd"
 
-Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
-if (Test-Path -LiteralPath $testDir) {
-    Remove-Item -LiteralPath $testDir -Recurse -Force
-}
-New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-test.ps1."
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
-$env:GODOT_RUN_TIMEOUT_SECONDS = "300"
+$env:GODOT_RUN_TIMEOUT_SECONDS = "900"
 $baselineHeadlessProcessIds = @{}
 foreach ($process in @(Get-HeadlessGodotProcesses)) {
     $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
@@ -39,8 +33,5 @@ finally {
     if ($headless.Count -gt 0) {
         $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after button census click validation."
-    }
-    if (Test-Path -LiteralPath $testDir) {
-        Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

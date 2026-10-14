@@ -4,15 +4,18 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const CANVAS_LAYER := 128
-const SIZE := Vector2(1500, 300)
-const GAP := 28.0
-const VIEWPORT_MARGIN := Vector2(36, 36)
+const SIZE := Vector2(750, 150)
+# Cards that explain what just happened carry a third line.
+const DETAIL_SIZE := Vector2(750, 200)
+const GAP := 14.0
+const VIEWPORT_MARGIN := Vector2(18, 18)
 const EXIT_DELAY := 6.0
 const AUTO_EXIT_SECONDS := 0.64
 const TAP_EXIT_SECONDS := 0.12
 const TAP_SWAP_SECONDS := 0.045
-const QUEUE_BADGE_SIZE := Vector2(190, 118)
-const QUEUE_BADGE_TOP_OVERHANG := 66.0
+const QUEUE_BADGE_SIZE := Vector2(95, 59)
+# Most of the 59 px badge sits above the card so it doesn't cover the toast title.
+const QUEUE_BADGE_TOP_OVERHANG := 50.0
 
 var host
 var pending_offline_summary_achievements := []
@@ -23,6 +26,7 @@ var achievement_toast_queue := []
 var achievement_toast_queue_ids := {}
 var achievement_toast_queue_active := false
 var reward_italic_font: Font
+var toast_canvas_width := 0.0
 
 func _init(host_ref) -> void:
 	host = host_ref
@@ -137,10 +141,10 @@ func _achievement_toast_queue_blocked() -> bool:
 	return host._achievement_overlay_surface().offline_summary_visible()
 
 func _drain_achievement_toast_queue() -> void:
-	while host.is_inside_tree():
-		while host.is_inside_tree() and _achievement_toast_queue_blocked():
+	while is_instance_valid(host) and host.is_inside_tree():
+		while is_instance_valid(host) and host.is_inside_tree() and _achievement_toast_queue_blocked():
 			await host.get_tree().process_frame
-		if not host.is_inside_tree():
+		if not is_instance_valid(host) or not host.is_inside_tree():
 			break
 		_prune_achievement_toasts()
 		if not achievement_toasts.is_empty():
@@ -197,11 +201,11 @@ func _achievement_toast_queue_badge() -> PanelContainer:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(center)
-	var label: Label = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_constant_override("outline_size", 4)
 	center.add_child(label)
 	badge.set_meta("achievement_toast_queue_badge_label_id", label.get_instance_id())
 	return badge
@@ -220,11 +224,25 @@ func _update_achievement_toast_queue_badge(toast: Control, badge: Control, queue
 	if label != null:
 		label.text = "+%s" % queued_count
 
+func sync_desktop_position() -> void:
+	if not is_instance_valid(achievement_toast_root): return
+	var offset := Vector2.ZERO
+	if host.desktop_layout.enabled() and toast_canvas_width > 0.0:
+		# Move the parent so entry/exit tweens keep their authored local coordinates.
+		offset.x = (host.desktop_layout.gameplay_width() - toast_canvas_width) * 0.5
+		var navigation = host.desktop_layout.skill_navigation
+		if is_instance_valid(navigation) and navigation.is_visible_in_tree() and not host.desktop_layout.carousel_discovered:
+			offset.y = -104.0
+	achievement_toast_root.position = offset
+
 func _present_achievement_toast(achievement: Dictionary) -> void:
 	_prune_achievement_toasts()
 	var canvas_size: Vector2 = host._current_canvas_size()
-	var fitted_scale: float = host._fit_scale_to_canvas(SIZE, VIEWPORT_MARGIN)
-	var presentation_size: Vector2 = SIZE * fitted_scale
+	toast_canvas_width = canvas_size.x
+	sync_desktop_position()
+	var card_size := _card_size(achievement)
+	var fitted_scale: float = host._fit_scale_to_canvas(card_size, VIEWPORT_MARGIN)
+	var presentation_size: Vector2 = card_size * fitted_scale
 	var banner := Control.new()
 	banner.z_index = 4095
 	banner.z_as_relative = false
@@ -237,8 +255,8 @@ func _present_achievement_toast(achievement: Dictionary) -> void:
 	toast_parent.add_child(banner)
 	achievement_toasts.append(banner)
 	var card: Control = card(achievement)
-	card.custom_minimum_size = SIZE
-	card.size = SIZE
+	card.custom_minimum_size = card_size
+	card.size = card_size
 	card.scale = Vector2(fitted_scale, fitted_scale)
 	banner.add_child(card)
 	banner.set_meta("achievement_toast_scale", fitted_scale)
@@ -261,11 +279,11 @@ func _present_achievement_toast(achievement: Dictionary) -> void:
 		VIEWPORT_MARGIN.y,
 		maxf(VIEWPORT_MARGIN.y, canvas_size.y - presentation_size.y - VIEWPORT_MARGIN.y)
 	)
-	banner.position = target_position + Vector2(0, 90.0 * fitted_scale)
+	banner.position = target_position + Vector2(0, 45.0 * fitted_scale)
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(banner, Color(1, 1, 1, 0))
 	banner.scale = Vector2(0.92, 0.92)
 	banner.pivot_offset = presentation_size * 0.5
-	var exit_offset := Vector2(0, 110.0 * fitted_scale)
+	var exit_offset := Vector2(0, 55.0 * fitted_scale)
 	banner.set_meta("achievement_exit_offset", exit_offset)
 	var banner_id := banner.get_instance_id()
 	banner.gui_input.connect(_on_achievement_toast_gui_input_bound.bind(banner_id, exit_offset))
@@ -304,7 +322,7 @@ func _route_achievement_toast_input(event: InputEvent) -> bool:
 		if not _achievement_toast_accepts_dismiss_event(event, toast):
 			continue
 		host._input_routing_shell()._block_background_input_briefly()
-		_dismiss_achievement_toast(toast, host._app_lifecycle_runtime().meta_vector2(toast, "achievement_exit_offset", Vector2(0, 110.0)), false)
+		_dismiss_achievement_toast(toast, host._app_lifecycle_runtime().meta_vector2(toast, "achievement_exit_offset", Vector2(0, 55.0)), false)
 		return true
 	return false
 
@@ -403,8 +421,8 @@ func _transition_achievement_toast_to_next_card(banner: Control, exit_offset: Ve
 		old_card.queue_free()
 	var fitted_scale := float(banner.get_meta("achievement_toast_scale", 1.0))
 	var card: Control = card(achievement)
-	card.custom_minimum_size = SIZE
-	card.size = SIZE
+	card.custom_minimum_size = _card_size(achievement)
+	card.size = card.custom_minimum_size
 	card.scale = Vector2(fitted_scale, fitted_scale)
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(card, Color.WHITE)
 	banner.add_child(card)
@@ -502,28 +520,28 @@ func card(achievement: Dictionary) -> Control:
 	var card := PanelContainer.new()
 	card.clip_contents = true
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 10, Callable(host, "_surface_style")))
+	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 17, 5, Callable(host, "_surface_style")))
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_bottom", 3)
 	card.add_child(margin)
 
 	var copy := VBoxContainer.new()
-	copy.custom_minimum_size = Vector2(SIZE.x - 38, 0)
+	copy.custom_minimum_size = Vector2(SIZE.x - 19, 0)
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(copy)
 
-	var title_label: Label = host._label(_achievement_done_text(achievement), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	title_label.custom_minimum_size = Vector2(0, 88)
+	var title_label: Label = host._label(_achievement_done_text(achievement), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title_label.custom_minimum_size = Vector2(0, 44)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -533,8 +551,17 @@ func card(achievement: Dictionary) -> Control:
 		title_label.add_theme_font_override("font", host.app_bold_font)
 	copy.add_child(title_label)
 
-	var reward_label: Label = host._label(_reward_text(achievement), 50, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	reward_label.custom_minimum_size = Vector2(0, 60)
+	var detail_text := str(achievement.get("toast_detail", "")).strip_edges()
+	if not detail_text.is_empty():
+		var detail_label: Label = host._label(detail_text, 40, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		detail_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		detail_label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
+		copy.add_child(detail_label)
+
+	var reward_label: Label = host._label(_reward_text(achievement), 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	reward_label.custom_minimum_size = Vector2(0, 30)
 	reward_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	reward_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -562,7 +589,14 @@ func _reward_italic_font() -> Font:
 	reward_italic_font = font
 	return reward_italic_font
 
+func _card_size(achievement: Dictionary) -> Vector2:
+	return SIZE if str(achievement.get("toast_detail", "")).strip_edges().is_empty() else DETAIL_SIZE
+
+
 func _achievement_done_text(achievement: Dictionary) -> String:
+	var toast_title := str(achievement.get("toast_title", "")).strip_edges()
+	if not toast_title.is_empty():
+		return toast_title
 	var kind := str(achievement.get("kind", ""))
 	if kind == "tier_count":
 		var medal_name := str(achievement.get("title", "Medals"))
@@ -581,5 +615,9 @@ func _reward_text(achievement: Dictionary) -> String:
 		return "Unlocked"
 	if reward_text.begins_with("Reward:"):
 		reward_text = reward_text.substr("Reward:".length()).strip_edges()
-	return reward_text.replace("max stamina", "Max Stamina")
+	reward_text = reward_text.replace("max stamina", "Max Stamina")
+	# After an explanation line, a bare "+1% crit chance" reads like part of it.
+	if not str(achievement.get("toast_detail", "")).strip_edges().is_empty():
+		return "Reward: %s" % reward_text
+	return reward_text
 

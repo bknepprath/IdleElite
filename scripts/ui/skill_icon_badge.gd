@@ -71,7 +71,7 @@ static func symbol_control(host, skill_id: String) -> Control:
 	return texture_symbol
 
 
-static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: Vector2, icon_symbol_size: Vector2, border_width := 12.0) -> Control:
+static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: Vector2, icon_symbol_size: Vector2, border_width := 6.0) -> Control:
 	var badge := Control.new()
 	badge.custom_minimum_size = badge_size
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -116,7 +116,7 @@ static func fill_style(theme_color: Color, badge_size: Vector2) -> StyleBoxFlat:
 	return style
 
 
-static func border_style(host, badge_size: Vector2, border_width := 12.0) -> StyleBoxFlat:
+static func border_style(host, badge_size: Vector2, border_width := 6.0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.TRANSPARENT
 	style.border_color = host.COLOR_INK
@@ -183,15 +183,15 @@ static func symbol_position(skill_id: String, badge_size: Vector2, icon_symbol_s
 	var offset_scale := badge_size.x / maxf(1.0, menu_badge_size.x)
 	match skill_id:
 		"woodcutting":
-			icon_position += Vector2(-49, 88) * offset_scale
+			icon_position += Vector2(-24.5, 44) * offset_scale
 		"fishing":
-			icon_position += Vector2(24, -34) * offset_scale
+			icon_position += Vector2(12, -17) * offset_scale
 		"build":
-			icon_position += Vector2(10, 64) * offset_scale
+			icon_position += Vector2(5, 32) * offset_scale
 		"thieving":
-			icon_position += Vector2(8, 0) * offset_scale
+			icon_position += Vector2(4, 0) * offset_scale
 		"fight":
-			icon_position += Vector2(26, 40) * offset_scale
+			icon_position += Vector2(13, 20) * offset_scale
 	return icon_position
 
 

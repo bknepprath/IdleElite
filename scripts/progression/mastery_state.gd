@@ -1,5 +1,4 @@
 class_name MasteryState
-
 const MEDAL_NAMES := [
 	"Bronze",
 	"Silver",
@@ -66,46 +65,25 @@ const GLOBAL_MEDAL_BUFFS := [
 	{"level": 19, "stat": "max_stamina", "amount": 3.0},
 	{"level": 20, "stat": "xp_mult", "amount": 0.08}
 ]
-
-
 static func medal_name(level: int) -> String:
-	if level <= 0:
-		return "Unranked"
-	return str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
-
-
-static func xp_reward(_action: Dictionary) -> float:
-	return 1.0
-
-
+	return "Unranked" if level <= 0 else str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
+static func xp_reward(action: Dictionary) -> float:
+	return maxf(1.0, float(action.get("mastery_xp_per_completion", 1.0)))
 static func action_has_mastery(host, action: Dictionary) -> bool:
-	if action.is_empty():
-		return false
-	return not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
-
-
+	return not action.is_empty() and not action.has("seasonal_event") and str((action.get("combat", {}) as Dictionary).get("arena_shape", "")).to_lower() != "diamond" and not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
 static func reward_for_action(host, skill_id: String, action_id: String, action: Dictionary) -> float:
 	if not action_has_mastery(host, action):
-		return 0.0
-	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
 		return 0.0
 	if is_maxed(host.mastery, host._action_key(skill_id, action_id), host.MASTERY_MAX_LEVEL):
 		return 0.0
 	return xp_reward(action)
-
-
 static func add_host_xp(host, skill_id: String, action_id: String, amount: float) -> void:
 	var key: String = host._action_key(skill_id, action_id)
-	if amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
-		return
-	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
+	if not action_has_mastery(host, host._action_data(skill_id, action_id)) or amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
 		return
 	_refresh_host_after_level_change(host, add_xp(host.mastery, key, amount, host.MASTERY_MAX_LEVEL))
-
-
 static func recalculate_host(host, key: String) -> void:
 	_refresh_host_after_level_change(host, recalculate_entry(host.mastery, key, host.MASTERY_MAX_LEVEL))
-
 
 static func xp_for_level(level: int) -> int:
 	if level <= 0:
@@ -123,54 +101,49 @@ static func xp_for_level(level: int) -> int:
 		total += int(round(float(old_gap) * gap_multiplier)) + elite_entry_jump
 	return total
 
-
 static func _legacy_xp_for_level(level: int) -> int:
 	return int(round(18.0 * pow(float(level), 2.05)))
 
+static func _entry(mastery: Dictionary, key: String) -> Dictionary:
+	var value = mastery.get(key, {})
+	return value as Dictionary if typeof(value) == TYPE_DICTIONARY else {}
 
 static func level(mastery: Dictionary, key: String) -> int:
-	return int(mastery.get(key, {}).get("level", 0))
-
+	return int(_entry(mastery, key).get("level", 0))
 
 static func is_maxed(mastery: Dictionary, key: String, max_level: int) -> bool:
 	return level(mastery, key) >= max_level
-
 
 static func progress_pct(mastery: Dictionary, key: String, max_level: int) -> float:
 	var current_level := level(mastery, key)
 	if current_level >= max_level:
 		return 100.0
-	var xp_total := float(mastery.get(key, {}).get("xp", 0))
+	var xp_total := float(_entry(mastery, key).get("xp", 0))
 	var start := xp_for_level(current_level)
 	var end := xp_for_level(current_level + 1)
 	var needed := maxi(1, end - start)
 	return clampf(float(xp_total - start) / float(needed) * 100.0, 0.0, 100.0)
 
-
 static func would_reward_level_up(mastery: Dictionary, key: String, amount: float, max_level: int) -> bool:
-	if amount <= 0.0:
-		return false
 	var current_level := level(mastery, key)
-	if current_level >= max_level:
+	if amount <= 0.0 or current_level >= max_level:
 		return false
-	var xp_total := float(mastery.get(key, {}).get("xp", 0))
+	var xp_total := float(_entry(mastery, key).get("xp", 0))
 	return xp_total + amount >= float(xp_for_level(current_level + 1))
-
 
 static func add_xp(mastery: Dictionary, key: String, amount: float, max_level: int) -> Dictionary:
 	if amount <= 0.0 or is_maxed(mastery, key, max_level):
 		return {"level_changed": false}
-	if not mastery.has(key):
+	if not mastery.has(key) or typeof(mastery[key]) != TYPE_DICTIONARY:
 		mastery[key] = {"xp": 0, "level": 0}
 	mastery[key]["xp"] = float(mastery[key].get("xp", 0)) + amount
 	return recalculate_entry(mastery, key, max_level)
 
-
 static func recalculate_entry(mastery: Dictionary, key: String, max_level: int) -> Dictionary:
-	if not mastery.has(key):
+	if not mastery.has(key) or typeof(mastery[key]) != TYPE_DICTIONARY:
 		return {"level_changed": false}
 	var old_level := level(mastery, key)
-	var entry := _entry_for_xp(float(mastery[key].get("xp", 0)), max_level, false)
+	var entry := _entry_for_xp(float(_entry(mastery, key).get("xp", 0)), max_level, false)
 	mastery[key]["level"] = entry["level"]
 	mastery[key]["xp"] = entry["xp"]
 	return {
@@ -180,14 +153,11 @@ static func recalculate_entry(mastery: Dictionary, key: String, max_level: int) 
 		"xp": float(entry["xp"])
 	}
 
-
 static func for_save(mastery: Dictionary, canonical_key: Callable, max_level: int) -> Dictionary:
 	return _normalized_entries(mastery, canonical_key, max_level)
 
-
 static func restored_from_save(loaded_mastery: Variant, canonical_key: Callable, max_level: int) -> Dictionary:
 	return _normalized_entries(loaded_mastery, canonical_key, max_level)
-
 
 static func _normalized_entries(raw_mastery: Variant, canonical_key: Callable, max_level: int) -> Dictionary:
 	var normalized := {}
@@ -208,7 +178,6 @@ static func _normalized_entries(raw_mastery: Variant, canonical_key: Callable, m
 		normalized[key] = _entry_for_xp(float(xp), max_level, true)
 	return normalized
 
-
 static func _entry_for_xp(xp: float, max_level: int, clamp_to_zero: bool) -> Dictionary:
 	var xp_total := maxf(0.0, xp) if clamp_to_zero else xp
 	var current_level := 0
@@ -218,7 +187,6 @@ static func _entry_for_xp(xp: float, max_level: int, clamp_to_zero: bool) -> Dic
 		"xp": minf(xp_total, float(xp_for_level(max_level))),
 		"level": current_level
 	}
-
 
 static func _refresh_host_after_level_change(host, result: Dictionary) -> void:
 	if bool(result.get("level_changed", false)):

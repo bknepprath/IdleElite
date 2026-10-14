@@ -3,12 +3,11 @@ extends RefCounted
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 
-const CHAIN_FALL_SECONDS = 1.15
 const CHAIN_FADE_SECONDS = 0.85
 const MOTION_START_DELAY = 0.48
 const NEXT_PREVIEW_FADE_DELAY = 0.68
 const SPACER_SETTLE_SECONDS = 1.18
-const NEXT_PREVIEW_SETTLE_OFFSET = 12.0
+const NEXT_PREVIEW_SETTLE_OFFSET = 6.0
 
 var host
 var ceremony_count = 0
@@ -20,15 +19,9 @@ var center_scroll_target = -1
 var detail_refresh_done = false
 var visual_scroll_tween: Tween
 var ceremony_action_key = ""
-var locked_preview_reveal_pending = false
-var locked_preview_reveal_skill_ids = {}
-var locked_preview_fade_play_pending = false
-var locked_preview_played_action_keys = {}
-
 
 func _init(host_node) -> void:
 	host = host_node
-
 
 func cancel_transients_for_navigation() -> void:
 	for raw_card in host.action_cards.values():
@@ -55,12 +48,10 @@ func cancel_transients_for_navigation() -> void:
 	host._skill_detail_surface().detail_unlock_scroll_spacer_heights.clear()
 	clear_visual_scroll_tween()
 
-
 func clear_visual_scroll_tween() -> void:
 	if visual_scroll_tween != null and visual_scroll_tween.is_valid():
 		visual_scroll_tween.kill()
 	visual_scroll_tween = null
-
 
 func set_preview_after_ceremony(action_id: String) -> void:
 	var normalized = str(action_id)
@@ -74,41 +65,9 @@ func set_preview_after_ceremony(action_id: String) -> void:
 	):
 		host._skill_detail_surface()._ensure_detail_lazy_entry_mounted(normalized)
 
-
 func clear_preview_reveal_guards() -> void:
 	preview_staged_action_ids.clear()
 	preview_played_action_ids.clear()
-	locked_preview_reveal_pending = false
-	locked_preview_reveal_skill_ids.clear()
-	locked_preview_fade_play_pending = false
-	locked_preview_played_action_keys.clear()
-
-
-func queue_locked_preview_reveal_if_needed(previously_available: bool) -> void:
-	if previously_available or not host._activity_unlock_runtime()._locked_activity_preview_available():
-		return
-	if host._activity_unlock_runtime().has_pending_readiness_for_skill(host.selected_skill_id) or ceremony_count > 0:
-		return
-	if (
-		host.current_screen == "skill"
-		and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and host._onboarding_runtime()._onboarding_path_active()
-		and not host._onboarding_runtime().onboarding_first_module_center_released
-	):
-		host._onboarding_runtime().onboarding_first_module_center_release_pending = true
-	queue_locked_preview_reveal()
-
-
-func queue_locked_preview_reveal() -> void:
-	locked_preview_reveal_skill_ids.clear()
-	var first_locked_id = host._onboarding_runtime()._tutorial_current_locked_preview_action_id(host.selected_skill_id) if not host.selected_skill_id.is_empty() else ""
-	var preview_key = host._action_key(host.selected_skill_id, first_locked_id) if not first_locked_id.is_empty() else ""
-	if not preview_key.is_empty() and not bool(locked_preview_played_action_keys.get(preview_key, false)):
-		locked_preview_reveal_skill_ids[host.selected_skill_id] = true
-	locked_preview_reveal_pending = not locked_preview_reveal_skill_ids.is_empty()
-	if locked_preview_reveal_pending:
-		locked_preview_fade_play_pending = true
-		host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 
 
 func prestage_preview_card(action_id: String, delay = 0.12) -> void:
@@ -162,8 +121,9 @@ func apply_pending_readiness() -> void:
 		var action_id = str(raw_action_id)
 		var key = host._action_key(host.selected_skill_id, action_id)
 		var card = {}
-		if host.action_cards.has(key):
-			card = host.action_cards[key] as Dictionary
+		var raw_card = host.action_cards.get(key)
+		if raw_card is Dictionary:
+			card = raw_card
 		elif host._fishing_rework_active_for_skill(host.selected_skill_id):
 			card = host._fishing_ui_surface()._fishing_method_card_for_action(host.selected_skill_id, action_id)
 		if card.is_empty():
@@ -171,7 +131,8 @@ func apply_pending_readiness() -> void:
 		var action = host._action_data(host.selected_skill_id, action_id)
 		if action.is_empty():
 			continue
-		if host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action):
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+		if action_unlocked:
 			host._activity_unlock_runtime().clear_pending_readiness_action(host.selected_skill_id, action_id)
 			host._mark_save_dirty("activity unlock cleanup")
 			continue
@@ -180,12 +141,10 @@ func apply_pending_readiness() -> void:
 		card["unlock_ceremony_finalized"] = false
 		card["unlock_ready_pending"] = true
 		card.erase("lock_overlay_sync_key")
-		if bool(card.get("locked_preview_hidden", false)):
-			reveal_locked_activity_card_in_place(card, host.selected_skill_id, action)
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, host.selected_skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, host.selected_skill_id, action, action_unlocked)
 		elif not bool(card.get("is_fishing_method", false)):
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, host.selected_skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(host.selected_skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, host.selected_skill_id, action, action_unlocked)
 		else:
 			card["unlock_ceremony_pending"] = false
 			card["unlock_ready_pending"] = true
@@ -283,6 +242,7 @@ func _play_tutorial_level_two_fast_unlock_ceremony(card: Dictionary, group: Cont
 		return
 	finish_ceremony_safe(card, overlay_root, shade, button, true)
 	await run_post_ceremony_preview(card)
+	if bool(card.get("desktop_auto_unlock", false)): return
 	var preview_id = preview_after_ceremony_id
 	if heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
 		host._skill_detail_surface().call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
@@ -379,12 +339,14 @@ func _start_ceremony_motion_after_delay(card: Dictionary, group_ref: WeakRef, ov
 		return
 	finish_ceremony_safe(card, overlay_root, shade, button, true)
 	await run_post_ceremony_preview(card)
+	if bool(card.get("desktop_auto_unlock", false)): return
 	var preview_id = preview_after_ceremony_id
 	if heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
 		host._skill_detail_surface().call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
 
 
 func run_post_ceremony_preview(card: Dictionary):
+	if bool(card.get("desktop_auto_unlock", false)): return
 	if host.current_screen != "skill":
 		return
 	if bool(card.get("unlock_ceremony_finalized", false)) == false:
@@ -464,7 +426,9 @@ func finish_ceremony(card: Dictionary, overlay_root: Control, shade: CanvasItem,
 	ceremony_count = maxi(0, ceremony_count - 1)
 	call_deferred("finish_card_static_state_deferred", card)
 	host._activity_unlock_runtime()._schedule_auto_unlock_pending_lockpads()
-	if refresh_detail and ceremony_count <= 0 and not detail_refresh_done:
+	if refresh_detail and bool(card.get("desktop_auto_unlock", false)):
+		host.desktop_layout.queue_column_refresh(pending_skill_id)
+	elif refresh_detail and ceremony_count <= 0 and not detail_refresh_done:
 		host.call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 
 
@@ -493,7 +457,10 @@ func finish_card_static_state_deferred(card: Dictionary) -> void:
 
 
 func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int, lock_rig_id: int, expand_from_zero: bool, target_height: float, skill_id: String, action_id: String) -> void:
-	var card = host.action_cards.get(card_key, {}) as Dictionary
+	var raw_card = host.action_cards.get(card_key)
+	if not raw_card is Dictionary:
+		return
+	var card = raw_card as Dictionary
 	if card.is_empty():
 		return
 	var callback_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(root_id))
@@ -504,6 +471,7 @@ func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int
 		card["fade_in_pending"] = false
 		return
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(callback_root, Color.WHITE)
+	preload("res://scripts/ui/reveal_cover.gd").apply(callback_root, 1.0, host)
 	if expand_from_zero:
 		host._app_lifecycle_runtime().set_control_minimum_height(callback_root, target_height)
 		callback_root.clip_contents = bool(card.get("preview_enter_original_clip", false))
@@ -524,7 +492,10 @@ func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int
 
 func finish_activity_preview_card_after_fade_deferred(card_key: String, skill_id: String, action_id: String, lock_rig_id: int) -> void:
 	await host.get_tree().process_frame
-	var card = host.action_cards.get(card_key, {}) as Dictionary
+	var raw_card = host.action_cards.get(card_key)
+	if not raw_card is Dictionary:
+		return
+	var card = raw_card as Dictionary
 	var action = host._action_data(skill_id, action_id)
 	if card.is_empty() or skill_id.is_empty() or action.is_empty():
 		return
@@ -539,8 +510,6 @@ func finish_activity_preview_card_after_fade_deferred(card_key: String, skill_id
 		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, true)
 	else:
 		finish_locked_preview_overlay_without_resync(card, action)
-	if skill_id == host.TUTORIAL_STARTER_SKILL_ID and action_id == host.TUTORIAL_GATE_LATCH_ACTION_ID:
-		host._tutorial_overlay_surface().call_deferred("_show_skill_swipe_tip_note_if_needed")
 
 
 func finish_locked_preview_overlay_without_resync(card: Dictionary, action: Dictionary) -> void:
@@ -600,99 +569,6 @@ func set_activity_preview_entry_height(card: Dictionary, root: Control, height: 
 	host._app_lifecycle_runtime().set_control_minimum_height(entry, height)
 
 
-func sync_hidden_locked_activity_preview_layouts() -> void:
-	if host._onboarding_runtime().tutorial_active:
-		return
-	if host.action_cards.is_empty():
-		return
-	for raw_card in host.action_cards.values():
-		var card = raw_card as Dictionary
-		if card == null or not bool(card.get("locked_preview_hidden", false)):
-			continue
-		var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
-		if root == null or not root.is_inside_tree():
-			continue
-		host._app_lifecycle_runtime().set_control_minimum_height(root, 0.0)
-		set_activity_preview_entry_height(card, root, 0.0)
-		root.visible = true
-		root.modulate = Color(1, 1, 1, 0)
-		root.clip_contents = true
-
-
-func prepare_locked_activity_preview_fade(card: Dictionary, skill_id: String, action: Dictionary) -> void:
-	if not locked_preview_reveal_pending:
-		return
-	if not bool(locked_preview_reveal_skill_ids.get(skill_id, false)):
-		return
-	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-		return
-	var action_id = str(action.get("id", ""))
-	if action_id != host._onboarding_runtime()._tutorial_current_locked_preview_action_id(skill_id):
-		card["locked_preview_fade_in_pending"] = false
-		card.erase("locked_preview_reveal_skill_id")
-		card.erase("locked_preview_reveal_action_id")
-		return
-	var preview_key = host._action_key(skill_id, action_id)
-	if bool(locked_preview_played_action_keys.get(preview_key, false)):
-		locked_preview_reveal_skill_ids.erase(skill_id)
-		return
-	if bool(card.get("locked_preview_fade_in_pending", false)) or card.get("preview_fade_tween") != null:
-		return
-	locked_preview_reveal_skill_ids.erase(skill_id)
-	card["unlock_next_preview_smooth"] = true
-	var stable_tutorial_fade = _should_use_stable_tutorial_locked_preview_fade(skill_id, action_id)
-	card["stable_preview_fade"] = stable_tutorial_fade
-	stage_preview_enter(card, _should_expand_locked_activity_preview_reveal(skill_id, action_id) and not stable_tutorial_fade)
-	card["locked_preview_fade_in_pending"] = true
-	card["locked_preview_reveal_skill_id"] = skill_id
-	card["locked_preview_reveal_action_id"] = action_id
-	locked_preview_fade_play_pending = true
-
-
-func _should_use_stable_tutorial_locked_preview_fade(skill_id: String, action_id: String) -> bool:
-	return (
-		host._onboarding_runtime()._onboarding_path_active()
-		and skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and action_id == host.TUTORIAL_LEVEL_TWO_ACTION_ID
-	)
-
-
-func _should_expand_locked_activity_preview_reveal(skill_id: String, action_id: String) -> bool:
-	return (
-		host._onboarding_runtime()._onboarding_path_active()
-		and skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and action_id == host.TUTORIAL_LEVEL_TWO_ACTION_ID
-	)
-
-
-func play_pending_locked_activity_preview_reveals() -> void:
-	for raw_card in host.action_cards.values():
-		var card = raw_card as Dictionary
-		_prepare_pending_locked_activity_preview_card(card)
-		play_locked_preview_reveal(card)
-	for raw_state in host._skill_swipe_activity_surface()._preview_state_values():
-		var state = raw_state as Dictionary
-		if state == null:
-			continue
-		var preview_cards = state.get("action_cards", []) as Array
-		for raw_card in preview_cards:
-			var card = raw_card as Dictionary
-			_prepare_pending_locked_activity_preview_card(card)
-			play_locked_preview_reveal(card)
-	locked_preview_fade_play_pending = false
-	locked_preview_reveal_pending = not locked_preview_reveal_skill_ids.is_empty()
-
-
-func _prepare_pending_locked_activity_preview_card(card: Dictionary) -> void:
-	if card == null:
-		return
-	var skill_id = str(card.get("skill_id", ""))
-	var action = card.get("action", {}) as Dictionary
-	if skill_id.is_empty() or action.is_empty():
-		return
-	prepare_locked_activity_preview_fade(card, skill_id, action)
-
-
 func activity_preview_reveal_animation_pending(card: Dictionary) -> bool:
 	if card.is_empty():
 		return false
@@ -706,7 +582,6 @@ func activity_preview_reveal_animation_pending(card: Dictionary) -> bool:
 		)
 		or bool(card.get("fade_in_pending", false))
 		or bool(card.get("unlock_next_preview_pending", false))
-		or bool(card.get("locked_preview_fade_in_pending", false))
 	)
 
 
@@ -714,25 +589,22 @@ func stage_preview_enter(card: Dictionary, collapse_height = true) -> void:
 	var root = card.get("root") as Control
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
+	host._skill_detail_surface()._kill_detail_lazy_reveal_tween(root)
 	host._skill_detail_surface()._preserve_detail_scroll_after_height_change_if_above_view(root)
-	var target_height = float(card.get("locked_preview_target_height", root.custom_minimum_size.y))
+	var target_height = root.custom_minimum_size.y
 	if target_height <= 0.0:
 		target_height = root.size.y
 	if target_height <= 0.0:
 		target_height = ActivityCardStyles.preview_root_height(card, host._passive_firepit_surface()._passive_action_card_height(card.get("action", {}) as Dictionary), ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y))
-	var entry_target_height = float(card.get("locked_preview_entry_target_height", activity_preview_entry_height(card, root, target_height)))
+	var entry_target_height = activity_preview_entry_height(card, root, target_height)
 	if collapse_height:
 		card["preview_enter_target_height"] = target_height
 		card["preview_enter_entry_target_height"] = entry_target_height
 	else:
 		card.erase("preview_enter_target_height")
 		card.erase("preview_enter_entry_target_height")
-	var original_clip = bool(card.get("locked_preview_original_clip", root.clip_contents))
+	var original_clip = root.clip_contents
 	card["preview_enter_original_clip"] = original_clip
-	card["locked_preview_hidden"] = false
-	card.erase("locked_preview_target_height")
-	card.erase("locked_preview_entry_target_height")
-	card.erase("locked_preview_original_clip")
 	host._app_lifecycle_runtime().set_control_minimum_height(root, 0.0 if collapse_height else target_height)
 	set_activity_preview_entry_height(card, root, 0.0 if collapse_height else entry_target_height)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(root, true)
@@ -740,7 +612,7 @@ func stage_preview_enter(card: Dictionary, collapse_height = true) -> void:
 	root.clip_contents = true if collapse_height else original_clip
 	var pop = card.get("pop") as Control
 	if pop != null:
-		set_preview_pop_vertical_offset(pop, NEXT_PREVIEW_SETTLE_OFFSET if bool(card.get("unlock_next_preview_smooth", false)) and not collapse_height else 34.0)
+		set_preview_pop_vertical_offset(pop, NEXT_PREVIEW_SETTLE_OFFSET if bool(card.get("unlock_next_preview_smooth", false)) and not collapse_height else 17.0)
 
 
 func sync_locked_preview_presence(card: Dictionary, skill_id: String, action: Dictionary) -> void:
@@ -749,44 +621,6 @@ func sync_locked_preview_presence(card: Dictionary, skill_id: String, action: Di
 		return
 	if activity_preview_reveal_animation_pending(card):
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(root, true)
-		return
-	var unlocked = host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
-	var action_id = str(action.get("id", ""))
-	var waiting_for_unlock_fade = not unlocked and action_id == preview_after_ceremony_id
-	if waiting_for_unlock_fade and bool(card.get("locked_preview_hidden", false)):
-		reveal_locked_activity_card_in_place(card, skill_id, action)
-	if bool(card.get("locked_preview_hidden", false)):
-		card["locked_preview_hidden"] = false
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(root, true)
-		var restored_height = float(card.get("locked_preview_target_height", ActivityCardStyles.preview_root_height(card, host._passive_firepit_surface()._passive_action_card_height(card.get("action", {}) as Dictionary), ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y))))
-		host._app_lifecycle_runtime().set_control_minimum_height(root, restored_height)
-		set_activity_preview_entry_height(card, root, float(card.get("locked_preview_entry_target_height", restored_height)))
-		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(root, Color.WHITE)
-		root.clip_contents = bool(card.get("locked_preview_original_clip", card.get("preview_enter_original_clip", false)))
-		card.erase("locked_preview_target_height")
-		card.erase("locked_preview_entry_target_height")
-		card.erase("locked_preview_original_clip")
-
-
-func play_locked_preview_reveal(card: Dictionary) -> void:
-	if card == null or not bool(card.get("locked_preview_fade_in_pending", false)):
-		return
-	card["locked_preview_fade_in_pending"] = false
-	var skill_id = str(card.get("locked_preview_reveal_skill_id", ""))
-	var action_id = str(card.get("locked_preview_reveal_action_id", ""))
-	if not skill_id.is_empty():
-		locked_preview_reveal_skill_ids.erase(skill_id)
-		card.erase("locked_preview_reveal_skill_id")
-	card.erase("locked_preview_reveal_action_id")
-	if not skill_id.is_empty() and not action_id.is_empty():
-		var preview_key = host._action_key(skill_id, action_id)
-		if bool(locked_preview_played_action_keys.get(preview_key, false)):
-			return
-		locked_preview_played_action_keys[preview_key] = true
-	if host._onboarding_runtime()._should_release_onboarding_first_module_centering_for_locked_preview(skill_id, action_id):
-		host._onboarding_runtime().onboarding_first_module_center_release_pending = true
-		host._onboarding_runtime()._release_onboarding_first_module_centering()
-	host._skill_swipe_activity_surface()._play_activity_preview_fade_in(card)
 
 
 func reveal_locked_activity_card_in_place(card: Dictionary, skill_id: String, action: Dictionary) -> void:
@@ -797,9 +631,6 @@ func reveal_locked_activity_card_in_place(card: Dictionary, skill_id: String, ac
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(root, true)
 		return
 	host._skill_detail_surface()._preserve_detail_scroll_after_height_change_if_above_view(root)
-	card["locked_preview_hidden"] = false
-	card.erase("locked_preview_target_height")
-	card.erase("locked_preview_original_clip")
 	card.erase("preview_enter_target_height")
 	card.erase("preview_enter_original_clip")
 	card.erase("unlock_next_preview_pending")
@@ -821,11 +652,12 @@ func reveal_locked_activity_card_in_place(card: Dictionary, skill_id: String, ac
 	if pop != null and is_instance_valid(pop):
 		set_preview_pop_vertical_offset(pop, 0.0)
 	if not action.is_empty():
-		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, action_unlocked)
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, action_unlocked)
 		elif not bool(card.get("is_fishing_method", false)) and not bool(card.get("is_fishing_area", false)):
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, action_unlocked)
 
 
 func apply_skill_detail_refresh_in_place(preview_id: String) -> bool:
@@ -842,12 +674,13 @@ func apply_skill_detail_refresh_in_place(preview_id: String) -> bool:
 		var action = card.get("action", {}) as Dictionary
 		if action.is_empty():
 			continue
+		var action_unlocked: bool = bool(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
 		if bool(card.get("passive", false)):
-			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, action_unlocked)
 		elif bool(card.get("is_fishing_method", false)) or bool(card.get("is_fishing_area", false)):
 			continue
 		else:
-			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
+			host._skill_swipe_activity_surface()._update_action_card_static_state(card, skill_id, action, action_unlocked)
 	if preview_id.is_empty():
 		return true
 	if play_preview_in_place(preview_id):
@@ -933,9 +766,10 @@ func activity_preview_card_for_action_id(action_id: String, ensure_lazy_mount = 
 	var key = host._action_key(host.selected_skill_id, action_id)
 	if host.action_cards.has(key):
 		var card = host.action_cards[key] as Dictionary
-		var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
-		if card != null and root != null:
-			return card
+		if card != null:
+			var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
+			if root != null:
+				return card
 		host._skill_detail_surface()._discard_action_card_key(key)
 	if host.selected_skill_id == "fishing":
 		var area_card = host._fishing_ui_surface()._fishing_area_card_for_action(host.selected_skill_id, action_id)
@@ -951,8 +785,9 @@ func stage_preview_for_action_id(action_id: String, collapse_height = true) -> b
 	if bool(card.get("unlock_next_preview_pending", false)):
 		return true
 	card["unlock_next_preview_smooth"] = true
-	if not stage_preview_once(action_id, card, collapse_height):
-		stage_preview_enter(card, collapse_height)
+	if bool(preview_played_action_ids.get(action_id, false)):
+		return true
+	stage_preview_once(action_id, card, collapse_height)
 	card["fade_in_pending"] = true
 	card["unlock_next_preview_pending"] = true
 	return true
@@ -991,14 +826,15 @@ func play_next_locked_preview_fade(_collapse_height = false) -> bool:
 	var card = activity_preview_card_for_action_id(preview_id, true)
 	if card.is_empty():
 		return false
-	if not bool(card.get("unlock_next_preview_pending", false)):
-		card["unlock_next_preview_smooth"] = true
-		stage_preview_enter(card, false)
-		card["fade_in_pending"] = true
-	card.erase("unlock_next_preview_pending")
+	# Claim before staging: a repeated refresh must never hide an entered card.
 	if not claim_preview_play(preview_id):
 		set_preview_after_ceremony("")
 		return true
+	if not bool(card.get("unlock_next_preview_pending", false)):
+		card["unlock_next_preview_smooth"] = true
+		stage_preview_once(preview_id, card, false)
+		card["fade_in_pending"] = true
+	card.erase("unlock_next_preview_pending")
 	host._skill_swipe_activity_surface()._play_activity_preview_fade_in(card)
 	set_preview_after_ceremony("")
 	center_scroll_target = -1

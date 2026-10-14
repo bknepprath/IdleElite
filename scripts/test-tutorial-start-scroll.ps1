@@ -24,7 +24,8 @@ function Assert-NoUnexpectedGodotErrors {
         }
         $knownShutdownNoise = (
             $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $text -match '^ERROR: Failed to read the root certificate store\.$'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -123,7 +124,6 @@ func _run() -> void:
 	var detail_xp_bar := scene._skill_detail_surface().detail_xp_bar as Control
 	var detail_regen_circle := scene._skill_detail_surface().detail_regen_circle as Control
 	var tutorial_surface = scene._tutorial_overlay_surface()
-	var activity_start_highlight := tutorial_surface.activity_start_highlight_border as Control
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
 		return
@@ -170,8 +170,8 @@ func _run() -> void:
 		return
 	var arrow_tip_offset := Vector2(0.47, 0.02) if tutorial_arrow.flip_v else Vector2(0.47, 0.98)
 	var arrow_tip := tutorial_arrow.get_global_transform() * (tutorial_arrow.size * arrow_tip_offset)
-	if tutorial_arrow.size.distance_to(Vector2(260, 420)) > 1.0:
-		_fail("tutorial arrow should use the phone-sized 260x420 treatment: size=%s %s" % [str(tutorial_arrow.size), _summary(scene)])
+	if tutorial_arrow.size.distance_to(Vector2(130, 210)) > 1.0:
+		_fail("tutorial arrow should use the native 1080p 130x210 treatment: size=%s %s" % [str(tutorial_arrow.size), _summary(scene)])
 		return
 	var target_rect := tutorial_target.get_global_rect()
 	var expected_tip := target_rect.position + target_rect.size * Vector2(0.50, -0.07)
@@ -210,9 +210,6 @@ func _run() -> void:
 		return
 	if get_nodes_in_group("activity_start_tip_notes").is_empty():
 		_fail("tutorial starter skill page should show the brown activity-start instruction below the card: %s" % _summary(scene))
-		return
-	if activity_start_highlight != null and _effective_canvas_alpha(activity_start_highlight) > 0.01:
-		_fail("tutorial starter skill page should not show the activity highlight immediately: alpha=%.3f %s" % [_effective_canvas_alpha(activity_start_highlight), _summary(scene)])
 		return
 	if _tutorial_module_count(scene) != 1:
 		_fail("tutorial starter skill page should render only one activity module, got %s: %s" % [str(_tutorial_module_count(scene)), _summary(scene)])

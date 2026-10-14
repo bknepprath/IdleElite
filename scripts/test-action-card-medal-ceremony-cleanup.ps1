@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
@@ -82,6 +81,35 @@ func _run() -> void:
 	if card.has("medal_tap_effects"):
 		_record("medal_tap_effects was not erased")
 
+	var medal_surface: RefCounted = scene.call("_skill_swipe_activity_surface")
+	if not (medal_surface.call("_action_card_medal_size", 1) as Vector2).is_equal_approx(Vector2(92.34, 92.34)):
+		_record("Standard action-card medal did not use its expected size")
+
+	var replacement_parent := Control.new()
+	root.add_child(replacement_parent)
+	var replacement_medal := TextureRect.new()
+	replacement_medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	replacement_medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	replacement_parent.add_child(replacement_medal)
+	var replacement_card := {"card_key": "test:replacement", "medal": replacement_medal}
+	medal_surface.call("_place_action_card_medal", replacement_card, replacement_medal, 8)
+	var outgoing_texture := GradientTexture2D.new()
+	outgoing_texture.width = 512
+	outgoing_texture.height = 512
+	replacement_medal.texture = outgoing_texture
+	var outgoing_origin := replacement_medal.position
+	var outgoing_size := replacement_medal.size
+	medal_surface.call("_play_new_medal_ceremony", replacement_card, replacement_medal, outgoing_texture, true, 9)
+	var outgoing := replacement_card.get("medal_outgoing") as TextureRect
+	if outgoing == null:
+		_record("Replacement ceremony did not create an outgoing medal")
+	else:
+		if not outgoing.position.is_equal_approx(outgoing_origin):
+			_record("Outgoing medal did not begin falling from its existing position")
+		if not outgoing.size.is_equal_approx(outgoing_size):
+			_record("Outgoing medal changed size before beginning its fall")
+	medal_surface.call("_clear_action_card_medal_ceremony", replacement_card)
+	replacement_parent.queue_free()
 	var medal := TextureRect.new()
 	medal.position = Vector2(180, 220)
 	medal.size = Vector2(190, 190)
@@ -105,7 +133,6 @@ func _run() -> void:
 	if bool(scene.call("_skill_detail_surface").call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", off_medal_positions)):
 		_record("Off-medal release was incorrectly accepted as a medal hit")
 	medal.queue_free()
-
 	var scroll_script := load("res://scripts/ui/mobile_scroll_container.gd")
 	var detail_scroll := scroll_script.new() as Control
 	detail_scroll.position = Vector2.ZERO
@@ -139,28 +166,20 @@ func _run() -> void:
 		"method_hit_control": fishing_button,
 	}
 	scene.call("_skill_swipe_activity_surface").call("_place_action_card_medal", fishing_method_card, fishing_medal, 20)
-	if not (fishing_medal.position + fishing_medal.size * 0.5).is_equal_approx(Vector2(24, 18)):
-		_record("Fishing medal did not use the normal action-card corner alignment")
+	var fishing_medal_corner_center := fishing_medal.position + fishing_medal.size * 0.5
+	if not fishing_medal_corner_center.is_equal_approx(Vector2(12, 9)):
+		_record("Fishing medal did not use the normal action-card corner alignment: center=%s position=%s size=%s" % [fishing_medal_corner_center, fishing_medal.position, fishing_medal.size])
 	var action_cards := {}
 	action_cards[scene.call("_action_key", "fishing", fishing_action_id)] = fishing_method_card
 	scene.set("action_cards", action_cards)
-	var fishing_medal_center := fishing_medal.get_global_rect().get_center()
-	var press_event := _mouse_button_event(fishing_medal_center, true)
-	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(press_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
-		_record("Fishing medal press was not handled")
-	if str(fishing_button.get_meta("fishing_method_press_kind", "")) != "__medal__":
-		_record("Fishing medal press did not store medal press kind")
-	var release_event := _mouse_button_event(fishing_medal_center, false)
-	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(release_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
-		_record("Fishing medal release was not handled")
-	if fishing_button.has_meta("fishing_method_press_kind"):
-		_record("Fishing medal press kind was not cleared after release")
+	scene.call("_fishing_ui_surface")._activate_fishing_method_button(fishing_method_card)
+	var medal_button := fishing_medal.get_node("MedalButton") as Button
+	medal_button.pressed.emit()
 	if not fishing_method_card.has("medal_tap_tweens"):
 		_record("Fishing medal release did not start medal tap ceremony")
 	detail_scroll.queue_free()
 	fishing_button.queue_free()
 	fishing_medal.queue_free()
-
 	if failures.is_empty():
 		print("action-card-medal-ceremony-cleanup-ok")
 		quit(0)

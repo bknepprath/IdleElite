@@ -53,21 +53,9 @@ func _passive_button_event_position(event: InputEvent, source: Control) -> Vecto
 
 
 func _activity_input_position_candidates(event_position: Vector2) -> Array[Vector2]:
-	var positions: Array[Vector2] = []
-	_add_unique_event_position(positions, event_position)
-	var window_size := Vector2.ZERO
-	if DisplayServer.get_name() != "headless":
-		window_size = Vector2(DisplayServer.window_get_size())
-	if window_size.x > 1.0 and window_size.y > 1.0:
-		_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.x / window_size.x))
-		_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.y / window_size.y))
-		_add_unique_event_position(positions, Vector2(event_position.x * host.BASE_CANVAS.x / window_size.x, event_position.y * host.BASE_CANVAS.y / window_size.y))
-	if host.is_inside_tree():
-		var visible_size: Vector2 = host.get_viewport_rect().size
-		if visible_size.x > 1.0 and visible_size.y > 1.0:
-			_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.x / visible_size.x))
-			_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.y / visible_size.y))
-	return positions
+	# _input events already use viewport coordinates, including viewport stretch.
+	# Guessing window-scaled alternatives makes unrelated controls steal taps.
+	return [event_position]
 
 
 func _action_card_event_positions(event: InputEvent, source: Control) -> Array[Vector2]:
@@ -255,7 +243,80 @@ static func event_is_outside_panel_press(event: InputEvent, panel: Control) -> b
 	return false
 
 
+var feedback_help_button: Button
+var feedback_help_press_position := Vector2.ZERO
+
+func _feedback_help_owns_pointer(event: InputEvent) -> bool:
+	if host.current_screen != "skill" or host._onboarding_runtime().tutorial_active:
+		feedback_help_button = null
+		return false
+	var point := Vector2.INF
+	var down := false
+	var up := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		point = event.global_position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventScreenTouch:
+		point = event.position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
+		point = event.position
+	if is_instance_valid(feedback_help_button):
+		var button := feedback_help_button
+		if point != Vector2.INF and point.distance_to(feedback_help_press_position) > 24.0:
+			feedback_help_button = null
+		elif up:
+			feedback_help_button = null
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				button.pressed.emit()
+		host.get_viewport().set_input_as_handled()
+		return true
+	if down:
+		for button in host.get_tree().get_nodes_in_group("feedback_help_buttons"):
+			if (button.name in ["MedalInformationButton", "WisdomInformationButton", "WisdomRewardInformation"] or button.has_meta("wisdom_source")) and not _position_inside_detail_actions_viewport(point):
+				continue
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				feedback_help_button = button
+				feedback_help_press_position = point
+				host.get_viewport().set_input_as_handled()
+				return true
+	return false
+
 func input(event: InputEvent) -> void:
+	# The welcome panel owns the pointer before activity chips or gestures can
+	# intercept a click through it. Its buttons receive normal GUI events.
+	if host._achievement_overlay_surface().offline_summary_visible():
+		if _route_system_back_input(event):
+			host.get_viewport().set_input_as_handled()
+		return
+	var fishing = host._fishing_ui_surface()
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		var pressed: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed)
+		if pressed and not fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+			var circle = host._skill_detail_surface().detail_fish_circle
+			if not is_instance_valid(circle) or not circle.get_global_rect().has_point(event.position):
+				fishing._clear_fishing_tool_circle_menu()
+				host.get_viewport().set_input_as_handled()
+				return
+	if _feedback_help_owns_pointer(event):
+		return
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		if event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag:
+			if fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+				# Keep wallet events in its GUI tree, away from activity and swipe routing.
+				return
+	# Let Godot's GUI handle synthesized pointer events. Custom gesture routing
+	# must not treat the emulated copy as another player gesture.
+	if event.device == InputEvent.DEVICE_ID_EMULATION and _fishing_detail_input_context_active():
+		return
+	# Once a finger is dragging the skill pages sideways it owns the motion;
+	# page-specific routers (fishing modules, scroll owners) must not eat it or
+	# the pages stop following the finger.
+	if _route_horizontal_skill_swipe_motion(event):
+		host.get_viewport().set_input_as_handled()
+		return
 	if host._material_collection_surface().route_berry_mode_leave_button_input(event):
 		host.get_viewport().set_input_as_handled()
 		return
@@ -303,8 +364,6 @@ func _fishing_detail_scroll_container_should_own_event(event: InputEvent) -> boo
 	if _position_inside_bottom_interactive_ui(event_position):
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
-		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
 		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking and host._skill_swipe_activity_surface().skill_swipe_horizontal:
 		return false
@@ -420,8 +479,6 @@ func _fishing_detail_primary_press_should_defer_tap_scan(event: InputEvent) -> b
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
 		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
-		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking or host._skill_swipe_activity_surface().skill_swipe_animating:
 		return false
 	var event_position := _fishing_detail_event_position(event)
@@ -493,17 +550,7 @@ func _route_fishing_detail_deferred_swipe_input(event: InputEvent) -> bool:
 		event_position = touch_event.position
 		is_release = not touch_event.pressed
 	if is_release:
-		var press_position := fishing_detail_swipe_press_position
-		var touch_index := fishing_detail_swipe_press_touch_index
 		_clear_fishing_detail_deferred_swipe()
-		if (
-			event_position != Vector2.INF
-			and event_position.distance_to(press_position) <= host.PASSIVE_BUTTON_TAP_RELEASE_SLOP
-			and _position_inside_detail_actions_viewport(event_position)
-			and not _position_inside_bottom_interactive_ui(event_position)
-			and not host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action()
-		):
-			return _route_fishing_detail_deferred_tap_release(event_position, touch_index)
 		return false
 	if not is_motion or event_position == Vector2.INF:
 		return false
@@ -525,47 +572,6 @@ func _route_fishing_detail_deferred_swipe_input(event: InputEvent) -> bool:
 	if host._skill_swipe_activity_surface().skill_swipe_tracking:
 		host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event_position)
 	return true
-
-
-func _route_fishing_detail_deferred_tap_release(event_position: Vector2, touch_index := -1) -> bool:
-	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
-		return false
-	if event_position == Vector2.INF:
-		return false
-	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
-		return false
-	if _route_fishing_method_lock_tap_at_position(event_position):
-		return true
-	var offer_button: Button = host._fishing_ui_surface()._fishing_offer_button_hit(event_position, true)
-	if offer_button != null:
-		host._fishing_ui_surface()._activate_fishing_offer_button(str(offer_button.get_meta("fishing_offer_id", "")), offer_button)
-		return true
-	var method_hit: Dictionary = host._fishing_ui_surface()._fishing_method_button_hit(event_position, true)
-	if not method_hit.is_empty():
-		var method_card := method_hit.get("method_card", {}) as Dictionary
-		if method_card.is_empty():
-			return false
-		var skill_id := str(method_card.get("skill_id", "fishing"))
-		var action_id := str(method_card.get("action_id", ""))
-		var owner_area_card := method_hit.get("owner_area_card", {}) as Dictionary
-		var owner_pop := owner_area_card.get("pop", null) as Control
-		var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-		if owner_area_pop_instance_id == 0:
-			owner_area_pop_instance_id = int(method_hit.get("owner_pop_instance_id", 0))
-		if host.queue_selection_mode:
-			if owner_area_card.is_empty():
-				host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(method_card)
-			else:
-				host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(owner_area_card)
-			return true
-		if host.current_screen == "queue":
-			var module_key: String = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(owner_area_card if not owner_area_card.is_empty() else method_card)
-			if not module_key.is_empty():
-				host._activity_queue_runtime()._start_activity_queue_from_key(module_key)
-				return true
-		host._fishing_ui_surface()._on_fishing_method_pressed(skill_id, action_id, str(method_card.get("fishing_area_key", "")), owner_area_pop_instance_id)
-		return true
-	return false
 
 
 func _try_handoff_fishing_deferred_vertical_scroll(event: InputEvent, event_position: Vector2) -> bool:
@@ -606,12 +612,6 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 	host._audio_director().note_player_input(event)
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_note_player", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
-	if host._fishing_ui_surface()._route_fishing_wallet_unhandled_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("input_fishing_wallet_early", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("input_fishing_wallet_early", fishing_input_step_started_usec, event)
-	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 	_update_fishing_detail_primary_pointer_down(event)
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_primary_pointer_down", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
@@ -633,12 +633,6 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_detail_jump_arrow_early", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
-	if _route_active_fishing_control_drag_handoff(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("input_active_fishing_control_early", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("input_active_fishing_control_early", fishing_input_step_started_usec, event)
-	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 	if _route_fishing_detail_deferred_swipe_input(event):
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_deferred_swipe_early", fishing_input_step_started_usec, event)
 		host.get_viewport().set_input_as_handled()
@@ -656,11 +650,24 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 		fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 		_begin_fishing_detail_deferred_swipe_if_press(event)
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_defer_swipe_begin", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_total_defer_return", fishing_input_total_started_usec, event)
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_defer_tap_check_false", fishing_input_step_started_usec, event)
 	return false
+
+
+# Page-sized tap targets (tier banners) are buttons, but a skill swipe may still start on them;
+# the button keeps its press, so a plain tap still toggles it.
+func _press_on_swipe_passthrough_button(event: InputEvent) -> bool:
+	var event_position := Vector2.INF
+	if event is InputEventMouseButton:
+		event_position = (event as InputEventMouseButton).global_position
+	elif event is InputEventScreenTouch:
+		event_position = (event as InputEventScreenTouch).position
+	if event_position == Vector2.INF:
+		return false
+	var button: BaseButton = host.button_press_runtime._button_at_global_position(host, event_position)
+	return button != null and bool(button.get_meta("allows_skill_swipe", false))
 
 
 func _input_primary_press_started_on_button(event: InputEvent) -> bool:
@@ -676,9 +683,6 @@ func _input_primary_press_started_on_button(event: InputEvent) -> bool:
 
 func _route_input_top_level_controls(event: InputEvent, press_started_on_button: bool) -> bool:
 	if host.button_press_runtime._input_event_releases_primary_pointer(event):
-		if host._fishing_ui_surface().has_active_fishing_method_press() and host._fishing_ui_surface()._route_fishing_method_button_global_input(event):
-			host.get_viewport().set_input_as_handled()
-			return true
 		host.button_press_runtime.release_all_depressed_buttons()
 		host._skill_swipe_activity_surface().release_all_depressed_activity_shell_buttons()
 	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -826,27 +830,19 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 		return true
 	if host._navigation_shell()._event_points_inside_bottom_nav(event):
 		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._fishing_ui_surface()._clear_active_fishing_method_button_press()
 		host._skill_detail_surface().action_card_press_key = ""
 		return true
 	if _event_points_inside_bottom_interactive_ui(event):
 		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._fishing_ui_surface()._clear_active_fishing_method_button_press()
 		host._skill_detail_surface().action_card_press_key = ""
 		return true
 	if host._action_stop_hold().route_input(event):
-		host.get_viewport().set_input_as_handled()
-		return true
-	if _route_fishing_method_lock_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	if _route_activity_lock_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	if host._skill_detail_surface()._route_detail_back_button_input(event):
-		host.get_viewport().set_input_as_handled()
-		return true
-	if host._fishing_ui_surface()._route_fishing_active_tool_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	host._skill_detail_surface()._hide_skill_header_info_on_outside_press(event)
@@ -870,7 +866,7 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 			if _route_action_card_press(event.global_position):
 				host.get_viewport().set_input_as_handled()
 				return true
-			if host.current_screen == "skill" and not press_started_on_button:
+			if host.current_screen == "skill" and (not press_started_on_button or _press_on_swipe_passthrough_button(event)):
 				host._skill_swipe_activity_surface()._interrupt_skill_swipe_animation_for_input()
 				if host.skills_page != null and Rect2(host.skills_page.global_position, host.skills_page.size).has_point(event.global_position):
 					host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(event.global_position, -1)
@@ -886,7 +882,7 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 			if _route_action_card_press(event.position, event.index):
 				host.get_viewport().set_input_as_handled()
 				return true
-			if host.current_screen == "skill" and not press_started_on_button:
+			if host.current_screen == "skill" and (not press_started_on_button or _press_on_swipe_passthrough_button(event)):
 				host._skill_swipe_activity_surface()._interrupt_skill_swipe_animation_for_input()
 				host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(event.position, event.index)
 		elif host._skill_swipe_activity_surface().skill_swipe_tracking and event.index == host._skill_swipe_activity_surface().skill_swipe_touch_index:
@@ -896,6 +892,17 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 		host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event.position)
 		return true
 	return false
+
+
+func _route_horizontal_skill_swipe_motion(event: InputEvent) -> bool:
+	if host.current_screen != "skill":
+		return false
+	var swipe = host._skill_swipe_activity_surface()
+	if not swipe.skill_swipe_tracking or not swipe.skill_swipe_horizontal:
+		return false
+	if not (event is InputEventScreenDrag or event is InputEventMouseMotion):
+		return false
+	return _route_active_skill_swipe_input(event)
 
 
 func _route_active_skill_swipe_input(event: InputEvent) -> bool:
@@ -929,7 +936,7 @@ func _handle_system_back_request() -> void:
 	if host._onboarding_runtime().tutorial_active:
 		host._onboarding_runtime()._complete_tutorial_target_intro()
 		return
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		host._profile_chat_overlay_surface()._close_chat_overlay()
 		return
 	if host._achievement_overlay_surface().offline_summary_visible():
@@ -955,7 +962,7 @@ func _handle_system_back_request() -> void:
 
 
 func _any_modal_overlay_visible() -> bool:
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		return true
 	if host.settings_overlay != null and host.settings_overlay.visible:
 		return true
@@ -974,78 +981,6 @@ func _modal_blocks_background_input() -> bool:
 
 func _block_background_input_briefly(duration_msec := 180) -> void:
 	modal_background_input_block_until_msec = maxi(modal_background_input_block_until_msec, Time.get_ticks_msec() + duration_msec)
-
-
-func _route_fishing_method_lock_input(event: InputEvent) -> bool:
-	if host.current_screen == "skill" and host.selected_skill_id != "fishing":
-		return false
-	if host.current_screen != "skill" and host.current_screen != "pinned":
-		return false
-	var event_position = Vector2.ZERO
-	var is_press = false
-	if event is InputEventMouseButton:
-		var mouse_event = event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return false
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		var touch_event = event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-	else:
-		return false
-	if not is_press:
-		return false
-	if not _event_points_inside_detail_actions_viewport(event):
-		return false
-	return _route_fishing_method_lock_tap_at_position(event_position)
-
-
-func _route_fishing_method_lock_tap_at_position(event_position: Vector2) -> bool:
-	var method_cards: Array = []
-	for raw_card in host.action_cards.values():
-		if typeof(raw_card) != TYPE_DICTIONARY:
-			continue
-		var card = raw_card as Dictionary
-		if bool(card.get("is_fishing_method", false)):
-			method_cards.append(card)
-		if bool(card.get("is_fishing_area", false)):
-			for raw_method_card in (card.get("method_slots", {}) as Dictionary).values():
-				if typeof(raw_method_card) == TYPE_DICTIONARY:
-					method_cards.append(raw_method_card as Dictionary)
-	for raw_method_card in method_cards:
-		var card = raw_method_card as Dictionary
-		if card.is_empty() or not bool(card.get("is_fishing_method", false)):
-			continue
-		var action_id = str(card.get("action_id", ""))
-		var skill_id = str(card.get("skill_id", "fishing"))
-		var action = host._action_data(skill_id, action_id)
-		var locked_method = action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) or bool(card.get("unlock_ready_pending", false))
-		if not locked_method:
-			continue
-		var lock_root = host._app_lifecycle_runtime().valid_control_ref(card.get("lock_root"))
-		var hit_control = lock_root
-		if hit_control == null:
-			hit_control = host._app_lifecycle_runtime().valid_control_ref(card.get("art_panel"))
-		if hit_control == null:
-			continue
-		if not hit_control.visible or not hit_control.is_visible_in_tree():
-			continue
-		var hit_rect = hit_control.get_global_rect().grow(28.0)
-		var padlock_hit_area = host._app_lifecycle_runtime().valid_control_ref(lock_root.get_meta("padlock_button")) if lock_root != null else null
-		if padlock_hit_area != null and padlock_hit_area.is_visible_in_tree():
-			hit_rect = padlock_hit_area.get_global_rect().grow(32.0)
-		if not hit_rect.has_point(event_position):
-			continue
-		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._skill_detail_surface().action_card_press_key = ""
-		host._skill_detail_surface().action_card_press_stat_kind = ""
-		host._skill_detail_surface().action_card_press_dragged = false
-		var shake_body = host._app_lifecycle_runtime().valid_control_ref(lock_root.get_meta("padlock_shake_body")) if lock_root != null else null
-		host._fishing_ui_surface()._on_fishing_method_lock_pressed(skill_id, action_id, shake_body)
-		return true
-	return false
 
 
 func _route_activity_lock_input(event: InputEvent) -> bool:
@@ -1145,6 +1080,15 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 		return false
 	if not _position_inside_detail_actions_viewport(press_position):
 		return false
+	# A committed page swipe suppresses the release that completed that gesture.
+	# A later physical touch is a new gesture and must be able to start the card
+	# on the newly selected page immediately.
+	if (
+		pointer_id >= 0
+		and not host._skill_swipe_activity_surface().skill_swipe_tracking
+		and not host._skill_swipe_activity_surface().skill_swipe_animating
+	):
+		host._skill_swipe_activity_surface()._clear_skill_swipe_button_suppression()
 	var press_positions: Array[Vector2] = []
 	press_positions.append(press_position)
 	for routed_position in press_positions:
@@ -1271,11 +1215,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking and host._skill_swipe_activity_surface().skill_swipe_horizontal:
 		return false
-	var active_control_drag_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if _route_active_fishing_control_drag_handoff(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_control_drag", active_control_drag_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_control_drag", active_control_drag_usec, event)
 	var deferred_handoff_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
 	if _try_handoff_fishing_deferred_vertical_scroll(event, event_position):
 		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_deferred_handoff", deferred_handoff_usec, event)
@@ -1296,20 +1235,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_queue", route_step_usec, event)
 	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_offer_button_global_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_offer", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_offer", route_step_usec, event)
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_location_image_priority_press(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_location_priority", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_location_priority", route_step_usec, event)
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_method_button_global_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_method", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_method", route_step_usec, event)
 	if page_switch_button != null:
 		return false
 	if host.current_screen == "pinned" or host.current_screen == "queue":
@@ -1317,11 +1242,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		if not action_hit.is_empty() and ModuleUiRuntime.belongs_to_skill(str(action_hit.get("module_key", "")), "fishing"):
 			if host._skill_detail_surface()._route_module_action_zone_input(event):
 				return true
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_active_tool_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_tool", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_tool", route_step_usec, event)
 	return false
 
 
@@ -1383,6 +1303,9 @@ func _route_fishing_area_queue_selection_input(event: InputEvent) -> bool:
 	else:
 		return false
 	if is_press:
+		# Method buttons own their clicks and remember the selected fishing location.
+		if not host._fishing_ui_surface()._fishing_method_button_hit(event_position).is_empty():
+			return false
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return false
 		var area_card := _fishing_area_card_at_position(event_position)
@@ -1414,16 +1337,6 @@ func _route_fishing_area_queue_selection_input(event: InputEvent) -> bool:
 	return false
 
 
-func _route_active_fishing_control_drag_handoff(event: InputEvent) -> bool:
-	if not (event is InputEventMouseMotion or event is InputEventScreenDrag):
-		return false
-	if host._fishing_ui_surface().has_active_fishing_method_press():
-		return host._fishing_ui_surface()._route_fishing_method_button_global_input(event)
-	if host._fishing_ui_surface().has_active_fishing_offer_press():
-		return host._fishing_ui_surface()._route_fishing_offer_button_global_input(event)
-	return false
-
-
 func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputEvent, event_position: Vector2) -> bool:
 	if not (event is InputEventMouseMotion or event is InputEventScreenDrag):
 		return false
@@ -1433,8 +1346,6 @@ func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputE
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
 		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
-		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking:
 		return false
 	return true
@@ -1443,8 +1354,6 @@ func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputE
 func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 	if host.module_ui_runtime.pin_press_active():
 		return ModuleUiRuntime.belongs_to_skill(host.module_ui_runtime.pin_press_module_key(), "fishing")
-	if not host._fishing_ui_surface()._active_fishing_method_button_hit().is_empty() or host._fishing_ui_surface()._active_fishing_offer_button() != null:
-		return true
 	if event_position == Vector2.INF:
 		return false
 	if not host._skill_detail_surface()._fishing_area_pin_corner_hit(event_position).is_empty():
@@ -1452,9 +1361,7 @@ func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 	var action_hit = host._skill_detail_surface()._module_action_circle_at_direct_position(event_position)
 	if not action_hit.is_empty() and ModuleUiRuntime.belongs_to_skill(str(action_hit.get("module_key", "")), "fishing"):
 		return true
-	if not host._fishing_ui_surface()._fishing_method_button_hit(event_position, true).is_empty():
-		return true
-	if host._fishing_ui_surface()._fishing_offer_button_hit(event_position, true) != null:
+	if not host._fishing_ui_surface()._fishing_method_button_hit(event_position).is_empty():
 		return true
 	return false
 
@@ -1502,8 +1409,7 @@ func _activity_card_is_locked_or_covered(skill_id: String, action: Dictionary, c
 	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
 		return false
 	return (
-		bool(card.get("locked_preview_hidden", false))
-		or bool(card.get("unlock_ready_pending", false))
+		bool(card.get("unlock_ready_pending", false))
 		or bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
 		or not (card.get("lock_overlay", {}) as Dictionary).is_empty()
@@ -1671,6 +1577,8 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 	if navigation_shell.page_switch_press_active and (event is InputEventMouseMotion or event is InputEventScreenDrag):
 		if event_position.distance_to(navigation_shell.page_switch_press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 			navigation_shell.page_switch_press_dragged = true
+			if _handoff_page_switch_drag_to_skill_swipe(event, event_position):
+				return true
 		var active_motion_button = navigation_shell._active_page_switch_button()
 		if active_motion_button != null:
 			navigation_shell._on_page_switch_button_gui_input(event, navigation_shell.page_switch_press_target_skill_id, active_motion_button)
@@ -1684,9 +1592,8 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		)
 		var active_release_button = navigation_shell._active_page_switch_button()
 		if active_release_button != null:
-			navigation_shell._clear_page_switch_button_press_state(active_release_button, valid_tap)
-			if not valid_tap:
-				navigation_shell._release_page_switch_button_shell(active_release_button)
+			navigation_shell._clear_page_switch_button_press_state(active_release_button)
+			navigation_shell._release_page_switch_button_shell(active_release_button)
 			navigation_shell._suppress_page_switch_pressed_signal(active_release_button)
 		navigation_shell._clear_page_switch_press_state()
 		if valid_tap:
@@ -1709,10 +1616,36 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 	return true
 
 
+# On short pages the skill switcher tiles sit mid-screen, so swipes often start
+# on them. A sideways drag that begins on a tile is a page swipe, not a tap:
+# release the tile and hand the gesture to skill swipe from the original press.
+func _handoff_page_switch_drag_to_skill_swipe(event: InputEvent, event_position: Vector2) -> bool:
+	var navigation_shell = host._navigation_shell()
+	var press_position: Vector2 = navigation_shell.page_switch_press_position
+	var delta := event_position - press_position
+	if absf(delta.x) <= absf(delta.y):
+		return false
+	var active_button = navigation_shell._active_page_switch_button()
+	if active_button != null:
+		navigation_shell._clear_page_switch_button_press_state(active_button)
+		navigation_shell._release_page_switch_button_shell(active_button)
+		navigation_shell._suppress_page_switch_pressed_signal(active_button)
+	navigation_shell._clear_page_switch_press_state()
+	var swipe = host._skill_swipe_activity_surface()
+	var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
+	swipe._begin_skill_swipe_tracking(press_position, touch_index)
+	if swipe.skill_swipe_tracking:
+		swipe._update_skill_swipe_feedback(event_position)
+	return true
+
+
 func _page_switch_button_at_position(event_position: Vector2) -> Button:
+	var button := _page_switch_button_control_at_position(event_position)
+	if button == null:
+		return null
 	if not _action_card_at_position(event_position).is_empty():
 		return null
-	return _page_switch_button_control_at_position(event_position)
+	return button
 
 
 func _page_switch_button_control_at_position(event_position: Vector2) -> Button:

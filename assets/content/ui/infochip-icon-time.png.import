@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b26ok5bhy2nu4"
-path="res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.ctex"
+path.bptc="res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.bptc.ctex"
+path.astc="res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/infochip-icon-time.png"
-dest_files=["res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.ctex"]
+dest_files=["res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.bptc.ctex", "res://.godot/imported/infochip-icon-time.png-66da9cf14fc728f25dcdcedf3e3f32a6.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

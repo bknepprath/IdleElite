@@ -15,7 +15,11 @@ function Invoke-Step {
     )
 
     Write-Output "== $Name =="
+    $global:LASTEXITCODE = 0
     & $Script
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 function Get-GodotProcessSnapshot {
@@ -49,29 +53,23 @@ Invoke-Step "Firebase config validation" {
 
 Invoke-Step "Firebase setup state" {
     & (Join-Path $projectRoot "scripts\check-firebase-leaderboard-setup-state.ps1")
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
 }
 
 Invoke-Step "Firebase runtime config guard" {
     & (Join-Path $projectRoot "scripts\test-firebase-leaderboard-runtime-guard.ps1")
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
 }
 
 Invoke-Step "Firebase rules deploy check" {
     & (Join-Path $projectRoot "scripts\deploy-firebase-leaderboard-rules.ps1") -ProjectId "idle-elite-check" -CheckOnly
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
 }
 
-Invoke-Step "Optional local Firebase config" {
+Invoke-Step "Firebase profile backfill fixture audit" {
+    & (Join-Path $projectRoot "scripts\test-firebase-profile-backfill.ps1")
+}
+
+Invoke-Step "Required release Firebase config" {
     if (-not (Test-Path -LiteralPath $configPath)) {
-        Write-Output "firebase-config-absent"
-        return
+        throw "firebase-leaderboard-config.json is required for account recovery and cloud save."
     }
     $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
     $databaseUrl = [string]$config.database_url
@@ -86,7 +84,7 @@ Invoke-Step "Optional local Firebase config" {
     if ($webApiKey.Trim().Length -lt 20 -or $webApiKey -eq "YOUR_FIREBASE_WEB_API_KEY" -or $webApiKey -match '\s') {
         throw "firebase-leaderboard-config.json has an invalid web_api_key."
     }
-    if (-not [string]::IsNullOrWhiteSpace($googleWebClientId) -and $googleWebClientId -notmatch '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
+    if ([string]::IsNullOrWhiteSpace($googleWebClientId) -or $googleWebClientId -notmatch '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
         throw "firebase-leaderboard-config.json has an invalid google_web_client_id."
     }
     Write-Output "firebase-config-ok"
@@ -99,9 +97,6 @@ if ($SkipGodotSafeValidation) {
 } else {
     Invoke-Step "Godot safe validation" {
         & (Join-Path $projectRoot "scripts\check-project.ps1")
-        if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-        }
     }
 }
 

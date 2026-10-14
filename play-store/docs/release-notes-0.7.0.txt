@@ -1,0 +1,63 @@
+- Build a Halloween doorstep and unlock Trick or Treat at Thieving level 8.
+- Collect candy to restore 10-15 stamina, with one piece allowed above your maximum.
+v0.7.0
+restored full-width wooden and stone barriers and corrected other barrier sizes
+fixed automatic unlock animations in visible desktop side columns
+simplified Practice Pool and adjusted its accuracy to 97%
+improved build-required panels with cleaner artwork and clearer material costs
+added varied backgrounds for Building and resting activities
+added dedicated artwork for Wrap Hands and Sharpen the Pencil
+added a widescreen desktop layout with up to three scrolling skill pages
+improved desktop window fitting and resizing on smaller and larger monitors
+fixed large XP totals crowding desktop skill headers
+made skill XP match progress toward the next level and added lifetime XP to Progress
+added wood, stone and metal barriers with illustrated damage stages
+added shared unlock resources at the top-right of activity portraits
+showed unlock resources only while a revealed activity needs them
+added compact blocker badges with curved progress bars
+made blocker taps find the best available resource source
+fixed stretched unlock barrier artwork
+made cleared barriers reveal remaining level locks
+calmed routine XP animations
+kept skill positions and expanded details when changing menus or resizing
+kept the running skill visible when opening chat or narrowing the window
+kept reward popups attached to activities while dragging between skills
+added dragging through all five skills and optional chat or high scores beside gameplay
+expanded the player hub and improved desktop menus and panels
+added activity unlock projects and visible progress toward later activities
+expanded Wisdom progression while keeping the opening level-based
+added a gradual desktop introduction with smooth, staggered activity and skill reveals
+replaced the startup flex animation with new bridge-building loading artwork
+added remaining berry counts and green feedback for successful use
+improved activity minimizing, combo colors, tier bars and help popups
+improved text outlines and leaderboard styling
+removed click-opportunity windows from resting activities
+reduced resting medal requirements and removed arena mastery medals
+fixed activity progress bars moving backward after a refresh
+smoothed progress bars when switching activities and training tired
+added curved progress bars inside level padlocks
+added corner arrows that reveal on hover for desktop skill navigation
+fixed visible overlaps in faded navigation arrows
+fixed Fire Pit alignment, lock chains and repeated feeder movement
+reduced activity-unlock stalls and unnecessary UI rebuilding
+fixed shark timing taps stopping fishing
+improved fishing animation placement and reduced stat-box padding
+improved older-save loading, backup recovery and cloud progress protection
+fixed offline progress and mission cooldown saving
+fixed switching desktop windows pausing training and showing Welcome Back
+fixed a crash during resume and a fishing animation leak
+fixed audio resuming, interrupted dragging and dark-mode counts
+fixed shop boosts being granted without an ad reward
+reduced unused assets and added desktop texture compression
+fixed hidden ribbon buttons and added unlock requirements
+fixed cut-off tips and smoothed the first drag hint dismissal
+fixed competing activity entrance animations
+restored fishing location spacing
+increased supporting skill XP from three early combo activities
+smoothed the bottom ribbon's startup reveal
+kept activity rows and nearby cards stable when resource barriers clear
+added a continuous fade from resource barriers to activities
+fixed interrupted desktop popup fades closing too early
+reduced repeated fishing unlock checks during scrolling
+reduced card-loading and animation-cleanup work
+made blocked activity outlines consistent with the rest of the interface

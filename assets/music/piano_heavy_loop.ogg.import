@@ -12,7 +12,7 @@ dest_files=["res://.godot/imported/piano_heavy_loop.ogg-02505ac1407e435602de1262
 
 [params]
 
-loop=false
+loop=true
 loop_offset=0
 bpm=0
 beat_count=0

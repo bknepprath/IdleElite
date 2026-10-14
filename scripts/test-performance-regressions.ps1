@@ -28,6 +28,7 @@ function Invoke-FocusedGate {
             -FilePath "powershell.exe" `
             -ArgumentList $arguments `
             -WorkingDirectory $projectRoot `
+            -WindowStyle Hidden `
             -Wait `
             -PassThru `
             -RedirectStandardOutput $stdoutPath `
@@ -94,6 +95,6 @@ foreach ($gate in @(
     Invoke-FocusedGate $gate
 }
 
-# Keep the visual depth contract isolated: its known failure belongs to the focused geometry test.
-Write-Host "isolated-focused-test: scripts\test-activity-card-geometry.ps1 (known normal-card depth failure is not weakened here)"
+# Keep the visual depth contract in its focused geometry gate.
+Write-Host "isolated-focused-test: scripts\test-activity-card-geometry.ps1 (run separately by the native-1080 validation suite)"
 Write-Output "performance-regressions-ok"

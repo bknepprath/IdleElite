@@ -1,0 +1,257 @@
+$ErrorActionPreference = "Stop"
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
+
+$project = Get-Content -LiteralPath (Join-Path $projectRoot "project.godot") -Raw
+$main = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\main.gd") -Raw
+$leaderboardPresentation = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\leaderboard\presentation.gd") -Raw
+$profileChatSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd") -Raw
+$fishingSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\fishing\ui_surface.gd") -Raw
+$hubSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\hub_surface.gd") -Raw
+$skillDetailSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd") -Raw
+$skillSwipeSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd") -Raw
+$activityCardStyles = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\activity_card_styles.gd") -Raw
+$regenCircle = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\regen_circle.gd") -Raw
+$skillState = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\progression\skill_state.gd") -Raw
+$achievementSurface = Get-Content -LiteralPath (Join-Path $projectRoot "scripts\ui\achievement_overlay_surface.gd") -Raw
+
+function Get-ProjectSettingValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+
+    $match = [regex]::Match($Source, "(?m)^$([regex]::Escape($Key))=(.+?)\r?$")
+    Assert-True $match.Success "Missing project setting $Key."
+    return $match.Groups[1].Value.Trim()
+}
+
+function Get-ProjectSettingInt {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+
+    $raw = Get-ProjectSettingValue -Source $Source -Key $Key
+    $value = 0
+    Assert-True ([int]::TryParse($raw, [ref]$value)) "Project setting $Key must be an integer."
+    return $value
+}
+
+$viewportWidth = Get-ProjectSettingInt -Source $project -Key "window/size/viewport_width"
+$viewportHeight = Get-ProjectSettingInt -Source $project -Key "window/size/viewport_height"
+$stretchMode = (Get-ProjectSettingValue -Source $project -Key "window/stretch/mode").Trim('"')
+$stretchAspect = (Get-ProjectSettingValue -Source $project -Key "window/stretch/aspect").Trim('"')
+$renderer = (Get-ProjectSettingValue -Source $project -Key "renderer/rendering_method").Trim('"')
+
+Assert-True ($stretchMode -eq "viewport") "Android-safe stretch mode must remain viewport."
+Assert-True ($stretchAspect -eq "expand") "Migration baseline requires viewport stretch aspect expand."
+Assert-True ($renderer -eq "gl_compatibility") "Samsung-safe 1080p builds require the Compatibility renderer to prevent Vulkan framebuffer corruption."
+
+$baseCanvasMatch = [regex]::Match($main, '(?m)^const BASE_CANVAS := Vector2\(\s*(\d+)\s*,\s*(\d+)\s*\)\r?$')
+Assert-True $baseCanvasMatch.Success "Could not read BASE_CANVAS from scripts\main.gd."
+$baseCanvasWidth = [int]$baseCanvasMatch.Groups[1].Value
+$baseCanvasHeight = [int]$baseCanvasMatch.Groups[2].Value
+
+$productionPaths = @(
+    (Join-Path $projectRoot "scripts\main.gd"),
+    (Join-Path $projectRoot "scripts\app"),
+    (Join-Path $projectRoot "scripts\fishing"),
+    (Join-Path $projectRoot "scripts\gameplay"),
+    (Join-Path $projectRoot "scripts\leaderboard"),
+    (Join-Path $projectRoot "scripts\module_ui"),
+    (Join-Path $projectRoot "scripts\thieving"),
+    (Join-Path $projectRoot "scripts\ui")
+)
+
+$productionScripts = @()
+foreach ($path in $productionPaths) {
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        $productionScripts += Get-Item -LiteralPath $path
+    } elseif (Test-Path -LiteralPath $path -PathType Container) {
+        $productionScripts += Get-ChildItem -LiteralPath $path -Recurse -File -Filter "*.gd"
+    }
+}
+
+$forbiddenScalePattern = 'CONTENT_SCALE_MODE_CANVAS_ITEMS|content_scale_mode\s*=|content_scale_size\s*=|content_scale_factor\s*='
+$desktopLayoutPath = Join-Path $projectRoot 'scripts\ui\desktop_layout.gd'
+$desktopLayout = Get-Content -Raw -LiteralPath $desktopLayoutPath
+# The existing native-resolution desktop path must remain unreachable on Android.
+Assert-True ($desktopLayout -match 'func available\(\) -> bool:\s+return not OS\.has_feature\("android"\)') 'Desktop rendering must explicitly exclude Android.'
+Assert-True ($desktopLayout -match 'func configure_window\(\) -> void:\s+if not available\(\):\s+return\s+var window: Window = host.get_window\(\)\s+# [^\r\n]+\s+window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS') 'Desktop scaling override must remain behind the platform guard.'
+$forbiddenScaleHits = @(
+    $productionScripts |
+        Select-String -Pattern $forbiddenScalePattern |
+        Where-Object { -not ($_.Path -eq $desktopLayoutPath -and $_.Line.Trim() -eq 'window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS') } |
+        ForEach-Object { "$($_.Path):$($_.LineNumber):$($_.Line.Trim())" }
+)
+Assert-True ($forbiddenScaleHits.Count -eq 0) "Production scripts must not use runtime canvas scaling overrides: $($forbiddenScaleHits -join '; ')"
+
+$legacyCoordinatePattern = '(?<!\d)(2160(?:\.0)?|3840(?:\.0)?)(?!\d)'
+$legacyCoordinateHits = @(
+    $productionScripts |
+        Select-String -Pattern $legacyCoordinatePattern |
+        ForEach-Object { "$($_.Path):$($_.LineNumber):$($_.Line.Trim())" }
+)
+
+$explicitFontPattern = 'add_theme_font_size_override\(\s*"font_size"\s*,\s*(\d+)\s*\)'
+
+function Test-IsInfoIconFontOverride {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string[]]$Lines,
+        [Parameter(Mandatory = $true)][int]$LineIndex
+    )
+
+    $overrideMatch = [regex]::Match(
+        $Lines[$LineIndex],
+        '^\s*(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\.add_theme_font_size_override\(\s*"font_size"\s*,\s*(?:29|30|42)\s*\)\s*$'
+    )
+    if (-not $overrideMatch.Success) {
+        return $false
+    }
+
+    $receiver = $overrideMatch.Groups["receiver"].Value
+    $escapedReceiver = [regex]::Escape($receiver)
+    $constructsButton = $false
+    $setsInfoGlyph = $false
+    for ($index = $LineIndex - 1; $index -ge 0; $index--) {
+        $candidate = $Lines[$index]
+        if ($candidate -match '^\s*func\s+') {
+            break
+        }
+        if ($candidate -match "^\s*var\s+$escapedReceiver(?:\s*:\s*Button)?\s*(?::=|=)\s*Button\.new\(\)\s*$") {
+            $constructsButton = $true
+        }
+        if ($candidate -match "^\s*$escapedReceiver\.text\s*=\s*`"i`"\s*$") {
+            $setsInfoGlyph = $true
+        }
+    }
+
+    return $constructsButton -and $setsInfoGlyph
+}
+
+$infoIconFixture = @(
+    'func _fixture() -> void:',
+    '    var button := Button.new()',
+    '    button.text = "i"',
+    '    button.add_theme_font_size_override("font_size", 29)'
+)
+$bodyTextFixture = @(
+    'func _fixture() -> void:',
+    '    var button := Button.new()',
+    '    button.text = "Info"',
+    '    button.add_theme_font_size_override("font_size", 29)'
+)
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the reviewed info-icon glyph override."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The mobile font contract must not exempt sub-48 button text."
+$infoIconFixture[3] = '    button.add_theme_font_size_override("font_size", 30)'
+$bodyTextFixture[3] = '    button.add_theme_font_size_override("font_size", 30)'
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the fishing tool info glyph."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The info-glyph exception must not exempt 30px body text."
+$infoIconFixture[3] = '    button.add_theme_font_size_override("font_size", 42)'
+$bodyTextFixture[3] = '    button.add_theme_font_size_override("font_size", 42)'
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the enlarged fishing tool info glyph."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The info-glyph exception must not exempt 42px body text."
+
+function Test-IsDesktopFontOverride {
+    param([string[]]$Lines, [int]$LineIndex, [string]$FileName)
+
+    # These surfaces are mounted only by the Android-excluded desktop layout.
+    if ($FileName -in @('desktop_layout.gd', 'desktop_skill_navigation.gd')) { return $true }
+    $indent = $Lines[$LineIndex].Length - $Lines[$LineIndex].TrimStart().Length
+    for ($index = $LineIndex - 1; $index -ge 0; $index--) {
+        $candidate = $Lines[$index]
+        if ([string]::IsNullOrWhiteSpace($candidate) -or $candidate.TrimStart().StartsWith('#')) { continue }
+        $parentIndent = $candidate.Length - $candidate.TrimStart().Length
+        if ($parentIndent -ge $indent) { continue }
+        if ($candidate -match '^\s*if host\.desktop_layout\.enabled\(\)(?: and .+)?:\s*$') { return $true }
+        if ($candidate -match '^func _desktop_chat_header\(\) -> Control:$' -and $FileName -eq 'profile_chat_overlay_surface.gd') { return $true }
+        $indent = $parentIndent
+        if ($indent -eq 0) { break }
+    }
+    return $false
+}
+Assert-True ($profileChatSurface -match 'func _chat_expanded_header\(\) -> Control:\s+if host\.desktop_layout\.enabled\(\) and host\.desktop_layout\.social_tab == "chat":\s+return _desktop_chat_header\(\)') 'Compact chat header must remain desktop-only.'
+$desktopFontFixture = @('func fixture():', '    if host.desktop_layout.enabled():', '        label.add_theme_font_size_override("font_size", 36)', '    label.add_theme_font_size_override("font_size", 36)')
+Assert-True (Test-IsDesktopFontOverride $desktopFontFixture 2 'fixture.gd') 'Desktop font contract must recognize a platform-guarded override.'
+Assert-True (-not (Test-IsDesktopFontOverride $desktopFontFixture 3 'fixture.gd')) 'Desktop font contract must reject an override after leaving the guarded block.'
+
+$explicitSmallFontHits = @()
+foreach ($script in $productionScripts) {
+    $scriptLines = @(Get-Content -LiteralPath $script.FullName)
+    for ($lineIndex = 0; $lineIndex -lt $scriptLines.Count; $lineIndex++) {
+        $line = $scriptLines[$lineIndex]
+        $fontMatch = [regex]::Match($line, $explicitFontPattern)
+        if (
+            $fontMatch.Success -and
+            [int]$fontMatch.Groups[1].Value -lt 48 -and
+            -not (Test-IsInfoIconFontOverride -Lines $scriptLines -LineIndex $lineIndex) -and
+            -not (Test-IsDesktopFontOverride -Lines $scriptLines -LineIndex $lineIndex -FileName $script.Name)
+        ) {
+            $lineNumber = $lineIndex + 1
+            $explicitSmallFontHits += "$($script.FullName):${lineNumber}:$($line.Trim())"
+        }
+    }
+}
+
+$cutoverState = $viewportWidth -eq 1080 -and $viewportHeight -eq 1920 -and $baseCanvasWidth -eq 1080 -and $baseCanvasHeight -eq 1920
+Assert-True $cutoverState "Project viewport and BASE_CANVAS must remain 1080 x 1920."
+    Assert-True ($leaderboardPresentation -match '(?m)^const BASE_FRAME_WIDTH := 1080\r?$') "Leaderboard frame width must be 1080 after cutover."
+    Assert-True ($main -match '(?m)^const ACTION_CARD_POP_GUTTER := 22\r?$') "Action-card pop gutter must retain exact half-scale 4K spacing."
+    Assert-True ($leaderboardPresentation -match '(?m)^const BOTTOM_SCROLL_PAD := 360\r?$') "Leaderboard bottom spacing must retain the half-scale 4K composition."
+    Assert-True ($leaderboardPresentation -match 'var top_mid := Vector2\(size\.x \* 0\.50, 123\.0\)') "Leaderboard paper contour must use native-1080 coordinates."
+    Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_HEIGHT := 112\r?$') "Chat strip must retain its compact height."
+    Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_TEXT_FONT_SIZE := 32\r?$') "Chat strip text must retain the user-requested compact size."
+    Assert-True ($profileChatSurface -match 'chat_strip_line_one = host\._label\("", CHAT_STRIP_TEXT_FONT_SIZE, Color\.WHITE, HORIZONTAL_ALIGNMENT_LEFT\)') "Chat strip text must use the compact font constant."
+	Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_ICON_SIZE := 70\.0\r?$') "Chat strip icon must remain readable beside compact message text."
+	Assert-True ($profileChatSurface -match '(?m)^const CHAT_UNREAD_DOT_EDGE_INSET := -3\.0\r?$') "Chat unread dot must sit on the icon's upper-right corner."
+	Assert-True ($profileChatSurface -notmatch 'variation_transform') "Chat strip text must not use a distorting affine font transform."
+    Assert-True ($profileChatSurface -match 'style\.set_border_width_all\(5\)') "Chat/profile controls must not retain 4K border thickness."
+    Assert-True ($profileChatSurface -match 'style\.corner_radius_bottom_right = 5 if is_self and not deleted else 9') "Chat message corners must retain half-scale 4K geometry."
+	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_OUTLINE := 16\r?$') "Fishing area names must retain their heavy outline."
+	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_WIDTH_AXIS := 75\r?$') "Fishing area names must use the font's real width axis."
+	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_EMBOLDEN := 1\.2\r?$') "Fishing area names must retain their audited bold weight."
+	Assert-True ($fishingSurface -notmatch 'variation_transform') "Fishing area names must not use a distorting affine font transform."
+	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_WIDTH := 260\.0\r?$') "Fishing area names must retain their audited single-line width."
+    Assert-True ($skillDetailSurface -match '"original": _format_xp_reward_parts\(base_parts, true\)' -and $skillDetailSurface -match '"current": _format_xp_reward_parts\(current_parts, true\)') "Expanded XP help must use the owner-approved full skill names."
+    Assert-True ($skillDetailSurface -match 'bonuses\.autowrap_mode = TextServer\.AUTOWRAP_WORD_SMART' -and $skillDetailSurface -match 'bonuses\.size_flags_horizontal = Control\.SIZE_EXPAND_FILL') "Expanded bonus text must wrap across the module width."
+	Assert-True ($skillDetailSurface -match '(?m)^const ACTIVITY_STAT_VALUE_FONT_WIDTH_AXIS := 75\r?$') "Activity stat values must use the font's real width axis instead of an affine stretch."
+	Assert-True ($skillDetailSurface -notmatch 'ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE') "Activity stat values must not restore the distorting affine width scale."
+	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_FONT_SIZE := 41\r?$') "Activity titles must retain the exact half-scale equivalent of the 82px 4K reference."
+	Assert-True ($activityCardStyles -match 'title\.add_theme_font_size_override\("font_size", ACTIVITY_CARD_TITLE_FONT_SIZE\)') "Activity titles must use the shared half-scale font size."
+	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75\r?$') "Activity titles must use the font's native condensed width axis."
+	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700\r?$') "Activity titles must retain a bold native weight."
+	Assert-True ($activityCardStyles -notmatch 'variation_transform') "Activity titles must not use a distorting affine font transform."
+	Assert-True ($activityCardStyles -match 'title\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Activity titles must never wrap."
+	Assert-True ($activityCardStyles -match 'title\.max_lines_visible = 1') "Activity titles must have a hard one-line limit."
+	Assert-True ($activityCardStyles -match 'title\.text_overrun_behavior = TextServer::OVERRUN_NO_TRIMMING'.Replace('::', '.')) "Activity titles must never be ellipsized."
+	Assert-True ($skillDetailSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillDetailSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Detail activity titles must use the shared audited inset."
+	Assert-True ($skillSwipeSurface -match 'title_band\.offset_left = ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET' -and $skillSwipeSurface -match 'title_band\.offset_right = -ActivityCardStyles\.ACTIVITY_CARD_TITLE_SIDE_INSET') "Swipe activity titles must use the shared audited inset."
+	Assert-True ($skillDetailSurface -match 'art_slot\.add_theme_constant_override\("margin_top", 24 if uses_flat_normal_card else 21\)') "Detail action-art buttons must retain the exact half-scale 4K top inset."
+	Assert-True ($skillSwipeSurface -match 'art_slot\.add_theme_constant_override\("margin_top", 9\)') "Swipe action-art buttons must retain the exact half-scale 4K preview inset."
+	Assert-True ($regenCircle -match '(?m)^const CENTER_DENOMINATOR_Y_OFFSET := 150\.0\r?$') "Stamina denominator must retain clearance below its divider."
+	Assert-True ($skillDetailSurface -match 'restore_scroll = detail_actions_scroll\.scroll_vertical') "Tier banners must preserve the actual activity-list scroll position."
+	Assert-True ($skillDetailSurface -match 'call_deferred\("_refresh_visible_skill_detail_action_list", restore_scroll, skill_id, true, true\)') "Tier banner refreshes must allow Thieving scroll restoration."
+	Assert-True ($skillDetailSurface -match 'host\._label\("T%s mastery: %s / %s medals"[^\r\n]+, 52, COLOR_INK') "Tier mastery summary text must retain the visually reviewed typography."
+	Assert-True ($skillDetailSurface -match 'host\._label\("REWARD", 32, Color\.WHITE') "Tier reward headings must retain the visually reviewed typography."
+	Assert-True ($skillDetailSurface -match 'host\._label\(main_text, 48, Color\.WHITE') "Tier reward values must retain the visually reviewed typography."
+	Assert-True ($skillDetailSurface -match 'host\._label\(detail_text, 36, Color\.WHITE') "Tier reward details must retain the visually reviewed typography."
+	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MODAL_WIDTH := 960\.0\r?$') "Welcome Back modal width must fit its readable text."
+	Assert-True ($achievementSurface -match 'panel.minimum_size_changed.connect\(_queue_offline_summary_fit\)' -and $achievementSurface -notmatch 'OFFLINE_SUMMARY_BASE_HEIGHT') "Welcome Back modal must size compactly from its visible content."
+	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MAX_HIGHLIGHTS := 4\r?$') "Welcome Back must cap secondary information instead of creating an unbounded list."
+	Assert-True ($achievementSurface -match 'host\._label\("Away for %s"[^\r\n]+, 52, host\.COLOR_MUTED') "Welcome Back subtitle must retain the visually reviewed typography."
+	Assert-True ($achievementSurface -match 'host\._label\(str\(highlight\.get\("title", ""\)\), 48, host\.COLOR_INK') "Welcome Back progress-row titles must retain the visually reviewed typography."
+	Assert-True ($achievementSurface -match 'outer\.add_child\(offline_summary_stack\)') "Welcome Back content must render directly without a scroll container."
+	Assert-True ($achievementSurface -notmatch 'offline_summary_scroll') "Welcome Back must never require a scrollbar."
+	Assert-True ($achievementSurface -match '"title": "Activities Unlocked"[\s\S]+"value": "%s new" % unlocked_actions\.size\(\)') "Welcome Back must aggregate repeated unlock events into one capped highlight."
+	Assert-True ($achievementSurface -match 'offline_summary_close_button\.offset_right = -12') "Welcome Back close button must stay pinned near the top-right corner."
+	Assert-True ($achievementSurface -match 'panel\.add_theme_stylebox_override\("panel", host\._surface_style\(host\.COLOR_PANEL, host\.CARD_RADIUS, 18, true\)\)') "Welcome Back must not restore the oversized modal padding."
+	Assert-True ($skillDetailSurface -match 'detail_xp_label\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Skill level and XP text must remain on one line."
+	Assert-True ($main -match '(?m)^const SKILL_DETAIL_XP_BAR_WIDTH := 360\r?$') "Skill level and XP text must retain its audited one-line width."
+	Assert-True ($skillState -match 'return "Lv %s   %s/%s"') "Skill level and XP text must use the compact one-line format."
+    Assert-True ($hubSurface -match '"x": round\(decor_position\.x \* 2\.0\) \* 0\.5') "Hub decor must preserve deterministic half-pixel quantization from the 4K composition."
+    Assert-True ($legacyCoordinateHits.Count -eq 0) "Exact 2160/3840 production literals remain after cutover: $($legacyCoordinateHits -join '; ')"
+    Assert-True ($explicitSmallFontHits.Count -eq 0) "Explicit production font sizes below 48 px remain after cutover: $($explicitSmallFontHits -join '; ')"
+
+Write-Output "performance-1080p-migration-contracts-ok state=cutover viewport=${viewportWidth}x${viewportHeight} legacy_coordinate_hits=$($legacyCoordinateHits.Count) explicit_small_font_hits=$($explicitSmallFontHits.Count)"

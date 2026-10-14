@@ -6,7 +6,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const SUBMIT_INTERVAL_SECONDS := 15 * 60
-const REPAIR_PUBLISH_VERSION := 1
+const REPAIR_PUBLISH_VERSION := 2
 const TOP_COUNT := 50
 const CATEGORY_TOTAL_LEVEL := "total_level"
 const CATEGORY_TOTAL_XP_COMPAT := "total_xp"
@@ -21,33 +21,29 @@ var fetch_unix_by_category := {}
 var fetch_retry_unix_by_category := {}
 var fetch_in_flight := false
 var fetch_category_id := ""
-var total_xp_fetch_in_flight := false
-var pending_total_rows := []
 var process_seconds := 0.0
 var status_message := ""
+var submission_error := ""
 var last_submitted_score := 0
 var last_submitted_total_xp := 0
 var last_submitted_scores_by_category := {}
 var last_submit_unix := 0
 var repair_publish_version := 0
+var session_publish_confirmed := false
 var pending_score_updates := {}
 var pending_repair_publish_version := 0
 var last_submit_payload_categories := []
-
 
 func _init(host_ref = null) -> void:
 	host = host_ref
 	if host != null:
 		category_id = CATEGORY_TOTAL_LEVEL
 
-
 func total_level_score_ceiling() -> int:
 	return maxi(99, host.skills.size() * 99)
 
-
 func total_level_score_looks_legacy_xp(score: int) -> bool:
 	return score > total_level_score_ceiling()
-
 
 func score() -> int:
 	var total := 0
@@ -57,11 +53,8 @@ func score() -> int:
 		total += int(round(float(host.mastery.get(key, {}).get("xp", 0)) * 0.25))
 	return maxi(0, total)
 
-
 func categories() -> Array:
-	var category_defs := [
-		{"id": CATEGORY_TOTAL_LEVEL, "label": "Total"}
-	]
+	var category_defs := [{"id": CATEGORY_TOTAL_LEVEL, "label": "Total"}]
 	for raw_def in host.skill_defs:
 		var skill := raw_def as Dictionary
 		var skill_id := str(skill.get("id", ""))
@@ -72,13 +65,11 @@ func categories() -> Array:
 	category_defs.append({"id": CATEGORY_ELITE_HEAVENLY, "label": "Elite Heavenly"})
 	return category_defs
 
-
 func valid_category_id(category_id: String) -> String:
 	for category in categories():
 		if str((category as Dictionary).get("id", "")) == category_id:
 			return category_id
 	return CATEGORY_TOTAL_LEVEL
-
 
 func selected_category_index() -> int:
 	var valid_id := valid_category_id(category_id)
@@ -88,16 +79,15 @@ func selected_category_index() -> int:
 			return i
 	return 0
 
-
 func select_category_index(index: int) -> String:
 	var category_defs := categories()
 	if index < 0 or index >= category_defs.size():
 		return ""
-	var category_id := valid_category_id(str((category_defs[index] as Dictionary).get("id", "")))
-	if self.category_id == category_id:
+	var selected_id := str((category_defs[index] as Dictionary).get("id", ""))
+	if category_id == selected_id:
 		return ""
-	self.category_id = category_id
-	return category_id
+	category_id = selected_id
+	return selected_id
 
 
 func category_label(category_id: String) -> String:
@@ -135,10 +125,7 @@ func skill_level_for_category(category_id: String) -> int:
 
 
 func total_xp_for_category(category_id: String) -> int:
-	var valid_id := valid_category_id(category_id)
-	if valid_id == CATEGORY_TOTAL_LEVEL:
-		return score()
-	return 0
+	return score() if valid_category_id(category_id) == CATEGORY_TOTAL_LEVEL else 0
 
 
 func skill_level_from_total_xp(total_xp: int) -> int:
@@ -150,9 +137,7 @@ func skill_level_from_total_xp(total_xp: int) -> int:
 
 
 func queued_score() -> int:
-	if host.god_mode_save_tainted:
-		return 0
-	return maxi(0, score() - last_submitted_score)
+	return 0 if host.god_mode_save_tainted else maxi(0, score() - last_submitted_score)
 
 
 func has_pending_category_score() -> bool:
@@ -171,9 +156,7 @@ func has_pending_category_score() -> bool:
 
 
 func repair_publish_due() -> bool:
-	if repair_publish_version >= REPAIR_PUBLISH_VERSION:
-		return false
-	if not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
+	if (session_publish_confirmed and repair_publish_version >= REPAIR_PUBLISH_VERSION) or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
 		return false
 	for raw_category in categories():
 		var category := raw_category as Dictionary
@@ -217,21 +200,58 @@ func last_submitted_scores_for_save() -> Dictionary:
 		normalized[CATEGORY_TOTAL_LEVEL] = 0
 	return normalized
 
-
 func reset_submission_metadata() -> void:
+	submission_error = ""
 	last_submitted_score = 0
 	last_submitted_total_xp = 0
 	last_submitted_scores_by_category.clear()
 	last_submit_unix = 0
 	repair_publish_version = 0
+	session_publish_confirmed = false
 	clear_pending_submit()
-
 
 func clear_pending_submit() -> void:
 	pending_score_updates.clear()
 	pending_repair_publish_version = 0
 	last_submit_payload_categories.clear()
 
+
+func acknowledge_score_update(category_id: String, payload: Dictionary) -> void:
+	# Only checkpoint values actually accepted by the server. Gameplay can keep
+	# earning XP while a request is in flight.
+	var accepted_score := maxi(0, int(payload.get("score", 0)))
+	last_submitted_scores_by_category[category_id] = maxi(accepted_score, int(last_submitted_scores_by_category.get(category_id, 0)))
+	if category_id == CATEGORY_TOTAL_LEVEL:
+		last_submitted_total_xp = maxi(last_submitted_total_xp, int(payload.get("total_xp", 0)))
+		last_submitted_score = maxi(last_submitted_score, last_submitted_total_xp)
+
+
+func reconcile_published_rows(category_id: String, rows: Array) -> bool:
+	if host.god_mode_save_tainted or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
+		return false
+	for row in rows:
+		if str(row.get("player_id", "")) == host.leaderboard_profile.player_id:
+			var recorded_score := int(last_submitted_scores_by_category.get(category_id, 0))
+			var recorded_xp := last_submitted_total_xp
+			acknowledge_score_update(category_id, row)
+			# A stale local checkpoint must not prevent repairing a missing update.
+			if recorded_score > int(row.get("score", 0)) or (category_id == CATEGORY_TOTAL_LEVEL and recorded_xp > int(row.get("total_xp", 0))):
+				repair_publish_version = 0
+			return true
+	var local_score := score_for_category(category_id)
+	if local_score <= 0:
+		return false
+	# Absence below the fetched top 50 says nothing about the player's upload.
+	# Repair only when the local score belongs inside the returned list.
+	var should_be_listed := rows.size() < TOP_COUNT
+	if not should_be_listed and not rows.is_empty():
+		var cutoff: Dictionary = rows.back()
+		should_be_listed = local_score > int(cutoff.get("score", 0))
+		if category_id == CATEGORY_TOTAL_LEVEL and local_score == int(cutoff.get("score", 0)):
+			should_be_listed = score() > int(cutoff.get("total_xp", 0))
+	if should_be_listed:
+		repair_publish_version = 0
+	return should_be_listed
 
 func restore_submission_metadata_from_save(data: Dictionary) -> void:
 	last_submitted_score = maxi(0, int(data.get("leaderboard_last_submitted_score", 0)))
@@ -242,24 +262,15 @@ func restore_submission_metadata_from_save(data: Dictionary) -> void:
 	last_submit_unix = maxi(0, int(data.get("leaderboard_last_submit_unix", 0)))
 	repair_publish_version = clampi(int(data.get("leaderboard_repair_publish_version", 0)), 0, REPAIR_PUBLISH_VERSION)
 
-
 func normalized_last_submitted_scores(loaded_scores: Variant) -> Dictionary:
 	return SaveStateNormalizers.normalized_leaderboard_category_values(loaded_scores, Callable(self, "valid_category_id"))
 
-
 func fetch_retry_unix_by_category_for_save() -> Dictionary:
-	return normalized_fetch_retry_unix_by_category(fetch_retry_unix_by_category)
-
+	return SaveStateNormalizers.normalized_leaderboard_category_values(fetch_retry_unix_by_category, Callable(self, "valid_category_id"))
 
 func restore_fetch_metadata_from_save(data: Dictionary) -> void:
 	# Successful rows are not saved, so successful fetch timestamps intentionally reset on launch.
 	fetch_unix_by_category.clear()
 	restore_fetch_retry_unix_by_category_from_save(data.get("leaderboard_fetch_retry_unix_by_category", {}))
-
-
 func restore_fetch_retry_unix_by_category_from_save(loaded_retry_unix: Variant) -> void:
-	fetch_retry_unix_by_category = normalized_fetch_retry_unix_by_category(loaded_retry_unix)
-
-
-func normalized_fetch_retry_unix_by_category(loaded_retry_unix: Variant) -> Dictionary:
-	return SaveStateNormalizers.normalized_leaderboard_category_values(loaded_retry_unix, Callable(self, "valid_category_id"))
+	fetch_retry_unix_by_category = SaveStateNormalizers.normalized_leaderboard_category_values(loaded_retry_unix, Callable(self, "valid_category_id"))

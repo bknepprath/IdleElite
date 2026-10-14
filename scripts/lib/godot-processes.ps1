@@ -12,8 +12,11 @@ function Assert-True {
 }
 
 function Get-HeadlessGodotProcesses {
+    if (@(Get-Process godot* -ErrorAction SilentlyContinue).Count -eq 0) {
+        return @()
+    }
     $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
+    @($processes | Where-Object { $_.CommandLine -match '(^|\s)--headless(?:\s|$)' })
 }
 
 function Assert-NoHeadlessGodotProcesses {
@@ -51,7 +54,8 @@ function Assert-NoUnexpectedGodotErrors {
         }
         $knownShutdownNoise = (
             $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $text -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"

@@ -478,13 +478,13 @@ class ActionArtAnimationRect:
 			draw_circle(splash_center + offset, maxf(2.0, size.x * (0.012 - float(index) * 0.0015)), splash_color)
 
 const EVENT_HOURGLASS_BADGE := "res://assets/content/ui/event-hourglass-badge.png"
-const ACTION_ART_PANEL_SIZE := Vector2(410, 410)
-const ACTION_ART_SIZE := Vector2(427.2, 427.2)
-const ACTION_ART_OFFSET := Vector2(-8.6, -8.6)
-const ACTION_ART_CORNER_ICON_SIZE := Vector2(172, 172)
-const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
-const ACTION_ART_CORNER_ICON_LIST_STEP := 104.0
-const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 14.0
+const ACTION_ART_PANEL_SIZE := Vector2(205, 205)
+const ACTION_ART_SIZE := Vector2(213.6, 213.6)
+const ACTION_ART_OFFSET := Vector2(-4.3, -4.3)
+const ACTION_ART_CORNER_ICON_SIZE := Vector2(86, 86)
+const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 30.0
+const ACTION_ART_CORNER_ICON_LIST_STEP := 52.0
+const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 7.0
 
 static func image(action: Dictionary, texture_or_fallback: Callable, visual_fallback: Callable, headless: bool) -> ActionArtTextureRect:
 	var path := str(action.get("art", ""))
@@ -566,6 +566,7 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, textu
 
 
 static func resource_icon_paths(action: Dictionary, action_mat_reward_defs: Callable, mat_icon_path: Callable, temporary_event_log_reward_mat_id: Callable) -> Array:
+	if str(action.get("id", "")) == "trick-or-treat": return ["res://assets/content/events/halloween/candy.tres"]
 	var icon_paths := []
 	var mat_rewards := action_mat_reward_defs.call(action) as Array
 	for raw_reward in mat_rewards:

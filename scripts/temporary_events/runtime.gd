@@ -98,8 +98,6 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 	event_metadata["definition_order"] = definition_order
 	event_def["event"] = event_metadata
 	return event_def
-
-
 static func _action_requirements_for_load(action: Dictionary, owner_skill_id: String, legacy_unlock: int) -> Array:
 	var normalized := []
 	var raw_requirements = action.get("requirements", [])
@@ -122,8 +120,6 @@ static func _action_requirements_for_load(action: Dictionary, owner_skill_id: St
 			"level": maxi(1, legacy_unlock)
 		})
 	return normalized
-
-
 static func _event_resource_rewards_for_load(action: Dictionary) -> Dictionary:
 	var normalized := {}
 	var raw_rewards = action.get("resource_rewards", action.get("resource_reward", {}))
@@ -136,8 +132,6 @@ static func _event_resource_rewards_for_load(action: Dictionary) -> Dictionary:
 		normalized["logs_min"] = logs_min
 		normalized["logs_max"] = logs_max
 	return normalized
-
-
 static func _action_xp_rewards_for_load(action: Dictionary, owner_skill_id: String, primary_xp: int) -> Dictionary:
 	var normalized := {}
 	var raw_rewards = action.get("xp_rewards", action.get("xp_by_skill", {}))
@@ -164,8 +158,6 @@ static func _action_xp_rewards_for_load(action: Dictionary, owner_skill_id: Stri
 	if normalized.is_empty():
 		normalized[owner_skill_id] = maxi(1, primary_xp)
 	return normalized
-
-
 static func _string_array_for_load(value: Variant) -> Array:
 	var normalized := []
 	if typeof(value) == TYPE_ARRAY:
@@ -178,8 +170,6 @@ static func _string_array_for_load(value: Variant) -> Array:
 		if not normalized_item.is_empty():
 			normalized.append(normalized_item)
 	return normalized
-
-
 static func _event_metadata_for_load(value: Variant) -> Dictionary:
 	if typeof(value) != TYPE_DICTIONARY:
 		return {}
@@ -190,18 +180,12 @@ static func _event_metadata_for_load(value: Variant) -> Dictionary:
 		if not key.is_empty():
 			normalized[key] = source.get(raw_key)
 	return normalized
-
-
 static func _res_path(path: String) -> String:
 	if path.is_empty() or path.begins_with("res://"):
 		return path
 	return "res://%s" % path
-
-
 static func _slug(text: String) -> String:
 	return text.to_lower().replace("'", "").replace(",", "").replace(" ", "-")
-
-
 func _event_module_sort_less(left: Variant, right: Variant) -> bool:
 	if typeof(left) != TYPE_DICTIONARY:
 		return false
@@ -270,8 +254,6 @@ func _temporary_event_minimum_level(event_def: Dictionary) -> int:
 
 func _temporary_event_page_level_eligible(event_def: Dictionary) -> bool:
 	var page := str(event_def.get("page", ""))
-	if page.is_empty() or not host.actions_by_skill.has(page):
-		return false
 	return _temporary_event_highest_unlocked_page_level(page) >= _temporary_event_minimum_level(event_def)
 
 
@@ -292,9 +274,7 @@ func _temporary_event_highest_unlocked_page_level(page: String) -> int:
 		if page_level > 0 and display_level > page_level:
 			continue
 		highest = maxi(highest, display_level)
-	if highest <= 0:
-		return page_level
-	return highest
+	return maxi(highest, page_level)
 
 
 func _temporary_event_spawn_level_bounds_for_page(page: String) -> Dictionary:
@@ -371,12 +351,6 @@ func _temporary_event_reward_template(event_def: Dictionary) -> Dictionary:
 	return rewards
 
 
-func _temporary_event_distribute_reward_total(event_def: Dictionary, target_total: int) -> Dictionary:
-	var template := _temporary_event_reward_template(event_def)
-	var page := str(event_def.get("page", "")).strip_edges()
-	return host._action_runtime()._distribute_xp_reward_map_to_total(template, page, target_total)
-
-
 func _temporary_event_reward_map_for_level(event_def: Dictionary, spawn_level: int) -> Dictionary:
 	var page := str(event_def.get("page", ""))
 	var reference_action := _temporary_event_reference_action_for_level(page, spawn_level)
@@ -390,7 +364,9 @@ func _temporary_event_reward_map_for_level(event_def: Dictionary, spawn_level: i
 	var xp_reward_cap := int(event_def.get("xp_reward_cap", 0))
 	if xp_reward_cap > 0:
 		target_total = mini(target_total, xp_reward_cap)
-	return _temporary_event_distribute_reward_total(event_def, target_total)
+	return host._action_runtime()._distribute_xp_reward_map_to_total(
+		_temporary_event_reward_template(event_def), page.strip_edges(), target_total
+	)
 
 
 func _temporary_event_resource_rewards_for_level(event_def: Dictionary, spawn_level: int) -> Dictionary:
@@ -402,8 +378,7 @@ func _temporary_event_resource_rewards_for_level(event_def: Dictionary, spawn_le
 	var logs_max := maxi(logs_min, int(resource_rewards.get("logs_max", logs_min)))
 	if logs_max <= 0:
 		return {}
-	var event_meta := event_def.get("event", {}) as Dictionary
-	var minimum_level := maxi(1, int(event_meta.get("minimum_level", event_def.get("minimum_level", event_def.get("unlock", 1)))))
+	var minimum_level := _temporary_event_minimum_level(event_def)
 	var reward_scale := maxf(1.0, float(maxi(1, spawn_level)) / float(minimum_level))
 	return {
 		"logs_min": maxi(1, int(round(float(logs_min) * reward_scale))),
@@ -422,9 +397,7 @@ func _temporary_event_roll_log_reward(action: Dictionary) -> int:
 	var logs_max := maxi(logs_min, int(resource_rewards.get("logs_max", logs_min)))
 	if logs_max <= 0:
 		return 0
-	if logs_min >= logs_max:
-		return logs_min
-	return randi_range(logs_min, logs_max)
+	return logs_min if logs_min >= logs_max else randi_range(logs_min, logs_max)
 
 
 func _temporary_event_log_reward_mat_id() -> String:
@@ -593,8 +566,7 @@ func _temporary_event_active_count() -> int:
 		if _event_module_def(event_id).is_empty():
 			continue
 		var entry = temporary_event_active.get(raw_event_id, {})
-		if typeof(entry) == TYPE_DICTIONARY and not bool((entry as Dictionary).get("completed", false)):
-			count += 1
+		count += int(typeof(entry) == TYPE_DICTIONARY and not bool((entry as Dictionary).get("completed", false)))
 	return count
 
 
@@ -634,8 +606,6 @@ func _temporary_event_cooldown_until(event_id: String, event_entry: Dictionary, 
 		var expires_unix := int(event_entry.get("expires_unix", 0))
 		base_unix = expires_unix if expires_unix > 0 else now_unix
 	return maxi(0, base_unix + cooldown_seconds)
-
-
 func _prune_temporary_event_cooldowns(now_unix: int) -> bool:
 	var changed := false
 	for raw_event_id in temporary_event_cooldowns.keys():
@@ -645,8 +615,6 @@ func _prune_temporary_event_cooldowns(now_unix: int) -> bool:
 			temporary_event_cooldowns.erase(raw_event_id)
 			changed = true
 	return changed
-
-
 func _try_spawn_temporary_event(now_unix: int, roll_unix: int) -> bool:
 	var candidates := _eligible_temporary_events(now_unix)
 	if candidates.is_empty():
@@ -660,8 +628,6 @@ func _try_spawn_temporary_event(now_unix: int, roll_unix: int) -> bool:
 	temporary_event_active[event_id] = _temporary_event_spawn_entry(event_def, now_unix, roll_unix)
 	host._temporary_event_surface()._animate_temporary_event_entry_if_visible(event_def, event_id)
 	return true
-
-
 func _eligible_temporary_events(now_unix: int) -> Array:
 	var candidates := []
 	for raw_event in event_module_defs:
@@ -671,8 +637,6 @@ func _eligible_temporary_events(now_unix: int) -> Array:
 		if _temporary_event_can_spawn(event_def, now_unix):
 			candidates.append(event_def)
 	return candidates
-
-
 func _temporary_event_can_spawn(event_def: Dictionary, now_unix: int) -> bool:
 	var event_id := str(event_def.get("id", ""))
 	var page := str(event_def.get("page", ""))
@@ -683,15 +647,11 @@ func _temporary_event_can_spawn(event_def: Dictionary, now_unix: int) -> bool:
 	if int(temporary_event_cooldowns.get(event_id, 0)) > now_unix:
 		return false
 	return _temporary_event_page_level_eligible(event_def)
-
-
 func _temporary_event_is_active(event_id: String) -> bool:
 	if event_id.is_empty() or not temporary_event_active.has(event_id):
 		return false
 	var entry = temporary_event_active.get(event_id, {})
 	return typeof(entry) == TYPE_DICTIONARY and not bool((entry as Dictionary).get("completed", false))
-
-
 func _choose_weighted_temporary_event(candidates: Array, roll_unix: int) -> Dictionary:
 	var total_weight := 0.0
 	for raw_event in candidates:
@@ -724,8 +684,6 @@ func _choose_weighted_temporary_event(candidates: Array, roll_unix: int) -> Dict
 			return event_def
 	var fallback = candidates.back()
 	return fallback as Dictionary
-
-
 func _temporary_event_spawn_entry(event_def: Dictionary, now_unix: int, roll_unix: int) -> Dictionary:
 	var event_meta := event_def.get("event", {}) as Dictionary
 	var duration_seconds := maxi(1, int(event_meta.get("active_duration_seconds", 3600)))
@@ -776,7 +734,6 @@ func _start_temporary_event_action(skill_id: String, action_id: String, action: 
 	host._material_collection_surface()._sync_visible_mat_collection_for_action(skill_id, action_id, true)
 	host._reward_feedback_surface()._set_result("Event started: %s." % str(action.get("name", "Event")))
 	host._onboarding_runtime()._record_activity_start_for_tips()
-	host._tutorial_overlay_surface().fade_out_onboarding_explore_tip()
 	host._onboarding_runtime()._tutorial_on_action_started()
 	return true
 
@@ -816,12 +773,11 @@ func _clear_running_temporary_event_action(skill_id: String, action_id: String) 
 func _complete_temporary_event_action_attempt(skill_id: String, action_id: String, action: Dictionary, reward_key: String, cost: float, bonus_snapshot_before: Dictionary, clear_running_action_on_success := true) -> void:
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
-	var old_reward_skill_levels = host._action_runtime()._skill_levels_for_reward_map(skill_id, host._action_runtime()._base_xp_reward_map(action, skill_id))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var success = host._action_runtime()._roll_action_success(skill_id, action)
 	if success:
 		var xp_reward_map = host._action_runtime()._completion_xp_reward_map(action, skill_id, false, false, false, false)
-		old_reward_skill_levels = host._action_runtime()._skill_levels_for_reward_map(skill_id, xp_reward_map)
+		var old_reward_skill_levels = host._action_runtime()._skill_levels_for_reward_map(skill_id, xp_reward_map)
 		var affected_reward_skill_ids = host._action_runtime()._apply_xp_reward_map(skill_id, xp_reward_map)
 		for raw_reward_skill_id in affected_reward_skill_ids:
 			SkillState.recalculate_level(host, str(raw_reward_skill_id))
@@ -837,7 +793,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		if log_reward > 0:
 			host.last_result += " +%s %s." % [host.material_runtime.amount_text_for_host(log_reward_mat_id, log_reward_amount, host), host.material_runtime.display_name(log_reward_mat_id)]
 		host._reward_feedback_surface()._play_action_feedback(reward_key, true, xp_reward, 0.0, false, false, xp_reward_map)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_activity_success_sound(1, false, false, false, false, 0)
 		host._audio_director()._record_music_flow_action(true, 1, false, false, any_reward_skill_level_up, cost)
@@ -851,7 +807,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		host._action_runtime().reset_activity_completion_streak()
 		host.last_result = "Event failed: %s will try again." % str(action.get("name", "Event"))
 		host._reward_feedback_surface()._play_action_feedback(reward_key, false, 0, 0.0)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, false, false, cost)
@@ -881,8 +837,8 @@ func _complete_temporary_event_action_state(event_id: String, completed_unix: in
 
 func _temporary_events_for_save() -> Dictionary:
 	return {
-		"active": _temporary_event_active_for_save(),
-		"cooldowns": _temporary_event_cooldowns_for_save(),
+		"active": _normalized_temporary_event_active(temporary_event_active),
+		"cooldowns": _normalized_temporary_event_cooldowns(temporary_event_cooldowns),
 		"next_roll_unix": maxi(0, temporary_event_next_roll_unix)
 	}
 
@@ -897,14 +853,6 @@ func _restore_temporary_events_from_save(value: Variant) -> void:
 	temporary_event_active = _normalized_temporary_event_active(temporary_events_save.get("active", {}))
 	temporary_event_cooldowns = _normalized_temporary_event_cooldowns(temporary_events_save.get("cooldowns", {}))
 	temporary_event_next_roll_unix = maxi(0, int(temporary_events_save.get("next_roll_unix", temporary_events_save.get("next_roll", 0))))
-
-
-func _temporary_event_active_for_save() -> Dictionary:
-	return _normalized_temporary_event_active(temporary_event_active)
-
-
-func _temporary_event_cooldowns_for_save() -> Dictionary:
-	return _normalized_temporary_event_cooldowns(temporary_event_cooldowns)
 
 
 func _normalized_temporary_event_active(value: Variant) -> Dictionary:
@@ -950,8 +898,6 @@ func _temporary_event_active_entry_from_save(event_id_hint: String, value: Varia
 		"completed": completed,
 		"completed_unix": maxi(0, int(source.get("completed_unix", 0)))
 	}
-
-
 func _normalized_temporary_event_cooldowns(value: Variant) -> Dictionary:
 	var normalized := {}
 	if typeof(value) != TYPE_DICTIONARY:

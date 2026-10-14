@@ -1,343 +1,6 @@
 extends RefCounted
 
-const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
-const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
-class _BootFlexLoadingAnimation:
-	extends Control
-
-	const SHEET_PATH := "res://assets/loading/blue-guy-flex-loading-spritesheet.png"
-	const BUBBLE_PATH := "res://assets/loading/blue-guy-flex-speech-bubble-blank.png"
-	const FONT_PATH := "res://assets/fonts/Fredoka.ttf"
-	const FRAME_SIZE := Vector2(512, 512)
-	const LOOP_SECONDS := 2.15
-	const SHAKE_START := 0.22
-	const COLOR_INK := Color("#171615")
-	const SKILL_THEME_COLORS := [
-		Color("#e84d4d"),
-		Color("#8956bc"),
-		Color("#237cd5"),
-		Color("#6ea937"),
-		Color("#2dc0b9")
-	]
-
-
-	var rng := RandomNumberGenerator.new()
-	var elapsed := 0.0
-	var previous_loop_pos := 0.0
-	var sheet_texture: Texture2D
-	var bubble_texture: Texture2D
-	var bubble_font: Font
-	var atlas_texture: AtlasTexture
-	var sprite_holder: Control
-	var sprite: TextureRect
-	var bubble: TextureRect
-	var bubble_text: Control
-	var bubble_line_top: Label
-	var bubble_line_big: Label
-	var xp_layer: Control
-	var sprite_base_position := Vector2.ZERO
-	var current_frame := -1
-	var transparent_texture: Texture2D
-
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rng.randomize()
-		sheet_texture = _load_texture_or_fallback(SHEET_PATH, Vector2i(int(FRAME_SIZE.x * 4.0), int(FRAME_SIZE.y)))
-		bubble_texture = _load_texture_or_fallback(BUBBLE_PATH, Vector2i(8, 8))
-		_load_bubble_font()
-		_build_nodes()
-		_sync_layout()
-		set_process(not _headless_mode())
-
-
-	func restart() -> void:
-		elapsed = 0.0
-		previous_loop_pos = 0.0
-		current_frame = -1
-		_set_frame(0)
-		if sprite_holder != null:
-			sprite_holder.position = sprite_base_position
-		if xp_layer != null:
-			for child in xp_layer.get_children():
-				child.queue_free()
-		set_process(not _headless_mode())
-
-
-	func stop() -> void:
-		set_process(false)
-
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			_sync_layout()
-
-
-	func _process(delta: float) -> void:
-		if _headless_mode():
-			return
-		var next_elapsed := elapsed + delta
-		var loop_pos := fmod(next_elapsed, LOOP_SECONDS)
-		var wrapped := loop_pos < previous_loop_pos
-		if wrapped or (previous_loop_pos < LOOP_SECONDS * SHAKE_START and loop_pos >= LOOP_SECONDS * SHAKE_START):
-			_spawn_xp_drop()
-		elapsed = next_elapsed
-		previous_loop_pos = loop_pos
-		var phase := loop_pos / LOOP_SECONDS
-		_set_frame(_frame_for_phase(phase))
-		if sprite_holder != null:
-			sprite_holder.position = sprite_base_position + Vector2(_shake_x_for_phase(phase), 0.0)
-
-
-	func _build_nodes() -> void:
-		sprite_holder = Control.new()
-		sprite_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sprite_holder.z_index = 10
-		add_child(sprite_holder)
-
-		atlas_texture = AtlasTexture.new()
-		atlas_texture.atlas = null if _headless_mode() else sheet_texture
-		atlas_texture.region = Rect2(Vector2.ZERO, FRAME_SIZE)
-
-		sprite = TextureRect.new()
-		sprite.texture = _transparent_fallback_texture(Vector2i(int(FRAME_SIZE.x), int(FRAME_SIZE.y))) if _headless_mode() else atlas_texture
-		sprite.set_anchors_preset(Control.PRESET_FULL_RECT)
-		sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sprite_holder.add_child(sprite)
-
-		bubble = TextureRect.new()
-		bubble.texture = bubble_texture
-		bubble.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		bubble.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(bubble)
-
-		bubble_text = Control.new()
-		bubble_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(bubble_text)
-
-		bubble_line_top = _make_bubble_label("I must become an")
-		bubble_text.add_child(bubble_line_top)
-
-		bubble_line_big = _make_bubble_label("IDLE ELITIST!")
-		bubble_text.add_child(bubble_line_big)
-
-		xp_layer = Control.new()
-		xp_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-		xp_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		xp_layer.z_index = 30
-		add_child(xp_layer)
-
-
-	func _make_bubble_label(text: String) -> Label:
-		var label := Label.new()
-		label.text = text
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_color_override("font_color", COLOR_INK)
-		label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.64))
-		label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.10))
-		label.add_theme_constant_override("outline_size", 2)
-		label.add_theme_constant_override("shadow_offset_x", 0)
-		label.add_theme_constant_override("shadow_offset_y", 2)
-		if bubble_font != null:
-			label.add_theme_font_override("font", bubble_font)
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return label
-
-
-	func _load_bubble_font() -> void:
-		if ResourceLoader.exists(FONT_PATH):
-			var loaded := load(FONT_PATH)
-			if loaded is Font:
-				var bold := FontVariation.new()
-				bold.base_font = loaded
-				bold.variation_embolden = 1.45
-				bubble_font = bold
-		if bubble_font == null:
-			bubble_font = ThemeDB.fallback_font
-
-
-	func _sync_layout() -> void:
-		if size.x <= 1.0 or size.y <= 1.0:
-			return
-		var sprite_size := clampf(minf(size.x, size.y) * 2.05, 1000.0, 1500.0)
-		var center := size * 0.5 + Vector2(0.0, 720.0)
-		sprite_base_position = center - Vector2(sprite_size, sprite_size) * 0.5
-		sprite_base_position.y -= sprite_size * 0.22
-		if sprite_holder != null:
-			sprite_holder.size = Vector2(sprite_size, sprite_size)
-			sprite_holder.position = sprite_base_position
-
-		var bubble_width := clampf(size.x * 0.78, 1240.0, 1760.0)
-		var bubble_height := bubble_width * 0.43
-		var bubble_y := maxf(56.0, sprite_base_position.y - bubble_height + 166.0)
-		if bubble != null:
-			bubble.size = Vector2(bubble_width, bubble_height)
-			bubble.position = Vector2((size.x - bubble_width) * 0.5, bubble_y)
-		if bubble_text != null:
-			bubble_text.size = Vector2(bubble_width * 0.92, bubble_height * 0.78)
-			bubble_text.position = Vector2((size.x - bubble_text.size.x) * 0.5, bubble_y + bubble_height * 0.135)
-			_layout_bubble_text()
-
-
-	func _layout_bubble_text() -> void:
-		if bubble_text == null:
-			return
-		var top_height := bubble_text.size.y * 0.30
-		var big_height := bubble_text.size.y * 0.70
-		var small_font := int(clampf(bubble_text.size.x * 0.064, 48.0, 94.0))
-		var big_font := int(clampf(bubble_text.size.x * 0.136, 122.0, 210.0))
-		if bubble_line_top != null:
-			bubble_line_top.size = Vector2(bubble_text.size.x, top_height)
-			bubble_line_top.position = Vector2.ZERO
-			bubble_line_top.add_theme_font_size_override("font_size", small_font)
-		if bubble_line_big != null:
-			bubble_line_big.size = Vector2(bubble_text.size.x, big_height)
-			bubble_line_big.position = Vector2(0.0, top_height - bubble_text.size.y * 0.20)
-			bubble_line_big.add_theme_font_size_override("font_size", big_font)
-
-
-	func _frame_for_phase(phase: float) -> int:
-		if phase < 0.08:
-			return 0
-		if phase < 0.15:
-			return 1
-		if phase < 0.22:
-			return 2
-		if phase < 0.92:
-			return 3
-		return 0
-
-
-	func _set_frame(frame: int) -> void:
-		if _headless_mode() or frame == current_frame or atlas_texture == null:
-			return
-		current_frame = frame
-		atlas_texture.region = Rect2(Vector2(FRAME_SIZE.x * frame, 0.0), FRAME_SIZE)
-
-
-	func _shake_x_for_phase(phase: float) -> float:
-		if phase < 0.22 or phase >= 0.31:
-			return 0.0
-		if phase < 0.232:
-			return -12.0
-		if phase < 0.244:
-			return 12.0
-		if phase < 0.256:
-			return -12.0
-		if phase < 0.268:
-			return 12.0
-		if phase < 0.280:
-			return -7.0
-		if phase < 0.292:
-			return 7.0
-		if phase < 0.302:
-			return -3.0
-		return 3.0
-
-
-	func _spawn_xp_drop() -> void:
-		if xp_layer == null or sprite_holder == null:
-			return
-		var amount := rng.randi_range(1, 3)
-		var side := -1.0 if rng.randf() < 0.5 else 1.0
-		var sprite_size := sprite_holder.size.x
-		var start := sprite_base_position + Vector2(
-			sprite_size * 0.5 + side * rng.randf_range(sprite_size * 0.18, sprite_size * 0.30),
-			rng.randf_range(sprite_size * 0.18, sprite_size * 0.25)
-		)
-		var color: Color = SKILL_THEME_COLORS[rng.randi_range(0, SKILL_THEME_COLORS.size() - 1)]
-		_float_reward("+%s XP" % amount, color, start)
-
-
-	func _float_reward(text: String, color: Color, center: Vector2) -> void:
-		var reward_size := Vector2(480, 128)
-		var holder := Control.new()
-		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.size = reward_size
-		holder.position = center - reward_size * 0.5
-		holder.modulate.a = 0.0
-		holder.scale = Vector2(0.82, 0.82)
-		xp_layer.add_child(holder)
-
-		var shadow := Label.new()
-		shadow.text = text
-		shadow.size = reward_size
-		shadow.position = Vector2(3, 4)
-		shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		shadow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		shadow.add_theme_font_size_override("font_size", 92)
-		shadow.add_theme_color_override("font_color", COLOR_INK)
-		shadow.modulate = Color(1, 1, 1, 0.34)
-		holder.add_child(shadow)
-
-		var label := Label.new()
-		label.text = text
-		label.size = reward_size
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 92)
-		label.add_theme_color_override("font_color", color)
-		label.add_theme_color_override("font_outline_color", COLOR_INK)
-		label.add_theme_constant_override("outline_size", 14)
-		holder.add_child(label)
-
-		var tween := create_tween()
-		tween.set_parallel(true)
-		tween.tween_property(holder, "position", holder.position + Vector2(0, -132), 1.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(holder, "modulate:a", 1.0, 0.08)
-		tween.tween_property(holder, "modulate:a", 0.0, 0.85).set_delay(0.55)
-		tween.chain().tween_callback(_queue_free_instance_id.bind(holder.get_instance_id()))
-
-
-	func _load_texture_or_fallback(path: String, fallback_size: Vector2i) -> Texture2D:
-		if _headless_mode():
-			return _transparent_fallback_texture(fallback_size)
-		var loaded = load(path)
-		if loaded is Texture2D:
-			return loaded
-		return _transparent_fallback_texture(fallback_size)
-
-
-	func _transparent_fallback_texture(fallback_size: Vector2i) -> Texture2D:
-		if transparent_texture != null:
-			return transparent_texture
-		if _headless_mode():
-			var placeholder := PlaceholderTexture2D.new()
-			placeholder.size = Vector2(maxi(1, fallback_size.x), maxi(1, fallback_size.y))
-			transparent_texture = placeholder
-			return transparent_texture
-		var image := Image.create(maxi(1, fallback_size.x), maxi(1, fallback_size.y), false, Image.FORMAT_RGBA8)
-		image.fill(Color(1.0, 1.0, 1.0, 0.0))
-		transparent_texture = ImageTexture.create_from_image(image)
-		return transparent_texture
-
-
-	func _queue_free_instance_id(instance_id: int) -> void:
-		var node := instance_from_id(instance_id) as Node
-		if node != null and is_instance_valid(node):
-			node.queue_free()
-
-
-	func _headless_mode() -> bool:
-		return DisplayServer.get_name() == "headless"
-
-const FishCircle = preload("res://scripts/ui/fish_circle.gd")
-const FishingState = preload("res://scripts/fishing/state.gd")
-const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
-const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
-const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
-const SettingsSurface = preload("res://scripts/ui/settings_surface.gd")
-const ShopSurface = preload("res://scripts/ui/shop_surface.gd")
-const SkillDetailSurface = preload("res://scripts/ui/skill_detail_surface.gd")
-const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
-
-const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
-const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 1.65
+const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 0.35
 
 var host
 var active := false
@@ -349,8 +12,6 @@ var shade: ColorRect
 var footer: VBoxContainer
 var label: Label
 var progress_bar
-var cancel_requested := false
-var game_revealed := false
 var show_msec := 0
 var hide_requested := false
 var boot_early_services_started := false
@@ -365,9 +26,12 @@ func _boot_progress_step(text: String, progress: float):
 	await host.get_tree().process_frame
 
 
-func _finish_boot_render_async():
+func _finish_boot_render_async() -> bool:
 	if not host.is_inside_tree():
-		return
+		return false
+	if host._save_runtime().boot_storage_failure_blocks_restore():
+		_show_save_recovery_state()
+		return false
 	host.current_screen = "skill"
 	host.boot_detail_render_in_progress = true
 	host.boot_detail_card_yield = true
@@ -377,6 +41,16 @@ func _finish_boot_render_async():
 	host.boot_detail_render_in_progress = false
 	host.boot_lazy_background_mount_allowed = false
 	_set_progress("Finishing startup...", 0.74)
+	# A loaded save is not playable or writable until every subsystem, including
+	# profile/auth identity, has completed the same restore transaction.
+	if not host._save_runtime().pending_save_restore_data.is_empty():
+		host._save_runtime()._load_game_secondary_restore()
+	if host._save_runtime().boot_recovery_blocks_reveal():
+		_show_save_recovery_state()
+		return false
+	# Keep the loading cover opaque until the final desktop hierarchy is mounted.
+	await host.desktop_layout.start()
+	await host.get_tree().process_frame
 	if not host.startup_initialized:
 		host.startup_initialized = true
 		host._crash_report_runtime().write_session_marker("running")
@@ -387,6 +61,7 @@ func _finish_boot_render_async():
 	host._activity_unlock_runtime().call_deferred("_run_startup_auto_unlock_lockpads")
 	if DisplayServer.get_name() != "headless":
 		if not boot_early_services_started:
+			boot_early_services_started = true
 			host._audio_director().call_deferred("_prepare_audio_buses")
 			host._navigation_shell().call_deferred("_ensure_nav_bar_icons")
 			host._navigation_shell().call_deferred("_sync_hero_nav_button", true)
@@ -396,7 +71,62 @@ func _finish_boot_render_async():
 		host._achievement_toast_surface().call_deferred("show_pending_completed_toasts")
 		host._save_runtime().call_deferred("_schedule_boot_post_load_simulation")
 		call_deferred("begin_background_boot_validation")
-		call_deferred("_boot_texture_warmup_background")
+		host._ad_bonus_runtime().call_deferred("_init_ads")
+	return true
+
+
+func _show_save_recovery_state() -> void:
+	active = true
+	hide_requested = false
+	if overlay != null and is_instance_valid(overlay):
+		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	if footer != null and is_instance_valid(footer):
+		footer.offset_top = -550
+		footer.offset_bottom = -50
+		footer.add_theme_constant_override("separation", 0)
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(footer, true)
+	if label != null and is_instance_valid(label):
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size = Vector2(800, 380)
+		label.add_theme_font_size_override("font_size", 60)
+	if progress_bar != null and is_instance_valid(progress_bar):
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(progress_bar, false)
+	if splash != null and is_instance_valid(splash) and splash.has_method("stop"):
+		splash.call("stop")
+	_set_progress(host._save_runtime().boot_recovery_status_text(), 1.0)
+	_add_save_recovery_actions()
+
+
+func _add_save_recovery_actions() -> void:
+	if footer == null or not is_instance_valid(footer) or not host._save_runtime().boot_recovery_can_start_fresh():
+		return
+	footer.mouse_filter = Control.MOUSE_FILTER_STOP
+	footer.offset_top = -800
+	footer.add_theme_constant_override("separation", 24)
+	var copy_button: Button = host._menu_button("Copy Save Data")
+	copy_button.custom_minimum_size = Vector2(620, 110)
+	copy_button.pressed.connect(func():
+		DisplayServer.clipboard_set(host._save_runtime().support_save_export_text())
+		copy_button.text = "Copied for Support"
+	)
+	footer.add_child(copy_button)
+	var fresh_button: Button = host._menu_button("Start New Game")
+	fresh_button.custom_minimum_size = Vector2(620, 110)
+	fresh_button.pressed.connect(_on_save_recovery_start_fresh_pressed.bind(fresh_button))
+	footer.add_child(fresh_button)
+
+
+func _on_save_recovery_start_fresh_pressed(button: Button) -> void:
+	# The first tap only arms the reset; old files are archived, never deleted.
+	if not bool(button.get_meta("confirm_armed", false)):
+		button.set_meta("confirm_armed", true)
+		button.text = "Tap Again: Old Save Is Archived"
+		return
+	button.disabled = true
+	if not host._save_runtime().archive_local_saves_for_fresh_start():
+		button.text = "Could Not Archive Save"
+		return
+	host.get_tree().reload_current_scene()
 
 
 func validate_state(priority_skill_ids: Array = []) -> void:
@@ -411,10 +141,7 @@ func validate_state(priority_skill_ids: Array = []) -> void:
 			host.stamina[skill_id] = float(SkillState.max_stamina(host, skill_id))
 		if not host.stamina_bank.has(skill_id):
 			host.stamina_bank[skill_id] = 0.0
-		if validate_all or priority_skill_ids.has(skill_id):
-			_validate_skill_actions(skill_id, true)
-		else:
-			_validate_skill_actions(skill_id, false)
+		_validate_skill_actions(skill_id, validate_all or priority_skill_ids.has(skill_id))
 		SkillState.recalculate_level(host, skill_id)
 	if not host.skills.has(host.selected_skill_id):
 		host.selected_skill_id = "fight"
@@ -431,6 +158,9 @@ func validate_state_bootstrap() -> void:
 		var skill_id := str(def["id"])
 		if not host.skills.has(skill_id):
 			host.skills[skill_id] = {"xp": 0, "level": 1}
+	SkillState.invalidate_max_stamina_cache()
+	for def in host.skill_defs:
+		var skill_id := str(def["id"])
 		if not host.stamina.has(skill_id):
 			host.stamina[skill_id] = float(SkillState.max_stamina(host, skill_id))
 		if not host.stamina_bank.has(skill_id):
@@ -441,10 +171,6 @@ func validate_state_bootstrap() -> void:
 
 func prepare_selected_skill_for_render(boot_fast := false) -> void:
 	validate_state_bootstrap()
-	if not host.skills.has(host.selected_skill_id):
-		host.selected_skill_id = "fight"
-	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_skill_accessible(host.selected_skill_id):
-		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
 	if boot_fast:
 		var prepared_action_ids := {}
 		for entry in host._skill_detail_surface()._visible_detail_entries_for_skill(host.selected_skill_id):
@@ -530,6 +256,8 @@ func _validate_remaining_skills_deferred() -> void:
 		_validate_skill_actions(skill_id, true)
 		SkillState.recalculate_level(host, skill_id)
 		await host.get_tree().process_frame
+	if not host.deferred_skill_validation_pending or not host.is_inside_tree():
+		return
 	host.deferred_skill_validation_pending = false
 	SkillState.invalidate_stat_caches(host)
 	if host.current_screen == "skill" or host.current_screen == "home":
@@ -553,7 +281,7 @@ func build_overlay() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(background)
 
-	splash = _BootFlexLoadingAnimation.new()
+	splash = preload("res://scripts/ui/progression_loading_screen.gd").new()
 	splash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	splash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(splash)
@@ -569,30 +297,29 @@ func build_overlay() -> void:
 	footer.anchor_right = 0.5
 	footer.anchor_top = 1.0
 	footer.anchor_bottom = 1.0
-	footer.offset_left = -620
-	footer.offset_right = 620
-	footer.offset_top = -430
-	footer.offset_bottom = -210
+	footer.offset_left = -310
+	footer.offset_right = 310
+	footer.offset_top = -215
+	footer.offset_bottom = -105
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	footer.add_theme_constant_override("separation", 34)
+	footer.add_theme_constant_override("separation", 17)
 	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	footer.visible = false
 	overlay.add_child(footer)
 
 	label = host._label("Warming up...", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 18)
+	label.add_theme_constant_override("outline_size", 9)
 	footer.add_child(label)
 
 	progress_bar = ThemeStyles.progress_bar(host.COLOR_GREEN, 34, 0.0)
-	progress_bar.custom_minimum_size = Vector2(1180, 34)
+	progress_bar.custom_minimum_size = Vector2(590, 17)
 	progress_bar.border_color = host.COLOR_INK
 	footer.add_child(progress_bar)
 
 
 func show_overlay() -> void:
 	active = true
-	game_revealed = false
 	hide_requested = false
 	show_msec = Time.get_ticks_msec()
 	if overlay == null:
@@ -632,21 +359,29 @@ func _finish_overlay_hide() -> void:
 	if overlay != null and is_instance_valid(overlay):
 		if splash != null and is_instance_valid(splash) and splash.has_method("stop"):
 			splash.call("stop")
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(overlay, false)
-		host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(overlay, 1.0)
+	if layer != null and is_instance_valid(layer):
+		layer.queue_free()
+	layer = null
+	overlay = null
+	background = null
+	splash = null
+	shade = null
+	footer = null
+	label = null
+	progress_bar = null
+
+
+func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
+	if not path.is_empty() and not paths.has(path):
+		paths.append(path)
 
 
 func _set_progress(text: String, progress: float) -> void:
+	if is_instance_valid(splash): splash.set_progress(progress)
 	if label != null:
 		label.text = text
 	if progress_bar != null:
 		progress_bar.set_value(clampf(progress, 0.0, 1.0) * 100.0)
-
-
-func _reveal_game_under_boot_splash() -> void:
-	if game_revealed or overlay == null or not is_instance_valid(overlay):
-		return
-	game_revealed = true
 
 
 func _dismiss_boot_splash_for_play() -> void:
@@ -660,9 +395,7 @@ func _dismiss_boot_splash_for_play() -> void:
 
 
 func reset_for_shutdown() -> void:
-	cancel_requested = true
 	active = false
-	game_revealed = false
 	show_msec = 0
 	hide_requested = false
 	layer = null
@@ -678,109 +411,3 @@ func reset_for_shutdown() -> void:
 func apply_theme_background() -> void:
 	if background != null and is_instance_valid(background):
 		background.color = host._theme_paper_color()
-
-
-func _boot_shared_texture_paths() -> Array:
-	var paths := []
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-loading-spritesheet.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-speech-bubble-blank.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
-	_add_boot_warmup_texture_path(paths, host.HERO_SPEECH_BUBBLE_TEXTURE)
-	_add_boot_warmup_texture_path(paths, host.TOTAL_LEVEL_BARGRAPH_TEXTURE)
-	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
-	_add_boot_warmup_texture_path(paths, ShopSurface.REWARDED_AD_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SettingsSurface.DISCORD_LOGO_ICON_TEXTURE)
-	for medal_path in AchievementPresentation.MASTERY_MEDAL_TEXTURES:
-		_add_boot_warmup_texture_path(paths, str(medal_path))
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_LOCK_CHAINS_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LINK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LEFT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_RIGHT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_PADLOCK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_JUMP_TOP_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_JUMP_BOTTOM_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_BACK_TEXTURE)
-	for raw_nav_path in [
-		host.PROGRESS_STAR_ICON_TEXTURE,
-		"res://assets/content/hub/hub-nav-barn.png",
-		NavigationShell.NAV_OPEN_CLOSE_ICON_TEXTURE,
-		host.SETTINGS_GEAR_ICON_TEXTURE,
-		host.SHOP_ICON_TEXTURE,
-		ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE,
-		NavigationShell.MODULE_QUEUE_ICON_TEXTURE,
-		"res://assets/content/ui/navigation-controls/skills-overview.png",
-		"res://assets/content/ui/navigation-controls/sort-list.png"
-	]:
-		_add_boot_warmup_texture_path(paths, raw_nav_path)
-	return paths
-
-
-func _boot_warmup_texture_paths() -> Array:
-	var paths := _boot_shared_texture_paths()
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.TOTAL_LEVEL_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CRIT_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CREDIT_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CUMULATIVE_MEDALS_ART)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.PLANK_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.UPGRADE_ARROW_ICON_TEXTURE)
-	var warmup_skill_ids := _boot_warmup_skill_ids()
-	if warmup_skill_ids.has("fishing"):
-		_add_boot_warmup_texture_path(paths, FishCircle.FISH_CURRENCY_ICON_TEXTURE)
-		host._fishing_ui_surface()._add_fishing_boot_warmup_texture_paths(paths)
-	for skill_id in warmup_skill_ids:
-		_add_boot_warmup_texture_path(paths, SkillIconBadge.icon_path(skill_id))
-		if skill_id == "thieving":
-			for raw_path in host._thieving_surface().warmup_texture_paths():
-				_add_boot_warmup_texture_path(paths, str(raw_path))
-		for action in host._activity_unlock_runtime()._visible_actions_for_skill(skill_id):
-			var action_data := action as Dictionary
-			_add_boot_warmup_texture_path(paths, str(action_data.get("art", "")))
-			_add_boot_warmup_texture_path(paths, str(action_data.get("bg", "")))
-			if skill_id == "fishing":
-				var action_id := str(action_data.get("id", ""))
-				if FishingState.FISHING_ACTION_CATCH_TEXTURE_PATHS.has(action_id):
-					_add_boot_warmup_texture_path(paths, FishingState.FISHING_ACTION_CATCH_TEXTURE_PATHS[action_id])
-	return paths
-
-
-func _uncached_boot_warmup_texture_paths() -> Array:
-	return host.visual_texture_cache._uncached_texture_paths(_boot_warmup_texture_paths())
-
-
-func _boot_warmup_skill_ids() -> Array:
-	var ids := []
-	var current_index: int = host._skill_index(host.selected_skill_id)
-	if current_index < 0 or host.skill_defs.is_empty():
-		return ids
-	var skill_id := str(host.skill_defs[current_index].get("id", ""))
-	if not skill_id.is_empty():
-		ids.append(skill_id)
-	return ids
-
-
-func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
-	if path.is_empty() or paths.has(path):
-		return
-	paths.append(path)
-
-
-func _boot_texture_warmup_background() -> void:
-	if not host.is_inside_tree():
-		return
-	var paths: Array = _uncached_boot_warmup_texture_paths()
-	if paths.is_empty():
-		host._audio_director().call_deferred("_warm_extended_audio_async")
-		host._ad_bonus_runtime().call_deferred("_init_ads")
-		return
-	var last_yield_msec := Time.get_ticks_msec()
-	for raw_path in paths:
-		if not host.is_inside_tree():
-			return
-		host.visual_texture_cache._texture(str(raw_path))
-		if Time.get_ticks_msec() - last_yield_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
-			await host.get_tree().process_frame
-			last_yield_msec = Time.get_ticks_msec()
-	host._audio_director().call_deferred("_warm_extended_audio_async")
-	host._ad_bonus_runtime().call_deferred("_init_ads")

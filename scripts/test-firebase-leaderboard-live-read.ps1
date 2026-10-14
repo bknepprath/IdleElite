@@ -25,7 +25,7 @@ Assert-True ($webApiKey -ne "YOUR_FIREBASE_WEB_API_KEY") "web_api_key is still a
 
 $skillIds = @($activityDatabase.skills | ForEach-Object { $_.id } | Where-Object { $_ })
 $allowedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("medals_earned", "elite_heavenly")
-$categoryKey = $Category.Trim().Replace(":", "__")
+$categoryKey = ([string]$Category).Trim().Replace(":", "__")
 Assert-True ($allowedCategoryKeys -contains $categoryKey) "Category is not in the Idle Elite leaderboard allowlist."
 
 $query = 'orderBy=%22score%22&limitToLast=1'

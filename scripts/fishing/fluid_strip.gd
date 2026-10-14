@@ -2,15 +2,14 @@ extends Control
 
 enum Phase { CALM, BITE, REVEAL }
 
-const STRIP_EXPANDED_HEIGHT := 88.0
+const STRIP_EXPANDED_HEIGHT := 44.0
 const STRIP_IDLE_HEIGHT := 0.0
 const STRIP_VISIBLE_HEIGHT := 0.5
 const EXPAND_SPEED := 14.0
-const REVEAL_HOLD_SECONDS := 0.95
-const STRIP_EDGE_INSET := 6.0
-const STRIP_BOTTOM_RADIUS := 66.0
+const STRIP_EDGE_INSET := 3.0
+const STRIP_BOTTOM_RADIUS := 33.0
 const STRIP_BOTTOM_INSET := 0.0
-const STRIP_TOP_LIP_HEIGHT := 7.0
+const STRIP_TOP_LIP_HEIGHT := 3.5
 const STRIP_INK := Color("#171615")
 
 const FLUID_WATER := {
@@ -50,7 +49,6 @@ const FLUID_ICE := {
 }
 
 const CALM_END := 0.55
-const BITE_END := 0.88
 
 var _top_lip: ColorRect
 var _underlay: ColorRect
@@ -96,6 +94,7 @@ func _notification(what: int) -> void:
 func _setup_fill() -> void:
 	_top_lip = ColorRect.new()
 	_top_lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top_lip.z_index = 1
 	_top_lip.color = STRIP_INK
 	add_child(_top_lip)
 
@@ -125,14 +124,11 @@ func _setup_fill() -> void:
 	_apply_fluid_colors()
 	_sync_mask_uniforms()
 	_layout_top_lip()
-
-
 func set_fluid_kind(kind: String) -> void:
 	_fluid_kind = kind if kind in ["water", "sewer", "lava", "space", "deep_water", "storm", "ice"] else "water"
+	_update_wave_speed()
 	_apply_fluid_colors()
 	_sync_shader_uniforms()
-
-
 func set_running(running: bool) -> void:
 	_running = running
 	_target_height = STRIP_EXPANDED_HEIGHT if running else STRIP_IDLE_HEIGHT
@@ -146,11 +142,9 @@ func set_running(running: bool) -> void:
 		_reveal_active = false
 		_reveal_timer = 0.0
 		_set_phase(Phase.CALM)
-		_set_shader_reveal(0.0, false)
-		_sync_underlay_tint(0.0)
+		_set_shader_reveal(false)
+		_sync_underlay_tint()
 	_sync_strip_visibility()
-
-
 func _apply_layout_height(height: float) -> void:
 	var h := maxf(0.0, height)
 	offset_left = 0.0
@@ -158,8 +152,6 @@ func _apply_layout_height(height: float) -> void:
 	offset_bottom = 0.0
 	offset_top = -h
 	_layout_top_lip()
-
-
 func _layout_top_lip() -> void:
 	if _top_lip == null or not is_instance_valid(_top_lip):
 		return
@@ -186,16 +178,12 @@ func _sync_mask_uniforms() -> void:
 		shader_material.set_shader_parameter("corner_radius", STRIP_BOTTOM_RADIUS)
 		shader_material.set_shader_parameter("edge_inset", STRIP_EDGE_INSET)
 		shader_material.set_shader_parameter("bottom_inset", STRIP_BOTTOM_INSET)
-
-
 func set_attempt_progress(progress: float) -> void:
 	if _reveal_active or not _running:
 		return
 	var pct := clampf(progress, 0.0, 1.0)
 	if pct < CALM_END:
 		_set_phase(Phase.CALM)
-	elif pct < BITE_END:
-		_set_phase(Phase.BITE)
 	else:
 		_set_phase(Phase.BITE)
 
@@ -210,8 +198,6 @@ func _set_phase(next_phase: Phase) -> void:
 	_phase = next_phase
 	_update_wave_speed()
 	_sync_shader_uniforms()
-
-
 func _fluid_table() -> Dictionary:
 	match _fluid_kind:
 		"sewer":
@@ -227,8 +213,6 @@ func _fluid_table() -> Dictionary:
 		"ice":
 			return FLUID_ICE
 	return FLUID_WATER
-
-
 func _update_wave_speed() -> void:
 	var table := _fluid_table()
 	# Bite uses the same scroll rate as calm; a different bite cue will come later.
@@ -237,8 +221,6 @@ func _update_wave_speed() -> void:
 			_wave_speed = 0.35
 		_:
 			_wave_speed = float(table.get("scroll_speed", 1.0))
-
-
 func _apply_fluid_colors() -> void:
 	var table := _fluid_table()
 	var surface_color: Color = table.get("fluid", FLUID_WATER["fluid"])
@@ -254,30 +236,22 @@ func _apply_fluid_colors() -> void:
 	_material.set_shader_parameter("fluid_color", surface_color)
 	_material.set_shader_parameter("fluid_deep", deep_color)
 	_sync_mask_uniforms()
-
-
 func _sync_shader_uniforms() -> void:
 	if _material == null:
 		return
 	_material.set_shader_parameter("foam_scroll", _foam_phase)
 	_material.set_shader_parameter("reveal_success", 1.0 if _reveal_success else 0.0)
-
-
-func _sync_underlay_tint(_strength: float) -> void:
+func _sync_underlay_tint() -> void:
 	if _underlay_material == null:
 		return
 	var table := _fluid_table()
 	var deep_color: Color = table.get("deep", FLUID_WATER["deep"])
 	_underlay_material.set_shader_parameter("fill_color", deep_color)
-
-
-func _set_shader_reveal(_strength: float, success: bool) -> void:
+func _set_shader_reveal(success: bool) -> void:
 	_reveal_success = success
 	if _material == null:
 		return
 	_material.set_shader_parameter("reveal_success", 1.0 if success else 0.0)
-
-
 func _process(delta: float) -> void:
 	if not _running and not _reveal_active and absf(_current_height - _target_height) <= 0.01:
 		set_process(false)
@@ -287,12 +261,11 @@ func _process(delta: float) -> void:
 		_material.set_shader_parameter("foam_scroll", _foam_phase)
 	if _reveal_active:
 		_reveal_timer = maxf(0.0, _reveal_timer - delta)
-		_set_shader_reveal(0.0, _reveal_success)
-		_sync_underlay_tint(0.0)
+		_set_shader_reveal(_reveal_success)
+		_sync_underlay_tint()
 		if _reveal_timer <= 0.0:
 			_reveal_active = false
-			_set_shader_reveal(0.0, false)
-			_sync_underlay_tint(0.0)
+			_set_shader_reveal(false)
 			if _running:
 				_set_phase(Phase.CALM)
 			else:
@@ -306,8 +279,6 @@ func _process(delta: float) -> void:
 		_apply_layout_height(_current_height)
 		_sync_strip_visibility()
 		set_process(false)
-
-
 func _sync_strip_visibility() -> void:
 	var show_fill := _current_height > STRIP_VISIBLE_HEIGHT
 	visible = show_fill or _running or _reveal_active

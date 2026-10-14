@@ -1,13 +1,18 @@
 extends Control
 
+var halloween_runtime
+
+func _halloween_runtime():
+	if halloween_runtime == null:
+		halloween_runtime = preload("res://scripts/seasonal/halloween_runtime.gd").new(self)
+	return halloween_runtime
+
 const FishingState = preload("res://scripts/fishing/state.gd")
 const FishingUiSurface = preload("res://scripts/fishing/ui_surface.gd")
 const ActivityQueueRuntime = preload("res://scripts/activity_queue/runtime.gd")
 const ActivityDataCatalog = preload("res://scripts/activity_data/catalog.gd")
 const AudioDirector = preload("res://scripts/audio/audio_director.gd")
 const OnboardingRuntime = preload("res://scripts/tutorial/onboarding_runtime.gd")
-const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
-const AchievementState = preload("res://scripts/achievements/state.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
 const FightingRuntime = preload("res://scripts/gameplay/fighting_runtime.gd")
@@ -35,9 +40,7 @@ const SettingsSurface = preload("res://scripts/ui/settings_surface.gd")
 const ShopSurface = preload("res://scripts/ui/shop_surface.gd")
 const CrashReportRuntime = preload("res://scripts/diagnostics/crash_report_runtime.gd")
 const OnlineRuntime = preload("res://scripts/online/online_runtime.gd")
-const GameFormatting = preload("res://scripts/core/formatting.gd")
 const VisualTextureCache = preload("res://scripts/core/visual_texture_cache.gd")
-const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const SaveRuntime = preload("res://scripts/save_state/save_runtime.gd")
@@ -47,19 +50,17 @@ const ThievingState = preload("res://scripts/thieving/state.gd")
 const ThievingSurface = preload("res://scripts/thieving/surface.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
-const FishCircle = preload("res://scripts/ui/fish_circle.gd")
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const AchievementOverlaySurface = preload("res://scripts/ui/achievement_overlay_surface.gd")
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
-
-const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
-const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
-const ACTION_CARD_TITLE_OUTLINE_SIZE := 34
+const PAPER_BUTTON_OUTLINE_WIDTH := 4.5
+const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 12
+const ACTION_CARD_TITLE_OUTLINE_SIZE := 17
 const ACTION_CARD_FACE_BORDER_ENABLED := true
-const ACTION_CARD_FACE_RADIUS := 66.0
+const ACTION_CARD_FACE_RADIUS := 33.0
 const ACTION_CARD_FACE_BORDER_Z_INDEX := 244
 const PASSIVE_PROGRESS_BAR_Z_INDEX := ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 const UI_STATIC_REFRESH_INTERVAL_SECONDS := 0.50
@@ -71,23 +72,23 @@ const UNMARKED_MAXED_SAVE_COMPLETION_LIMIT := 5000
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
 const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
-const HERO_SPEECH_BUBBLE_TEXTURE := "res://assets/content/ui/hero-speech-bubble-down.png"
 const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.png"
 const BASE_MAX_STAMINA := SkillState.BASE_MAX_STAMINA
 const STAMINA_REGEN_SECONDS := SkillState.STAMINA_REGEN_SECONDS
 const MAX_OFFLINE_SECONDS := 8 * 60 * 60
-const MIN_MOBILE_BODY_FONT_SIZE := 52
+const MIN_MOBILE_BODY_FONT_SIZE := 48
+const MIN_MOBILE_HELP_FONT_SIZE := 52
 const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 60
 const MASTERY_MAX_LEVEL := 20
 const ACTION_CARD_MEDAL_PRESS_KIND := "__medal__"
-const BASE_CANVAS := Vector2(2160, 3840)
-const SKILL_DETAIL_BOTTOM_UI_CLEARANCE := 340
-const SKILLS_PAGE_TOP_PAD := 96
-const PAGE_PAD := 96
-const CARD_RADIUS := 64
-const ACTION_CARD_HEIGHT := 720
-const COMBAT_DIAMOND_ARENA_CARD_HEIGHT := 1220
-const ACTION_CARD_EXPANDED_HEIGHT := 1280
+const BASE_CANVAS := Vector2(1080, 1920)
+const SKILL_DETAIL_BOTTOM_UI_CLEARANCE := 170
+const SKILLS_PAGE_TOP_PAD := 48
+const PAGE_PAD := 48
+const CARD_RADIUS := 32
+const ACTION_CARD_HEIGHT := 360
+const COMBAT_DIAMOND_ARENA_CARD_HEIGHT := 610
+const ACTION_CARD_EXPANDED_HEIGHT := 640
 const ACTION_CARD_INFO_EXPAND_SECONDS := 0.22
 const ACTION_CARD_INFO_FADE_IN_SECONDS := 0.08
 const ACTION_CARD_INFO_FADE_OUT_SECONDS := 0.12
@@ -96,10 +97,10 @@ const FISHING_BACKGROUND_CROP_TOP := 0.06
 const FISHING_BACKGROUND_CROP_RIGHT := 0.015
 const FISHING_REWORK_ENABLED := true
 const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
-const PASSIVE_MODULE_CARD_HEIGHT := 940
-const ACTION_CARD_POP_GUTTER := 44
-const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(14.0, 16.0)
-const ACTION_CARD_3D_PRESS_OFFSET := Vector2(28.0, 34.0)
+const PASSIVE_MODULE_CARD_HEIGHT := 470
+const ACTION_CARD_POP_GUTTER := 22
+const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(7.0, 8.0)
+const ACTION_CARD_3D_PRESS_OFFSET := Vector2(14.0, 17.0)
 const ACTION_CARD_3D_PRESS_SECONDS := 0.098
 const ACTION_CARD_3D_PRESS_HOLD_SECONDS := 0.045
 const ACTION_CARD_3D_RELEASE_SECONDS := 0.14
@@ -111,40 +112,36 @@ const PASSIVE_BUTTON_TAP_RELEASE_SLOP := 52.0
 const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
 const ACTION_PROGRESS_SPEED_EASE := 4.8
 const ACTION_CANCELED_PROGRESS_DECAY_PER_SECOND := 0.24
-const SKILL_MENU_ICON_BADGE_SIZE := Vector2(324, 324)
-const SKILL_MENU_ICON_SYMBOL_SIZE := Vector2(336, 336)
-const ACHIEVEMENT_SECTION_SKILL_ICON_SIZE := Vector2(178, 178)
-const SKILL_DETAIL_HEADER_HEIGHT := 704
-const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 34
-const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 18
-const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 8
-const PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE := Vector2(452, 452)
+const SKILL_MENU_ICON_BADGE_SIZE := Vector2(162, 162)
+const SKILL_MENU_ICON_SYMBOL_SIZE := Vector2(168, 168)
+const ACHIEVEMENT_SECTION_SKILL_ICON_SIZE := Vector2(89, 89)
+const SKILL_DETAIL_HEADER_HEIGHT := 352
+const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 17
+const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 9
+const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 4
+const PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE := Vector2(226, 226)
 const ONBOARDING_FIRST_MODULE_CENTER_RELEASE_SECONDS := 0.72
-const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
-const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
-const SKILL_DETAIL_TITLE_FONT_SIZE := 152
-const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 128
-const SKILL_DETAIL_XP_FONT_SIZE := 62
-const SKILL_DETAIL_XP_BAR_HEIGHT := 96
+const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 24
+const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 24
+const SKILL_DETAIL_TITLE_FONT_SIZE := 64
+const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 64
+const SKILL_DETAIL_FISHING_TITLE_FONT_SIZE := 52
+const SKILL_DETAIL_XP_FONT_SIZE := 40
+const SKILL_DETAIL_XP_BAR_HEIGHT := 48
 const DETAIL_RESTORE_SCROLL_BOTTOM := -2
 const MODULE_TITLE_OVER_PIN_Z_INDEX := 390
-const SKILL_DETAIL_TEXT_SEPARATION := 25
-const SKILL_DETAIL_LEFT_SEPARATION := 67
-const SKILL_DETAIL_XP_BAR_WIDTH := 710
-const SKILL_DETAIL_ICON_SIZE := Vector2(400, 400)
-const SKILL_DETAIL_ICON_BORDER_WIDTH := 18.0
-const SKILL_DETAIL_ICON_Y_OFFSET := 16.0
+const SKILL_DETAIL_TEXT_SEPARATION := 12.5
+const SKILL_DETAIL_LEFT_SEPARATION := 33.5
+const SKILL_DETAIL_XP_BAR_WIDTH := 360
+const SKILL_DETAIL_ICON_SIZE := Vector2(200, 200)
+const SKILL_DETAIL_ICON_BORDER_WIDTH := 9.0
+const SKILL_DETAIL_ICON_Y_OFFSET := 8.0
 const SKILL_SWIPE_THRESHOLD := 230.0
 const SKILL_SWIPE_FEEDBACK_DEADZONE := 46.0
-const SKILL_SWIPE_PAGE_GAP := 960.0
-const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
+const SKILL_SWIPE_PAGE_GAP := 480.0
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
 const SKILL_SWIPE_CANCEL_SECONDS := 0.14
-const SKILL_SWIPE_PREVIEW_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
-const SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA := 0.30
-const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
-const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
 const SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS := 0.22
 const SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS := 0.28
@@ -158,40 +155,27 @@ const PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS := 0.34
 const PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS := 0.18
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
-const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
 const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 2
-const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1
+const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 4
 const SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE := 1
 const SKILL_SWIPE_PROXY_FULL_REFRESH_DELAY_FRAMES := 720
 const SKILL_SWIPE_BUTTON_SUPPRESS_MSEC := 320
-const SKILL_DETAIL_SHADOW_FADE_SCROLL := 72.0
+const SKILL_DETAIL_SHADOW_FADE_SCROLL := 36.0
 const SKILL_DETAIL_SHADOW_FADE_SPEED := 10.0
 const TUTORIAL_TIP_FADE_SECONDS := 0.28
 const TUTORIAL_TIP_FADE_OUT_SECONDS := 1.2
-const ACTIVITY_START_TIP_FADE_SECONDS := 0.62
 const TUTORIAL_STARTER_SKILL_ID := "fight"
 const TUTORIAL_STARTER_ACTION_ID := "push-ups"
 const TUTORIAL_LEVEL_TWO_ACTION_ID := "kick-mud-off-boot"
 const TUTORIAL_GATE_LATCH_ACTION_ID := "wrestle-stuck-gate-latch"
 const TUTORIAL_DEFERRED_AFTER_GATE_ACTION_ID := "box-suspicious-feed-sack"
-const ONBOARDING_HEADER_FADE_SECONDS := 0.62
-const ONBOARDING_SUMMARY_FADE_SECONDS := 2.0
-const ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD := 1
-const ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION := 0.5
-const ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS := 3.0
-const ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS := 2.0
-const ONBOARDING_STAMINA_GAUGE_FADE_SECONDS := 2.0
-const ONBOARDING_STAMINA_TIP_LINGER_SECONDS := 4.0
-const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 300.0
 const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
-const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
 const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
-const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 64
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
@@ -217,7 +201,7 @@ const PROFILE_DISPLAY_NAME_MAX_CHARS := 16
 const PROFILE_NAME_KEY_MAX_CHARS := 16
 const PROFILE_GUEST_NAME_PREFIX := "guest"
 const LOW_STAMINA_ACTION_SPEED_MULT := 0.20
-const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 1.28
+const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 0.55
 const MODAL_OVERLAY_Z := 4096
 const TUTORIAL_LAYER := AchievementToastSurface.CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
@@ -231,18 +215,15 @@ const FISHING_DETAIL_RENDER_CULL_ACTIVE_MIN_MSEC := 56
 const FISHING_DETAIL_USE_FLAT_ART := true
 const FISHING_SCROLL_MODE_SETTLE_MSEC := 160
 const FISHING_DETAIL_VISIBLE_SETTLE_FILL_BUDGET := 1
-const FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS := 12
 const MODULE_LIST_TRANSITION_SECONDS := 0.42
 const MODULE_LIST_TRANSITION_NEW_SECONDS := 0.30
-const MODULE_LIST_TRANSITION_NEW_OFFSET_Y := 28.0
+const MODULE_LIST_TRANSITION_NEW_OFFSET_Y := 14.0
 const MODULE_LIST_TRANSITION_MIN_MOVE := 2.0
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
-const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const ACTION_PROGRESS_RAIL_INSET := 0
-const ACTION_PROGRESS_RAIL_HEIGHT := 88
-const PASSIVE_BORDER := 0
+const ACTION_PROGRESS_RAIL_HEIGHT := 44
 
 const COLOR_INK := Color("#171615")
 const COLOR_PAPER := Color("#f8f1e5")
@@ -338,7 +319,7 @@ const FISHING_ACTION_ID_ALIASES := {
 	"fishing:dredge-wreck-with-magnet": "wreck-drop",
 	"fight:duel-leaning-fence-post": "duel-fence-post",
 	"woodcutting:fell-the-wooden-concept-of-height": "chop-super-tall-tree",
-	"fishing:fly-fish-at-river-bend": "river-rapids",
+	"fishing:fly-fish-at-river-bend": "rapids",
 	"fight:fight-rouses": "fight-r.o.u.s.es",
 	"fight:fight-the-barn-door-at-midnight": "fight-barn-door",
 	"fishing:fish-with-magnetic-hook": "wreck-drop",
@@ -414,7 +395,7 @@ var honey_stamina_seconds_remaining := 0.0
 var stamina_gauge_pre_tip_hold_seconds := 0.0
 var last_result := "Pick a skill and start training."
 var offline_progress_enabled := true
-var auto_unlock_lockpads_enabled := false
+var auto_unlock_lockpads_enabled := true
 var god_mode_enabled := false
 var god_mode_save_tainted := false
 var show_stamina_decimal := false
@@ -492,6 +473,7 @@ var playable_medal_buff_actions_cache := {}
 var playable_medal_buff_index_cache := {}
 var visual_texture_cache := VisualTextureCache.new()
 var loaded_save_this_boot := false
+var save_restore_complete := false
 var activity_queue_runtime: ActivityQueueRuntime
 var save_runtime: SaveRuntime
 var action_runtime: ActionRuntime
@@ -533,9 +515,19 @@ var boot_detail_completion_token := 0
 var boot_detail_scroll_locked := false
 var shutdown_cleanup_started := false
 var startup_initialized := false
+# Process tracing switches, read once in _ready instead of every frame.
+var trace_process_slow_enabled := false
+var trace_process_threshold_us := 2000
+var trace_process_skill_filter := ""
+var action_stop_hold_circle: StopHoldCircle
 var app_resume_repair_pending := false
 var web_fishing_perf_probe_enabled := false
+var desktop_layout = preload("res://scripts/ui/desktop_layout.gd").new(self)
 func _ready() -> void:
+	desktop_layout.configure_window()
+	trace_process_slow_enabled = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	trace_process_threshold_us = 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
+	trace_process_skill_filter = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
 	_fishing_ui_surface()._load_fishing_debug_env_flags()
 	visual_texture_cache.fishing_ablation_enabled = Callable(_fishing_ui_surface(), "_fishing_ablation_enabled")
 	_performance_runtime()._configure_performance_mode()
@@ -571,7 +563,9 @@ func _ready() -> void:
 	deferred_skill_validation_pending = true
 	deferred_selected_skill_mastery_pending = true
 	await _build_ui_boot_async()
-	await _boot_warmup_runtime()._finish_boot_render_async()
+	var boot_ready_for_play := await _boot_warmup_runtime()._finish_boot_render_async()
+	if not boot_ready_for_play:
+		return
 	var timer := Timer.new()
 	timer.wait_time = SaveRuntime.AUTOSAVE_INTERVAL_SECONDS
 	timer.autostart = true
@@ -585,7 +579,6 @@ func _ready() -> void:
 		_test_state_runtime().call_deferred("_run_headless_boot_smoke")
 	if web_fishing_perf_probe_enabled:
 		_fishing_ui_surface().call_deferred("_run_web_fishing_perf_probe_setup")
-
 func _finish_boot_skill_detail_extras() -> void:
 	if _skill_detail_surface().detail_actions_scroll == null or not is_instance_valid(_skill_detail_surface().detail_actions_scroll):
 		return
@@ -612,15 +605,14 @@ func _skill_swipe_loading_transition_active() -> bool:
 	)
 
 func _process(delta: float) -> void:
-	if not startup_initialized:
+	# Hidden browser tabs may still receive throttled frames. Do not move the
+	# save timestamp forward while waiting to account for the suspended interval.
+	if _app_lifecycle_runtime().suspended_at_unix >= 0:
 		return
-	if _app_lifecycle_runtime().recover_suspended_process():
+	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
-	if boot_detail_render_in_progress and not boot_lazy_background_mount_allowed:
-		return
-	var trace_process := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
-	var trace_process_skill := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
-	if trace_process and not trace_process_skill.is_empty() and selected_skill_id != trace_process_skill:
+	var trace_process := trace_process_slow_enabled
+	if trace_process and not trace_process_skill_filter.is_empty() and selected_skill_id != trace_process_skill_filter:
 		trace_process = false
 	var trace_start_usec := Time.get_ticks_usec() if trace_process else 0
 	var trace_last_usec := trace_start_usec
@@ -669,6 +661,8 @@ func _process(delta: float) -> void:
 	_audio_director()._process_music_flow(delta)
 	_profile_chat_overlay_surface()._process_chat_keyboard_lift(delta)
 	_profile_chat_overlay_surface()._process_chat_enter_submit_poll()
+	# Desktop resizing and sibling columns must update even when the focused fishing page is idle.
+	desktop_layout.update(delta)
 	if not _fishing_ui_surface()._fishing_detail_scroll_frame_can_skip_ui_update():
 		_update_ui(delta)
 	_skill_swipe_activity_surface()._maybe_release_ready_skill_swipe_cover()
@@ -677,11 +671,8 @@ func _process(delta: float) -> void:
 	if trace_process:
 		var now_usec := Time.get_ticks_usec()
 		trace_ui_us = now_usec - trace_last_usec
-		trace_last_usec = now_usec
-	if _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
-	else:
-		_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	_skill_detail_surface().detail_actions_scroll_limit_elapsed += delta
+	if not _fishing_ui_surface()._fishing_detail_can_defer_scroll_bounds_work(detail_lazy_mounted_count):
 		if _skill_detail_surface().detail_actions_scroll_limit_elapsed >= DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS:
 			_skill_detail_surface().detail_actions_scroll_limit_elapsed = 0.0
 			_skill_detail_surface()._sync_detail_actions_scroll_limit()
@@ -698,7 +689,7 @@ func _process(delta: float) -> void:
 	_fishing_ui_surface()._publish_web_fishing_perf_probe_state()
 	if trace_process:
 		var trace_total_us := Time.get_ticks_usec() - trace_start_usec
-		if trace_total_us >= 2000:
+		if trace_total_us >= trace_process_threshold_us:
 			print("PROCESS_TRACE frame=%s screen=%s skill=%s total=%s prewarm=%s lazy=%s background=%s action=%s ui=%s rest=%s mounted=%s plan=%s cards=%s placeholders=%s" % [
 				str(main_process_frame_index),
 				current_screen,
@@ -715,11 +706,16 @@ func _process(delta: float) -> void:
 				str(action_cards.size()),
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
-
 func _input(event: InputEvent) -> void:
+	if _halloween_runtime().route_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if desktop_layout.route_input(event):
+		return
 	_input_routing_shell().input(event)
-
 func _action_stop_hold() -> StopHoldCircle:
+	if action_stop_hold_circle != null and is_instance_valid(action_stop_hold_circle) and not action_stop_hold_circle.is_queued_for_deletion() and action_stop_hold_circle.is_inside_tree():
+		return action_stop_hold_circle
 	var layer := get_node_or_null("ActionStopHoldLayer") as CanvasLayer
 	if layer == null:
 		layer = CanvasLayer.new()
@@ -734,14 +730,12 @@ func _action_stop_hold() -> StopHoldCircle:
 		layer.add_child(circle)
 	else:
 		circle.setup(self)
+	action_stop_hold_circle = circle
 	return circle
-
 func _notification(what: int) -> void:
 	_app_lifecycle_runtime().handle_notification(what)
-
 func _exit_tree() -> void:
 	_app_lifecycle_runtime()._prepare_for_shutdown()
-
 func _build_ui_boot_async():
 	var boot_warmup := _boot_warmup_runtime()
 	await boot_warmup._boot_progress_step("Building screen...", 0.34)
@@ -761,7 +755,6 @@ func _build_ui_boot_async():
 	await boot_warmup._boot_progress_step("Mounting skill view...", 0.62)
 	await boot_warmup._boot_progress_step("Preparing first frame...", 0.64)
 	await boot_warmup._boot_progress_step("Almost ready...", 0.66)
-
 func _online_runtime() -> OnlineRuntime:
 	if online_runtime == null or not is_instance_valid(online_runtime):
 		online_runtime = OnlineRuntime.new()
@@ -769,32 +762,28 @@ func _online_runtime() -> OnlineRuntime:
 		online_runtime.setup(self)
 		add_child(online_runtime)
 	return online_runtime
-
 func _build_skills_page() -> void:
 	skills_content = Control.new()
 	skills_content.set_anchors_preset(Control.PRESET_FULL_RECT)
 	skills_content.offset_top = SKILLS_PAGE_TOP_PAD
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
-
 func _skill_content_width() -> float:
+	if desktop_layout.enabled() and current_screen == "skill":
+		return desktop_layout.column_width
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
-
 func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
 	if skill_id.is_empty():
 		skill_id = selected_skill_id
 	return _skill_content_width()
-
 func _skill_column_host_width() -> float:
 	if skills_content != null and is_instance_valid(skills_content) and skills_content.size.x > 1.0:
 		return skills_content.size.x
 	return _current_canvas_size().x
-
 func _add_centered_skill_column(control: Control, drag_x: float = 0.0) -> void:
 	var content_width := _skill_content_width()
 	_skill_swipe_activity_surface()._apply_skill_column_layout(control, content_width, drag_x)
 	skills_content.add_child(control)
-
 func _suppress_detail_auto_scroll_for_first_module() -> bool:
 	if not _skill_detail_surface().onboarding_first_module_center_active():
 		return false
@@ -802,7 +791,6 @@ func _suppress_detail_auto_scroll_for_first_module() -> bool:
 		_skill_detail_surface().detail_actions_scroll.drag_scroll_position = 0.0
 		_skill_detail_surface().detail_actions_scroll.scroll_vertical = 0
 	return true
-
 func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	if current_screen != "skill":
 		return
@@ -818,11 +806,22 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 		_skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 	_skill_detail_surface()._reveal_detail_jump_arrow(direction)
 	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, _skill_detail_surface().DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
-
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
-	_navigation_shell()._sync_bottom_nav_visibility()
-	_navigation_shell()._sync_module_utility_row_visibility()
+	var trace_static_refresh := static_refresh and trace_process_slow_enabled
+	var trace_static_threshold_us := trace_process_threshold_us
+	var trace_static_start := Time.get_ticks_usec() if trace_static_refresh else 0
+	var trace_static_last := trace_static_start
+	var trace_static_shell_us := 0
+	var trace_static_header_us := 0
+	var trace_static_cards_us := 0
+	if static_refresh or instant:
+		_navigation_shell()._sync_bottom_nav_visibility()
+		_navigation_shell()._sync_module_utility_row_visibility()
+	elif _navigation_shell().module_utility_buttons_motion_active:
+		_navigation_shell()._update_module_utility_buttons_row_motion()
+	if static_refresh and current_screen == "skill":
+		_skill_detail_surface()._refresh_mounted_tier_banners()
 	_skill_swipe_activity_surface()._sync_queue_selection_banner()
 	var skill_frame_refresh := instant or static_refresh or _performance_runtime()._skill_detail_needs_high_frequency_ui_update()
 	var header_gauge_frame_refresh := skill_frame_refresh or _skill_detail_surface()._visible_detail_regen_gauge_needs_header_refresh()
@@ -832,46 +831,55 @@ func _update_ui(delta: float, instant := false) -> void:
 	if static_refresh and not boot_detail_render_in_progress and not _navigation_shell().screen_render_in_progress and _skill_detail_surface()._skill_detail_needs_action_list_refresh():
 		var refresh_restore_scroll := _skill_detail_surface().detail_actions_scroll.scroll_vertical if _skill_detail_surface().detail_actions_scroll != null else -1
 		_skill_detail_surface().call_deferred("_refresh_visible_skill_detail_action_list", refresh_restore_scroll, selected_skill_id)
-	if static_refresh and _onboarding_runtime()._skill_detail_shows_tutorial_tips():
-		_tutorial_overlay_surface()._show_lock_click_tip_note_if_needed()
-		_onboarding_runtime()._resume_onboarding_stamina_mastery_sequence_if_needed()
+	if trace_static_refresh:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_shell_us = trace_now - trace_static_last
+		trace_static_last = trace_now
 	if static_refresh and current_screen == "achievements":
 		_achievement_overlay_surface()._update_achievements_ui(delta, instant)
 	if current_screen == "menu":
 		_navigation_shell()._sync_skill_menu_page(delta, instant, static_refresh)
 	if current_screen == "skill":
-		if static_refresh and _onboarding_runtime()._onboarding_fight_header_sequence_active():
-			_tutorial_overlay_surface()._apply_onboarding_fight_header_visibility()
-			_tutorial_overlay_surface()._apply_onboarding_fight_action_stats_visibility_all()
-		if static_refresh and selected_skill_id == TUTORIAL_STARTER_SKILL_ID and _onboarding_runtime()._onboarding_path_active():
-			_onboarding_runtime()._maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
-			if _onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not _onboarding_runtime().onboarding_swipe_tip_sequence_running:
-				_tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 		if skill_frame_refresh:
-			_tutorial_overlay_surface().sync_onboarding_overlay_tips()
 			_onboarding_runtime()._maybe_trigger_onboarding_header_reveal_from_progress()
-			_tutorial_overlay_surface()._sync_activity_start_highlight_position()
 		_skill_detail_surface()._update_detail_header_gauges(static_refresh, skill_frame_refresh, detail_header_gauge_refresh, delta, instant)
 		if skill_frame_refresh:
 			_skill_detail_surface()._update_skill_detail_shadow(delta, instant)
-		if _skill_swipe_activity_surface()._skill_swipe_previews_need_frame_updates():
-			_skill_swipe_activity_surface()._update_skill_swipe_preview_states(delta, instant)
 	if (current_screen == "pinned" or current_screen == "queue") and (skill_frame_refresh or static_refresh or instant):
 		_navigation_shell()._sync_pinned_active_shelf(delta, instant)
 		_skill_detail_surface()._update_skill_detail_shadow(delta, instant)
 	if static_refresh or instant:
 		_skill_swipe_activity_surface()._sync_queue_overlays_for_visible_cards()
-	if not _skill_swipe_activity_surface()._refresh_visible_action_cards(delta, instant, static_refresh, skill_frame_refresh, passive_card_progress_refresh):
-		return
-	if _activity_unlock_ceremony_surface().locked_preview_fade_play_pending:
-		_activity_unlock_ceremony_surface().play_pending_locked_activity_preview_reveals()
+	if trace_static_refresh:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_header_us = trace_now - trace_static_last
+		trace_static_last = trace_now
+	var visible_cards_refreshed := _skill_swipe_activity_surface()._refresh_visible_action_cards(delta, instant, static_refresh, skill_frame_refresh, passive_card_progress_refresh)
+	if trace_static_refresh and visible_cards_refreshed:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_cards_us = trace_now - trace_static_last
+		trace_static_last = trace_now
 	if static_refresh:
 		_settings_surface()._refresh_audio_volume_controls()
 	if static_refresh:
+		_halloween_runtime().sync_expiry()
 		_shop_surface().sync_bonus_display()
 	_settings_surface()._expire_reset_data_confirm_if_needed()
 	if static_refresh:
 		_tutorial_overlay_surface()._sync_tutorial_target_indicator()
+	if trace_static_refresh:
+		var trace_static_total := Time.get_ticks_usec() - trace_static_start
+		if trace_static_total >= trace_static_threshold_us:
+			print("STATIC_UI_TRACE screen=%s skill=%s total=%s shell=%s header=%s cards=%s tail=%s action_cards=%s" % [
+				current_screen,
+				selected_skill_id,
+				str(trace_static_total),
+				str(trace_static_shell_us),
+				str(trace_static_header_us),
+				str(trace_static_cards_us),
+				str(trace_static_total - trace_static_shell_us - trace_static_header_us - trace_static_cards_us),
+				str(action_cards.size())
+			])
 
 func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
 	var event_position := Vector2.ZERO
@@ -885,7 +893,7 @@ func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
 		event_position = _input_routing_shell()._global_event_position(touch_event.position, touch_event.position, self)
 	else:
 		return false
-	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle"):
+	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle") + get_tree().get_nodes_in_group("auto_eat_candy_toggle"):
 		var button := node as TextureButton
 		if button == null or not is_instance_valid(button) or not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
@@ -956,8 +964,8 @@ func _fishing_rework_active_for_skill(skill_id: String) -> bool:
 func _mark_save_dirty(reason := "") -> void:
 	_save_runtime()._mark_save_dirty(reason)
 
-func save_game() -> void:
-	_save_runtime().save_game()
+func save_game() -> bool:
+	return _save_runtime().save_game()
 
 func _unix_now() -> int:
 	return int(floor(Time.get_unix_time_from_system()))
@@ -974,11 +982,8 @@ func _restore_fishing_state_from_save(data: Dictionary) -> void:
 	)
 
 func _is_event_action(action: Dictionary) -> bool:
-	if str(action.get("kind", "")) == "event_activity":
-		return true
 	var active_event = action.get("active_event", {})
-	return typeof(active_event) == TYPE_DICTIONARY and not (active_event as Dictionary).is_empty()
-
+	return str(action.get("kind", "")) == "event_activity" or (typeof(active_event) == TYPE_DICTIONARY and not (active_event as Dictionary).is_empty())
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	var cached = actions_by_key.get(_action_key(skill_id, action_id), null)
 	if typeof(cached) == TYPE_DICTIONARY:
@@ -987,36 +992,32 @@ func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	if not active_event.is_empty():
 		return active_event
 	return {}
-
 func _action_key(skill_id: String, action_id: String) -> String:
 	return "%s:%s" % [skill_id, ModuleUiRuntime.canonical_action_id(skill_id, action_id, FISHING_ACTION_ID_ALIASES)]
-
 func _load_font() -> void:
 	var fonts := ThemeStyles.load_app_fonts()
 	app_font = fonts.get("font", null) as Font
 	app_bold_font = fonts.get("bold_font", null) as Font
-
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
 	return ThemeStyles.label(text, font_size, color, align, app_font, app_bold_font, dark_mode_enabled, COLOR_INK, COLOR_DARK_INK, COLOR_MUTED, COLOR_DARK_MUTED, COLOR_LINE, COLOR_DARK_LINE)
-
+# For text on panels that stay light in dark mode: keep the given colour instead of the
+# dark-theme swap, which would turn dark ink light and leave it unreadable.
+func _label_on_light_panel(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
+	var node := _label(text, font_size, color, align)
+	node.add_theme_color_override("font_color", color)
+	return node
 func _theme_paper_color() -> Color:
 	return ThemeStyles.paper_color(dark_mode_enabled, COLOR_PAPER, COLOR_DARK_PAPER)
-
 func _theme_surface_color(color: Color) -> Color:
 	return ThemeStyles.surface_color(color, dark_mode_enabled, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
-
 func _theme_outline_color(outline_color: Color, fill_color: Color) -> Color:
 	return ThemeStyles.outline_color(outline_color, fill_color, dark_mode_enabled, COLOR_INK, COLOR_DARK_LINE, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_PANEL_ALT)
-
 func _menu_button(text: String) -> Button:
 	return ThemeStyles.menu_button(text, app_font, app_bold_font, COLOR_INK, COLOR_BLUE, Color("#b9b3a8"), DEFAULT_BUTTON_TEXT_OUTLINE_SIZE, Callable(self, "_paper_button_style"), Callable(button_press_runtime, "attach_button_depress_animation"))
-
-func _paper_button_style(color: Color, radius: int, margin := 72, pressed := false, disabled := false) -> StyleBoxTexture:
-	return PaperButtonStyles.paper_button_style_with_shape(color, radius, margin, pressed, disabled, COLOR_INK, 5.5, paper_button_style_textures, dark_mode_enabled, PAPER_BUTTON_OUTLINE_WIDTH, Callable(self, "_theme_surface_color"), Callable(self, "_theme_outline_color"), Callable(visual_texture_cache, "_can_create_image_textures"), Callable(visual_texture_cache, "_create_image_texture"), Callable(visual_texture_cache, "_visual_fallback_texture"))
-
+func _paper_button_style(color: Color, radius: int, margin := 36, pressed := false, disabled := false) -> StyleBoxTexture:
+	return PaperButtonStyles.paper_button_style_with_shape(color, radius, margin, pressed, disabled, COLOR_INK, 2.75, paper_button_style_textures, dark_mode_enabled, PAPER_BUTTON_OUTLINE_WIDTH, Callable(self, "_theme_surface_color"), Callable(self, "_theme_outline_color"), Callable(visual_texture_cache, "_can_create_image_textures"), Callable(visual_texture_cache, "_create_image_texture"), Callable(visual_texture_cache, "_visual_fallback_texture"))
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
-	return ThemeStyles.surface_style(color, radius, margin, elevated, dark_mode_enabled, PASSIVE_BORDER, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
-
+	return ThemeStyles.surface_style(color, radius, margin, elevated, dark_mode_enabled, 0, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
 func _audio_director() -> AudioDirector:
 	if audio_director == null or not is_instance_valid(audio_director):
 		audio_director = AudioDirector.new()
@@ -1024,27 +1025,22 @@ func _audio_director() -> AudioDirector:
 		audio_director.setup(self)
 		add_child(audio_director)
 	return audio_director
-
 func _passive_modules_runtime() -> PassiveModulesRuntime:
 	if passive_modules_runtime == null:
 		passive_modules_runtime = PassiveModulesRuntime.new(self)
 	return passive_modules_runtime
-
 func _convergence_runtime() -> ConvergenceRuntime:
 	if convergence_runtime == null:
 		convergence_runtime = ConvergenceRuntime.new(self)
 	return convergence_runtime
-
 func _passive_firepit_surface() -> PassiveFirepitSurface:
 	if passive_firepit_surface == null:
 		passive_firepit_surface = PassiveFirepitSurface.new(self)
 	return passive_firepit_surface
-
 func _hub_runtime() -> HubRuntime:
 	if hub_runtime == null:
 		hub_runtime = HubRuntime.new(self)
 	return hub_runtime
-
 func _hub_surface() -> HubSurface:
 	if hub_surface == null:
 		hub_surface = HubSurface.new()
@@ -1052,7 +1048,6 @@ func _hub_surface() -> HubSurface:
 		hub_surface.setup(self)
 		add_child(hub_surface)
 	return hub_surface
-
 func _thieving_surface() -> ThievingSurface:
 	if thieving_surface == null or not is_instance_valid(thieving_surface):
 		thieving_surface = ThievingSurface.new()
@@ -1060,16 +1055,21 @@ func _thieving_surface() -> ThievingSurface:
 		thieving_surface.setup(self)
 		add_child(thieving_surface)
 	return thieving_surface
-
 func _save_runtime() -> SaveRuntime:
 	if save_runtime == null:
 		save_runtime = SaveRuntime.new(self)
 	return save_runtime
-
 func _activity_queue_runtime() -> ActivityQueueRuntime:
 	if activity_queue_runtime == null:
 		activity_queue_runtime = ActivityQueueRuntime.new(self)
 	return activity_queue_runtime
+
+var project_runtime
+
+func _project_runtime():
+	if project_runtime == null:
+		project_runtime = preload("res://scripts/progression/project_runtime.gd").new(self)
+	return project_runtime
 
 func _action_runtime() -> ActionRuntime:
 	if action_runtime == null:
@@ -1212,9 +1212,10 @@ func _clear_page_transient_input_state(clear_transition := false) -> void:
 	_settings_surface()._clear_active_audio_slider()
 	_passive_firepit_surface()._clear_passive_button_press()
 	_skill_swipe_activity_surface()._clear_skill_swipe_button_suppression()
-	_fishing_ui_surface()._clear_active_fishing_method_button_press()
 	_skill_detail_surface()._release_current_action_card_press_state()
-	_action_stop_hold().cancel_action()
+	var stop_hold := get_node_or_null("ActionStopHoldLayer/ActionStopHoldCircle") as StopHoldCircle
+	if stop_hold != null:
+		stop_hold.cancel_action()
 	_skill_detail_surface()._clear_detail_back_button_input_state()
 	_skill_detail_surface()._clear_detail_jump_arrow_input_state()
 	_input_routing_shell()._clear_activity_lock_input_state()

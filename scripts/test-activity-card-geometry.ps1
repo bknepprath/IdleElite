@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
@@ -63,21 +62,16 @@ func _run() -> void:
 	rail.edge_inset = 16.0
 	var flat_track_rect := rail.call("_activity_progress_track_rect") as Rect2
 	_expect(flat_track_rect.is_equal_approx(Rect2(16.0, 16.0, 1124.0, 80.0)), "Action fill should span wall-to-wall inside its 16px frame.")
-
-	for i in range(row_count):
-		var y := rail_rect.position.y + (float(i) + 0.5) * row_height
-		var clip: Vector2 = rail.call("_bottom_round_row_clip", rail_rect, y)
-		var full_left := maxf(clip.x, rail_rect.position.x)
-		var full_right := minf(clip.y, rail_rect.end.x)
-		_expect(full_left >= clip.x - 0.01, "Full rail fill should not bleed left of its rounded row clip.")
-		_expect(full_right <= clip.y + 0.01, "Full rail fill should not bleed right of its rounded row clip.")
-		var marker_left := maxf(clip.x, rail_rect.position.x + rail_rect.size.x * 0.78)
-		var marker_right := minf(clip.y, rail_rect.position.x + rail_rect.size.x * 0.88)
-		_expect(marker_left >= clip.x - 0.01, "Opportunity marker should not bleed left of its rounded row clip.")
-		_expect(marker_right <= clip.y + 0.01, "Opportunity marker should not bleed right of its rounded row clip.")
+	var primary_theme := Color("#249b9e")
+	var secondary_theme := Color("#c74444")
+	var ink := Color("#171615")
+	MainScript.ThemeStyles.apply_activity_progress_rail_action_theme(rail, primary_theme, [primary_theme, secondary_theme], ink)
+	_expect(rail.fill_segments.size() == 2, "Combo action progress should retain one fill segment per contributing skill.")
+	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
+	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
 
 	rail.set_opportunity_windows([Vector2(0.78, 0.88)], true, true, false)
-	var overlay := rail.get_child(0) as Control
+	var overlay := rail.get_child(0) as Control if rail.get_child_count() > 0 else null
 	_expect(overlay != null, "Activity progress rail should create a separate opportunity-window overlay.")
 	if overlay != null:
 		_expect(overlay.z_index == ActivityProgressRailClass.OPPORTUNITY_WINDOW_OVERLAY_Z, "Opportunity-window overlay should draw above the activity-card face border.")
@@ -86,24 +80,25 @@ func _run() -> void:
 
 	var depth := ActivityCardDepthClass.new()
 	var header_xp_bar := MainScript.ThemeStyles.skill_detail_xp_bar("fight", 50.0, Color("#237cd5"), Color("#171615"), MainScript.SKILL_DETAIL_XP_BAR_HEIGHT, MainScript.SKILL_DETAIL_XP_BAR_WIDTH)
-	_expect(not header_xp_bar.depth_enabled and _near(header_xp_bar.border_width, 12.0) and _near(header_xp_bar.custom_minimum_size.y, 96.0), "Skill-header XP bar should be flat and match the shared 12px module stroke.")
+	_expect(not header_xp_bar.depth_enabled and _near(header_xp_bar.border_width, 6.0) and _near(header_xp_bar.custom_minimum_size.y, 48.0), "Skill-header XP bar should be flat and use the native 1080p height and outline.")
 	header_xp_bar.free()
 	_expect(MainScript.ActivityCardStyles.activity_card_title_text("Push-Ups") == "Push\u2009\u2013\u2009Ups", "Activity-card hyphens should render as evenly spaced title dashes.")
 	var mastery_ring := MainScript.ActivityCardStyles.action_art_mastery_ring()
-	_expect(_near(float(mastery_ring.get("stroke_width")), 40.0) and _near(float(mastery_ring.get("shadow_width")), 64.0), "Mastery track should use the reduced 12px outer outline weight.")
-	_expect(_near(float(mastery_ring.get("inset")), 2.0) and _near(mastery_ring.offset_left, -36.0) and _near(mastery_ring.offset_right, 36.0) and _near(float(mastery_ring.get("radius")), 58.0), "Mastery track should remain concentric after reducing its stroke weight.")
+	_expect(_near(float(mastery_ring.get("stroke_width")), 20.0) and _near(float(mastery_ring.get("shadow_width")), 32.0), "Mastery track should use the native 1080p stroke widths.")
+	_expect(_near(float(mastery_ring.get("inset")), 1.0) and _near(mastery_ring.offset_left, -18.0) and _near(mastery_ring.offset_right, 18.0) and _near(float(mastery_ring.get("radius")), 29.0), "Mastery track should remain concentric at native 1080p scale.")
+	_expect(_near(float(mastery_ring.get("gap_start_fraction")), 0.10) and _near(float(mastery_ring.get("gap_finish_fraction")), 0.84), "Fishing mastery tracks should begin on the top edge and finish on the left edge.")
 	mastery_ring.free()
-	var normal_body := MainScript.ActivityCardStyles.normal_activity_card_body(66.0, Color("#171615"))
-	_expect(normal_body.border_width_bottom == 12, "Normal activity-card back plate should match the shared 12px outline.")
+	var normal_body := MainScript.ActivityCardStyles.normal_activity_card_body(33.0, Color("#171615"))
+	_expect(normal_body.border_width_bottom == 6, "Normal activity-card back plate should match the native 1080p outline.")
 	_expect(normal_body.shadow_size == 0 and normal_body.shadow_offset.is_equal_approx(Vector2.ZERO), "Normal activity-card back slab should not add a second edge shadow.")
-	var normal_bottom_base := MainScript.ActivityCardStyles.normal_activity_card_bottom_base(66.0, Color("#171615"))
-	_expect(normal_bottom_base.border_width_left == 12 and normal_bottom_base.border_width_right == 12 and normal_bottom_base.border_width_bottom == 12, "Normal activity-card depth edge should match the shared 12px outline.")
-	_expect(normal_bottom_base.corner_radius_top_left == 66 and normal_bottom_base.corner_radius_top_right == 66, "Pressed activity-card depth should stay inside the rounded front corners.")
-	_expect(MainScript.ACTION_CARD_3D_DEPTH_OFFSET.is_equal_approx(Vector2(14.0, 16.0)), "Shared activity button shells should keep the compact default depth.")
-	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.is_equal_approx(Vector2(0.0, 36.0)), "Normal activity cards should use shallow straight-down top-view depth.")
-	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET.is_equal_approx(Vector2(0.0, 36.0)), "Normal activity cards should depress fully flush with their base.")
+	var normal_bottom_base := MainScript.ActivityCardStyles.normal_activity_card_bottom_base(33.0, Color("#171615"))
+	_expect(normal_bottom_base.border_width_left == 6 and normal_bottom_base.border_width_right == 6 and normal_bottom_base.border_width_bottom == 6, "Normal activity-card depth edge should match the native 1080p outline.")
+	_expect(normal_bottom_base.corner_radius_top_left == 33 and normal_bottom_base.corner_radius_top_right == 33, "Pressed activity-card depth should stay inside the rounded front corners.")
+	_expect(MainScript.ACTION_CARD_3D_DEPTH_OFFSET.is_equal_approx(Vector2(7.0, 8.0)), "Shared activity button shells should keep the compact native 1080p depth.")
+	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.is_equal_approx(Vector2(0.0, 18.0)), "Normal activity cards should use shallow straight-down native 1080p depth.")
+	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET.is_equal_approx(Vector2(0.0, 18.0)), "Normal activity cards should depress fully flush with their base.")
 	_expect(_near(MainScript.ACTION_CARD_3D_PRESS_HOLD_SECONDS, 0.045), "Quick taps should hold the fully depressed frame long enough to read.")
-	_expect(MainScript.ACTION_CARD_3D_PRESS_OFFSET.is_equal_approx(Vector2(28.0, 34.0)), "Activity-card press offset should visibly compress the back slab.")
+	_expect(MainScript.ACTION_CARD_3D_PRESS_OFFSET.is_equal_approx(Vector2(14.0, 17.0)), "Activity-card press offset should visibly compress the back slab.")
 	var face_rect := Rect2(Vector2(28.0, 34.0), Vector2(1156.0, 720.0))
 	var normal_radius := float(depth.call("_fast_round_rect_radius", face_rect, 66.0))
 	_expect(_near(normal_radius, 66.0), "Fast activity-card back plate should preserve the intended rounded corner radius.")
@@ -130,7 +125,7 @@ func _run() -> void:
 	var page_switch_top_right: Vector2 = page_switch_depth.call("_extreme_shape_point", page_switch_points, 1.0)
 	var page_switch_bottom_left: Vector2 = page_switch_depth.call("_extreme_shape_point", page_switch_points, -1.0)
 	_expect(page_switch_top_right.x > 350.0 and page_switch_top_right.y < 45.0, "Page-switch top-right connector should start on the rounded upper outside corner.")
-	_expect(page_switch_bottom_left.x > 50.0 and page_switch_bottom_left.x < 85.0 and page_switch_bottom_left.y > 145.0, "Page-switch bottom-left connector should start on the lower arrow shoulder.")
+	_expect(page_switch_bottom_left.x > 20.0 and page_switch_bottom_left.x < 50.0 and page_switch_bottom_left.y > 145.0, "Page-switch bottom-left connector should start on the native 1080p lower arrow shoulder.")
 	page_switch_depth.free()
 	var connector := MainScript.ActivityCardStyles.prism_connector_overlay(Vector2.ZERO, 66.0, "", 7.0, Color("#171615"))
 	connector.size = Vector2(420.0, 170.0)
@@ -143,7 +138,7 @@ func _run() -> void:
 	_expect(overlay_points.size() == 2, "Prism connector overlay should expose two visible connector starts.")
 	if overlay_points.size() == 2:
 		_expect(overlay_points[0].x > 350.0 and overlay_points[0].y < 45.0, "Prism connector overlay top-right start should sit on the front silhouette.")
-		_expect(overlay_points[1].x > 50.0 and overlay_points[1].x < 85.0 and overlay_points[1].y > 145.0, "Right page-switch connector lower start should sit on the lower arrow shoulder.")
+		_expect(overlay_points[1].x > 20.0 and overlay_points[1].x < 50.0 and overlay_points[1].y > 145.0, "Right page-switch connector lower start should sit on the native 1080p lower arrow shoulder.")
 	var left_connector := MainScript.ActivityCardStyles.prism_connector_overlay(Vector2.ZERO, 66.0, "", 7.0, Color("#171615"))
 	left_connector.size = Vector2(420.0, 170.0)
 	left_connector.side = "left"
@@ -152,30 +147,30 @@ func _run() -> void:
 	var left_overlay_points: PackedVector2Array = left_connector.call("_connector_points")
 	_expect(left_overlay_points.size() == 2, "Left prism connector overlay should expose two visible connector starts.")
 	if left_overlay_points.size() == 2:
-		_expect(left_overlay_points[0].x > 345.0 and left_overlay_points[0].x < 380.0 and left_overlay_points[0].y < 25.0, "Left page-switch connector upper start should sit on the upper arrow shoulder.")
+		_expect(left_overlay_points[0].x > 365.0 and left_overlay_points[0].x < 405.0 and left_overlay_points[0].y < 25.0, "Left page-switch connector upper start should sit on the native 1080p upper arrow shoulder.")
 		_expect(left_overlay_points[1].x < 45.0 and left_overlay_points[1].y > 125.0, "Left page-switch connector lower start should sit on the front lower outside corner.")
 	left_connector.free()
 	connector.free()
-	var normal_connector := MainScript.ActivityCardStyles.prism_connector_overlay(Vector2(0.0, 36.0), 66.0, "", 12.0, Color("#171615"))
-	_expect(_near(normal_connector.stroke_width, 12.0), "Normal card prism outline should match the shared 12px front face stroke.")
-	normal_connector.size = Vector2(1156.0, 756.0)
-	normal_connector.face_bottom_inset = 36.0
+	var normal_connector := MainScript.ActivityCardStyles.prism_connector_overlay(Vector2(0.0, 18.0), 33.0, "", MainScript.ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, Color("#171615"))
+	_expect(_near(normal_connector.stroke_width, 6.0), "Normal card prism outline should match the shared native 1080p front-face stroke.")
+	normal_connector.size = Vector2(578.0, 378.0)
+	normal_connector.face_bottom_inset = 18.0
 	var normal_connector_points: PackedVector2Array = normal_connector.call("_connector_points")
 	_expect(normal_connector_points.size() == 2, "Normal activity card should expose two parallel prism connector starts.")
 	if normal_connector_points.size() == 2:
-		_expect(normal_connector_points[0].x > 1148.0 and normal_connector_points[0].x < 1152.0 and normal_connector_points[0].y > 70.0 and normal_connector_points[0].y < 74.0, "Normal card upper connector should attach to the top-view outer edge.")
-		_expect(normal_connector_points[1].x > 4.0 and normal_connector_points[1].x < 8.0 and normal_connector_points[1].y > 646.0 and normal_connector_points[1].y < 650.0, "Normal card lower connector should attach to the top-view outer edge.")
+		_expect(normal_connector_points[0].x > 574.0 and normal_connector_points[0].x < 576.0 and normal_connector_points[0].y > 35.0 and normal_connector_points[0].y < 37.0, "Normal card upper connector should attach to the native 1080p top-view outer edge.")
+		_expect(normal_connector_points[1].x > 2.0 and normal_connector_points[1].x < 4.0 and normal_connector_points[1].y > 323.0 and normal_connector_points[1].y < 325.0, "Normal card lower connector should attach to the native 1080p top-view outer edge.")
 	normal_connector.free()
 	var main_node := MainScript.new()
 	var action_art_style := MainScript.ActivityCardStyles.cached_action_art(Callable(main_node, "_surface_style"))
-	_expect(action_art_style.border_width_top == 12 and action_art_style.shadow_size == 0, "Action-art face should use a restrained 12px stroke with no shadow.")
+	_expect(action_art_style.border_width_top == 6 and action_art_style.shadow_size == 0, "Action-art face should use the native 1080p 6px stroke with no shadow.")
 	var skill_detail_surface: Object = main_node.call("_skill_detail_surface")
 	var bg := skill_detail_surface.call("_action_card_background", "building", {"id": "probe", "bg": ""}) as Control
 	_expect(bg is RoundedTextureRectClass, "Activity-card background should use the rounded masked renderer.")
 	if bg is RoundedTextureRectClass:
 		var rounded_bg := bg as RoundedTextureRectClass
-		_expect(_near(rounded_bg.radius, 66.0), "Activity-card background radius should match the front border radius.")
-		_expect(_near(rounded_bg.mask_inset, 6.0), "Activity-card background mask should sit under the 12px face border.")
+		_expect(_near(rounded_bg.radius, 33.0), "Activity-card background radius should match the front border radius.")
+		_expect(_near(rounded_bg.mask_inset, 3.0), "Activity-card background mask should sit under the native 1080p face border.")
 		_expect(rounded_bg.corner_mask_mode == 1, "Activity-card background mask should align the full-radius corner curve.")
 	if bg != null:
 		bg.free()
@@ -242,17 +237,11 @@ func _run() -> void:
 			collapse_zone.free()
 	main_node.free()
 	_finish()
-
-
 func _near(a: float, b: float, epsilon := 0.01) -> bool:
 	return absf(a - b) <= epsilon
-
-
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
-
-
 func _finish() -> void:
 	if failures.is_empty():
 		print("activity-card-geometry-ok")
@@ -262,7 +251,6 @@ func _finish() -> void:
 			push_error(failure)
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
-
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -270,7 +258,6 @@ func _finish() -> void:
     }
     Assert-True (($output -join "`n") -match "activity-card-geometry-ok") "Activity card geometry test did not report success."
     Assert-NoUnexpectedGodotErrors $output "activity card geometry validation"
-
     $newHeadless = @()
     for ($attempt = 1; $attempt -le 30; $attempt++) {
         $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })

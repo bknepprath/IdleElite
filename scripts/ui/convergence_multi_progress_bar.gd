@@ -31,19 +31,19 @@ func set_bar_pattern(next_pattern: String) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	if size.x <= 12.0 or size.y <= 12.0:
+	if size.x <= 6.0 or size.y <= 6.0:
 		return
 	var paths := _braid_paths() if bar_pattern == "braid" else _segment_paths()
 	if paths.size() < 5:
 		return
-	var base_width := minf(78.0, maxf(72.0, size.y * 0.48))
-	var outline_width := base_width + maxf(9.0, size.y * 0.075)
+	var base_width := minf(39.0, maxf(36.0, size.y * 0.48))
+	var outline_width := base_width + maxf(4.5, size.y * 0.075)
 	if bar_pattern == "braid":
 		_draw_braid_paths(paths, base_width, outline_width)
 		return
 	for raw_path in paths:
 		var path := raw_path as Array[Vector2]
-		_draw_path(path, shadow_color, outline_width + 4.0, 1.0, Vector2(0, 3), false, false)
+		_draw_path(path, shadow_color, outline_width + 2.0, 1.0, Vector2(0, 1.5), false, false)
 	for raw_path in paths:
 		var path := raw_path as Array[Vector2]
 		_draw_path(path, outline_color, outline_width, 1.0, Vector2.ZERO, false, false)
@@ -57,25 +57,25 @@ func _draw() -> void:
 
 func _segment_paths() -> Array:
 	var paths := []
-	var inset := 3.0
+	var inset := 1.5
 	var available := maxf(1.0, size.x - inset * 2.0)
 	var segment_width := available / 5.0
 	var baseline_y := size.y * 0.24
-	var crest_y := baseline_y - maxf(18.0, minf(size.y * 0.16, 28.0))
+	var crest_y := baseline_y - maxf(9.0, minf(size.y * 0.16, 14.0))
 	var hidden_return_y := size.y * 0.72
-	var trough_y := size.y + maxf(28.0, size.y * 0.18)
+	var trough_y := size.y + maxf(14.0, size.y * 0.18)
 	for segment_index in range(5):
 		var points: Array[Vector2] = []
 		var start_x := inset + segment_width * float(segment_index)
 		var end_x := inset + segment_width * (float(segment_index) + 0.82)
 		var knots := [
-			Vector2(start_x - segment_width * 0.18, baseline_y + maxf(22.0, size.y * 0.16)),
+			Vector2(start_x - segment_width * 0.18, baseline_y + maxf(11.0, size.y * 0.16)),
 			Vector2(start_x, baseline_y),
 			Vector2(start_x + segment_width * 0.22, crest_y),
-			Vector2(start_x + segment_width * 0.43, baseline_y + maxf(10.0, size.y * 0.07)),
+			Vector2(start_x + segment_width * 0.43, baseline_y + maxf(5.0, size.y * 0.07)),
 			Vector2(start_x + segment_width * 0.60, trough_y),
 			Vector2(end_x, hidden_return_y),
-			Vector2(end_x + segment_width * 0.16, hidden_return_y - maxf(12.0, size.y * 0.08))
+			Vector2(end_x + segment_width * 0.16, hidden_return_y - maxf(6.0, size.y * 0.08))
 		]
 		var samples_per_span := 18
 		for knot_index in range(1, knots.size() - 2):
@@ -95,7 +95,7 @@ func _segment_paths() -> Array:
 func _clip_tail_at_module_bottom(points: Array[Vector2]) -> Array[Vector2]:
 	if points.size() < 2:
 		return points
-	var cutoff_y := size.y - 34.0
+	var cutoff_y := size.y - 17.0
 	for i in range(points.size() - 1, 0, -1):
 		var current := points[i] as Vector2
 		var previous := points[i - 1] as Vector2
@@ -111,7 +111,7 @@ func _clip_tail_at_module_bottom(points: Array[Vector2]) -> Array[Vector2]:
 
 func _braid_paths() -> Array:
 	var paths := []
-	var inset := 4.0
+	var inset := 2.0
 	var available := maxf(1.0, size.x - inset * 2.0)
 	var segment_width := available / 5.0
 	var top_y := size.y * 0.30
@@ -124,7 +124,7 @@ func _braid_paths() -> Array:
 		var starts_high := segment_index % 2 == 0
 		var start_y := top_y if starts_high else bottom_y
 		var end_y := bottom_y if starts_high else top_y
-		var mid_y := center_y + (maxf(10.0, size.y * 0.07) if starts_high else -maxf(10.0, size.y * 0.07))
+		var mid_y := center_y + (maxf(5.0, size.y * 0.07) if starts_high else -maxf(5.0, size.y * 0.07))
 		var knots := [
 			Vector2(start_x - segment_width * 0.22, start_y),
 			Vector2(start_x, start_y),
@@ -154,7 +154,7 @@ func _draw_braid_paths(paths: Array, base_width: float, outline_width: float) ->
 	for raw_index in draw_order:
 		var index := int(raw_index)
 		var path := paths[index] as Array[Vector2]
-		_draw_path(path, shadow_color, outline_width + 4.0, 1.0, Vector2(0, 3), false, false)
+		_draw_path(path, shadow_color, outline_width + 2.0, 1.0, Vector2(0, 1.5), false, false)
 		_draw_path(path, outline_color, outline_width, 1.0, Vector2.ZERO, false, false)
 		_draw_path(path, empty_color, base_width, 1.0, Vector2.ZERO, false, false)
 		var fill_pct := clampf(float(segment_values[index]), 0.0, 1.0)

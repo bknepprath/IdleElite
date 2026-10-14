@@ -98,7 +98,7 @@ func _run() -> void:
 	_expect(bool(saved_targets.get("woodcutting:prune-orchard-row", false)), "Berry mode should save normalized action keys")
 	action["success"] = 100
 	scene.stamina["woodcutting"] = 5.0
-	scene.call("_sync_stamina_bank", "woodcutting")
+	SkillState.host_sync_stamina_bank("woodcutting", scene)
 	var starting_xp := int((scene.skills["woodcutting"] as Dictionary).get("xp", 0))
 	var started := bool(scene.call("_action_runtime").call("_start_action", "woodcutting", "prune-orchard-row", true, false))
 	_expect(started, "prepped action should still start normally")
@@ -171,6 +171,9 @@ func _fail(message: String) -> void:
 
     $output = & $runner --path $projectRoot --script "res://.codex-tmp/berry-prep/tests/berry_prep_test.gd" 2>&1
     $output | Write-Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Berry Prep test failed with exit code $LASTEXITCODE."
+    }
     Assert-True (($output | Out-String) -match "berry-prep-ok") "Berry Prep test did not report success."
 }
 finally {

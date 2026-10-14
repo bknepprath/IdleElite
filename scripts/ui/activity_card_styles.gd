@@ -1,74 +1,52 @@
 extends RefCounted
 
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
-const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 
-const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
-const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 72.0)
+const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 18.0)
+const WISDOM_REQUIREMENT_HEIGHT := 96.0
+const WISDOM_REQUIREMENT_LAYOUT_HEIGHT := WISDOM_REQUIREMENT_HEIGHT
+const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
+const RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT := 48.0
 const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
-const RECOVERY_WIDE_U_BOTTOM_RISE := 72.0
+const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
-const RECOVERY_WIDE_U_RAIL_HEIGHT := 220.0
-const ACTION_CARD_STROKE_WIDTH := 12.0
+const RECOVERY_WIDE_U_RAIL_HEIGHT := 110.0
+const ACTION_CARD_STROKE_WIDTH := 6.0
+const ACTIVITY_CARD_TITLE_FONT_SIZE := 41
+const ACTIVITY_CARD_TITLE_SIDE_INSET := 24.0
+const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75
+const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700
+const ACTIVITY_CARD_TITLE_EMBOLDEN := 0.6
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
 static var action_art_border_style_cache: StyleBoxFlat
 
 class LockedModuleShade extends Panel:
-	var shade_material: ShaderMaterial
+	var shade_style := StyleBoxFlat.new()
 
 	func _init() -> void:
-		var shader := Shader.new()
-		shader.code = """
-shader_type canvas_item;
-uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
-uniform vec2 control_size = vec2(1.0);
-uniform float corner_radius = 54.0;
-uniform float wash_alpha = 0.20;
-
-void fragment() {
-	vec2 point = UV * control_size;
-	vec2 half_size = control_size * 0.5;
-	vec2 corner = max(half_size - vec2(corner_radius), vec2(0.0));
-	vec2 delta = abs(point - half_size) - corner;
-	float distance_to_corner = length(max(delta, vec2(0.0))) + min(max(delta.x, delta.y), 0.0) - corner_radius;
-	float mask = 1.0 - smoothstep(-1.0, 1.0, distance_to_corner);
-	vec4 color = textureLod(screen_texture, SCREEN_UV, 0.0);
-	float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-	color.rgb = mix(color.rgb, vec3(gray), 0.98);
-	color.rgb = mix(color.rgb, vec3(0.5), wash_alpha);
-	COLOR = vec4(color.rgb, mask);
-}
-"""
-		shade_material = ShaderMaterial.new()
-		shade_material.shader = shader
-		material = shade_material
-		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		shade_style.bg_color = Color(0.50, 0.50, 0.50, 0.42)
+		shade_style.set_corner_radius_all(27)
+		shade_style.anti_aliasing = true
+		add_theme_stylebox_override("panel", shade_style)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED and shade_material != null:
-			shade_material.set_shader_parameter("control_size", size)
-
 	func set_wash_alpha(next_alpha: float) -> void:
-		if shade_material != null:
-			shade_material.set_shader_parameter("wash_alpha", clampf(next_alpha, 0.0, 1.0))
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE)
+		shade_style.bg_color.a = clampf(0.30 + next_alpha * 0.60, 0.0, 0.72)
 
 
 class PageSwitchButtonFace extends Control:
 	var side := ""
 	var fill_color := Color("#32c5bd")
 	var ink_color := Color("#171615")
-	var stroke_width := 10.0
-	var radius := 66.0
-	var diagonal_radius := 32.0
-	var diagonal_width := 96.0
-	var arrow_edge_width := 76.0
-	var arrow_corner_radius := 26.0
+	var stroke_width := 5.0
+	var radius := 33.0
+	var diagonal_radius := 16.0
+	var diagonal_width := 48.0
+	var arrow_edge_width := 38.0
+	var arrow_corner_radius := 13.0
 	var draw_fill := true
 	var draw_stroke := true
 	var draw_depth_connectors := false
@@ -203,12 +181,13 @@ class PrismConnectorOverlay extends Control:
 	var ink_color := Color("#171615")
 	var side_fill_color := Color("#8f521f")
 	var bottom_fill_color := Color("#c8792c")
+	var segment_theme_colors: Array[Color] = []
 	var stroke_width := ACTION_CARD_STROKE_WIDTH
-	var radius := 66.0
-	var diagonal_radius := 32.0
-	var diagonal_width := 96.0
-	var arrow_edge_width := 76.0
-	var arrow_corner_radius := 26.0
+	var radius := 33.0
+	var diagonal_radius := 16.0
+	var diagonal_width := 48.0
+	var arrow_edge_width := 38.0
+	var arrow_corner_radius := 13.0
 	var depth_offset := Vector2.ZERO
 	var face_offset := Vector2.ZERO
 	var face_gutter := 0.0
@@ -285,7 +264,19 @@ class PrismConnectorOverlay extends Control:
 		var polygon := PackedVector2Array(front_perimeter)
 		for index in range(back_perimeter.size() - 1, -1, -1):
 			polygon.append(back_perimeter[index])
-		draw_polygon(polygon, PackedColorArray([side_fill_color]))
+		if segment_theme_colors.size() <= 1:
+			draw_polygon(polygon, PackedColorArray([side_fill_color]))
+			return
+		var origin := _connector_face_origin()
+		var face_size := _connector_face_size()
+		for segment in range(segment_theme_colors.size()):
+			var left := origin.x + face_size.x * segment / segment_theme_colors.size()
+			var right := origin.x + face_size.x * (segment + 1) / segment_theme_colors.size()
+			if segment == 0: left -= absf(travel.x) + stroke_width
+			if segment == segment_theme_colors.size() - 1: right += absf(travel.x) + stroke_width
+			var clip := PackedVector2Array([Vector2(left, -100), Vector2(right, -100), Vector2(right, size.y + 100), Vector2(left, size.y + 100)])
+			for piece in Geometry2D.intersect_polygons(polygon, clip):
+				draw_colored_polygon(piece, segment_theme_colors[segment].darkened(0.42))
 
 	func _rounded_visible_perimeter(origin: Vector2, face_size: Vector2, inset: float, travel: Vector2) -> PackedVector2Array:
 		var corner_radius := maxf(0.0, minf(radius, minf(face_size.x, face_size.y) * 0.5 - inset))
@@ -307,14 +298,6 @@ class PrismConnectorOverlay extends Control:
 		for step in range(1, 9):
 			var angle := lerpf(start_angle, finish_angle, float(step) / 8.0)
 			path.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
-
-	func _diagonal_corner_inset(current: Vector2, previous: Vector2, next: Vector2) -> float:
-		var incoming := previous - current
-		var outgoing := next - current
-		if incoming.length_squared() <= 0.01 or outgoing.length_squared() <= 0.01:
-			return 0.0
-		var max_radius := minf(incoming.length(), outgoing.length()) * 0.46
-		return clampf(diagonal_radius, 0.0, max_radius)
 
 	func _rounded_rect_connector_points() -> PackedVector2Array:
 		var origin := _connector_face_origin()
@@ -502,10 +485,10 @@ class ActionArtMasteryRing extends Control:
 	var ring_color := Color("#ffd02f")
 	var empty_color := Color("#862d2d")
 	var ring_shadow_color := Color("#171615")
-	var stroke_width := 40.0
-	var shadow_width := 64.0
-	var radius := 58.0
-	var inset := 2.0
+	var stroke_width := 20.0
+	var shadow_width := 32.0
+	var radius := 29.0
+	var inset := 1.0
 	var gap_start_fraction := 0.10
 	var gap_finish_fraction := 0.84
 	var progress := 0.5
@@ -627,20 +610,20 @@ static func clear_cache() -> void:
 
 
 static func featured_art(surface_style: Callable, line_color: Color) -> StyleBoxFlat:
-	var style := surface_style.call(Color("#fffaf0"), 24, 8, true) as StyleBoxFlat
+	var style := surface_style.call(Color("#fffaf0"), 12, 4, true) as StyleBoxFlat
 	style.border_color = line_color
-	style.set_border_width_all(4)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.set_border_width_all(2)
+	style.content_margin_left = 4
+	style.content_margin_right = 4
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
 	return style
 
 
 static func shade(alpha: float) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.5, 0.5, 0.5, alpha)
-	style.set_corner_radius_all(54)
+	style.set_corner_radius_all(27)
 	return style
 
 
@@ -654,6 +637,25 @@ static func activity_card_title_z_index(unlocked: bool, title: CanvasItem = null
 
 static func activity_card_title_text(raw_title: String) -> String:
 	return raw_title.replace("\u2009", "").replace(" - ", "-").replace("-", "\u2009–\u2009")
+
+
+static func configure_activity_card_title(title: Label) -> void:
+	if title == null:
+		return
+	title.add_theme_font_size_override("font_size", ACTIVITY_CARD_TITLE_FONT_SIZE)
+	var base_font := title.get_theme_font("font")
+	if base_font != null:
+		var compact_bold_font := FontVariation.new()
+		compact_bold_font.base_font = base_font
+		compact_bold_font.variation_opentype = {&"wdth": ACTIVITY_CARD_TITLE_WIDTH_AXIS, &"wght": ACTIVITY_CARD_TITLE_WEIGHT_AXIS}
+		compact_bold_font.variation_embolden = ACTIVITY_CARD_TITLE_EMBOLDEN
+		title.add_theme_font_override("font", compact_bold_font)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.max_lines_visible = 1
+	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	title.clip_text = true
+	title.custom_minimum_size.y = 60
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 static func sync_activity_card_title_layer(card: Dictionary, unlocked: bool, module_title_over_pin_z_index := 0) -> void:
@@ -673,7 +675,13 @@ static func root_height(expanded: bool, action_card_height: float, action_card_e
 static func root_height_for_action(action: Dictionary, expanded: bool, uses_diamond_arena: bool, action_card_height: float, expanded_height: float, diamond_height: float, depth_offset_y: float) -> float:
 	if uses_diamond_arena:
 		return float(diamond_height) + depth_offset_y
-	return root_height(expanded, action_card_height, expanded_height, depth_offset_y)
+	var wisdom_height := WISDOM_REQUIREMENT_LAYOUT_HEIGHT if int(action.get("wisdom_required", 0)) > 0 else 0.0
+	var actual_depth := RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y if RecoveryModules.has_recovery(action) else depth_offset_y
+	return root_height(expanded, face_height_for_action(action, action_card_height), face_height_for_action(action, expanded_height), actual_depth) + wisdom_height
+
+
+static func face_height_for_action(action: Dictionary, base_height: float) -> float:
+	return base_height + (RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT if RecoveryModules.has_recovery(action) else 0.0)
 
 
 static func mat_collection_layout_height(skill_id: String, action: Dictionary, has_mat_rewards: bool, running_skill_id: String, running_action_id: String, mat_collection_area_height: float) -> float:
@@ -695,74 +703,6 @@ static func _valid_canvas_item_ref(value) -> CanvasItem:
 	if typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
 		return null
 	return value as CanvasItem
-
-
-static func action_card_background_edge_underlay(fill_color: Color, radius: float) -> Panel:
-	var underlay := Panel.new()
-	underlay.anchor_left = 0.0
-	underlay.anchor_right = 1.0
-	underlay.anchor_top = 0.0
-	underlay.anchor_bottom = 1.0
-	underlay.offset_left = -3.0
-	underlay.offset_right = 3.0
-	underlay.offset_top = -3.0
-	underlay.offset_bottom = 3.0
-	underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	underlay.z_index = 149
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill_color
-	style.border_color = Color.TRANSPARENT
-	style.set_border_width_all(0)
-	style.set_corner_radius_all(int(round(radius + 3.0)))
-	style.anti_aliasing = true
-	underlay.add_theme_stylebox_override("panel", style)
-	return underlay
-
-
-static func activity_card_face_skin(fill_color: Color, radius: float, cache: Dictionary, ink: Color, blue: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
-	var style := PaperButtonStyles.chunky_activity_button_style(fill_color, int(round(radius)), 0, false, false, cache, ink, blue, can_create, create_texture, fallback_texture)
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	return style
-
-
-static func activity_card_face_outline_skin(radius: float, cache: Dictionary, ink: Color, blue: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
-	return activity_card_face_skin(Color(0, 0, 0, 0), radius, cache, ink, blue, can_create, create_texture, fallback_texture)
-
-
-static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
-	var key := "activity_art_outline:%s:%s" % [radius, ink.to_html(true)]
-	if cache.has(key):
-		return cache[key] as StyleBoxTexture
-	var style := StyleBoxTexture.new()
-	if can_create.call():
-		var final_size := Vector2i(160, 104)
-		var supersample := 4.0
-		var texture_size := Vector2i(int(final_size.x * supersample), int(final_size.y * supersample))
-		var border := 4.0 * supersample
-		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
-		var inner := outer.grow(-border)
-		var outer_radius := minf(radius * supersample, 44.0 * supersample)
-		var inner_radius := maxf(1.0, outer_radius - border)
-		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
-		image.fill(Color(0, 0, 0, 0))
-		for y in range(texture_size.y):
-			for x in range(texture_size.x):
-				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
-				if PaperButtonStyles.contains(point, outer, outer_radius) and not PaperButtonStyles.contains(point, inner, inner_radius):
-					image.set_pixel(x, y, ink)
-		image.resize(final_size.x, final_size.y, Image.INTERPOLATE_LANCZOS)
-		style.texture = create_texture.call(image)
-	else:
-		style.texture = fallback_texture.call()
-	style.texture_margin_left = 28
-	style.texture_margin_right = 28
-	style.texture_margin_top = 28
-	style.texture_margin_bottom = 28
-	cache[key] = style
-	return style
 
 
 static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2, radius: float, gutter: float) -> ActivityCardDepth:
@@ -835,10 +775,10 @@ static func action_art_mastery_ring(theme_color := Color("#e84d4d")) -> ActionAr
 	var ring := ActionArtMasteryRing.new()
 	ring.empty_color = theme_color.darkened(0.42)
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ring.offset_left = -36.0
-	ring.offset_top = -36.0
-	ring.offset_right = 36.0
-	ring.offset_bottom = 36.0
+	ring.offset_left = -18.0
+	ring.offset_top = -18.0
+	ring.offset_right = 18.0
+	ring.offset_bottom = 18.0
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return ring
 
@@ -856,7 +796,7 @@ static func prism_connector_overlay(depth_offset: Vector2, radius: float, side: 
 	connector.side = side
 	connector.depth_offset = depth_offset
 	connector.radius = radius
-	connector.diagonal_radius = 32.0
+	connector.diagonal_radius = 16.0
 	connector.stroke_width = stroke_width
 	connector.ink_color = ink_color
 	connector.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -943,16 +883,16 @@ static func ensure_activity_card_shade(card: Dictionary, alpha := 0.20) -> Panel
 
 
 static func action_art(surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(Color.WHITE, 56, 16, true) as StyleBoxFlat
+	var style := surface_style.call(Color.WHITE, 28, 8, true) as StyleBoxFlat
 	style.border_color = Color("#171615")
-	style.set_border_width_all(12)
+	style.set_border_width_all(6)
 	style.shadow_color = Color.TRANSPARENT
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 7
+	style.content_margin_bottom = 7
 	return style
 
 
@@ -966,8 +906,8 @@ static func art_glow(color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(color.r, color.g, color.b, 0.28)
 	style.border_color = Color(color.r, color.g, color.b, 0.95)
-	style.set_border_width_all(24)
-	style.set_corner_radius_all(56)
+	style.set_border_width_all(12)
+	style.set_corner_radius_all(28)
 	return style
 
 
@@ -975,10 +915,10 @@ static func bonus_emphasis(flash_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.20)
 	style.border_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.88)
-	style.set_border_width_all(18)
-	style.set_corner_radius_all(38)
+	style.set_border_width_all(9)
+	style.set_corner_radius_all(19)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.42)
-	style.shadow_size = 18
+	style.shadow_size = 9
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -987,10 +927,10 @@ static func bonus_bottom_highlight(flash_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.28)
 	style.border_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.95)
-	style.set_border_width_all(14)
+	style.set_border_width_all(7)
 	style.set_corner_radius_all(999)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.34)
-	style.shadow_size = 16
+	style.shadow_size = 8
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -1000,11 +940,11 @@ static func tutorial_target_ring() -> StyleBoxFlat:
 	style.bg_color = Color(1.0, 0.89, 0.24, 0.0)
 	style.draw_center = false
 	style.border_color = Color("#ffd94d")
-	style.set_border_width_all(12)
-	style.set_corner_radius_all(54)
+	style.set_border_width_all(6)
+	style.set_corner_radius_all(27)
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
-	style.shadow_size = 18
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 9
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 
@@ -1015,11 +955,11 @@ static func crit_glow(mega_crit := false) -> StyleBoxFlat:
 	style.draw_center = true
 	style.bg_color = Color(fill.r, fill.g, fill.b, 0.34 if mega_crit else 0.31)
 	style.border_color = Color(border.r, border.g, border.b, 1.0 if mega_crit else 0.96)
-	style.set_border_width_all(68 if mega_crit else 46)
+	style.set_border_width_all(34 if mega_crit else 23)
 	style.shadow_color = Color(1.0, 0.70, 0.0, 0.82) if mega_crit else Color(0.10, 0.58, 1.0, 0.62)
-	style.shadow_size = 68 if mega_crit else 42
+	style.shadow_size = 34 if mega_crit else 21
 	style.shadow_offset = Vector2.ZERO
-	style.set_corner_radius_all(82 if mega_crit else 66)
+	style.set_corner_radius_all(41 if mega_crit else 33)
 	return style
 
 

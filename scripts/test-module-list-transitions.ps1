@@ -314,8 +314,9 @@ func _check_sort_menu_input_isolation(scene: Node, skill_id: String) -> void:
 	if covered_card.is_empty():
 		var scroll := scene.call("_skill_detail_surface").get("detail_actions_scroll") as ScrollContainer
 		if scroll != null:
-			scroll.set("drag_scroll_position", float(mini(420, scroll.get_max_scroll_vertical())))
-			scroll.set("scroll_vertical", mini(420, scroll.get_max_scroll_vertical()))
+			var scaled_overlap_scroll := mini(int(round(420.0 * float(scene.BASE_CANVAS.x) / 2160.0)), scroll.get_max_scroll_vertical())
+			scroll.set("drag_scroll_position", float(scaled_overlap_scroll))
+			scroll.set("scroll_vertical", scaled_overlap_scroll)
 			scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 			await process_frame
 			covered_card = scene.call("_input_routing_shell").call("_action_card_at_position", raw_tap_point) as Dictionary
@@ -732,7 +733,7 @@ func _check_immediate_pin_input_flow(scene: Node, skill_id: String) -> void:
 			_record("pin badge is missing the approved pin texture")
 		if not pin_badge.size.is_equal_approx(expected_size):
 			_record("pin badge size mismatch. expected=%s actual=%s" % [expected_size, pin_badge.size])
-		if expected_size.x < 300.0 or expected_size.y < 300.0:
+		if expected_size.x < 150.0 or expected_size.y < 150.0:
 			_record("pin badge should stay large enough for the current oversized visual treatment: %s" % expected_size)
 		if pin_badge.stretch_mode != TextureButton.STRETCH_KEEP_ASPECT:
 			_record("pin badge art should scale up to the oversized badge bounds")
@@ -827,7 +828,7 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 	if scroll == null or not is_instance_valid(scroll):
 		_record("pin no-bump smoke could not find detail scroll")
 		return
-	var target_scroll := mini(420, scroll.get_max_scroll_vertical())
+	var target_scroll := mini(int(round(420.0 * float(scene.BASE_CANVAS.x) / 2160.0)), scroll.get_max_scroll_vertical())
 	scroll.set("drag_scroll_position", float(target_scroll))
 	scroll.set("scroll_vertical", target_scroll)
 	for _i in range(2):
@@ -1615,7 +1616,11 @@ func _check_pinned_page_fishing_area_registration(scene: Node) -> void:
 			var lock_point := padlock_hit_area.get_global_rect().get_center() if padlock_hit_area != null and is_instance_valid(padlock_hit_area) else (locked_root.get_global_rect().get_center() if locked_root != null and is_instance_valid(locked_root) else fallback_art_panel.get_global_rect().get_center())
 			if not bool(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", lock_point)):
 				_record("pinned page fishing method lock point is outside the pinned-page viewport")
-			var lock_routed := bool(scene.call("_input_routing_shell").call("_route_fishing_method_lock_input", _mouse_button_event(lock_point, true)))
+			# Fishing locks are native buttons now; press the real padlock button.
+			var lock_button := padlock_hit_area as BaseButton
+			var lock_routed := lock_button != null and is_instance_valid(lock_button) and not lock_button.disabled
+			if lock_routed:
+				lock_button.emit_signal("pressed")
 			for _i in range(4):
 				await process_frame
 			if not lock_routed:
@@ -2429,7 +2434,7 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 	if empty_label == null or not is_instance_valid(empty_label):
 		_record("pinned page empty state did not render")
 	else:
-		var expected := "Press the top left of any activity to pin it.\nPinned activities from every skill page will appear here."
+		var expected := "Tap the top-left of an activity to pin it.\nPinned activities appear here."
 		if empty_label.text != expected:
 			_record("pinned page empty state text mismatch")
 		if empty_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_CENTER or empty_label.vertical_alignment != VERTICAL_ALIGNMENT_CENTER:
@@ -2440,9 +2445,9 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 		elif active_shelf != null and is_instance_valid(active_shelf):
 			var label_center_y := empty_label.get_global_rect().get_center().y
 			var active_bottom_y := active_shelf.get_global_rect().end.y
-			var bottom_limit_y := 3840.0 - 420.0 - 260.0 - 344.0 - 28.0
+			var bottom_limit_y := 1920.0 - 210.0 - 130.0 - 172.0 - 14.0
 			var expected_center_y := active_bottom_y + (bottom_limit_y - active_bottom_y) * 0.5
-			if absf(label_center_y - expected_center_y) > 130.0:
+			if absf(label_center_y - expected_center_y) > 65.0:
 				_record("pinned page empty state advice is not centered in the usable frame. expected_y=%s actual_y=%s" % [expected_center_y, label_center_y])
 			if empty_state.custom_minimum_size.y < 860.0:
 				_record("pinned page empty state host is too short to center the advice. height=%s" % empty_state.custom_minimum_size.y)
@@ -2623,7 +2628,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 			if settled_offset.distance_to(expected_settled_offset) > 1.5:
 				_record("pinned utility tab active state was not fully depressed after animation. expected=%s actual=%s" % [expected_settled_offset, settled_offset])
 	pinned_button.emit_signal("pressed")
-	for _i in range(12):
+	for _i in range(90):
 		await process_frame
 	if str(scene.get("current_screen")) != "skill":
 		_record("pinned utility button press did not return to the previous skill page")
@@ -3082,21 +3087,24 @@ func _assert_no_tooltips_in_roots(roots: Array[Node], context: String) -> void:
 		_assert_no_tooltips_in_tree(root_node, context)
 
 
-func _assert_action_bonus_panel_filled(card: Dictionary, context: String) -> void:
-	var bonus := card.get("bonus_panel", {}) as Dictionary
+func _assert_action_information_filled(scene: Node, context: String) -> void:
+	await create_timer(0.3).timeout
+	var detail = scene.call("_skill_detail_surface")
+	var card: Dictionary = (scene.get("action_cards") as Dictionary).get(str(detail.expanded_activity_stat_key), {})
+	var bonus: Dictionary = card.get("bonus_panel", {})
 	if bonus.is_empty():
-		_record("%s did not create a bonus panel" % context)
+		_record("%s did not expand module details" % context)
 		return
-	var root := bonus.get("root", null) as Control
-	if root == null or not is_instance_valid(root) or not root.visible:
-		_record("%s bonus panel is not visible" % context)
-	for label_key in ["title", "original", "current", "bonuses"]:
-		var label := bonus.get(label_key, null) as Label
-		if label == null or not is_instance_valid(label):
-			_record("%s bonus panel is missing %s label" % [context, label_key])
-			continue
-		if label.text.strip_edges().is_empty():
-			_record("%s bonus panel left %s label empty" % [context, label_key])
+	var panel: Control = bonus.root
+	if not panel.is_visible_in_tree():
+		_record("%s details are hidden" % context)
+	for key in ["title", "original", "current", "bonuses"]:
+		if str(bonus[key].text).strip_edges().is_empty():
+			_record("%s has empty %s" % [context, key])
+	if panel.get_global_rect().end.y > (card.root as Control).get_global_rect().end.y:
+		_record("%s details overflow the module" % context)
+	detail.call("_clear_activity_stat_popup")
+	scene.call("_update_ui", 0.0, true)
 
 
 func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: String) -> void:
@@ -3133,7 +3141,8 @@ func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: Stri
 			_record("%s %s tap left an action card press stuck: %s" % [context, stat_kind, str(scene.call("_skill_detail_surface").get("action_card_press_key"))])
 			scene.call("_skill_detail_surface").set("action_card_press_key", "")
 		scene.call("_update_ui", 0.0, true)
-		_assert_action_bonus_panel_filled(card, "%s %s" % [context, stat_kind])
+		await _assert_action_information_filled(scene, "%s %s" % [context, stat_kind])
+		await process_frame
 	scene.call("_skill_swipe_activity_surface").call("_collapse_expanded_activity_modules")
 	scene.call("_update_ui", 0.0, true)
 
@@ -3260,8 +3269,8 @@ func _assert_thieving_heist_drag_release_cancels(scene: Node, button: Button, he
 func _tap_fishing_method_button(scene: Node, button: Button, skill_id: String, action_id: String, area_key: String, owner_area_id: int) -> void:
 	var local_point := button.get_global_rect().get_center() - button.get_global_rect().position
 	var fishing_ui_surface = scene.call("_fishing_ui_surface")
-	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, true), skill_id, action_id, area_key, owner_area_id, button)
-	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, false), skill_id, action_id, area_key, owner_area_id, button)
+	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, true), true)
+	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, false), true)
 
 
 func _assert_fishing_method_drag_release_cancels(
@@ -3277,20 +3286,21 @@ func _assert_fishing_method_drag_release_cancels(
 	scene.call("_skill_swipe_activity_surface").call("_clear_skill_swipe_button_suppression")
 	var local_point := button.get_global_rect().get_center() - button.get_global_rect().position
 	var fishing_ui_surface = scene.call("_fishing_ui_surface")
-	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, true), skill_id, action_id, area_key, owner_area_id, button)
+	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, true), true)
 	var fishing_drag_event := InputEventMouseMotion.new()
 	fishing_drag_event.position = local_point + Vector2(260.0, 0.0)
 	fishing_drag_event.global_position = button.get_global_rect().position + fishing_drag_event.position
 	fishing_drag_event.relative = Vector2(260.0, 0.0)
-	fishing_ui_surface.call("_on_fishing_method_button_input", fishing_drag_event, skill_id, action_id, area_key, owner_area_id, button)
-	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point + Vector2(260.0, 0.0), false), skill_id, action_id, area_key, owner_area_id, button)
+	fishing_drag_event.position = fishing_drag_event.global_position
+	root.push_input(fishing_drag_event, true)
+	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point + Vector2(260.0, 0.0), false), true)
 	for _i in range(8):
 		await process_frame
 	if str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id:
 		_record("%s drag-release started the fishing action" % context)
 	if bool(button.get_meta("fishing_method_press_active", false)) or bool(button.get_meta("fishing_method_press_dragged", false)):
 		_record("%s drag-release left fishing method press metadata stuck" % context)
-	fishing_ui_surface.call("_on_fishing_method_button_input", _local_mouse_button_event(local_point, false), skill_id, action_id, area_key, owner_area_id, button)
+	root.push_input(_mouse_button_event(button.get_global_rect().position + local_point, false), true)
 	for _i in range(2):
 		await process_frame
 	if bool(button.get_meta("fishing_method_press_active", false)) or bool(button.get_meta("fishing_method_press_dragged", false)):
