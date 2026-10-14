@@ -1,4 +1,12 @@
 extends Control
+
+var halloween_runtime
+
+func _halloween_runtime():
+	if halloween_runtime == null:
+		halloween_runtime = preload("res://scripts/seasonal/halloween_runtime.gd").new(self)
+	return halloween_runtime
+
 const FishingState = preload("res://scripts/fishing/state.gd")
 const FishingUiSurface = preload("res://scripts/fishing/ui_surface.gd")
 const ActivityQueueRuntime = preload("res://scripts/activity_queue/runtime.gd")
@@ -193,7 +201,7 @@ const PROFILE_DISPLAY_NAME_MAX_CHARS := 16
 const PROFILE_NAME_KEY_MAX_CHARS := 16
 const PROFILE_GUEST_NAME_PREFIX := "guest"
 const LOW_STAMINA_ACTION_SPEED_MULT := 0.20
-const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 1.28
+const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 0.55
 const MODAL_OVERLAY_Z := 4096
 const TUTORIAL_LAYER := AchievementToastSurface.CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
@@ -514,7 +522,9 @@ var trace_process_skill_filter := ""
 var action_stop_hold_circle: StopHoldCircle
 var app_resume_repair_pending := false
 var web_fishing_perf_probe_enabled := false
+var desktop_layout = preload("res://scripts/ui/desktop_layout.gd").new(self)
 func _ready() -> void:
+	desktop_layout.configure_window()
 	trace_process_slow_enabled = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
 	trace_process_threshold_us = 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
 	trace_process_skill_filter = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
@@ -595,6 +605,10 @@ func _skill_swipe_loading_transition_active() -> bool:
 	)
 
 func _process(delta: float) -> void:
+	# Hidden browser tabs may still receive throttled frames. Do not move the
+	# save timestamp forward while waiting to account for the suspended interval.
+	if _app_lifecycle_runtime().suspended_at_unix >= 0:
+		return
 	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
 	var trace_process := trace_process_slow_enabled
@@ -647,6 +661,8 @@ func _process(delta: float) -> void:
 	_audio_director()._process_music_flow(delta)
 	_profile_chat_overlay_surface()._process_chat_keyboard_lift(delta)
 	_profile_chat_overlay_surface()._process_chat_enter_submit_poll()
+	# Desktop resizing and sibling columns must update even when the focused fishing page is idle.
+	desktop_layout.update(delta)
 	if not _fishing_ui_surface()._fishing_detail_scroll_frame_can_skip_ui_update():
 		_update_ui(delta)
 	_skill_swipe_activity_surface()._maybe_release_ready_skill_swipe_cover()
@@ -691,6 +707,11 @@ func _process(delta: float) -> void:
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
 func _input(event: InputEvent) -> void:
+	if _halloween_runtime().route_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if desktop_layout.route_input(event):
+		return
 	_input_routing_shell().input(event)
 func _action_stop_hold() -> StopHoldCircle:
 	if action_stop_hold_circle != null and is_instance_valid(action_stop_hold_circle) and not action_stop_hold_circle.is_queued_for_deletion() and action_stop_hold_circle.is_inside_tree():
@@ -748,6 +769,8 @@ func _build_skills_page() -> void:
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
 func _skill_content_width() -> float:
+	if desktop_layout.enabled() and current_screen == "skill":
+		return desktop_layout.column_width
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
 	if skill_id.is_empty():
@@ -839,6 +862,7 @@ func _update_ui(delta: float, instant := false) -> void:
 	if static_refresh:
 		_settings_surface()._refresh_audio_volume_controls()
 	if static_refresh:
+		_halloween_runtime().sync_expiry()
 		_shop_surface().sync_bonus_display()
 	_settings_surface()._expire_reset_data_confirm_if_needed()
 	if static_refresh:
@@ -869,7 +893,7 @@ func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
 		event_position = _input_routing_shell()._global_event_position(touch_event.position, touch_event.position, self)
 	else:
 		return false
-	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle"):
+	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle") + get_tree().get_nodes_in_group("auto_eat_candy_toggle"):
 		var button := node as TextureButton
 		if button == null or not is_instance_valid(button) or not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
@@ -1039,6 +1063,13 @@ func _activity_queue_runtime() -> ActivityQueueRuntime:
 	if activity_queue_runtime == null:
 		activity_queue_runtime = ActivityQueueRuntime.new(self)
 	return activity_queue_runtime
+
+var project_runtime
+
+func _project_runtime():
+	if project_runtime == null:
+		project_runtime = preload("res://scripts/progression/project_runtime.gd").new(self)
+	return project_runtime
 
 func _action_runtime() -> ActionRuntime:
 	if action_runtime == null:

@@ -39,6 +39,7 @@ func _init(host_ref) -> void:
 
 
 func prepare_tutorial_state() -> void:
+	host.desktop_layout.reset_intro()
 	onboarding_tutorial_complete = false
 	onboarding_swipe_tip_eligible = false
 	onboarding_swipe_navigation_unlocked = false
@@ -196,7 +197,8 @@ func _graduate_onboarding_tutorial() -> void:
 		return
 	# Cover everything except the starter card before the rest of the game UI is
 	# made visible, then fade the cover out so the game builds around the player.
-	host._navigation_shell().play_post_onboarding_reveal_veil()
+	if not host.desktop_layout.enabled():
+		host._navigation_shell().play_post_onboarding_reveal_veil()
 	onboarding_tutorial_complete = true
 	host._navigation_shell().module_utility_collapsed = true
 	host.save_game()
@@ -206,7 +208,8 @@ func _graduate_onboarding_tutorial() -> void:
 	host._navigation_shell().call_deferred("_sync_bottom_nav_visibility")
 	host._navigation_shell().call_deferred("_sync_module_utility_row_visibility")
 	host._skill_detail_surface().call_deferred("_sync_skill_detail_back_arrow_visibility")
-	host._navigation_shell().call_deferred("_fade_in_post_onboarding_bottom_chrome")
+	if not host.desktop_layout.enabled():
+		host._navigation_shell().call_deferred("_fade_in_post_onboarding_bottom_chrome")
 	if host.auto_unlock_lockpads_enabled:
 		host._activity_unlock_runtime().call_deferred("_run_startup_auto_unlock_lockpads")
 
@@ -271,7 +274,7 @@ func _record_activity_completion_for_tips(skill_id: String = "", action_id: Stri
 		and action_id == host.TUTORIAL_STARTER_ACTION_ID
 	)
 	if is_starter_completion:
-		save_immediately = true
+		save_immediately = not onboarding_tutorial_complete
 		onboarding_starter_action_completion_count += 1
 		if onboarding_starter_action_completion_count == 1 and not onboarding_first_module_center_released:
 			onboarding_first_module_center_release_pending = true

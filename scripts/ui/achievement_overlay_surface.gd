@@ -14,8 +14,6 @@ const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const OFFLINE_SUMMARY_MODAL_WIDTH := 960.0
-const OFFLINE_SUMMARY_BASE_HEIGHT := 900.0
-const OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT := 76.0
 const OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT := 100.0
 const OFFLINE_SUMMARY_MAX_HIGHLIGHTS := 4
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
@@ -156,6 +154,7 @@ var offline_summary_panel: PanelContainer
 var offline_summary_stack: VBoxContainer
 var offline_summary_close_button: Button
 var offline_summary_close_pending := false
+var offline_summary_fit_pending := false
 var achievements_overlay: Control
 var achievements_panel_frame: Control
 var achievements_panel: PanelContainer
@@ -318,18 +317,21 @@ func _build_offline_summary_overlay() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	offline_summary_overlay.add_child(center)
 	var frame := Control.new()
-	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_BASE_HEIGHT)
+	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, 0)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(frame)
 	offline_summary_panel_frame = frame
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_BASE_HEIGHT)
+	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, 0)
 	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 18, true))
 	frame.add_child(panel)
 	offline_summary_panel = panel
+	panel.minimum_size_changed.connect(_queue_offline_summary_fit)
+	if not host.resized.is_connected(_queue_offline_summary_fit):
+		host.resized.connect(_queue_offline_summary_fit)
 	offline_summary_close_button = host._menu_button("X")
 	offline_summary_close_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	offline_summary_close_button.offset_left = -97
+	offline_summary_close_button.offset_left = -116
 	offline_summary_close_button.offset_right = -12
 	offline_summary_close_button.offset_top = 12
 	offline_summary_close_button.offset_bottom = 91
@@ -372,9 +374,20 @@ func _finish_close_offline_summary_overlay() -> void:
 	host.button_press_runtime.play_default_button_sfx()
 	host._achievement_toast_surface().play_pending_offline_summary_toasts()
 
-func _fit_offline_summary_modal(modal_size: Vector2) -> void:
-	if offline_summary_panel == null:
+func _queue_offline_summary_fit() -> void:
+	if offline_summary_fit_pending:
 		return
+	offline_summary_fit_pending = true
+	call_deferred("_fit_offline_summary_modal")
+
+func _fit_offline_summary_modal() -> void:
+	offline_summary_fit_pending = false
+	if not is_instance_valid(offline_summary_panel):
+		return
+	# Wrapped labels can change their minimum height after their first layout.
+	# Fit the measured panel, never a guessed height that its children can exceed.
+	offline_summary_panel.reset_size()
+	var modal_size := offline_summary_panel.size
 	var fitted_scale = host._fit_scale_to_canvas(modal_size, OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN)
 	var fitted_frame_size = modal_size * fitted_scale
 	if offline_summary_panel_frame != null:
@@ -382,14 +395,14 @@ func _fit_offline_summary_modal(modal_size: Vector2) -> void:
 		offline_summary_panel_frame.size = fitted_frame_size
 		offline_summary_panel_frame.reset_size()
 		offline_summary_panel_frame.update_minimum_size()
-	offline_summary_panel.custom_minimum_size = modal_size
-	offline_summary_panel.size = modal_size
 	offline_summary_panel.position = Vector2.ZERO
 	offline_summary_panel.scale = Vector2(fitted_scale, fitted_scale)
-	offline_summary_panel.reset_size()
-	offline_summary_panel.update_minimum_size()
 
 func _maybe_show_offline_summary(offline_seconds: float, active_result: Dictionary) -> void:
+	# Brief real interruptions still earn progress without opening a modal.
+	if offline_seconds < 60.0:
+		host._achievement_toast_surface().show_offline_summary_toasts(_offline_summary_achievements(active_result))
+		return
 	_ensure_offline_summary_overlay()
 	if offline_summary_overlay == null or not bool(active_result.get("handled", false)):
 		return
@@ -411,11 +424,6 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 		return
 	host._clear(offline_summary_stack)
 	var highlights := _offline_summary_highlights(active_result)
-	var highlights_height := 0.0
-	if not highlights.is_empty():
-		highlights_height = OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT + float(highlights.size()) * (OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT + 8.0)
-	var modal_height := OFFLINE_SUMMARY_BASE_HEIGHT + highlights_height
-	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, modal_height))
 	var header := HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 12)
@@ -438,20 +446,18 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_row.add_theme_constant_override("separation", 14)
 	offline_summary_stack.add_child(stat_row)
-	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
+	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % GameFormatting.compact_number(float(active_result.get("xp", 0))), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), host.TOTAL_LEVEL_BARGRAPH_TEXTURE))
 	if not highlights.is_empty():
-		var highlights_label: Label = host._label("Highlights", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
-		highlights_label.custom_minimum_size.y = OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT
-		offline_summary_stack.add_child(highlights_label)
 		for highlight in highlights:
 			offline_summary_stack.add_child(_offline_summary_highlight_row(highlight as Dictionary))
 
-	var done = host._menu_button("Nice")
+	var done = host._menu_button("Continue")
 	done.custom_minimum_size = Vector2(0, 80)
 	done.focus_mode = Control.FOCUS_NONE
 	done.pressed.connect(_close_offline_summary_overlay)
 	offline_summary_stack.add_child(done)
+	_queue_offline_summary_fit()
 
 
 func _offline_summary_highlights(active_result: Dictionary) -> Array:
@@ -521,7 +527,7 @@ func _offline_summary_highlight_row(highlight: Dictionary) -> Control:
 
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 280)
+	card.custom_minimum_size = Vector2(0, 220)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
@@ -530,6 +536,7 @@ func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	card.add_child(row)
 	var art_frame := PanelContainer.new()
 	art_frame.custom_minimum_size = Vector2(139, 139)
+	art_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	art_frame.add_theme_stylebox_override("panel", host.ActivityCardStyles.featured_art(Callable(host, "_surface_style"), host.COLOR_LINE))
 	row.add_child(art_frame)
 	art_frame.add_child(host.visual_texture_cache._image(str(active_result.get("action_art", "")), Vector2(120, 120)))
@@ -542,7 +549,7 @@ func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var action_name_label = host._label(str(active_result.get("action_name", "Activity")), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(action_name_label)
-	var detail = host._label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label("%s / %s runs successful" % [GameFormatting.compact_number(float(active_result.get("successes", 0))), GameFormatting.compact_number(float(active_result.get("completions", 0)))], 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(detail)
 	return card
@@ -874,7 +881,7 @@ func _update_achievements_ui(delta: float, instant: bool) -> void:
 		var skill_id := str(def["id"])
 		if achievement_skill_level_labels.has(skill_id):
 			var level_label := achievement_skill_level_labels[skill_id] as Label
-			level_label.text = "%s Lv %s" % [SkillState.skill_name(host.skill_defs, skill_id), SkillState.host_skill_level(host, skill_id)]
+			level_label.text = "%s Lv %s\n%s lifetime XP" % [SkillState.skill_name(host.skill_defs, skill_id), SkillState.host_skill_level(host, skill_id), GameFormatting.compact_number(float(host.skills.get(skill_id, {}).get("xp", 0)))]
 		_update_achievement_medal_slots(skill_id, AchievementState.mastery_actions_for_skill(host, skill_id))
 	if achievement_elite_label != null:
 		var elite_pct := 0.0 if total_possible <= 0 else float(total_earned) / float(total_possible) * 100.0
@@ -948,7 +955,7 @@ func _refresh_home_achievements_incremental(token: int) -> void:
 		var skill_id := str(def["id"])
 		if achievement_skill_level_labels.has(skill_id):
 			var level_label := achievement_skill_level_labels[skill_id] as Label
-			level_label.text = "%s Lv %s" % [SkillState.skill_name(host.skill_defs, skill_id), SkillState.host_skill_level(host, skill_id)]
+			level_label.text = "%s Lv %s\n%s lifetime XP" % [SkillState.skill_name(host.skill_defs, skill_id), SkillState.host_skill_level(host, skill_id), GameFormatting.compact_number(float(host.skills.get(skill_id, {}).get("xp", 0)))]
 		_update_achievement_medal_slots(skill_id, AchievementState.mastery_actions_for_skill(host, skill_id))
 		await host.get_tree().process_frame
 

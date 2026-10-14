@@ -17,6 +17,7 @@ func load_action_data(host) -> bool:
 	skill_defs.clear()
 	if load_activity_database(host):
 		rebuild_action_lookup(host)
+		host._project_runtime().configure()
 		return true
 	push_error("Failed to load required activity database: %s" % ACTIVITY_DATABASE_PATH)
 	return false
@@ -49,6 +50,7 @@ func load_activity_database(host) -> bool:
 	var activity_database = JSON.parse_string(file.get_as_text())
 	if typeof(activity_database) != TYPE_DICTIONARY:
 		return false
+	host._halloween_runtime().configure(activity_database.get("seasonal_events", {}))
 	var loaded_skills = activity_database.get("skills", [])
 	if typeof(loaded_skills) != TYPE_ARRAY or loaded_skills.is_empty():
 		return false
@@ -82,9 +84,12 @@ func load_activity_database(host) -> bool:
 				var action := raw_action as Dictionary
 				if not bool(action.get("enabled", true)):
 					continue
+				if action.has("seasonal_event") and not host._halloween_runtime().active(): continue
 				var action_data := _action_for_load(action, skill_id, actions.size(), host._action_runtime()._action_mat_reward_defs(action))
 				for disabled_boss_id in disabled_boss_ids:
 					(action_data.get("requires_bosses", []) as Array).erase(disabled_boss_id)
+				if host._halloween_runtime().active() and action.get("seasonal_unlock_drop", {}) is Dictionary:
+					action_data["seasonal_unlock_drop"] = action.get("seasonal_unlock_drop", {}).duplicate(true)
 				actions.append(action_data)
 		sort_activity_actions_for_page(skill_id, actions)
 		actions_by_skill[skill_id] = actions
@@ -139,12 +144,20 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 		"tier": int(source.get("tier", 1)),
 		"seconds": float(source.get("seconds", 1.0)),
 		"xp": xp_value,
+		"wisdom_skill": str(source.get("wisdom_skill", owner_skill_id)),
+		"wisdom_reward": maxi(0, int(source.get("wisdom_reward", 0))),
+		"wisdom_required": maxi(0, int(source.get("wisdom_required", 0))),
 		"rewards": {"xp": xp_value},
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
 		"art": _res_path(str(source.get("art", ""))),
 		"bg": _res_path(str(source.get("background", source.get("bg", ""))))
 	}
+	if source.get("unlock_project", {}) is Dictionary and not (source.get("unlock_project", {}) as Dictionary).is_empty():
+		action_data["unlock_project"] = source.unlock_project.duplicate(true)
+	if source.get("unlock_drop", {}) is Dictionary:
+		action_data["unlock_drop"] = source.get("unlock_drop", {}).duplicate(true)
+	if source.has("seasonal_event"): action_data["seasonal_event"] = source.seasonal_event
 	var art_animation := _action_art_animation_for_load(source.get("art_animation", {}))
 	if not art_animation.is_empty():
 		action_data["art_animation"] = art_animation
@@ -156,6 +169,7 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 	var build := _build_contract_for_load(source.get("build", {}))
 	if not build.is_empty():
 		action_data["build"] = build
+	action_data["mastery_xp_per_completion"] = maxf(1.0, float(source.get("mastery_xp_per_completion", 1.0)))
 	var recovery := _recovery_contract_for_load(source.get("recovery", {}))
 	if not recovery.is_empty():
 		action_data["recovery"] = recovery

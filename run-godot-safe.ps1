@@ -23,6 +23,9 @@ $pollSeconds = 10
 if ($env:GODOT_MAX_PROCESSES) {
     $maxGodots = [int]$env:GODOT_MAX_PROCESSES
 }
+if ($maxGodots -lt 1 -or $maxGodots -gt 4) {
+    throw "GODOT_MAX_PROCESSES must be between 1 and 4."
+}
 if ($env:GODOT_SLOT_WAIT_SECONDS) {
     $waitSeconds = [int]$env:GODOT_SLOT_WAIT_SECONDS
 }
@@ -56,6 +59,11 @@ function Get-GodotProcessSnapshot {
 function Get-ChildProcessIds {
     param([Parameter(Mandatory = $true)][int]$ParentProcessId)
 
+    # No Godot can be left behind when the process inventory is empty. Avoid
+    # requiring WMI/CIM permissions just to prove this common successful case.
+    if (@(Get-Process godot* -ErrorAction SilentlyContinue).Count -eq 0) {
+        return @()
+    }
     $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentProcessId" -ErrorAction SilentlyContinue)
     $ids = @()
     foreach ($child in $children) {

@@ -1,0 +1,5 @@
+# Leaderboard stroke adjustment
+
+Mobile leaderboard name, score, and rank outlines now use one 5-unit width instead of 8, 7, and 6. The player name already used 5. Avatar borders on both layouts and mobile category/player-card borders now use 3 units instead of 8–9. Desktop text remains unoutlined. The leaderboard-specific avatar override leaves other profile/chat avatar borders unchanged and insets artwork by 4 units to keep square texture corners within the rounded frame.
+
+Muted visible production-game captures reached the leaderboard through the mobile Progress/Leaderboard buttons and the desktop High Scores ribbon button. Local fixture rows, isolated user data, online requests disabled, save writes disabled. Mobile 1080x1920 and desktop 1920x1080, light and dark themes: capture runs reported LEADERBOARD_STROKE failures=[]. Raw images in .codex-tmp/leaderboard-stroke/{mobile,mobile-dark,desktop,desktop-dark}.png. Logs: mobile-clean.log and desktop-final.log. Parser validation and targeted git diff whitespace check passed. No exports or Android rendering settings changed. Physical Android device validation was not performed for this styling-only iteration.

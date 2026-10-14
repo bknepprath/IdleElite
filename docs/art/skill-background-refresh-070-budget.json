@@ -1,0 +1,46 @@
+{
+  "assets": [
+    {
+      "path": "assets/content/build/actions/sharpen-the-pencil.png",
+      "source_bytes": 32130,
+      "desktop_import_bytes": 43070,
+      "mobile_import_bytes": 43070
+    },
+    {
+      "path": "assets/content/build/backgrounds/timber-yard.png",
+      "source_bytes": 332608,
+      "desktop_import_bytes": 353012,
+      "mobile_import_bytes": 353012
+    },
+    {
+      "path": "assets/content/build/backgrounds/workbench.png",
+      "source_bytes": 381078,
+      "desktop_import_bytes": 353012,
+      "mobile_import_bytes": 353012
+    },
+    {
+      "path": "assets/content/fight/actions/wrap-hands.png",
+      "source_bytes": 31553,
+      "desktop_import_bytes": 43280,
+      "mobile_import_bytes": 43280
+    },
+    {
+      "path": "assets/content/thieving/backgrounds/quiet-market-lane.png",
+      "source_bytes": 415712,
+      "desktop_import_bytes": 353012,
+      "mobile_import_bytes": 353012
+    },
+    {
+      "path": "assets/content/woodcutting/backgrounds/shaded-clearing.png",
+      "source_bytes": 320368,
+      "desktop_import_bytes": 353012,
+      "mobile_import_bytes": 353012
+    }
+  ],
+  "totals": {
+    "source_bytes": 1513449,
+    "desktop_import_bytes": 1498398,
+    "mobile_import_bytes": 1498398
+  },
+  "measured_desktop_texture_bytes_with_mipmaps": 2110888
+}

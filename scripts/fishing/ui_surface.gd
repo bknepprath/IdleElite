@@ -77,14 +77,14 @@ const FISHING_MODULE_TITLE_TOP := 6
 const FISHING_MODULE_TITLE_BAND_HEIGHT := 44
 const FISHING_MODULE_TITLE_LEFT_INSET := 27.0
 const FISHING_MODULE_TITLE_RIGHT_INSET := 16.0
-const FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET := 44.0
+const FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET := 52.0
 const FISHING_AREA_MAX_BUTTONS_PER_MODULE := 2
 const FISHING_AREA_CONTENT_TOP_MARGIN := FISHING_MODULE_TITLE_TOP
 const FISHING_AREA_WATER_BOTTOM_MARGIN := 35
 const FISHING_AREA_STAT_COLUMN_TOP_MARGIN := FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
-const FISHING_AREA_STAT_COLUMN_SEPARATION := 10
-const FISHING_AREA_STAT_BOX_SIZE := Vector2(132, 96)
-const FISHING_AREA_STAT_FONT_SIZE := 38
+const FISHING_AREA_STAT_COLUMN_SEPARATION := 6
+const FISHING_AREA_STAT_BOX_SIZE := Vector2(192, 64)
+const FISHING_AREA_STAT_FONT_SIZE := 48
 const FISHING_AREA_METHOD_TOP_MARGIN := 0
 const FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH := 175.0
 const FISHING_ACTIVE_TOOL_LAYER_SIZE := Vector2(410, 215)
@@ -100,11 +100,11 @@ const FISHING_ACTIVE_TOOL_INIT_SECONDS := 0.46
 const FISHING_PADLOCK_UNLOCK_DROP_SECONDS := 0.96
 const FISHING_PADLOCK_UNLOCK_POP_SECONDS := 0.30
 const FISHING_LOCATION_TILE_SIZE := Vector2(205, 205)
-const FISHING_NET_OFFER_HEIGHT := 370
-const FISHING_ROD_OFFER_HEIGHT := 370
-const FISHING_ROD_UPGRADE_OFFER_HEIGHT := 370
-const FISHING_BOAT_OFFER_HEIGHT := 370
-const FISHING_MIRROR_OFFER_HEIGHT := 370
+const FISHING_NET_OFFER_HEIGHT := 400
+const FISHING_ROD_OFFER_HEIGHT := 400
+const FISHING_ROD_UPGRADE_OFFER_HEIGHT := 400
+const FISHING_BOAT_OFFER_HEIGHT := 400
+const FISHING_MIRROR_OFFER_HEIGHT := 400
 const FISHING_OFFER_UNAVAILABLE_ART_MODULATE := Color(1, 1, 1, 0.52)
 
 var host
@@ -391,6 +391,9 @@ func _attach_auto_eat_fish_toggle(parent: Control, skill_id: String) -> TextureB
 	button.add_to_group("auto_eat_fish_toggle")
 	_connect_fishing_button(button, _on_auto_eat_fish_toggle_pressed.bind(skill_id))
 	parent.add_child(button)
+	var candy := preload("res://scripts/seasonal/candy_toggle.gd").new()
+	candy.setup(host, skill_id)
+	parent.add_child(candy)
 	_sync_auto_eat_fish_toggle_button(button)
 	return button
 
@@ -426,10 +429,15 @@ func _auto_eat_fish_solid_material(texture: Texture2D) -> ShaderMaterial:
 shader_type canvas_item;
 
 uniform vec4 fill_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+varying float parent_alpha;
+
+void vertex() {
+	parent_alpha = COLOR.a;
+}
 
 void fragment() {
 	vec4 base = texture(TEXTURE, UV);
-	COLOR = vec4(fill_color.rgb, base.a * fill_color.a);
+	COLOR = vec4(fill_color.rgb, base.a * fill_color.a * parent_alpha);
 }
 """
 	var material := ShaderMaterial.new()
@@ -1067,102 +1075,113 @@ func _render_fishing_tool_popup_menu() -> void:
 	if host._skill_detail_surface().detail_fish_circle == null or not is_instance_valid(host._skill_detail_surface().detail_fish_circle):
 		return
 	_clear_fishing_tool_circle_menu()
-	fishing_tool_wallet_open = true
-	var visible_wallet_tools = _fishing_visible_wallet_tool_defs()
-	var row_count = visible_wallet_tools.size()
-	if row_count <= 0:
+	var tools := _fishing_visible_wallet_tool_defs()
+	if tools.is_empty():
 		return
-	var circle_rect = host._skill_detail_surface().detail_fish_circle.get_global_rect()
-	var gear_button_size = clampf(minf(circle_rect.size.x, circle_rect.size.y) * 0.60, 120.0, 168.0)
-	if gear_button_size <= 0.0:
-		gear_button_size = 148.0
-	var column_count = mini(3, row_count)
-	var grid_rows = int(ceil(float(row_count) / float(column_count)))
-	var gear_gap = maxf(12.0, gear_button_size * 0.08)
-	var panel_padding = maxf(15.0, gear_button_size * 0.10)
-	var panel_width = panel_padding * 2.0 + float(column_count) * gear_button_size + float(maxi(0, column_count - 1)) * gear_gap
-	var panel_height = panel_padding * 2.0 + float(grid_rows) * gear_button_size + float(maxi(0, grid_rows - 1)) * gear_gap
-	var viewport_size = host.get_viewport_rect().size
-	var panel_left = clampf(circle_rect.get_center().x - panel_width * 0.5, 6.0, maxf(6.0, viewport_size.x - panel_width - 6.0))
-	var panel_top = circle_rect.end.y + maxf(7.0, gear_button_size * 0.08)
-	if panel_top + panel_height > viewport_size.y - 6.0:
-		panel_top = maxf(6.0, viewport_size.y - panel_height - 6.0)
-	var canvas = CanvasLayer.new()
+	fishing_tool_wallet_open = true
+	var circle_rect: Rect2 = host._skill_detail_surface().detail_fish_circle.get_global_rect()
+	var viewport_size: Vector2 = host.get_viewport_rect().size
+	var row_height := 104.0
+	var row_gap := 8.0
+	var padding := 16.0
+	var label_width := 0.0
+	var label_font: Font = host.app_bold_font if host.app_bold_font != null else ThemeDB.fallback_font
+	for tool in tools:
+		label_width = maxf(label_width, label_font.get_string_size(str(tool.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 48).x)
+	# Fit the longest label, its stroke, the icon, and the two trailing controls.
+	var panel_width := minf(ceilf(label_width) + 308.0, viewport_size.x - 48.0)
+	var panel_height := padding * 2.0 + tools.size() * row_height + (tools.size() - 1) * row_gap
+	var panel_left := clampf(circle_rect.end.x - panel_width, 24.0, viewport_size.x - panel_width - 24.0)
+	var panel_top := circle_rect.end.y + 16.0
+	var canvas := CanvasLayer.new()
 	canvas.name = "FishingToolWalletCanvas"
 	canvas.layer = 120
 	host.add_child(canvas)
 	fishing_tool_wallet_canvas = canvas
-	var popup = Panel.new()
+	var popup := Panel.new()
 	popup.name = "FishingToolPopupWallet"
 	popup.position = Vector2(panel_left, panel_top)
 	popup.size = Vector2(panel_width, panel_height)
-	popup.custom_minimum_size = Vector2(panel_width, panel_height)
-	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.clip_contents = false
-	popup.pivot_offset = Vector2(panel_width * 0.5, 0.0)
-	popup.scale = Vector2(0.88, 0.18)
-	popup.modulate = Color(1, 1, 1, 0)
-	popup.add_theme_stylebox_override("panel", _fishing_tool_wallet_popup_style(Vector2(panel_width, panel_height)))
+	popup.custom_minimum_size = popup.size
+	popup.set_meta("wallet_base_rect", Rect2(popup.position, popup.size))
+	popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	popup.clip_contents = true
+	popup.add_theme_stylebox_override("panel", _fishing_tool_wallet_popup_style(popup.size))
 	canvas.add_child(popup)
 	fishing_tool_wallet_popup = popup
-	var column = Control.new()
-	column.position = Vector2(panel_padding, panel_padding)
-	column.size = Vector2(panel_width - panel_padding * 2.0, panel_height - panel_padding * 2.0)
+	var column := Control.new()
+	# Keep this existing node name for wallet integrations; its layout is one column.
+	column.name = "ToolGrid"
+	column.position = Vector2(padding, padding)
+	column.size = popup.size - Vector2.ONE * padding * 2.0
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popup.add_child(column)
-	for index in range(visible_wallet_tools.size()):
-		var tool = visible_wallet_tools[index] as Dictionary
-		var tool_id = str(tool.get("id", ""))
-		var unlocked = host.fishing_runtime.tool_is_unlocked(tool_id)
-		var equipped = tool_id == host.fishing_runtime.equipped_tool_id
-		var button = Button.new()
-		button.name = "FishingToolPopupButton%s" % str(index)
+	for index in range(tools.size()):
+		var tool: Dictionary = tools[index]
+		var tool_id := str(tool.id)
+		var unlocked: bool = host.fishing_runtime.tool_is_unlocked(tool_id)
+		var equipped: bool = tool_id == host.fishing_runtime.equipped_tool_id
+		var button := Button.new()
+		button.name = "FishingToolPopupButton%s" % index
 		button.set_meta("tool_id", tool_id)
 		button.set_meta("tool_unlocked", unlocked)
-		button.custom_minimum_size = Vector2(gear_button_size, gear_button_size)
-		button.size = Vector2(gear_button_size, gear_button_size)
-		var grid_column = index % column_count
-		var grid_row = int(floor(float(index) / float(column_count)))
-		var target_y = float(grid_row) * (gear_button_size + gear_gap)
-		button.position.x = float(grid_column) * (gear_button_size + gear_gap)
-		button.position.y = target_y
-		button.set_meta("wallet_target_y", target_y)
+		button.size = Vector2(column.size.x, row_height)
+		button.position.y = index * (row_height + row_gap)
 		button.clip_contents = true
-		button.text = ""
-		button.disabled = false
 		button.focus_mode = Control.FOCUS_NONE
-		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		button.modulate = Color(1, 1, 1, 0)
-		button.position.y -= gear_button_size * 0.10
-		button.add_theme_stylebox_override("normal", _fishing_tool_circle_button_style(equipped, unlocked))
-		button.add_theme_stylebox_override("hover", _fishing_tool_circle_button_style(equipped, unlocked))
+		for state in ["normal", "hover", "focus"]:
+			button.add_theme_stylebox_override(state, _fishing_tool_circle_button_style(equipped, unlocked))
 		button.add_theme_stylebox_override("pressed", _fishing_tool_circle_button_style(equipped, unlocked, true))
-		button.add_theme_stylebox_override("disabled", _fishing_tool_circle_button_style(equipped, false))
 		_connect_fishing_button(button, _on_native_fishing_tool_selected.bind(button, tool_id))
 		column.add_child(button)
-		var icon_size = Vector2(gear_button_size * 0.66, gear_button_size * 0.66)
-		var icon = host.visual_texture_cache._image_from_texture(_fishing_tool_icon_texture(tool_id), icon_size, str(tool.get("art", "")))
-		icon.set_anchors_preset(Control.PRESET_CENTER)
-		icon.offset_left = -icon_size.x * 0.5
-		icon.offset_right = icon_size.x * 0.5
-		icon.offset_top = -icon_size.y * 0.5
-		icon.offset_bottom = icon_size.y * 0.5
-		icon.size = icon_size
-		icon.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
+		var icon: TextureRect = host.visual_texture_cache._image_from_texture(_fishing_tool_icon_texture(tool_id), Vector2(84, 84), str(tool.art))
+		icon.position = Vector2(12, 10)
+		icon.size = Vector2(84, 84)
+		icon.modulate.a = 1.0 if unlocked else 0.45
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(icon)
-	popup.show()
-	var tween = host.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(popup, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(popup, "modulate:a", 1.0, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	for index in range(column.get_child_count()):
-		var button = column.get_child(index) as Control
-		if button == null:
-			continue
-		var delay = 0.025 * float(index)
-		tween.tween_property(button, "position:y", float(button.get_meta("wallet_target_y", 0.0)), 0.15).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(button, "modulate:a", 1.0, 0.08).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		var label: Label = host._label_on_light_panel(str(tool.name), 48, Color.WHITE if unlocked else Color("#d0d0ca"), HORIZONTAL_ALIGNMENT_LEFT)
+		label.add_theme_color_override("font_outline_color", Color.BLACK)
+		label.add_theme_constant_override("outline_size", 16)
+		label.position = Vector2(108, 18)
+		label.size = Vector2(column.size.x - 260, 68)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(label)
+		if equipped:
+			var checkmark: Label = host._label_on_light_panel("✓", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+			checkmark.name = "EquippedIndicator"
+			checkmark.position = Vector2(column.size.x - 140, 18)
+			checkmark.size = Vector2(52, 68)
+			checkmark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			checkmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			button.add_child(checkmark)
+		elif not unlocked:
+			var lock: TextureRect = host.visual_texture_cache._image("res://assets/content/ui/unlock-padlock.png", Vector2(48, 52))
+			lock.name = "LockedIndicator"
+			lock.position = Vector2(column.size.x - 138, 26)
+			lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			button.add_child(lock)
+		var info := Button.new()
+		info.name = "FishingToolInformation"
+		info.text = "i"
+		info.size = Vector2(64, 64)
+		info.position = Vector2(column.size.x - 76, 20)
+		info.add_theme_font_size_override("font_size", 42)
+		host._skill_detail_surface()._apply_info_symbol_button_text_color(info)
+		var info_style := StyleBoxFlat.new()
+		info_style.bg_color = Color("#fffdf8")
+		info_style.border_color = host.COLOR_INK
+		info_style.set_border_width_all(4)
+		info_style.set_corner_radius_all(16)
+		for state in ["normal", "hover", "pressed", "focus"]:
+			info.add_theme_stylebox_override(state, info_style)
+		info.add_to_group("feedback_help_buttons")
+		info.pressed.connect(_toggle_fishing_tool_information.bind(tool_id, str(tool.name), panel_height))
+		button.add_child(info)
+	popup.modulate.a = 0.0
+	var tween: Tween = host.create_tween()
+	tween.tween_property(popup, "modulate:a", 1.0, 0.12)
 
 func _clear_fishing_tool_circle_menu() -> void:
 	fishing_tool_wallet_open = false
@@ -1307,42 +1326,26 @@ func _refresh_fish_circle_currency_only() -> void:
 	host._skill_detail_surface().detail_fish_circle.set_fish_count(host.fishing_runtime.fish_currency, GameFormatting.compact_number(maxf(0.0, host.fishing_runtime.fish_currency), 3), true)
 
 
-func _fishing_tool_wallet_popup_style(panel_size: Vector2) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("#e8fbf6", 0.95)
-	style.border_color = Color("#168f83")
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
-	var corner = int(panel_size.x * 0.5)
-	style.corner_radius_top_left = corner
-	style.corner_radius_top_right = corner
-	style.corner_radius_bottom_left = corner
-	style.corner_radius_bottom_right = corner
-	style.shadow_color = Color(0, 0, 0, 0.2)
-	style.shadow_size = 5
-	style.shadow_offset = Vector2(2, 3)
+func _fishing_tool_wallet_popup_style(_panel_size: Vector2) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#f6f0e4")
+	style.border_color = host.COLOR_INK
+	style.set_border_width_all(6)
+	style.set_corner_radius_all(24)
+	style.shadow_color = Color(0, 0, 0, 0.20)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 6)
 	return style
 
 
 func _fishing_tool_circle_button_style(equipped: bool, unlocked: bool, pressed = false) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("#e8f7f6") if equipped else (Color("#fffdf8") if unlocked else Color("#cfcac0"))
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#b8e8df") if equipped else (Color("#fffdf8") if unlocked else Color("#e1dfd7"))
 	if pressed:
 		style.bg_color = style.bg_color.darkened(0.08)
-	style.border_color = host.COLOR_GOLD if equipped else (host.COLOR_INK if unlocked else host.COLOR_MUTED)
-	style.border_width_left = 4 if equipped else 5
-	style.border_width_top = 4 if equipped else 5
-	style.border_width_right = 4 if equipped else 5
-	style.border_width_bottom = 4 if equipped else 5
-	style.corner_radius_top_left = 499.5
-	style.corner_radius_top_right = 499.5
-	style.corner_radius_bottom_left = 499.5
-	style.corner_radius_bottom_right = 499.5
-	style.shadow_color = Color(0, 0, 0, 0.22) if unlocked else Color.TRANSPARENT
-	style.shadow_size = 3 if unlocked else 0
-	style.shadow_offset = Vector2(1.5, 2.5) if unlocked else Vector2.ZERO
+	style.border_color = host.COLOR_INK if equipped else Color("#777d74")
+	style.set_border_width_all(5 if equipped else 3)
+	style.set_corner_radius_all(16)
 	return style
 
 
@@ -1606,7 +1609,7 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 			"placeholder": null,
 			"direct_stack_child": false
 		})
-	return plan
+	return host._project_runtime().decorate_plan(plan, skill_id, SkillDetailSurface.DETAIL_LAZY_STACK_SEPARATION)
 
 
 func render_area_modules_into_stack(stack: VBoxContainer, content_width: float) -> void:
@@ -2018,6 +2021,16 @@ func _update_fishing_active_tool_animation(area_card: Dictionary, running: bool,
 	var art = area_card.get("active_tool_art") as TextureRect
 	if layer == null or art == null or not is_instance_valid(layer) or not is_instance_valid(art):
 		return
+	# The animation belongs in the open water between location tiles and stats.
+	# Use their laid-out bounds so desktop columns and portrait share the layout.
+	var methods := area_card.get("method_row") as Control
+	var stats := area_card.get("stat_column") as Control
+	var pop := area_card.get("pop") as Control
+	if is_instance_valid(methods) and is_instance_valid(stats) and is_instance_valid(pop):
+		var open_left := methods.get_global_rect().end.x - pop.global_position.x + 12.0
+		var open_right := stats.global_position.x - pop.global_position.x - 12.0
+		var center := (open_left + open_right) * 0.5
+		layer.position.x = center - FISHING_ACTIVE_TOOL_LAYER_SIZE.x + FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH * 0.5
 	var active_here = running and _fishing_area_card_owns_action(area_card, host.running_action_id)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(layer, active_here)
 	if not active_here:
@@ -3088,6 +3101,7 @@ func _fishing_area_module_layout(pop_card: Control, skill_id: String) -> Diction
 	top_row.add_child(stat_slot)
 
 	var stat_column := VBoxContainer.new()
+	stat_column.z_index = FISHING_FLUID_STRIP_Z_INDEX + 1
 	stat_column.add_theme_constant_override("separation", FISHING_AREA_STAT_COLUMN_SEPARATION)
 	stat_column.size_flags_horizontal = Control.SIZE_SHRINK_END
 	stat_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -3098,10 +3112,12 @@ func _fishing_area_module_layout(pop_card: Control, skill_id: String) -> Diction
 	var xp_side = skill_detail_surface._action_stat_label("")
 	var xp_box = skill_detail_surface._action_stat_box(xp_side, false, skill_id, "", "xp")
 	_configure_fishing_area_stat_box(xp_box, xp_side)
+	(xp_side.get_meta("stat_title_label") as Label).hide()
 	stat_column.add_child(xp_box)
 	var yield_side = skill_detail_surface._action_stat_label("")
 	var yield_box = skill_detail_surface._action_stat_box(yield_side, false, skill_id, "", "yield")
 	_configure_fishing_area_stat_box(yield_box, yield_side)
+	(yield_side.get_meta("stat_title_label") as Label).hide()
 	stat_column.add_child(yield_box)
 	stat_column.modulate.a = 0.0
 	return {"method_slot": method_slot, "method_row": method_row, "stat_column": stat_column, "area_xp": xp_side, "area_yield": yield_side, "stat_boxes": {"xp": xp_box, "yield": yield_box}}
@@ -3109,6 +3125,19 @@ func _fishing_area_module_layout(pop_card: Control, skill_id: String) -> Diction
 
 func _configure_fishing_area_stat_box(box: Control, value_label: Label) -> void:
 	box.custom_minimum_size = FISHING_AREA_STAT_BOX_SIZE
+	var style := StyleBoxFlat.new()
+	style.bg_color = ThemeStyles.skill_theme_color("fishing", host.COLOR_BLUE)
+	style.border_color = host.COLOR_INK
+	style.set_border_width_all(6)
+	style.set_corner_radius_all(16)
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	box.add_theme_stylebox_override("panel", style)
+	box.set_meta("fishing_area_stat_style", style)
+	value_label.set_meta("normal_activity_stat_text", true)
+	value_label.add_theme_color_override("font_color", Color.WHITE)
+	value_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
+	value_label.add_theme_constant_override("outline_size", 16)
 	value_label.add_theme_font_size_override("font_size", FISHING_AREA_STAT_FONT_SIZE)
 	var title_label := value_label.get_meta("stat_title_label") as Label
 	if title_label != null:
@@ -3672,18 +3701,18 @@ func _apply_fishing_area_selection(area_card: Dictionary, action_id: String, ins
 	var xp_label := area_card.get("area_xp") as Label
 	if xp_label != null:
 		if warning_text.is_empty():
-			host._skill_detail_surface()._sync_action_stat_chip_title(xp_label, "XP")
+			host._skill_detail_surface()._sync_action_stat_chip_title(xp_label, "")
 			host._skill_detail_surface()._sync_action_stat_chip_label_style(xp_label, host._skill_swipe_activity_surface()._action_stat_chip_buffed(skill_id, action, "xp"), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		else:
 			host._skill_detail_surface()._sync_action_stat_chip_label_style(xp_label, false, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 			xp_label.add_theme_color_override("font_color", Color("#b82121"))
-			xp_label.add_theme_constant_override("outline_size", 0)
+			xp_label.add_theme_constant_override("outline_size", 16)
 			host._skill_detail_surface()._sync_action_stat_chip_title(xp_label, "")
-		host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, xp_text)
+		host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, xp_text + " XP" if warning_text.is_empty() else warning_text)
 	var yield_label := area_card.get("area_yield") as Label
 	if yield_label != null:
-		host._skill_detail_surface()._sync_action_stat_chip_title(yield_label, yield_title)
-		host._app_lifecycle_runtime().set_label_text_if_changed(yield_label, yield_text)
+		host._skill_detail_surface()._sync_action_stat_chip_title(yield_label, "")
+		host._app_lifecycle_runtime().set_label_text_if_changed(yield_label, yield_text + " fish" if yield_title == "FISH" else yield_text)
 	var warning_label := area_card.get("area_warning") as Label
 	if warning_label != null:
 		host._app_lifecycle_runtime().set_label_text_if_changed(warning_label, warning_text)
@@ -4413,12 +4442,14 @@ func _fishing_offer_unlock_level(offer_id: String) -> int:
 			return FishingState.FISHING_MIRROR_OFFER_UNLOCK_LEVEL
 	return 999999
 
-func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outline_size: int) -> void:
+func _configure_fishing_equipment_offer_title(title: Label) -> void:
 	if title == null:
 		return
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", outline_size)
-	title.add_theme_font_size_override("font_size", font_size)
+	title.add_theme_constant_override("outline_size", 16)
+	title.add_theme_font_size_override("font_size", 52)
+	if host.app_bold_font != null:
+		title.add_theme_font_override("font", host.app_bold_font)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -4428,8 +4459,8 @@ func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outl
 	title.anchor_bottom = 0.0
 	title.offset_left = FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
 	title.offset_right = -FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
-	title.offset_top = 14
-	title.offset_bottom = 79
+	title.offset_top = 24
+	title.offset_bottom = 104
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# The mirror offer's title came out with offset_right rewritten to +896 (twice the card
 	# width), which pushed "Reflection mirror" off the right edge. Keep the insets pinned.
@@ -4501,19 +4532,21 @@ func _fishing_full_offer_button(pop_card: Control, root: Control, offer_id: Stri
 	_register_fishing_offer_button(button, root, pop_card, offer_id)
 	return button
 
-func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool, outline_size := 10, offset_top := -78.0, offset_bottom := -17.0, vertical_alignment := VERTICAL_ALIGNMENT_TOP) -> Label:
-	var hint: Label = host._label(hint_text, 52, Color.WHITE if available else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool) -> Label:
+	var hint: Label = host._label(hint_text, 48, Color.WHITE if available else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	if host.app_bold_font != null:
+		hint.add_theme_font_override("font", host.app_bold_font)
 	hint.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	hint.add_theme_constant_override("outline_size", outline_size)
+	hint.add_theme_constant_override("outline_size", 16)
 	hint.anchor_left = 0.0
 	hint.anchor_right = 1.0
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
-	hint.offset_left = 24
-	hint.offset_right = -24
-	hint.offset_top = offset_top
-	hint.offset_bottom = offset_bottom
-	hint.vertical_alignment = vertical_alignment
+	hint.offset_left = 52
+	hint.offset_right = -52
+	hint.offset_top = -92
+	hint.offset_bottom = -24
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(hint)
 	return hint
@@ -4527,21 +4560,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	var pop_card := shell.get("pop") as Control
 
 	var title: Label = host._label("You find an old net on the beach", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", 12)
-	title.anchor_left = 0.0
-	title.anchor_right = 1.0
-	title.anchor_top = 0.0
-	title.anchor_bottom = 0.0
-	title.offset_left = 24
-	title.offset_right = -24
-	title.offset_top = 6
-	title.offset_bottom = 94
-	title.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_fishing_equipment_offer_title(title)
 	pop_card.add_child(title)
 
 	var net_button := _fishing_full_offer_button(pop_card, root, "net")
@@ -4553,8 +4572,8 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_motion_root.anchor_bottom = 0.5
 	net_motion_root.offset_left = -129.25
 	net_motion_root.offset_right = 129.25
-	net_motion_root.offset_top = -72.25
-	net_motion_root.offset_bottom = 109.25
+	net_motion_root.offset_top = -82.25
+	net_motion_root.offset_bottom = 99.25
 	net_motion_root.custom_minimum_size = Vector2(258.5, 181.5)
 	net_motion_root.size = Vector2(258.5, 181.5)
 	net_motion_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4572,7 +4591,8 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_motion_root.add_child(net_art)
 	_start_fishing_net_offer_idle_motion(net_motion_root)
 	net_button.set_meta("fishing_net_art_id", net_motion_root.get_instance_id())
-	_fishing_offer_hint(pop_card, "Tap the net", true, 7, -66.0, -24.0, VERTICAL_ALIGNMENT_CENTER)
+	var net_hint := _fishing_offer_hint(pop_card, "Tap the net", true)
+	net_hint.add_theme_color_override("font_color", Color("#ffd95a"))
 
 	return root
 
@@ -4585,7 +4605,7 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	var pop_card := shell.get("pop") as Control
 
 	var title: Label = host._label("Bamboo rod", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 60, 12)
+	_configure_fishing_equipment_offer_title(title)
 	pop_card.add_child(title)
 
 	var rod_button := _fishing_full_offer_button(pop_card, root, "rod")
@@ -4614,7 +4634,7 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	var pop_card := shell.get("pop") as Control
 
 	var title: Label = host._label("Reflection mirror", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 60, 12)
+	_configure_fishing_equipment_offer_title(title)
 	pop_card.add_child(title)
 
 	var mirror_button := _fishing_full_offer_button(pop_card, root, "mirror")
@@ -4649,7 +4669,7 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	var pop_card := shell.get("pop") as Control
 
 	var title: Label = host._label(_fishing_rod_upgrade_title(tool_id), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 60, 12)
+	_configure_fishing_equipment_offer_title(title)
 	pop_card.add_child(title)
 
 	var upgrade_button := _fishing_full_offer_button(pop_card, root, tool_id)
@@ -4679,7 +4699,7 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	var pop_card := shell.get("pop") as Control
 
 	var title: Label = host._label("Build boat", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 60, 12)
+	_configure_fishing_equipment_offer_title(title)
 	pop_card.add_child(title)
 
 	var boat_button := _fishing_full_offer_button(pop_card, root, "boat")
@@ -4848,7 +4868,10 @@ func _start_fishing_net_offer_idle_motion(net_root: Control) -> void:
 		return
 	net_root.pivot_offset = net_root.size * 0.5
 	var base_position := net_root.position
-	var tween: Tween = host.create_tween()
+	host._app_lifecycle_runtime()._kill_meta_tween(net_root, "fishing_net_offer_idle_tween")
+	# The offer owns this infinite animation. Freeing or detaching the offer
+	# must stop it instead of retaining callbacks on the permanent game node.
+	var tween: Tween = net_root.create_tween()
 	tween.set_loops()
 	tween.tween_method(_apply_fishing_net_offer_idle_frame.bind(net_root.get_instance_id(), base_position), 0.0, 1.0, 2.90).set_trans(Tween.TRANS_LINEAR)
 	net_root.set_meta("fishing_net_offer_idle_tween", tween)
@@ -5029,3 +5052,75 @@ func _apply_fishing_offer_collected_height(value: float, root_id: int) -> void:
 	var parent := root.get_parent() as Container
 	if parent != null:
 		parent.queue_sort()
+
+func _toggle_fishing_tool_information(tool_id: String, tool_name: String, base_height: float) -> void:
+	var popup := fishing_tool_wallet_popup
+	if not is_instance_valid(popup):
+		return
+	var old := popup.get_node_or_null("FishingToolDetails")
+	if old != null:
+		var same: bool = str(old.get_meta("tool_id", "")) == tool_id
+		popup.remove_child(old)
+		old.queue_free()
+		popup.size.y = base_height
+		popup.add_theme_stylebox_override("panel", _fishing_tool_wallet_popup_style(popup.size))
+		if same:
+			_resize_fishing_tool_information(popup, false)
+			return
+	_resize_fishing_tool_information(popup, true)
+	var details := VBoxContainer.new()
+	details.name = "FishingToolDetails"
+	details.set_meta("tool_id", tool_id)
+	details.position = Vector2(20, base_height)
+	details.size.x = popup.size.x - 40
+	details.add_theme_constant_override("separation", 10)
+	details.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup.add_child(details)
+	var title := host._label_on_light_panel(tool_name, 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	title.add_theme_color_override("font_outline_color", Color.BLACK)
+	title.add_theme_constant_override("outline_size", 16)
+	details.add_child(title)
+	var body := host._label_on_light_panel(_fishing_tool_information(tool_id), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	body.add_theme_color_override("font_outline_color", Color.BLACK)
+	body.add_theme_constant_override("outline_size", 16)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size.x = popup.size.x - 40
+	details.add_child(body)
+	details.reset_size()
+	popup.size.y = base_height + details.get_combined_minimum_size().y + 20
+	var safe_bottom: float = host.get_viewport_rect().size.y - preload("res://scripts/ui/navigation_shell.gd").BOTTOM_NAV_HEIGHT - preload("res://scripts/ui/profile_chat_overlay_surface.gd").CHAT_STRIP_HEIGHT - 24.0
+	popup.position.y = minf(popup.position.y, maxf(24.0, safe_bottom - popup.size.y))
+	var style := _fishing_tool_wallet_popup_style(popup.size)
+	style.set_corner_radius_all(24)
+	style.bg_color.a = 1.0
+	popup.add_theme_stylebox_override("panel", style)
+
+
+func _resize_fishing_tool_information(popup: Control, expanded: bool) -> void:
+	var base: Rect2 = popup.get_meta("wallet_base_rect", Rect2(popup.position, popup.size))
+	popup.size.x = base.size.x
+	popup.position = base.position
+	if not expanded:
+		popup.add_theme_stylebox_override("panel", _fishing_tool_wallet_popup_style(popup.size))
+
+
+func _fishing_tool_information(tool_id: String) -> String:
+	var detail := ""
+	match tool_id:
+		"hands":
+			detail = "Catch fish one at a time. Most reliable in the Shallows."
+		"net":
+			detail = "Fast, less reliable catches. Collect fish when the net is full."
+		"line":
+			detail = "Twice the XP per catch as hands, but slower."
+		"reinforced_rod":
+			detail = "More XP, faster catches and better odds than the Bamboo rod."
+		"star_rod":
+			detail = "More XP, faster catches and better odds than the Reinforced rod."
+		"boat":
+			detail = "Collects a large batch of fish before bringing the catch ashore."
+		"mirror":
+			detail = "Catches space fish for high XP. In other areas it earns XP without catching fish."
+	if FishingState.is_rod(tool_id) or tool_id == "boat":
+		detail += "\nWorks poorly at the Rocks."
+	return detail + "\n\nTools do not affect Practice Pool."

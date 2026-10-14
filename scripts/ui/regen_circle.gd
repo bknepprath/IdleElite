@@ -55,6 +55,8 @@ var regen_unfill_start_value := 0.0
 var regen_unfill_elapsed := 0.0
 var readout_font: Font
 static var denominator_symbol: Texture2D
+static var candy_swirl: Texture2D
+var candy_overfilled := false
 var _glass_bowl_texture: ImageTexture
 var _glass_bowl_cached_size := Vector2.ZERO
 var _pop_tween: Tween
@@ -74,6 +76,10 @@ func sync_for_skill(host, skill_id: String, instant := false) -> void:
 	var stamina_value: int = SkillState.host_stamina_int(skill_id, host)
 	var stamina_decimal_fraction: float = SkillState.stamina_fraction(host.stamina, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
 	var circle_value: float = SkillState.stamina_regen_fraction(host.stamina, host.stamina_bank, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
+	var overfilled := SkillState.host_stamina_value(skill_id, host) > float(maximum)
+	if candy_overfilled != overfilled:
+		candy_overfilled = overfilled
+		queue_redraw()
 	set_dark_mode(host.dark_mode_enabled)
 	set_theme_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 	set_regen_ring_color(_regen_ring_color(host, skill_id), instant)
@@ -359,7 +365,7 @@ func set_dark_mode(enabled: bool) -> void:
 func set_stamina(next_current: int, next_maximum: int, instant := false, regen_fraction := 0.0) -> void:
 	var next_current_clamped := maxi(0, next_current)
 	var next_maximum_clamped := maxi(1, next_maximum)
-	var next_target_current := clampf(float(next_current_clamped) + clampf(regen_fraction, 0.0, 1.0), 0.0, float(next_maximum_clamped))
+	var next_target_current := clampf(float(next_current_clamped) + clampf(regen_fraction, 0.0, 1.0), 0.0, float(next_maximum_clamped) + 15.0)
 	if (
 		stamina_initialized
 		and current == next_current_clamped
@@ -433,6 +439,18 @@ func _draw_inner_fill(center: Vector2, radius: float, draw_scale: float) -> void
 	if pct <= VALUE_EPSILON:
 		return
 	var fill_radius := maxf(1.0, radius - LIQUID_EDGE_INSET_SCALE * draw_scale)
+	if candy_overfilled:
+		if candy_swirl == null: candy_swirl = load("res://assets/content/events/halloween/swirl.tres")
+		var points := PackedVector2Array()
+		var uvs := PackedVector2Array()
+		var atlas := candy_swirl as AtlasTexture
+		# Authored source rectangle; circular geometry clips the generated fill.
+		for index in range(64):
+			var direction := Vector2.from_angle(TAU * float(index) / 64.0)
+			points.append(center + direction * fill_radius)
+			uvs.append((atlas.region.get_center() + direction * atlas.region.size * 0.5) / atlas.atlas.get_size())
+		draw_polygon(points, PackedColorArray([Color.WHITE]), uvs, atlas.atlas)
+		return
 	if pct >= 0.995:
 		_draw_full_liquid_sphere(center, fill_radius)
 		return
@@ -553,12 +571,12 @@ func _readout_denominator_color() -> Color:
 	return Color.WHITE if dark_mode else Color(0, 0, 0, 0.8)
 
 func _stamina_display_number_parts() -> Dictionary:
-	var display_value := clampf(displayed_current, 0.0, float(maximum))
-	var shown_current := clampi(int(floor(display_value)), 0, maximum)
+	var display_value := clampf(displayed_current, 0.0, float(maximum) + 15.0)
+	var shown_current := clampi(int(floor(display_value)), 0, maximum + 15)
 	if not show_decimal:
 		return {"main": str(shown_current), "suffix": ""}
 	if shown_current >= maximum:
-		return {"main": str(maximum), "suffix": ""}
+		return {"main": str(shown_current), "suffix": ""}
 	var decimal_digit := clampi(int(floor((display_value - float(shown_current)) * 10.0 + 0.0001)), 0, 9)
 	return {
 		"main": str(shown_current),

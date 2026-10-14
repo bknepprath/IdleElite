@@ -140,6 +140,9 @@ func build() -> void:
 
 
 func _route_tutorial_panel_input(event: InputEvent) -> bool:
+	# Chat sits above the tutorial; its composer and Back button own these clicks.
+	if host._profile_chat_overlay_surface().chat_overlay_visible():
+		return false
 	if blocking_tip_pointer_capture_active and not blocking_tip_active:
 		_clear_blocking_tip_pointer_capture()
 	if not host._onboarding_runtime().tutorial_active and not blocking_tip_active:
@@ -242,6 +245,12 @@ func _sync_tutorial_arrow() -> void:
 		_stop_tutorial_arrow_float()
 		return
 	var target := _tutorial_target_control()
+	# Keep the desktop skill header clear; the instruction belongs to the card.
+	if host.desktop_layout.enabled() and host._onboarding_runtime().tutorial_active and blocking_tip_group.is_empty():
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(tutorial_arrow, false)
+		_stop_tutorial_arrow_float()
+		_sync_tutorial_instruction_label(target)
+		return
 	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(tutorial_arrow, false)
 		_sync_tutorial_instruction_label(null)
@@ -311,6 +320,11 @@ func _sync_tutorial_instruction_label(target: Control) -> void:
 	tutorial_instruction_label.size = Vector2(1000, 75)
 	var target_rect := _blocking_tip_target_rect(target)
 	var viewport_size: Vector2 = host.get_viewport().get_visible_rect().size
+	if host.desktop_layout.enabled():
+		tutorial_instruction_label.text = "Click Push-Ups to start training."
+		tutorial_instruction_label.size.x = target_rect.size.x
+		tutorial_instruction_label.position = Vector2(target_rect.position.x, target_rect.end.y + 36.0)
+		return
 	var label_y := 92.0
 	if blocking_tip_group.is_empty() and target_rect.position.y < viewport_size.y * 0.34:
 		label_y = clampf(target_rect.end.y + 52.0, 92.0, viewport_size.y - tutorial_instruction_label.size.y - 92.0)
@@ -671,6 +685,7 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_to_group(group_name)
+	root.set_meta("tip_skill_id", host.selected_skill_id)
 	root.visible = false
 	if not bool(host._skill_swipe_activity_surface()._adjacent_pages().neighbour_render_active):
 		call_deferred("_show_blocking_tip_for_note", root, text, group_name, target)
@@ -681,6 +696,10 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 # the page the player is looking at may raise the blocking tip; otherwise an off-screen
 # page's tip swallowed input (including the release of a swipe) and floated over other screens.
 func _show_blocking_tip_for_note(note: Control, text: String, group_name: String, target: Control = null) -> void:
+	var seen_property := group_name.trim_suffix("_notes") + "_seen"
+	if group_name in ["activity_start_tip_notes", "lock_click_tip_notes", "silver_opportunity_tip_notes", "passive_module_tip_notes"]:
+		if bool(host._onboarding_runtime().get(seen_property)):
+			return
 	if note == null or not is_instance_valid(note) or not note.is_inside_tree():
 		return
 	if host.current_screen != "skill":
@@ -690,6 +709,8 @@ func _show_blocking_tip_for_note(note: Control, text: String, group_name: String
 		if node is Control and (node as Control).has_meta("adjacent_skill_page"):
 			return
 		node = node.get_parent()
+	if host.desktop_layout.enabled() and str(note.get_meta("tip_skill_id", "")) != host.selected_skill_id:
+		return
 	show_blocking_tip(text, group_name, target)
 
 
@@ -734,7 +755,7 @@ func _apply_onboarding_fight_header_visibility() -> void:
 
 
 func _apply_tutorial_starter_intro_header_visibility() -> void:
-	var intro_active: bool = host._onboarding_runtime()._tutorial_starter_only_detail_active(host.selected_skill_id)
+	var intro_active: bool = host._onboarding_runtime()._tutorial_starter_only_detail_active(host.selected_skill_id) and not host.desktop_layout.enabled()
 	if host._skill_detail_surface().detail_header_left_block != null and is_instance_valid(host._skill_detail_surface().detail_header_left_block):
 		host._skill_detail_surface().detail_header_left_block.visible = not intro_active
 	if host._skill_detail_surface().detail_xp_label != null and is_instance_valid(host._skill_detail_surface().detail_xp_label):

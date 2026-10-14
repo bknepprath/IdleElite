@@ -1,5 +1,7 @@
 extends RefCounted
 
+signal berry_amount_changed
+
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const LOG_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/log-currency.png"
 const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood.png"
@@ -10,7 +12,7 @@ const BERRIES_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/berries.
 const MAT_COLLECTION_STONE_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-stone.png"
 const MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-wood.png"
 const BUILD_REQUIRED_PLANK_PIECE_TEXTURES := [
-	"res://assets/content/ui/build-required-wide-plank.png"
+	"res://assets/content/ui/build-required-plaque.png"
 ]
 const PLANK_ICON_TEXTURE := "res://assets/content/icons/resources/plank.png"
 const UPGRADE_ARROW_ICON_TEXTURE := "res://assets/content/icons/upgrades/upgrade-arrow.png"
@@ -55,6 +57,7 @@ const MAT_COLLECTION_DEFS := {
 }
 
 var wallet := {}
+var wisdom_by_skill: Dictionary = {}
 var legacy_softwood_amount := 0
 var berry_prep := {}
 
@@ -103,7 +106,10 @@ func set_amount(mat_id: String, new_amount: float) -> void:
 	if not MAT_COLLECTION_DEFS.has(normalized):
 		return
 	var safe_amount := rounded_amount(normalized, new_amount)
+	var changed := amount(normalized) != safe_amount
 	wallet[normalized] = safe_amount
+	if normalized == "berries" and changed:
+		berry_amount_changed.emit()
 	if normalized == "softwood":
 		legacy_softwood_amount = int(floor(safe_amount + 0.0001))
 
@@ -145,6 +151,7 @@ func save_wallet() -> Dictionary:
 	return saved
 
 func restore_wallet(data: Dictionary) -> void:
+	wisdom_by_skill = preload("res://scripts/progression/wisdom_state.gd").normalize_balances(data.get("wisdom", {}))
 	wallet = {}
 	legacy_softwood_amount = 0
 	var loaded = data.get("mats", {})
@@ -171,7 +178,7 @@ func woodcutting_log_collection_multiplier(woodcutting_level: int) -> float:
 	return 1.0 + maxf(0.0, float(woodcutting_level)) / 100.0
 
 func buffed_log_collection_amount_for_host(mat_id: String, amount: float, host) -> float:
-	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(SkillState.host_skill_level(host, "woodcutting")))
+	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(SkillState.host_skill_level(host, "woodcutting")) * host._hub_runtime().wood_collection_multiplier())
 
 func berry_prep_target_key(skill_id: String, action_id: String, action_lookup: Callable, action_key: Callable) -> String:
 	if skill_id.is_empty() or action_id.is_empty():

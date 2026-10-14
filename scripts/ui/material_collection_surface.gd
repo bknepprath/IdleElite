@@ -5,6 +5,7 @@ const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
+const BerryFlash = preload("res://scripts/ui/berry_flash.gdshader")
 
 const BERRY_MODE_BORDER_TEXTURE := "res://assets/content/ui/berry-mode-borders-1080p.png"
 const MAT_COLLECTION_MODULE_SIZE := Vector2(377, 377)
@@ -18,10 +19,12 @@ const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
 var host
 var berry_mode_enabled := false
 var berry_mode_overlay: Control
+var berry_badge_sync_pending := false
 
 
 func _init(host_ref) -> void:
 	host = host_ref
+	host.material_runtime.berry_amount_changed.connect(queue_berry_prep_badge_sync)
 
 
 func layout_height_for_action(skill_id: String, action: Dictionary, has_mat_rewards: bool, running_skill_id: String, running_action_id: String) -> float:
@@ -118,6 +121,18 @@ func attempt_apply_berry_prep(skill_id: String, action_id: String) -> void:
 	toggle_berry_mode()
 
 
+func queue_berry_prep_badge_sync() -> void:
+	if berry_badge_sync_pending:
+		return
+	berry_badge_sync_pending = true
+	call_deferred("_flush_berry_prep_badge_sync")
+
+
+func _flush_berry_prep_badge_sync() -> void:
+	berry_badge_sync_pending = false
+	sync_berry_prep_badges()
+
+
 func sync_berry_prep_badges() -> void:
 	if host == null or not is_instance_valid(host) or not host.is_inside_tree():
 		return
@@ -146,7 +161,11 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 	var selected: bool = host.material_runtime.berry_prep_matches(skill_id, action_id, Callable(host, "_action_data"), Callable(host, "_action_key"))
 	var badge := instance_from_id(int(xp_box.get_meta("berry_prep_xp_badge_id", 0))) as Sprite2D
 	var stroke := instance_from_id(int(xp_box.get_meta("berry_prep_xp_badge_stroke_id", 0))) as Sprite2D
+	var count := xp_box.get_node_or_null("BerryPrepCountAnchor/BerryPrepCount") as Label
 	if not selected:
+		if is_instance_valid(count):
+			count.get_parent().name = "RetiredBerryPrepCount"
+			count.get_parent().queue_free()
 		if badge != null and is_instance_valid(badge):
 			badge.queue_free()
 		if stroke != null and is_instance_valid(stroke):
@@ -166,16 +185,35 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 		badge.name = "BerryPrepXpChipBadge"
 		badge.texture = host.visual_texture_cache._texture_or_visual_fallback(host.material_runtime.icon_path("berries"))
 		badge.z_index = 1
+		var flash := ShaderMaterial.new()
+		flash.shader = BerryFlash
+		badge.material = flash
 		xp_box.add_child(badge)
 		xp_box.set_meta("berry_prep_xp_badge_id", badge.get_instance_id())
-	var badge_target_size := 69.0
+	if not is_instance_valid(count):
+		count = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		count.name = "BerryPrepCount"
+		count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		count.add_theme_color_override("font_outline_color", host.COLOR_INK)
+		count.add_theme_constant_override("outline_size", 8)
+		count.z_index = 2
+		var count_anchor := Node2D.new()
+		count_anchor.name = "BerryPrepCountAnchor"
+		xp_box.add_child(count_anchor)
+		count_anchor.add_child(count)
+	count.text = host.material_runtime.amount_text_for_host("berries")
+	var badge_target_size := maxf(96.0, count.get_minimum_size().x + 12.0)
 	if badge.texture != null:
 		var texture_size: Vector2 = badge.texture.get_size()
 		var texture_max: float = maxf(texture_size.x, texture_size.y)
 		var badge_scale := 1.0
 		if texture_max > 0.0:
 			badge_scale = badge_target_size / texture_max
-		badge.scale = Vector2.ONE * badge_scale
+		badge.set_meta("berry_base_scale", Vector2.ONE * badge_scale)
+		var feedback := (badge.get_meta("berry_feedback_tween") as Tween) if badge.has_meta("berry_feedback_tween") else null
+		if feedback == null or not feedback.is_running():
+			badge.scale = Vector2.ONE * badge_scale
 		stroke.texture = badge.texture
 		stroke.scale = Vector2.ONE * badge_scale * 1.08
 	var badge_position := Vector2(xp_box.size.x - 6.0, 5.0)
@@ -186,6 +224,9 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 		)
 	badge.position = badge_position
 	stroke.position = badge_position
+	count.size = Vector2(maxf(badge_target_size, count.get_minimum_size().x), badge_target_size)
+	(count.get_parent() as Node2D).position = badge_position
+	count.position = -count.size * 0.5 + Vector2(0, 6)
 
 
 func play_berry_prep_badge_feedback(skill_id: String, action_id: String, consumed: bool, out_of_berries: bool) -> void:
@@ -205,31 +246,44 @@ func play_berry_prep_badge_feedback(skill_id: String, action_id: String, consume
 			continue
 		if consumed:
 			_play_berry_badge_success(badge)
-		if out_of_berries:
-			if consumed:
-				tree.create_timer(0.34).timeout.connect(_play_berry_badge_fail_shake.bind(badge))
-			else:
-				_play_berry_badge_fail_shake(badge)
+		elif out_of_berries:
+			_play_berry_badge_fail_shake(badge)
+	queue_berry_prep_badge_sync()
+
+
+func _reset_berry_badge_feedback(badge: Sprite2D) -> void:
+	var previous := (badge.get_meta("berry_feedback_tween") as Tween) if badge.has_meta("berry_feedback_tween") else null
+	if previous != null and previous.is_valid():
+		previous.kill()
+	badge.rotation = 0.0
+	badge.modulate = Color.WHITE
+	badge.scale = badge.get_meta("berry_base_scale", badge.scale)
+	(badge.material as ShaderMaterial).set_shader_parameter("flash_amount", 0.0)
 
 
 func _play_berry_badge_success(badge: Sprite2D) -> void:
 	if badge == null or not is_instance_valid(badge):
 		return
-	badge.modulate = Color("#93ff9e")
+	_reset_berry_badge_feedback(badge)
+	var flash := badge.material as ShaderMaterial
+	flash.set_shader_parameter("flash_amount", 1.0)
 	var base_scale := badge.scale
-	var tween = host.create_tween()
+	var tween := badge.create_tween()
+	badge.set_meta("berry_feedback_tween", tween)
 	tween.set_parallel(true)
 	tween.tween_property(badge, "scale", base_scale * 1.12, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(badge, "modulate", Color.WHITE, 0.28)
+	tween.tween_property(flash, "shader_parameter/flash_amount", 0.0, 0.24).set_delay(0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tween.chain().tween_property(badge, "scale", base_scale, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _play_berry_badge_fail_shake(badge: Sprite2D) -> void:
 	if badge == null or not is_instance_valid(badge):
 		return
+	_reset_berry_badge_feedback(badge)
 	badge.modulate = Color("#ff8d8d")
 	badge.rotation_degrees = 0.0
-	var tween = host.create_tween()
+	var tween := badge.create_tween()
+	badge.set_meta("berry_feedback_tween", tween)
 	tween.tween_property(badge, "rotation_degrees", -5.0, 0.05)
 	tween.tween_property(badge, "rotation_degrees", 5.0, 0.05)
 	tween.tween_property(badge, "rotation_degrees", -4.0, 0.05)
@@ -619,6 +673,8 @@ func _mat_honey_info_popover() -> PanelContainer:
 func _mat_berry_info_button() -> Button:
 	var button = Button.new()
 	button.text = "i"
+	button.name = "BerryInformationButton"
+	button.add_to_group("feedback_help_buttons")
 	button.tooltip_text = ""
 	button.custom_minimum_size = Vector2(43, 43)
 	button.size = button.custom_minimum_size
@@ -636,12 +692,8 @@ func _mat_berry_info_button() -> Button:
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
 	host.button_press_runtime.attach_button_depress_animation(button, 0.90)
-	var popover = _mat_berry_info_popover()
-	button.add_child(popover)
-	host._passive_firepit_surface()._prewarm_passive_info_popover(popover)
-	button.pressed.connect(Callable(host._passive_firepit_surface(), "_toggle_passive_info_popover").bind(popover))
+	button.pressed.connect(func(): host._skill_detail_surface().show_activity_help_for_control(button, "berries"))
 	return button
-
 
 func _mat_berry_info_popover() -> PanelContainer:
 	var popover = PanelContainer.new()
@@ -910,6 +962,8 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	var card_root = card.get("root") as Control
 	var collapsed = card_root != null and is_instance_valid(card_root) and bool(card_root.get_meta("module_ui_collapsed_squeeze", false))
 	var visual_card_height = host._module_collapsed_squeeze_height() if collapsed else ActivityCardStyles.root_height(bool(card.get("bonus_expanded", false)), host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	if not collapsed and bool(card.get("bonus_expanded", false)) and is_instance_valid(card_root):
+		visual_card_height = card_root.custom_minimum_size.y
 	var target_height = visual_card_height + (MAT_COLLECTION_AREA_HEIGHT if running else 0.0)
 	_sync_mat_collection_row_position(card, visual_card_height)
 	var seed_layout = not bool(collection.get("layout_initialized", false)) or (running and not bool(collection.get("ever_visible", false)))
@@ -921,7 +975,7 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 		current_height = maxf(entry.custom_minimum_size.y, entry.size.y)
 	elif card_root != null and is_instance_valid(card_root):
 		current_height = maxf(card_root.custom_minimum_size.y, card_root.size.y)
-	if absf(current_height - target_height) > 0.5:
+	if absf(current_height - target_height) > 0.5 and not card.has("bonus_tween"):
 		host._app_lifecycle_runtime()._kill_meta_tween(card_root, "mat_collection_height_tween")
 		if instant or seed_layout or card_root == null or not is_instance_valid(card_root):
 			_apply_mat_collection_layout_height(target_height, entry_id, action_id)

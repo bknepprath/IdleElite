@@ -15,8 +15,9 @@ var completed_bosses := {}
 var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
 var blue_guy_health_bank := 0.0
 var parked_combat_stage: Control
-# Arena XP banked toward the next "completion" (mission tick + medal progress), per fight action.
+# Arena XP banked toward medal progress, per fight action.
 var arena_completion_xp_progress := {}
+var fighting_display_xp_remainder := 0.0
 var parked_combat_action_id := ""
 
 
@@ -270,12 +271,18 @@ func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) ->
 	host._audio_director()._play_chicken_death_sfx()
 	if amount <= 0:
 		return
+	if stage == null or not is_instance_valid(stage):
+		return
+	var action_id := str(stage.get_meta("combat_action_id", ""))
+	if host.running_skill_id != "fight" or host.running_action_id != action_id:
+		return
+	# A kill is one mission unit regardless of its XP reward or wave size.
+	host._hub_runtime().record_mission_action_completion("fight", action_id)
 	_award_fighting_xp(amount, stage)
 	_record_arena_completion_progress(amount)
 
 # Arena fights have no fixed completion, so every activity-XP's worth of kill XP
-# counts as one completion (the unit offline fighting uses): it ticks the mission
-# board and earns medal mastery like any other activity.
+# earns one completion of medal mastery. Mission progress is counted per kill.
 func _record_arena_completion_progress(amount: int) -> void:
 	var action_id: String = host.running_action_id
 	if host.running_skill_id != "fight" or not action_is_free_fighting_proto("fight", action_id):
@@ -285,13 +292,16 @@ func _record_arena_completion_progress(amount: int) -> void:
 	var banked := float(arena_completion_xp_progress.get(action_id, 0.0)) + float(amount)
 	while banked >= xp_per_completion:
 		banked -= xp_per_completion
-		host._hub_runtime().record_mission_action_completion("fight", action_id)
 		MasteryState.add_host_xp(host, "fight", action_id, MasteryState.reward_for_action(host, "fight", action_id, action))
 	arena_completion_xp_progress[action_id] = banked
 func _award_fighting_xp(amount: int, stage: Control) -> void:
 	if not host.skills.has("fight"):
 		host.skills["fight"] = {"xp": 0, "level": 1}
-	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount
+	# Preserve small per-enemy bonuses instead of rounding each one down to zero.
+	fighting_display_xp_remainder += float(amount) * host._hub_runtime().fighting_xp_bonus()
+	var bonus := floori(fighting_display_xp_remainder + 0.000001)
+	fighting_display_xp_remainder = maxf(0.0, fighting_display_xp_remainder - bonus)
+	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount + bonus
 	SkillState.recalculate_level(host, "fight")
 	if stage != null and is_instance_valid(stage) and stage.has_method("setup_fighting_level"):
 		stage.call("setup_fighting_level", SkillState.host_skill_level(host, "fight"))

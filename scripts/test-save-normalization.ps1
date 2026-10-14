@@ -1278,7 +1278,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear guest profile claims.")
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear guest profile verification.")
 
-	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == 19, "Leaderboard avatar save should clamp to a valid avatar index.")
+	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard avatar save should clamp to a valid avatar index.")
 	_expect(str(_save_payload_value(game, "leaderboard_player_id")).is_empty(), "Leaderboard player-id save should drop invalid ids.")
 	_expect(str(_save_payload_value(game, "leaderboard_auth_refresh_token")) == "refresh-token", "Leaderboard refresh-token save should strip whitespace.")
 	_expect(int(_save_payload_value(game, "leaderboard_auth_retry_after_unix")) == 0, "Leaderboard auth retry save should clamp negative timestamps.")
@@ -1294,7 +1294,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(str(game.leaderboard_profile.display_name) == "Mira Stone", "Leaderboard profile restore should preserve valid display names.")
 	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should derive missing verified claim keys.")
 	_expect(_truthy(game.leaderboard_profile.profile_claimed) and _truthy(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should preserve valid verified claims.")
-	_expect(int(game.leaderboard_profile.avatar_index) == 19, "Leaderboard profile restore should clamp avatar indexes.")
+	_expect(int(game.leaderboard_profile.avatar_index) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard profile restore should clamp avatar indexes.")
 	var generated_player_id := str(game.leaderboard_profile.player_id)
 	_expect(not generated_player_id.is_empty() and generated_player_id != " bad id! ", "Leaderboard profile restore should regenerate invalid player ids.")
 
@@ -2830,7 +2830,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(str(payload.get("leaderboard_name_key", "bad")).is_empty(), "Save payload should sanitize leaderboard name keys.")
 	_expect(not _truthy(payload.get("leaderboard_profile_claimed", true)), "Save payload should clear invalid leaderboard profile claims.")
 	_expect(not _truthy(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
-	_expect(int(payload.get("leaderboard_avatar_index", -1)) == 19, "Save payload should clamp leaderboard avatar indexes.")
+	_expect(int(payload.get("leaderboard_avatar_index", -1)) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Save payload should clamp leaderboard avatar indexes.")
 	_expect(str(payload.get("leaderboard_player_id", "bad")).is_empty(), "Save payload should sanitize leaderboard player ids.")
 	_expect(str(payload.get("leaderboard_auth_provider", "")) == "google", "Save payload should preserve sanitized leaderboard auth providers.")
 	_expect(str(payload.get("leaderboard_auth_refresh_token", "")) == "refresh-token", "Save payload should trim leaderboard refresh tokens.")

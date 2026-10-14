@@ -150,8 +150,16 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 
 
 static func payload_regresses_game_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	if preload("res://scripts/progression/project_runtime.gd").regresses(existing_payload.get("activity_projects", {}), next_payload.get("activity_projects", {})):
+		return true
 	if _skill_xp_regresses(existing_payload, next_payload, skill_defs):
 		return true
+	var wisdom_state = preload("res://scripts/progression/wisdom_state.gd")
+	var prior_wisdom: Dictionary = wisdom_state.normalize_balances(existing_payload.get("wisdom", {}))
+	var next_wisdom: Dictionary = wisdom_state.normalize_balances(next_payload.get("wisdom", {}))
+	for skill_id in prior_wisdom:
+		if int(next_wisdom.get(skill_id, 0)) < int(prior_wisdom[skill_id]):
+			return true
 	for key in [
 		"activity_start_count",
 		"activity_completion_count",
@@ -620,6 +628,9 @@ static func progress_evidence_score(data: Dictionary, skill_defs: Array) -> int:
 	return total_skill_xp_evidence(data, skill_defs) * 100000 + non_xp_progress_evidence(data)
 static func non_xp_progress_evidence(data: Dictionary) -> int:
 	var evidence := 0
+	for balance in preload("res://scripts/progression/wisdom_state.gd").normalize_balances(data.get("wisdom", {})).values():
+		if int(balance) > 0:
+			evidence += 1
 	evidence += _positive_number_evidence(data, [
 		"log_currency",
 		"fish_currency",

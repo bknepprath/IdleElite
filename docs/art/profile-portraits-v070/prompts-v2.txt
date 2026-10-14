@@ -1,0 +1,13 @@
+Shared revision brief: Redraw these Idle Elite avatar assets. The first batch was rejected for thin linework and excessive detail. Favor the approved shop icon's very thick black contour and large color shapes, with the approved action art's character proportions. Do not copy pixel stair steps. Bold smooth 2D game art. Uniform rounded BLACK outer strokes about 3 percent of canvas width (8 px at a 256 px runtime texture); internal black separations about 2 percent. No white or colored rim. No hatching, wear marks, speckles, scales, wood grain, bevels, micro details or extra decorations. One broad soft shadow per major form, otherwise clean flat saturated colors. Subject centered in 80 percent of square canvas, generous transparent margins. Transparent background. No text or frame. Each subject must be readable at 70 px.
+Shark: big blue shark bust with one chunky bucket hat. Simplified plain gray bucket without rust, banding, handle, emblem or rivets. One large eye and a broad grin with just three large triangular teeth. One fin. Six to eight main shapes total.
+Cookie jar: purple hooded cookie jar thief; one round jar, two large cookies, one big eye-mask shape. No tiny cookie chips, folds or glass highlights. Simple face and one arm holding a cookie.
+Wheelbarrow: green angry wheelbarrow with one large front wheel, short chunky handles and one plain round gold medal. No stars, bolts, treads, woodgrain or thin support bars. One continuous thick outer silhouette.
+Shrub: a shrub character made from three large rounded green foliage masses, big black sunglasses and one simple smile. Two short twig feet. No individual small leaves or leaf veins, no highlights on glasses.
+Builder: faceless round blue adventurer bust with a crooked stack of two chunky orange bricks as a hat. Holding one small broad-headed gray hammer. No tiny fingers, brick seams, holes or fabric wrinkles. Same blue guy proportions as the existing game.
+
+Generated source files (built-in image_gen; copied as masters-v2 and downscaled on the full authored square):
+shark-bucket: exec-935d3d78-20b8-4495-93b1-bd52fc8bffb7.png
+cookie-jar-thief: exec-82bdf574-7ab2-40d8-89cb-4e9c989c6647.png
+wheelbarrow-champion: exec-252bfbd4-3d45-495a-9c7c-ec7fa8e3ef2b.png
+shrub-sunglasses: exec-199c0ee0-e389-4c35-b693-60550d5a141f.png
+brick-helmet-builder: exec-ff6d9c3f-1358-49c3-ab91-574693536c88.png

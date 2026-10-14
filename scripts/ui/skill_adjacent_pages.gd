@@ -103,6 +103,8 @@ func _swipe():
 
 
 func enabled() -> bool:
+	if host.desktop_layout.enabled():
+		return false
 	if disabled_by_env == -1:
 		disabled_by_env = 1 if OS.get_environment("IDLE_ELITE_DISABLE_ADJACENT_SKILL_PAGES") == "1" else 0
 	if disabled_by_env == 1:
@@ -293,6 +295,8 @@ func _build_blocked() -> bool:
 	return (
 		swipe.skill_swipe_tracking
 		or swipe.skill_swipe_animating
+		or _detail().detail_scroll_visual_work_this_frame
+		or _detail().detail_lazy_mounted_this_frame
 		or host._skill_swipe_loading_transition_active()
 		or host._navigation_shell().screen_render_in_progress
 		or swipe.skill_swipe_handoff_cover != null and is_instance_valid(swipe.skill_swipe_handoff_cover)
@@ -307,9 +311,9 @@ func _build_loop(token: int) -> void:
 	var idle_frames := 0
 	var stale_frames := 0
 	var off_rest_frames := 0
-	while true:
+	while is_instance_valid(host) and host.is_inside_tree():
 		await _get_tree().process_frame
-		if token != build_token:
+		if not is_instance_valid(host) or not host.is_inside_tree() or token != build_token:
 			return
 		if host.current_screen != "skill":
 			if active():
@@ -425,6 +429,8 @@ func _build_page_skeleton(offset: int, skill_id: String) -> void:
 	render_aborted = false
 	_enter_neighbour_render(record)
 	await _detail()._render_skill_detail(false, -1, false, 1)
+	if not is_instance_valid(host) or not host.is_inside_tree():
+		return
 	if neighbour_render_active:
 		_leave_neighbour_render(record)
 	render_record = {}
@@ -476,6 +482,8 @@ func yield_neighbour_render() -> void:
 	_leave_neighbour_render(record)
 	while true:
 		await _get_tree().process_frame
+		if not is_instance_valid(host) or not host.is_inside_tree():
+			return
 		if token != build_token or render_record != record or not enabled():
 			_abort_neighbour_render(record)
 			return

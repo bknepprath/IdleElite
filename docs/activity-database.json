@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated": "2026-07-29",
+  "updated": "2026-10-13",
   "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
   "global_rules": {
     "base_max_stamina": 30,
@@ -163,7 +163,8 @@
       "Each activity mastery level awards that tier medal for that activity, from Bronze through Elite Heavenly only.",
       "Mastery is presented as visual progress on the action card: medal state plus progress bar until the activity reaches max mastery.",
       "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, Demonic, Elite Bronze, Elite Sapphire, and Elite Demonic increase max stamina; Silver, Emerald, Heavenly, Elite Silver, Elite Emerald, and Elite Heavenly increase XP; Gold, Ruby, Elite Gold, and Elite Ruby increase action speed; Platinum, Diamond, Elite Platinum, and Elite Diamond increase success rate."
-    ]
+    ],
+    "fishing_mirror_offer_cost": 1000000
   },
   "event_modules": [
     {
@@ -458,7 +459,13 @@
             "stamina": 1
           },
           "art": "assets/content/fight/actions/02-kick-mud-off-boot.png",
-          "background": "assets/content/fight/backgrounds/01-early.png"
+          "background": "assets/content/fight/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "wrestle-stuck-gate-latch",
@@ -487,7 +494,7 @@
           ],
           "xp_rewards": {
             "fight": 4,
-            "build": 1
+            "build": 2
           },
           "combo_tags": [
             "user_requested",
@@ -498,7 +505,13 @@
             "Combo"
           ],
           "art": "assets/content/fight/actions/03-wrestle-stuck-gate-latch.png",
-          "background": "assets/content/fight/backgrounds/01-early.png"
+          "background": "assets/content/fight/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "box-suspicious-feed-sack",
@@ -516,7 +529,13 @@
             "stamina": 2
           },
           "art": "assets/content/fight/actions/04-box-suspicious-feed-sack.png",
-          "background": "assets/content/fight/backgrounds/01-early.png"
+          "background": "assets/content/fight/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-chickens",
@@ -553,11 +572,17 @@
             "reward_xp": 151,
             "par_reward_xp": 151,
             "kill_reward_share": 0.75,
-            "art_ref": "assets/content/fight/prototype/chicken-idle.png"
-            ,"population_curve": [4, 5, 6, 7, 8]
-            ,"population_cap": 8
-            ,"final_population": 12
-            ,"signature": "swarm_lunge"
+            "art_ref": "assets/content/fight/prototype/chicken-idle.png",
+            "population_curve": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "population_cap": 8,
+            "final_population": 12,
+            "signature": "swarm_lunge"
           },
           "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
@@ -584,7 +609,13 @@
             "label": "Build"
           },
           "art": "assets/content/fight/actions/05-duel-leaning-fence-post.png",
-          "background": "assets/content/fight/backgrounds/01-early.png"
+          "background": "assets/content/fight/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "wrap-hands",
@@ -601,6 +632,7 @@
           "costs": {
             "stamina": -3
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 3,
@@ -609,8 +641,14 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/02-kick-mud-off-boot.png",
-          "background": "assets/content/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/wrap-hands.png",
+          "background": "assets/content/fight/backgrounds/01-early.png",
+          "seasonal_unlock_drop": {
+            "id": "halloween-cloth",
+            "name": "Cloth strips",
+            "amount": 1,
+            "icon": "assets/content/events/halloween/cloth.tres"
+          }
         },
         {
           "id": "face-the-rooster",
@@ -647,7 +685,13 @@
             "Gate"
           ],
           "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "outmuscle-angry-wheelbarrow",
@@ -669,7 +713,31 @@
           ],
           "art": "assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png",
           "background": "assets/content/fight/backgrounds/02-rising.png",
-          "sort_unlock": 9
+          "sort_unlock": 9,
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-outmuscle-angry-wheelbarrow",
+            "title": "Reinforce your stance",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "duel-fence-post",
+                "event": "success",
+                "label": "Grit",
+                "target": 12,
+                "resource": "grit"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "brawl-with-milk-pail",
@@ -687,7 +755,13 @@
             "stamina": 3
           },
           "art": "assets/content/fight/actions/07-brawl-with-kicking-milk-pail.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "square-up-with-rake",
@@ -705,7 +779,13 @@
             "stamina": 3
           },
           "art": "assets/content/fight/actions/08-square-up-with-rake-in-grass.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "duel-the-angry-stump",
@@ -746,7 +826,13 @@
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/fight-duel-the-angry-stump.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-goblins",
@@ -776,7 +862,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/goblins/goblins-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [2, 3, 3, 4, 5],
+            "population_curve": [
+              2,
+              3,
+              3,
+              4,
+              5
+            ],
             "population_cap": 3,
             "final_population": 5,
             "signature": "shielded_hold_ground"
@@ -804,7 +896,13 @@
           },
           "art": "assets/content/fight/actions/09-grapple-overfull-compost-bin.png",
           "background": "assets/content/fight/backgrounds/02-rising.png",
-          "sort_unlock": 17
+          "sort_unlock": 17,
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "catch-breath-between-rounds",
@@ -821,6 +919,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -830,7 +929,9 @@
             "Recovery"
           ],
           "art": "assets/content/fight/actions/08-square-up-with-rake-in-grass.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "wisdom_reward": 1,
+          "wisdom_skill": "fight"
         },
         {
           "id": "conquer-windmill-fear",
@@ -848,7 +949,13 @@
             "stamina": 4
           },
           "art": "assets/content/fight/actions/10-parry-windmill-shadow.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "tackle-water-trough",
@@ -866,7 +973,31 @@
             "stamina": 4
           },
           "art": "assets/content/fight/actions/11-tackle-runaway-water-trough.png",
-          "background": "assets/content/fight/backgrounds/03-mid.png"
+          "background": "assets/content/fight/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-tackle-water-trough",
+            "title": "Clear the approach",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "grapple-compost-bin",
+                "event": "success",
+                "label": "Grit",
+                "target": 50,
+                "resource": "grit"
+              }
+            ],
+            "material": "iron"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 6,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "fight-r.o.u.s.es",
@@ -897,7 +1028,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/rouses/rouses-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 2, 2, 3],
+            "population_curve": [
+              1,
+              1,
+              2,
+              2,
+              3
+            ],
             "population_cap": 2,
             "final_population": 3,
             "signature": "momentum_roll"
@@ -924,7 +1061,31 @@
             "stamina": 4
           },
           "art": "assets/content/fight/actions/12-fight-the-barn-door-at-midnight.png",
-          "background": "assets/content/fight/backgrounds/03-mid.png"
+          "background": "assets/content/fight/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-fight-barn-door",
+            "title": "Break through the barricade",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "tackle-water-trough",
+                "event": "success",
+                "label": "Rivets",
+                "target": 80,
+                "resource": "rivets"
+              }
+            ],
+            "material": "bronze"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "challenge-the-silo-echo",
@@ -942,7 +1103,13 @@
             "stamina": 5
           },
           "art": "assets/content/fight/actions/13-challenge-the-silo-echo.png",
-          "background": "assets/content/fight/backgrounds/03-mid.png"
+          "background": "assets/content/fight/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 8,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-guys",
@@ -963,7 +1130,7 @@
           "combat": {
             "enemy_id": "guys",
             "enemy_kind": "duelist",
-            "speed": 1.40,
+            "speed": 1.4,
             "health": 59,
             "spawn_rhythm": 0.275,
             "contact_damage": 6.0,
@@ -972,7 +1139,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [16, 20, 24, 28, 32],
+            "population_curve": [
+              16,
+              20,
+              24,
+              28,
+              32
+            ],
             "population_cap": 24,
             "final_population": 40,
             "signature": "duelist_guard"
@@ -998,6 +1171,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -1025,7 +1199,13 @@
             "stamina": 5
           },
           "art": "assets/content/fight/actions/14-survive-the-hayloft-ambush.png",
-          "background": "assets/content/fight/backgrounds/03-mid.png"
+          "background": "assets/content/fight/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 10,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "escape-corn-maze",
@@ -1065,7 +1245,13 @@
             "Combo"
           ],
           "art": "assets/content/fight/actions/15-punch-through-corn-maze-panic.png",
-          "background": "assets/content/fight/backgrounds/03-mid.png"
+          "background": "assets/content/fight/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 11,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "unstuck-root-cellar-door",
@@ -1105,7 +1291,40 @@
             "Combo"
           ],
           "art": "assets/content/fight/actions/16-body-slam-the-root-cellar-door.png",
-          "background": "assets/content/fight/backgrounds/04-late.png"
+          "background": "assets/content/fight/backgrounds/04-late.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-unstuck-root-cellar-door",
+            "title": "Open the cellar route",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "escape-corn-maze",
+                "event": "success",
+                "label": "Grit",
+                "target": 140,
+                "resource": "grit"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "upgrade-training-yard",
+                "event": "success",
+                "label": "Plans",
+                "target": 35,
+                "resource": "plans"
+              }
+            ],
+            "material": "gold"
+          },
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 12,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-werewolves",
@@ -1136,7 +1355,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/werewolves/werewolves-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 2, 2, 3],
+            "population_curve": [
+              1,
+              1,
+              2,
+              2,
+              3
+            ],
             "population_cap": 2,
             "final_population": 3,
             "signature": "howl_charge"
@@ -1163,7 +1388,13 @@
             "stamina": 6
           },
           "art": "assets/content/fight/actions/17-trade-blows-with-the-weather-vane.png",
-          "background": "assets/content/fight/backgrounds/04-late.png"
+          "background": "assets/content/fight/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 14,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "ice-the-bruises",
@@ -1180,6 +1411,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -1207,7 +1439,14 @@
             "stamina": 6
           },
           "art": "assets/content/fight/actions/18-dodge-the-irrigation-betrayal.png",
-          "background": "assets/content/fight/backgrounds/04-late.png"
+          "background": "assets/content/fight/backgrounds/04-late.png",
+          "wisdom_required": 120,
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 15,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-cave-trolls",
@@ -1238,7 +1477,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/cave-trolls/cave-trolls-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 2, 2],
+            "population_curve": [
+              1,
+              1,
+              1,
+              2,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "alternating_club_swing_ground_pound"
@@ -1265,7 +1510,13 @@
             "stamina": 7
           },
           "art": "assets/content/fight/actions/19-enter-the-scarecrow-circle.png",
-          "background": "assets/content/fight/backgrounds/04-late.png"
+          "background": "assets/content/fight/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 17,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "defeat-stubborn-tractor",
@@ -1283,7 +1534,40 @@
             "stamina": 7
           },
           "art": "assets/content/fight/actions/20-defeat-the-tractor-that-would-not-start.png",
-          "background": "assets/content/fight/backgrounds/04-late.png"
+          "background": "assets/content/fight/backgrounds/04-late.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-defeat-stubborn-tractor",
+            "title": "Secure the tractor yard",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "enter-the-scarecrow-circle",
+                "event": "success",
+                "label": "Grit",
+                "target": 240,
+                "resource": "grit"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "build-market-stall",
+                "event": "success",
+                "label": "Plans",
+                "target": 85,
+                "resource": "plans"
+              }
+            ],
+            "material": "titanium"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 18,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "hold-pumpkin-line",
@@ -1301,7 +1585,13 @@
             "stamina": 7
           },
           "art": "assets/content/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
-          "background": "assets/content/fight/backgrounds/05-finale.png"
+          "background": "assets/content/fight/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-giants",
@@ -1332,7 +1622,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/giants/giants-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1.3, 1.6, 1.9, 2],
+            "population_curve": [
+              1,
+              1.3,
+              1.6,
+              1.9,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "reach_grab_flip"
@@ -1358,6 +1654,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -1385,7 +1682,13 @@
             "stamina": 11
           },
           "art": "assets/content/fight/actions/22-storm-the-forbidden-tool-shed.png",
-          "background": "assets/content/fight/backgrounds/05-finale.png"
+          "background": "assets/content/fight/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "win-barn-rafter-melee",
@@ -1403,7 +1706,13 @@
             "stamina": 8
           },
           "art": "assets/content/fight/actions/23-win-the-great-barn-rafters-melee.png",
-          "background": "assets/content/fight/backgrounds/05-finale.png"
+          "background": "assets/content/fight/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "face-the-entire-farm-at-once",
@@ -1421,7 +1730,40 @@
             "stamina": 8
           },
           "art": "assets/content/fight/actions/24-face-the-entire-farm-at-once.png",
-          "background": "assets/content/fight/backgrounds/05-finale.png"
+          "background": "assets/content/fight/backgrounds/05-finale.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fight-face-the-entire-farm-at-once",
+            "title": "Secure the farm",
+            "visual": "barrier",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fight",
+                "source_action": "win-barn-rafter-melee",
+                "event": "success",
+                "label": "Grit",
+                "target": 340,
+                "resource": "grit"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "build-elite-tower",
+                "event": "success",
+                "label": "Plans",
+                "target": 120,
+                "resource": "plans"
+              }
+            ],
+            "material": "platinum"
+          },
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "rematch-buff-hay-bale",
@@ -1439,7 +1781,14 @@
             "stamina": 9
           },
           "art": "assets/content/fight/actions/25-rematch-the-same-hay-bale-somehow-stronger.png",
-          "background": "assets/content/fight/backgrounds/05-finale.png"
+          "background": "assets/content/fight/backgrounds/05-finale.png",
+          "wisdom_required": 400,
+          "unlock_drop": {
+            "id": "grit",
+            "name": "Grit",
+            "amount": 21,
+            "icon": "assets/content/ui/unlock-grit.png"
+          }
         },
         {
           "id": "fight-vampires",
@@ -1469,7 +1818,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/vampires/vampires-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 2, 2],
+            "population_curve": [
+              1,
+              1,
+              1,
+              2,
+              2
+            ],
             "population_cap": 2,
             "final_population": 2,
             "signature": "teleport_cape_bats_low_health_bite_drain"
@@ -1508,7 +1863,13 @@
             "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/dragons/dragons-states-source.png",
             "arena_shape": "diamond",
-            "population_curve": [1, 1, 1, 1, 1],
+            "population_curve": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
             "population_cap": 1,
             "final_population": 1,
             "signature": "breath_land"
@@ -1571,7 +1932,13 @@
             "stamina": 1
           },
           "art": "assets/content/thieving/actions/03-sneak-past-tip-jar-eye-contact.png",
-          "background": "assets/content/thieving/backgrounds/01-early.png"
+          "background": "assets/content/thieving/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "pocket-couch-coins",
@@ -1589,7 +1956,13 @@
             "stamina": 1
           },
           "art": "assets/content/thieving/actions/04-lift-loose-coins-from-couch-cushions.png",
-          "background": "assets/content/thieving/backgrounds/01-early.png"
+          "background": "assets/content/thieving/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "chameleon-camouflage",
@@ -1598,10 +1971,10 @@
           "unlock": 4,
           "stamina": 1,
           "seconds": 1.3,
-          "xp": 5,
+          "xp": 2,
           "success": 93.6,
           "rewards": {
-            "xp": 5
+            "xp": 2
           },
           "costs": {
             "stamina": 1
@@ -1634,7 +2007,9 @@
               "hold_seconds": 0.75
             }
           },
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "wisdom_reward": 1,
+          "wisdom_skill": "thieving"
         },
         {
           "id": "steal-a-penny",
@@ -1652,7 +2027,13 @@
             "stamina": 2
           },
           "art": "assets/content/thieving/actions/01-pocket-a-penny-nobody-wanted.png",
-          "background": "assets/content/thieving/backgrounds/01-early.png"
+          "background": "assets/content/thieving/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "count-the-coins",
@@ -1669,6 +2050,7 @@
           "costs": {
             "stamina": -2
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 2,
@@ -1678,7 +2060,7 @@
             "Recovery"
           ],
           "art": "assets/content/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
-          "background": "assets/content/thieving/backgrounds/01-early.png"
+          "background": "assets/content/thieving/backgrounds/quiet-market-lane.png"
         },
         {
           "id": "jazz-hands-diversion",
@@ -1696,7 +2078,68 @@
             "stamina": 2
           },
           "art": "assets/content/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
-          "background": "assets/content/thieving/backgrounds/01-early.png"
+          "background": "assets/content/thieving/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
+        },
+        {
+          "id": "trick-or-treat",
+          "name": "Trick or Treat",
+          "unlock": 8,
+          "tier": 4,
+          "stamina": 1,
+          "seconds": 8.0,
+          "xp": 4,
+          "success": 97.0,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "assets/content/events/halloween/doorway.tres",
+          "background": "assets/content/events/halloween/doorstep.png",
+          "seasonal_event": "halloween-2026",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "halloween-2026-doorstep",
+            "title": "Trick or Treat",
+            "visual": "thieving",
+            "material": "timber",
+            "steps": [
+              {
+                "id": "webs",
+                "source_skill": "woodcutting",
+                "source_action": "trim-overconfident-shrub",
+                "event": "success",
+                "label": "Webs",
+                "target": 12,
+                "resource": "halloween-webs"
+              },
+              {
+                "id": "cloth",
+                "source_skill": "fight",
+                "source_action": "wrap-hands",
+                "event": "success",
+                "label": "Cloth strips",
+                "target": 8,
+                "resource": "halloween-cloth"
+              },
+              {
+                "id": "lantern-parts",
+                "source_skill": "build",
+                "source_action": "hammer-nails",
+                "event": "success",
+                "label": "Lantern parts",
+                "target": 10,
+                "resource": "halloween-lantern-parts"
+              }
+            ]
+          }
         },
         {
           "id": "pick-friendly-lock",
@@ -1714,7 +2157,31 @@
             "stamina": 2
           },
           "art": "assets/content/thieving/actions/06-pick-the-world-s-friendliest-lock.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/02-rising.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-pick-friendly-lock",
+            "title": "Prepare the lock",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "jazz-hands-diversion",
+                "event": "success",
+                "label": "Clues",
+                "target": 10,
+                "resource": "clues"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "loot-beehive",
@@ -1762,7 +2229,13 @@
             "Combo"
           ],
           "art": "assets/content/combo/thieving/actions/lift-honey-from-beehive.png",
-          "background": "assets/content/combo/thieving/backgrounds/lift-honey-from-beehive.png"
+          "background": "assets/content/combo/thieving/backgrounds/lift-honey-from-beehive.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "swap-broom-price-tags",
@@ -1780,7 +2253,13 @@
             "stamina": 2
           },
           "art": "assets/content/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "steal-mannequin-wallet",
@@ -1798,7 +2277,13 @@
             "stamina": 3
           },
           "art": "assets/content/thieving/actions/08-steal-a-wallet-from-a-mannequin.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "rob-the-tiny-bank-desk",
@@ -1816,7 +2301,13 @@
             "stamina": 3
           },
           "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "hide-in-plain-sight",
@@ -1833,6 +2324,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -1842,7 +2334,7 @@
             "Recovery"
           ],
           "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/quiet-market-lane.png"
         },
         {
           "id": "crack-snack-safe",
@@ -1860,7 +2352,31 @@
             "stamina": 4
           },
           "art": "assets/content/thieving/actions/thieving-crack-the-breakroom-snack-safe.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
+          "background": "assets/content/thieving/backgrounds/02-rising.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-crack-snack-safe",
+            "title": "Decode the safe",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "rob-the-tiny-bank-desk",
+                "event": "success",
+                "label": "Coins",
+                "target": 48,
+                "resource": "coins"
+              }
+            ],
+            "material": "iron"
+          },
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 6,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "skip-taxes",
@@ -1878,7 +2394,13 @@
             "stamina": 4
           },
           "art": "assets/content/thieving/actions/11-lift-the-mayor-s-ceremonial-purse.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "heist-the-museum-gift-shop",
@@ -1896,7 +2418,40 @@
             "stamina": 4
           },
           "art": "assets/content/thieving/actions/12-heist-the-museum-gift-shop.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-heist-the-museum-gift-shop",
+            "title": "Plan the museum route",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "crack-snack-safe",
+                "event": "success",
+                "label": "Clues",
+                "target": 80,
+                "resource": "clues"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "install-door-that-mostly-opens",
+                "event": "success",
+                "label": "Rivets",
+                "target": 20,
+                "resource": "rivets"
+              }
+            ],
+            "material": "bronze"
+          },
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 8,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "scope-out-a-heist",
@@ -1937,7 +2492,15 @@
             "Combo"
           ],
           "art": "assets/content/combo/thieving/actions/scope-out-a-heist.png",
-          "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png"
+          "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png",
+          "wisdom_required": 120,
+          "wisdom_skill": "thieving",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "practice-cracking-vault",
@@ -1955,7 +2518,13 @@
             "stamina": 5
           },
           "art": "assets/content/thieving/actions/thieving-swipe-the-banks-practice-vault.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "case-the-quiet-corner",
@@ -1972,6 +2541,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -1981,7 +2551,7 @@
             "Recovery"
           ],
           "art": "assets/content/thieving/actions/thieving-swipe-the-banks-practice-vault.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/quiet-market-lane.png"
         },
         {
           "id": "remove-competition",
@@ -2021,7 +2591,13 @@
             "Combo"
           ],
           "art": "assets/content/thieving/actions/14-rob-the-bank-during-a-robbery-drill.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 11,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "steal-fishermans-lucky-hook",
@@ -2062,7 +2638,13 @@
             "Combo"
           ],
           "art": "assets/content/fishing/actions/19-fish-with-magnetic-hook.png",
-          "background": "assets/content/fishing/backgrounds/01-pond-dock.png"
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 11,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "empty-the-banks-backup-bank",
@@ -2080,7 +2662,40 @@
             "stamina": 5
           },
           "art": "assets/content/thieving/actions/15-empty-the-bank-s-backup-bank.png",
-          "background": "assets/content/thieving/backgrounds/03-mid.png"
+          "background": "assets/content/thieving/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-empty-the-banks-backup-bank",
+            "title": "Prepare the vault entry",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "practice-cracking-vault",
+                "event": "success",
+                "label": "Coins",
+                "target": 150,
+                "resource": "coins"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "thieving",
+                "source_action": "scope-out-a-heist",
+                "event": "success",
+                "label": "Clues",
+                "target": 40,
+                "resource": "clues"
+              }
+            ],
+            "material": "gold"
+          },
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 12,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "crack-the-shipwrights-lockbox",
@@ -2126,7 +2741,13 @@
             "Combo"
           ],
           "art": "assets/content/combo/fishing/actions/loot-a-pirate-ship.png",
-          "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png"
+          "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 13,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "steal-fortune-password",
@@ -2144,7 +2765,13 @@
             "stamina": 6
           },
           "art": "assets/content/thieving/actions/16-steal-a-password-from-a-fortune-cookie.png",
-          "background": "assets/content/thieving/backgrounds/04-late.png"
+          "background": "assets/content/thieving/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 13,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "lay-low-until-morning",
@@ -2161,6 +2788,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -2188,7 +2816,13 @@
             "stamina": 6
           },
           "art": "assets/content/thieving/actions/17-pickpocket-the-security-camera.png",
-          "background": "assets/content/thieving/backgrounds/04-late.png"
+          "background": "assets/content/thieving/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 15,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "hotwire-alien-ship",
@@ -2206,7 +2840,13 @@
             "stamina": 6
           },
           "art": "assets/content/thieving/actions/18-hotwire-a-parked-alien-spaceship.png",
-          "background": "assets/content/thieving/backgrounds/04-late.png"
+          "background": "assets/content/thieving/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 16,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "rob-the-alien-spaceships-bank",
@@ -2224,7 +2864,40 @@
             "stamina": 7
           },
           "art": "assets/content/thieving/actions/19-rob-the-alien-spaceship-s-bank.png",
-          "background": "assets/content/thieving/backgrounds/04-late.png"
+          "background": "assets/content/thieving/backgrounds/04-late.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-rob-the-alien-spaceships-bank",
+            "title": "Decode the ship vault",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "hotwire-alien-ship",
+                "event": "success",
+                "label": "Clues",
+                "target": 240,
+                "resource": "clues"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "install-elevator",
+                "event": "success",
+                "label": "Rivets",
+                "target": 85,
+                "resource": "rivets"
+              }
+            ],
+            "material": "titanium"
+          },
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 17,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "forge-a-receipt-for-the-moon",
@@ -2242,7 +2915,13 @@
             "stamina": 7
           },
           "art": "assets/content/thieving/actions/20-forge-a-receipt-for-the-moon.png",
-          "background": "assets/content/thieving/backgrounds/04-late.png"
+          "background": "assets/content/thieving/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 18,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "burgle-wizard-dream",
@@ -2260,7 +2939,13 @@
             "stamina": 7
           },
           "art": "assets/content/thieving/actions/21-burgle-the-dream-of-a-sleeping-wizard.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "nap-behind-the-market-stall",
@@ -2277,6 +2962,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -2286,7 +2972,7 @@
             "Recovery"
           ],
           "art": "assets/content/thieving/actions/22-shoplift-from-the-concept-of-money.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/quiet-market-lane.png"
         },
         {
           "id": "shoplift-from-money",
@@ -2304,7 +2990,13 @@
             "stamina": 8
           },
           "art": "assets/content/thieving/actions/22-shoplift-from-the-concept-of-money.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "crack-dimensional-vault",
@@ -2322,7 +3014,40 @@
             "stamina": 8
           },
           "art": "assets/content/thieving/actions/23-crack-the-vault-between-dimensions.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "thieving-crack-dimensional-vault",
+            "title": "Align the vault",
+            "visual": "lock",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "thieving",
+                "source_action": "burgle-wizard-dream",
+                "event": "success",
+                "label": "Clues",
+                "target": 330,
+                "resource": "clues"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "add-second-elite-tower-on-top",
+                "event": "success",
+                "label": "Plans",
+                "target": 110,
+                "resource": "plans"
+              }
+            ],
+            "material": "platinum"
+          },
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "pickpocket-dimensional-god",
@@ -2340,7 +3065,13 @@
             "stamina": 8
           },
           "art": "assets/content/thieving/actions/24-pickpocket-an-interdimensional-god.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "steal-your-alibi",
@@ -2358,7 +3089,13 @@
             "stamina": 9
           },
           "art": "assets/content/thieving/actions/25-steal-the-alibi-you-used-to-do-it.png",
-          "background": "assets/content/thieving/backgrounds/05-finale.png"
+          "background": "assets/content/thieving/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 21,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         }
       ]
     },
@@ -2412,7 +3149,19 @@
             "stamina": 1
           },
           "art": "assets/content/build/actions/03-hammer-one-suspicious-nail.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/workbench.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          },
+          "seasonal_unlock_drop": {
+            "id": "halloween-lantern-parts",
+            "name": "Lantern parts",
+            "amount": 1,
+            "icon": "assets/content/events/halloween/lantern-parts.tres"
+          }
         },
         {
           "id": "patch-fence",
@@ -2430,7 +3179,13 @@
             "stamina": 1
           },
           "art": "assets/content/build/actions/02-patch-fence-with-confidence.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "saw-planks",
@@ -2460,7 +3215,7 @@
           ],
           "xp_rewards": {
             "build": 4,
-            "woodcutting": 1
+            "woodcutting": 2
           },
           "combo_tags": [
             "user_requested",
@@ -2471,7 +3226,13 @@
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/build-saw-planks.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "study-blueprint",
@@ -2481,10 +3242,10 @@
           "sort_unlock": 5,
           "stamina": 1,
           "seconds": 2.04,
-          "xp": 5,
+          "xp": 2,
           "success": 96.5,
           "rewards": {
-            "xp": 5
+            "xp": 2
           },
           "costs": {
             "stamina": 1
@@ -2500,7 +3261,7 @@
             }
           ],
           "xp_rewards": {
-            "build": 5,
+            "build": 2,
             "thieving": 1
           },
           "combo_tags": [
@@ -2512,7 +3273,9 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/03-study-blueprint.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/workbench.png",
+          "wisdom_reward": 1,
+          "wisdom_skill": "build"
         },
         {
           "id": "repair-small-shack",
@@ -2530,7 +3293,38 @@
             "stamina": 2
           },
           "art": "assets/content/build/actions/04-repair-small-shack.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "xp_rewards": {
+            "build": 5,
+            "woodcutting": 1
+          },
+          "display_tags": [
+            "Combo"
+          ],
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-repair-small-shack",
+            "title": "Repair the frame",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "patch-fence",
+                "event": "success",
+                "label": "Plans",
+                "target": 8,
+                "resource": "plans"
+              }
+            ],
+            "material": "timber"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "sharpen-the-pencil",
@@ -2547,6 +3341,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -2555,8 +3350,8 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/03-study-blueprint.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/sharpen-the-pencil.png",
+          "background": "assets/content/build/backgrounds/workbench.png"
         },
         {
           "id": "install-door-that-mostly-opens",
@@ -2574,7 +3369,31 @@
             "stamina": 2
           },
           "art": "assets/content/build/actions/05-install-door-that-mostly-opens.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-install-door-that-mostly-opens",
+            "title": "Fit the doorway",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "repair-small-shack",
+                "event": "success",
+                "label": "Rivets",
+                "target": 18,
+                "resource": "rivets"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "build-bridge-over-tiny-puddle",
@@ -2592,7 +3411,31 @@
             "stamina": 2
           },
           "art": "assets/content/build/actions/16-build-bridge-over-tiny-puddle.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-build-bridge-over-tiny-puddle",
+            "title": "Assemble the bridge",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "install-door-that-mostly-opens",
+                "event": "success",
+                "label": "Rivets",
+                "target": 32,
+                "resource": "rivets"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "roof-the-roofless",
@@ -2610,7 +3453,40 @@
             "stamina": 3
           },
           "art": "assets/content/build/actions/07-add-roof-to-something-roofless.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-roof-the-roofless",
+            "title": "Raise the roof",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "build-bridge-over-tiny-puddle",
+                "event": "success",
+                "label": "Plans",
+                "target": 48,
+                "resource": "plans"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "woodcutting",
+                "source_action": "chop-softwood-tree",
+                "event": "success",
+                "label": "Resin",
+                "target": 12,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "frame-a-treehouse-platform",
@@ -2651,7 +3527,15 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/07-frame-a-treehouse-platform.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "wisdom_required": 25,
+          "wisdom_skill": "build",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "pour-questionable-foundation",
@@ -2669,7 +3553,13 @@
             "stamina": 3
           },
           "art": "assets/content/build/actions/08-pour-questionable-foundation.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "sit-on-the-toolbox",
@@ -2686,6 +3576,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -2695,7 +3586,7 @@
             "Recovery"
           ],
           "art": "assets/content/build/actions/09-upgrade-training-yard.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/workbench.png"
         },
         {
           "id": "upgrade-training-yard",
@@ -2735,7 +3626,13 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/09-upgrade-training-yard.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 6,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "build-a-decoy-vault",
@@ -2776,7 +3673,15 @@
             "Combo"
           ],
           "art": "assets/content/thieving/actions/build-build-a-decoy-vault.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "wisdom_required": 60,
+          "wisdom_skill": "build",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 6,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "construct-fishing-pier",
@@ -2816,7 +3721,40 @@
             "Combo"
           ],
           "art": "assets/content/build/actions/10-construct-fishing-pier.png",
-          "background": "assets/content/build/backgrounds/02-rising.png"
+          "background": "assets/content/build/backgrounds/02-rising.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-construct-fishing-pier",
+            "title": "Build the pier",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "pour-questionable-foundation",
+                "event": "success",
+                "label": "Plans",
+                "target": 75,
+                "resource": "plans"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "fishing",
+                "source_action": "dock-edge",
+                "event": "success",
+                "label": "Lures",
+                "target": 25,
+                "resource": "lures"
+              }
+            ],
+            "material": "bronze"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "raise-a-two-story-barn",
@@ -2834,7 +3772,13 @@
             "stamina": 4
           },
           "art": "assets/content/build/actions/11-raise-a-two-story-barn.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 8,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "build-town-notice-board",
@@ -2852,7 +3796,13 @@
             "stamina": 4
           },
           "art": "assets/content/build/actions/12-build-town-notice-board.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "sweep-the-worksite",
@@ -2869,6 +3819,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -2878,7 +3829,7 @@
             "Recovery"
           ],
           "art": "assets/content/build/actions/12-build-town-notice-board.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/timber-yard.png"
         },
         {
           "id": "assemble-windmill",
@@ -2896,7 +3847,40 @@
             "stamina": 5
           },
           "art": "assets/content/build/actions/13-assemble-windmill-that-judges-you.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-assemble-windmill",
+            "title": "Assemble the sails",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "raise-a-two-story-barn",
+                "event": "success",
+                "label": "Rivets",
+                "target": 120,
+                "resource": "rivets"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "woodcutting",
+                "source_action": "fell-oak-tree",
+                "event": "success",
+                "label": "Resin",
+                "target": 40,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "silver"
+          },
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 10,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "dig-emergency-basement",
@@ -2914,7 +3898,13 @@
             "stamina": 5
           },
           "art": "assets/content/build/actions/14-dig-emergency-basement.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 12,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "raise-guild-hall",
@@ -2932,7 +3922,40 @@
             "stamina": 5
           },
           "art": "assets/content/build/actions/15-raise-guild-hall.png",
-          "background": "assets/content/build/backgrounds/03-mid.png"
+          "background": "assets/content/build/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-raise-guild-hall",
+            "title": "Raise the guild hall",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "dig-emergency-basement",
+                "event": "success",
+                "label": "Plans",
+                "target": 180,
+                "resource": "plans"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "woodcutting",
+                "source_action": "chop-ancient-tree",
+                "event": "success",
+                "label": "Resin",
+                "target": 65,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "gold"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 13,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "inspect-the-blueprints-again",
@@ -2949,6 +3972,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -2958,7 +3982,7 @@
             "Recovery"
           ],
           "art": "assets/content/build/actions/15-raise-guild-hall.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/workbench.png"
         },
         {
           "id": "build-market-stall",
@@ -2976,7 +4000,13 @@
             "stamina": 6
           },
           "art": "assets/content/build/actions/06-build-market-stall.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 14,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "build-tall-silo",
@@ -2994,7 +4024,13 @@
             "stamina": 6
           },
           "art": "assets/content/build/actions/17-construct-suspiciously-tall-silo.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 16,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "install-elevator",
@@ -3012,7 +4048,13 @@
             "stamina": 6
           },
           "art": "assets/content/build/actions/18-install-elevator-in-the-shack.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "rivets",
+            "name": "Rivets",
+            "amount": 17,
+            "icon": "assets/content/ui/unlock-rivets.png"
+          }
         },
         {
           "id": "build-elite-tower",
@@ -3030,7 +4072,40 @@
             "stamina": 7
           },
           "art": "assets/content/build/actions/19-build-elite-tower.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/04-late.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-build-elite-tower",
+            "title": "Raise the tower",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "install-elevator",
+                "event": "success",
+                "label": "Rivets",
+                "target": 260,
+                "resource": "rivets"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "woodcutting",
+                "source_action": "fell-tree-that-remembers-you",
+                "event": "success",
+                "label": "Resin",
+                "target": 100,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "platinum"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 18,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "add-second-elite-tower-on-top",
@@ -3048,7 +4123,13 @@
             "stamina": 7
           },
           "art": "assets/content/build/actions/20-add-second-elite-tower-on-top.png",
-          "background": "assets/content/build/backgrounds/04-late.png"
+          "background": "assets/content/build/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "measure-twice-again",
@@ -3065,6 +4146,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -3074,7 +4156,7 @@
             "Recovery"
           ],
           "art": "assets/content/build/actions/21-construct-underground-town.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/workbench.png"
         },
         {
           "id": "construct-underground-town",
@@ -3092,7 +4174,13 @@
             "stamina": 7
           },
           "art": "assets/content/build/actions/21-construct-underground-town.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "build-weatherproof-weather",
@@ -3110,7 +4198,13 @@
             "stamina": 8
           },
           "art": "assets/content/build/actions/22-build-weatherproof-weather.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "renovate-the-horizon",
@@ -3128,7 +4222,13 @@
             "stamina": 8
           },
           "art": "assets/content/build/actions/23-renovate-the-horizon.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "permit-mega-structure",
@@ -3146,7 +4246,13 @@
             "stamina": 8
           },
           "art": "assets/content/build/actions/24-permit-the-impossible-megastructure.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "build-builder-building",
@@ -3164,7 +4270,49 @@
             "stamina": 9
           },
           "art": "assets/content/build/actions/25-build-the-building-that-builds-you.png",
-          "background": "assets/content/build/backgrounds/05-finale.png"
+          "background": "assets/content/build/backgrounds/05-finale.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "build-build-builder-building",
+            "title": "Complete the master work",
+            "visual": "build",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "build",
+                "source_action": "permit-mega-structure",
+                "event": "success",
+                "label": "Plans",
+                "target": 360,
+                "resource": "plans"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "thieving",
+                "source_action": "forge-a-receipt-for-the-moon",
+                "event": "success",
+                "label": "Clues",
+                "target": 120,
+                "resource": "clues"
+              },
+              {
+                "id": "step-3",
+                "source_skill": "woodcutting",
+                "source_action": "harvest-moonlit-silverwood",
+                "event": "success",
+                "label": "Resin",
+                "target": 140,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "obsidian"
+          },
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 21,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         }
       ]
     },
@@ -3256,7 +4404,13 @@
             "stamina": 1
           },
           "art": "assets/content/woodcutting/actions/02-snap-a-twig-with-purpose.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 1,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "split-firewood",
@@ -3286,7 +4440,7 @@
           ],
           "xp_rewards": {
             "woodcutting": 4,
-            "fishing": 1
+            "fishing": 2
           },
           "combo_tags": [
             "user_requested",
@@ -3306,7 +4460,13 @@
               "max": 1.17,
               "zero_chance": 0.1
             }
-          ]
+          ],
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "trim-overconfident-shrub",
@@ -3324,7 +4484,19 @@
             "stamina": 2
           },
           "art": "assets/content/woodcutting/actions/03-trim-overconfident-shrub.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-resin.png"
+          },
+          "seasonal_unlock_drop": {
+            "id": "halloween-webs",
+            "name": "Webs",
+            "amount": 1,
+            "icon": "assets/content/events/halloween/webs.tres"
+          }
         },
         {
           "id": "lean-on-the-axe",
@@ -3341,6 +4513,7 @@
           "costs": {
             "stamina": -3
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 3,
@@ -3350,7 +4523,7 @@
             "Recovery"
           ],
           "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
         },
         {
           "id": "chop-softwood-tree",
@@ -3376,7 +4549,13 @@
             "stamina": 2
           },
           "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/01-early.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "prune-orchard-row",
@@ -3385,10 +4564,10 @@
           "unlock": 13,
           "stamina": 3,
           "seconds": 2.61,
-          "xp": 14,
+          "xp": 5,
           "success": 92.7,
           "rewards": {
-            "xp": 14
+            "xp": 5
           },
           "costs": {
             "stamina": 3
@@ -3403,7 +4582,9 @@
               "whole": true,
               "chance": 1.0
             }
-          ]
+          ],
+          "wisdom_reward": 2,
+          "wisdom_skill": "woodcutting"
         },
         {
           "id": "fell-skinny-pine",
@@ -3430,7 +4611,31 @@
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/06-fell-skinny-pine.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-fell-skinny-pine",
+            "title": "Clear the pine trail",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "trim-overconfident-shrub",
+                "event": "success",
+                "label": "Resin",
+                "target": 16,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 4,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "chop-knotty-maple",
@@ -3457,7 +4662,13 @@
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/08-chop-knotty-maple.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "snack-on-trail-mix",
@@ -3474,6 +4685,7 @@
           "costs": {
             "stamina": -4
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 4,
@@ -3483,7 +4695,7 @@
             "Recovery"
           ],
           "art": "assets/content/woodcutting/actions/10-clear-dense-grove.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
         },
         {
           "id": "clear-dense-grove",
@@ -3516,7 +4728,38 @@
               "zero_chance": 0.1,
               "whole": true
             }
-          ]
+          ],
+          "xp_rewards": {
+            "woodcutting": 24,
+            "fight": 5
+          },
+          "display_tags": [
+            "Combo"
+          ],
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-clear-dense-grove",
+            "title": "Clear the grove entrance",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "chop-knotty-maple",
+                "event": "success",
+                "label": "Resin",
+                "target": 55,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "iron"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "fell-oak-tree",
@@ -3543,7 +4786,13 @@
             "stamina": 4
           },
           "art": "assets/content/woodcutting/actions/09-fell-oak-tree.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "split-lightning-struck-cedar",
@@ -3561,7 +4810,13 @@
             "stamina": 4
           },
           "art": "assets/content/woodcutting/actions/16-split-lightning-struck-cedar.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 8,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "carve-through-fallen-giant",
@@ -3579,7 +4834,40 @@
             "stamina": 4
           },
           "art": "assets/content/woodcutting/actions/12-carve-through-fallen-giant.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-carve-through-fallen-giant",
+            "title": "Open the fallen-tree route",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "split-lightning-struck-cedar",
+                "event": "success",
+                "label": "Resin",
+                "target": 90,
+                "resource": "trail-marks"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "fight",
+                "source_action": "tackle-water-trough",
+                "event": "success",
+                "label": "Rivets",
+                "target": 25,
+                "resource": "rivets"
+              }
+            ],
+            "material": "bronze"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "oil-the-axe-handle",
@@ -3596,6 +4884,7 @@
           "costs": {
             "stamina": -5
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "self",
             "stamina": 5,
@@ -3605,7 +4894,7 @@
             "Recovery"
           ],
           "art": "assets/content/woodcutting/actions/12-carve-through-fallen-giant.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
         },
         {
           "id": "chop-ancient-tree",
@@ -3632,7 +4921,13 @@
             "stamina": 5
           },
           "art": "assets/content/woodcutting/actions/13-chop-ancient-tree.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 10,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "negotiate-with-angry-stump",
@@ -3650,7 +4945,13 @@
             "stamina": 5
           },
           "art": "assets/content/woodcutting/actions/woodcutting-negotiate-with-angry-stump.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 11,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "clear-mystic-timberland",
@@ -3676,7 +4977,40 @@
               "max": 2.75,
               "zero_chance": 0
             }
-          ]
+          ],
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-clear-mystic-timberland",
+            "title": "Open the timberland",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "negotiate-with-angry-stump",
+                "event": "success",
+                "label": "Resin",
+                "target": 160,
+                "resource": "trail-marks"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "assemble-windmill",
+                "event": "success",
+                "label": "Rivets",
+                "target": 50,
+                "resource": "rivets"
+              }
+            ],
+            "material": "gold"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 13,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "harvest-tree-apology",
@@ -3694,7 +5028,13 @@
             "stamina": 6
           },
           "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 14,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "stretch-the-splinters-out",
@@ -3711,6 +5051,7 @@
           "costs": {
             "stamina": -7
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 7,
@@ -3720,7 +5061,7 @@
             "Recovery"
           ],
           "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
         },
         {
           "id": "fight-ent",
@@ -3762,7 +5103,13 @@
             "Combo"
           ],
           "art": "assets/content/combo/woodcutting/actions/fight-ent.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 15,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "fell-tree-that-remembers-you",
@@ -3804,7 +5151,13 @@
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/17-fell-tree-that-remembers-you.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 16,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "carve-the-guilds-trophy-oar",
@@ -3851,7 +5204,15 @@
             "Combo"
           ],
           "art": "assets/content/combo/woodcutting/actions/carve-the-guilds-trophy-oar.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "wisdom_required": 300,
+          "wisdom_skill": "woodcutting",
+          "unlock_drop": {
+            "id": "plans",
+            "name": "Plans",
+            "amount": 16,
+            "icon": "assets/content/ui/unlock-plans.png"
+          }
         },
         {
           "id": "chop-invisible-windwood",
@@ -3878,7 +5239,13 @@
             "stamina": 6
           },
           "art": "assets/content/woodcutting/actions/18-chop-invisible-windwood.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 17,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "harvest-moonlit-silverwood",
@@ -3896,7 +5263,40 @@
             "stamina": 7
           },
           "art": "assets/content/woodcutting/actions/19-harvest-moonlit-silverwood.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-harvest-moonlit-silverwood",
+            "title": "Clear the silverwood route",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "chop-invisible-windwood",
+                "event": "success",
+                "label": "Resin",
+                "target": 250,
+                "resource": "trail-marks"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "thieving",
+                "source_action": "pickpocket-camera",
+                "event": "success",
+                "label": "Clues",
+                "target": 90,
+                "resource": "clues"
+              }
+            ],
+            "material": "platinum"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 18,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "clear-forest-legal",
@@ -3938,7 +5338,13 @@
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
-          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+          "background": "assets/content/woodcutting/backgrounds/04-late.png",
+          "unlock_drop": {
+            "id": "clues",
+            "name": "Clues",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-clues.png"
+          }
         },
         {
           "id": "rest-under-the-stump",
@@ -3955,6 +5361,7 @@
           "costs": {
             "stamina": -9
           },
+          "mastery_xp_per_completion": 10,
           "recovery": {
             "target": "lowest",
             "stamina": 9,
@@ -3964,7 +5371,7 @@
             "Recovery"
           ],
           "art": "assets/content/woodcutting/actions/19-harvest-moonlit-silverwood.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/shaded-clearing.png"
         },
         {
           "id": "axe-world-tree-forms",
@@ -3982,7 +5389,13 @@
             "stamina": 7
           },
           "art": "assets/content/woodcutting/actions/21-axe-the-world-tree-s-paperwork.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "chop-a-tree-in-four-timelines",
@@ -4000,7 +5413,13 @@
             "stamina": 8
           },
           "art": "assets/content/woodcutting/actions/22-chop-a-tree-in-four-timelines.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "chop-super-tall-tree",
@@ -4018,7 +5437,13 @@
             "stamina": 8
           },
           "art": "assets/content/woodcutting/actions/23-fell-the-wooden-concept-of-height.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "harvest-ironwood",
@@ -4045,7 +5470,13 @@
             "stamina": 8
           },
           "art": "assets/content/woodcutting/actions/11-harvest-ironwood.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png",
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         },
         {
           "id": "clear-the-infinite-lumberyard",
@@ -4087,7 +5518,40 @@
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/25-clear-the-infinite-lumberyard.png",
-          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "woodcutting-clear-the-infinite-lumberyard",
+            "title": "Open the lumberyard",
+            "visual": "grove",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "woodcutting",
+                "source_action": "harvest-ironwood",
+                "event": "success",
+                "label": "Resin",
+                "target": 350,
+                "resource": "trail-marks"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "construct-underground-town",
+                "event": "success",
+                "label": "Plans",
+                "target": 120,
+                "resource": "plans"
+              }
+            ],
+            "material": "obsidian"
+          },
+          "unlock_drop": {
+            "id": "trail-marks",
+            "name": "Resin",
+            "amount": 21,
+            "icon": "assets/content/ui/unlock-resin.png"
+          }
         }
       ]
     },
@@ -4130,6 +5594,28 @@
           "archetype": "novice"
         },
         {
+          "id": "practice-pool",
+          "tier": 1,
+          "kind": "fishing_training",
+          "name": "Practice Pool",
+          "unlock": 2,
+          "stamina": 0,
+          "seconds": 3,
+          "xp": 3,
+          "success": 97,
+          "rewards": {
+            "xp": 3,
+            "fish_min": 0,
+            "fish_max": 0
+          },
+          "costs": {
+            "stamina": 0
+          },
+          "art": "assets/content/fishing/tools/tool-bamboo-rod.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
+          "area": "beach"
+        },
+        {
           "id": "rocks",
           "tier": 4,
           "name": "Rocks",
@@ -4148,7 +5634,13 @@
           },
           "art": "assets/content/fishing/locations/location-rocky-ledge.png",
           "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
-          "area": "beach"
+          "area": "beach",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "dock-edge",
@@ -4169,7 +5661,13 @@
           },
           "art": "assets/content/fishing/locations/location-dock-cup.png",
           "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
-          "area": "pier"
+          "area": "pier",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 2,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "piling-line",
@@ -4190,7 +5688,31 @@
           },
           "art": "assets/content/fishing/locations/location-piling-line.png",
           "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
-          "area": "pier"
+          "area": "pier",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-piling-line",
+            "title": "Prepare the piling line",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "dock-edge",
+                "event": "success",
+                "label": "Lures",
+                "target": 12,
+                "resource": "lures"
+              }
+            ],
+            "material": "stone"
+          },
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 3,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "river-bend",
@@ -4211,7 +5733,9 @@
           },
           "art": "assets/content/fishing/locations/river-bend.png",
           "background": "assets/content/fishing/backgrounds/02-river-bend.png",
-          "area": "river"
+          "area": "river",
+          "wisdom_reward": 1,
+          "wisdom_skill": "fishing"
         },
         {
           "id": "rapids",
@@ -4232,7 +5756,13 @@
           },
           "art": "assets/content/fishing/locations/river-rapids.png",
           "background": "assets/content/fishing/backgrounds/02-river-bend.png",
-          "area": "river"
+          "area": "river",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 5,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "drain-gate",
@@ -4253,7 +5783,31 @@
           },
           "art": "assets/content/fishing/locations/sewers-drain-gate.png",
           "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
-          "area": "sewers"
+          "area": "sewers",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-drain-gate",
+            "title": "Open the drain access",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "river-bend",
+                "event": "success",
+                "label": "Lures",
+                "target": 48,
+                "resource": "lures"
+              }
+            ],
+            "material": "iron"
+          },
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 6,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "fight-rat-king",
@@ -4298,7 +5852,13 @@
           ],
           "art": "assets/content/combo/fishing/actions/fight-rat-king.png",
           "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
-          "area": "sewers"
+          "area": "sewers",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "tunnel-pool",
@@ -4319,7 +5879,13 @@
           },
           "art": "assets/content/fishing/locations/sewers-tunnel-pool.png",
           "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
-          "area": "sewers"
+          "area": "sewers",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 7,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "reef-pot",
@@ -4340,7 +5906,13 @@
           },
           "art": "assets/content/fishing/locations/reef-pot.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
-          "area": "reef"
+          "area": "reef",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 8,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "anchor-tiny-boat-dock",
@@ -4384,7 +5956,13 @@
           ],
           "art": "assets/content/fishing/actions/12-trawl-from-tiny-boat.png",
           "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
-          "area": "pier"
+          "area": "pier",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "ice-hole",
@@ -4405,7 +5983,40 @@
           },
           "art": "assets/content/fishing/locations/winter-lake-ice-hole.png",
           "background": "assets/content/fishing/backgrounds/04-frozen-lake.png",
-          "area": "winter_lake"
+          "area": "winter_lake",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-ice-hole",
+            "title": "Prepare the ice access",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "tunnel-pool",
+                "event": "success",
+                "label": "Lures",
+                "target": 85,
+                "resource": "lures"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "construct-fishing-pier",
+                "event": "success",
+                "label": "Plans",
+                "target": 25,
+                "resource": "plans"
+              }
+            ],
+            "material": "bronze"
+          },
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 9,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "fight-armored-catfish",
@@ -4449,7 +6060,13 @@
           ],
           "art": "assets/content/combo/fishing/actions/fight-armored-catfish.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
-          "area": "reef"
+          "area": "reef",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 12,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "reef-cage",
@@ -4470,7 +6087,13 @@
           },
           "art": "assets/content/fishing/locations/reef-cage.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
-          "area": "reef"
+          "area": "reef",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 12,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "rowboat",
@@ -4491,7 +6114,13 @@
           },
           "art": "assets/content/fishing/locations/sea-rowboat.png",
           "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
-          "area": "sea"
+          "area": "sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 13,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "open-water",
@@ -4512,7 +6141,40 @@
           },
           "art": "assets/content/fishing/locations/sea-open-water.png",
           "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
-          "area": "sea"
+          "area": "sea",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-open-water",
+            "title": "Prepare open-water access",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "reef-cage",
+                "event": "success",
+                "label": "Lures",
+                "target": 150,
+                "resource": "lures"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "raise-a-two-story-barn",
+                "event": "success",
+                "label": "Plans",
+                "target": 55,
+                "resource": "plans"
+              }
+            ],
+            "material": "gold"
+          },
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 14,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "fight-a-shark",
@@ -4556,7 +6218,13 @@
           ],
           "art": "assets/content/combo/fishing/actions/fight-a-shark.png",
           "background": "assets/content/combo/fishing/backgrounds/fight-a-shark.png",
-          "area": "sea"
+          "area": "sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 15,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "night-reef",
@@ -4577,7 +6245,13 @@
           },
           "art": "assets/content/fishing/locations/reef-night-reef.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
-          "area": "reef"
+          "area": "reef",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 15,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "loot-a-pirate-ship",
@@ -4621,7 +6295,13 @@
           ],
           "art": "assets/content/combo/fishing/actions/loot-a-pirate-ship.png",
           "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png",
-          "area": "sea"
+          "area": "sea",
+          "unlock_drop": {
+            "id": "coins",
+            "name": "Coins",
+            "amount": 16,
+            "icon": "assets/content/ui/unlock-coins.png"
+          }
         },
         {
           "id": "storm-ripple",
@@ -4642,7 +6322,13 @@
           },
           "art": "assets/content/fishing/locations/stormy-sea-ripple.png",
           "background": "assets/content/fishing/backgrounds/10-storm-ocean.png",
-          "area": "stormy_sea"
+          "area": "stormy_sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 17,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "chum-line",
@@ -4663,7 +6349,41 @@
           },
           "art": "assets/content/fishing/locations/sea-chum-line.png",
           "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
-          "area": "sea"
+          "area": "sea",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-chum-line",
+            "title": "Prepare the deepwater line",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "storm-ripple",
+                "event": "success",
+                "label": "Lures",
+                "target": 240,
+                "resource": "lures"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "woodcutting",
+                "source_action": "carve-the-guilds-trophy-oar",
+                "event": "success",
+                "label": "Plans",
+                "target": 80,
+                "resource": "plans"
+              }
+            ],
+            "material": "platinum"
+          },
+          "wisdom_required": 120,
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 18,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "pearl-bed",
@@ -4684,7 +6404,13 @@
           },
           "art": "assets/content/fishing/locations/reef-pearl-bed.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
-          "area": "reef"
+          "area": "reef",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 19,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "storm-line",
@@ -4705,7 +6431,13 @@
           },
           "art": "assets/content/fishing/locations/stormy-sea-storm-line.png",
           "background": "assets/content/fishing/backgrounds/10-storm-ocean.png",
-          "area": "stormy_sea"
+          "area": "stormy_sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 20,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "wreck-drop",
@@ -4726,7 +6458,13 @@
           },
           "art": "assets/content/fishing/locations/deep-sea-wreck-drop.png",
           "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
-          "area": "deep_sea"
+          "area": "deep_sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 21,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "abyss",
@@ -4747,7 +6485,13 @@
           },
           "art": "assets/content/fishing/locations/deep-sea-abyss.png",
           "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
-          "area": "deep_sea"
+          "area": "deep_sea",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 22,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "deep-trench",
@@ -4768,7 +6512,50 @@
           },
           "art": "assets/content/fishing/locations/deep-sea-trench.png",
           "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
-          "area": "deep_sea"
+          "area": "deep_sea",
+          "unlock_project": {
+            "schema_version": 2,
+            "id": "fishing-deep-trench",
+            "title": "Prepare the trench descent",
+            "visual": "bridge",
+            "steps": [
+              {
+                "id": "step-1",
+                "source_skill": "fishing",
+                "source_action": "abyss",
+                "event": "success",
+                "label": "Lures",
+                "target": 350,
+                "resource": "lures"
+              },
+              {
+                "id": "step-2",
+                "source_skill": "build",
+                "source_action": "build-elite-tower",
+                "event": "success",
+                "label": "Plans",
+                "target": 120,
+                "resource": "plans"
+              },
+              {
+                "id": "step-3",
+                "source_skill": "woodcutting",
+                "source_action": "harvest-moonlit-silverwood",
+                "event": "success",
+                "label": "Resin",
+                "target": 130,
+                "resource": "trail-marks"
+              }
+            ],
+            "material": "obsidian"
+          },
+          "wisdom_required": 300,
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 23,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "starlight",
@@ -4790,7 +6577,13 @@
           "art": "assets/content/fishing/locations/space-starlight.png",
           "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
           "area": "space",
-          "archetype": "steady"
+          "archetype": "steady",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 23,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         },
         {
           "id": "reflection",
@@ -4811,7 +6604,13 @@
           },
           "art": "assets/content/fishing/locations/space-reflection.png",
           "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
-          "area": "space"
+          "area": "space",
+          "unlock_drop": {
+            "id": "lures",
+            "name": "Lures",
+            "amount": 24,
+            "icon": "assets/content/ui/unlock-lures.png"
+          }
         }
       ],
       "areas": [
@@ -4877,5 +6676,11 @@
         }
       ]
     }
-  ]
+  ],
+  "seasonal_events": {
+    "halloween-2026": {
+      "enabled": true,
+      "ends_at_unix": 0
+    }
+  }
 }

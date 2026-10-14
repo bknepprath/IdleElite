@@ -28,6 +28,7 @@ function Invoke-FocusedGate {
             -FilePath "powershell.exe" `
             -ArgumentList $arguments `
             -WorkingDirectory $projectRoot `
+            -WindowStyle Hidden `
             -Wait `
             -PassThru `
             -RedirectStandardOutput $stdoutPath `

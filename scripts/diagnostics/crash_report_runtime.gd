@@ -43,6 +43,7 @@ func load_pending_crash_report() -> void:
 		push_warning("Could not read pending crash report.")
 		return
 	pending_crash_report_text = file.get_as_text()
+	file.close()
 	delete_pending_crash_report()
 
 

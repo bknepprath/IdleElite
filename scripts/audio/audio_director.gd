@@ -289,7 +289,7 @@ func _host_control(property_name: String) -> Control:
 	return (host.get(property_name) if host != null else null) as Control
 
 func _host_valid_control_ref(value: Variant) -> Control:
-	return host.call("_valid_control_ref", value) as Control if host != null else null
+	return host._app_lifecycle_runtime().valid_control_ref(value) if host != null else null
 
 func _kill_meta_tween(node: Node, meta_name: String) -> void:
 	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):

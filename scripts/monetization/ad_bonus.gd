@@ -76,11 +76,6 @@ func _rewarded_ad_unit_id() -> String:
 	return AD_TEST_UNIT_ANDROID_REWARDED if OS.is_debug_build() else AD_LIVE_UNIT_ANDROID_REWARDED
 
 func _load_rewarded_ad(show_when_loaded: bool) -> void:
-	if show_when_loaded and OS.get_name() != "Android":
-		ad_loading = false
-		ad_show_after_load = false
-		_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
-		return
 	var unit_id := _rewarded_ad_unit_id()
 	if unit_id.is_empty():
 		host._reward_feedback_surface()._set_result("Ad Not Configured")

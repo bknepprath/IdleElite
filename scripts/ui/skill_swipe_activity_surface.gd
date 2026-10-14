@@ -400,6 +400,7 @@ func get_viewport() -> Viewport:
 	return host.get_viewport()
 
 func _apply_skill_swipe_drag_offset(drag_x: float) -> void:
+	if host.desktop_layout.enabled(): return
 	skill_swipe_drag_offset_x = drag_x
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
@@ -435,6 +436,8 @@ func _apply_skill_column_layout(frame: Control, frame_width: float, offset_x: fl
 	frame.offset_right = left + frame_width
 
 func _normalize_skill_detail_page_layout(page: Control = null) -> void:
+	if host.desktop_layout.enabled():
+		return
 	_apply_skill_swipe_drag_offset(0.0)
 	var target_page := page
 	if target_page == null or not is_instance_valid(target_page):
@@ -488,6 +491,8 @@ func _reset_skill_swipe_entry_positions() -> void:
 	_normalize_skill_detail_page_layout()
 
 func _ensure_skill_swipe_frame_centered() -> void:
+	if host.desktop_layout.enabled():
+		return
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
 	if skill_swipe_tracking or skill_swipe_animating:
@@ -505,6 +510,8 @@ func _update_ui(delta: float, instant := false) -> void:
 	host._update_ui(delta, instant)
 
 func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) -> void:
+	if host.desktop_layout.enabled():
+		return
 	_skill_detail_surface()._cancel_detail_lazy_settle_warm_mount()
 	if not _skill_swipe_animation_blocks_input():
 		_interrupt_skill_swipe_animation_for_input()
@@ -517,6 +524,8 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 
 
 func _route_skill_swipe_button_input(event: InputEvent, source: Control = null) -> bool:
+	if host.desktop_layout.enabled():
+		return false
 	if current_screen != "skill":
 		return false
 	if _navigation_shell()._event_points_inside_bottom_nav(event, source):
@@ -1259,6 +1268,9 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 	skill_swipe_horizontal = false
 	skill_swipe_touch_index = -1
 	skill_swipe_drag_base_x = 0.0
+	if host.desktop_layout.enabled():
+		_kill_skill_swipe_tween()
+		return
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		_skill_swipe_activity_surface()._clear_skill_swipe_preview()
 		return
@@ -2563,6 +2575,7 @@ func _set_skill_shelf_background_alpha_by_id(background_id: int, alpha: float) -
 	_set_skill_shelf_background_alpha(host._app_lifecycle_runtime().valid_control_ref(instance_from_id(background_id)), alpha)
 
 func _fade_skill_shelf_backgrounds(visible: bool, seconds := -1.0) -> void:
+	if host.desktop_layout.enabled(): return
 	if seconds < 0.0:
 		seconds = SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS if visible else SKILL_SWIPE_SHELF_BACKGROUND_FADE_OUT_SECONDS
 	for raw_background in _current_skill_shelf_backgrounds():
@@ -2826,11 +2839,16 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 		var progress_instant := instant
 		var previous_progress := float(card.get("last_running_progress", card_progress))
 		var progress_speed := float(card.get("last_running_progress_speed", 0.0))
+		# Resume, rerender and immediate stat refreshes supersede any old cycle's
+		# drain. Otherwise it keeps pulling the newly restored live bar backwards.
+		if instant:
+			card.erase("progress_turnover_elapsed")
+			card.erase("progress_turnover_start")
 		if running and not instant and card_progress + 0.001 < previous_progress:
 			card["progress_turnover_elapsed"] = 0.0
 			card["progress_turnover_start"] = progress_rail.value
 		if running:
-			if delta > 0.0 and card_progress >= previous_progress:
+			if delta > 0.0 and card_progress > previous_progress:
 				progress_speed = (card_progress - previous_progress) * 100.0 / delta
 				card["last_running_progress_speed"] = progress_speed
 			card["last_running_progress"] = card_progress
@@ -2839,8 +2857,15 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 			card.erase("last_running_progress_speed")
 			card.erase("progress_turnover_elapsed")
 			card.erase("progress_turnover_start")
-		if not running and canceled_progress > 0.0:
+		if not running and (canceled_progress > 0.0 or bool(card.get("progress_draining", false))):
+			if not bool(card.get("progress_draining", false)):
+				card["cancel_visual_scale"] = minf(1.0, progress_rail.value / maxf(progress_target, 0.001))
+			progress_target *= float(card.get("cancel_visual_scale", 1.0))
+			card["progress_draining"] = canceled_progress > 0.0
 			progress_instant = true
+		elif running:
+			card.erase("progress_draining")
+			card.erase("cancel_visual_scale")
 		if card.has("progress_turnover_elapsed"):
 			var turnover_elapsed := float(card["progress_turnover_elapsed"]) + maxf(0.0, delta)
 			var step_delta := minf(maxf(0.0, delta), 0.1)
@@ -3762,6 +3787,9 @@ func _action_cards_hidden_by_transition_cover() -> bool:
 	return skill_swipe_handoff_cover.visible and skill_swipe_handoff_cover.modulate.a >= 0.92
 
 
+var pending_static_card_keys := {}
+const DESKTOP_STATIC_CARD_BUDGET_USEC := 1800
+
 func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: bool, skill_frame_refresh: bool, passive_card_progress_refresh: bool) -> bool:
 	if host.current_screen != "skill" and host.current_screen != "pinned" and host.current_screen != "queue" and host.current_screen != "menu":
 		return true
@@ -3773,18 +3801,30 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 		host._activity_unlock_ceremony_surface().apply_pending_readiness()
 	if static_refresh and host.current_screen == "skill" and not host.boot_detail_render_in_progress and host.selected_skill_id == "thieving":
 		host._thieving_surface()._cleanup_stale_thieving_heist_cards()
-	if not skill_frame_refresh:
+	if not skill_frame_refresh and pending_static_card_keys.is_empty():
 		return false
+	var stagger_static: bool = host.desktop_layout.enabled() and not instant
+	if static_refresh and stagger_static:
+		for card_key in host.action_card_keys: pending_static_card_keys[str(card_key)] = true
+	var static_budget_started := Time.get_ticks_usec()
 	var temporary_events: Object = host._temporary_event_runtime()
 	for raw_key in host.action_card_keys:
 		var key := str(raw_key)
 		if not host.action_cards.has(key):
+			pending_static_card_keys.erase(key)
 			continue
 		var card: Dictionary = host.action_cards[key]
 		var card_root: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("root", null))
 		if card_root == null:
 			host._skill_detail_surface()._discard_action_card_key(key)
 			continue
+		if host.desktop_layout.enabled() and not card_root.is_visible_in_tree():
+			pending_static_card_keys.erase(key)
+			continue
+		var card_static_refresh: bool = static_refresh
+		if stagger_static:
+			card_static_refresh = pending_static_card_keys.has(key) and Time.get_ticks_usec() - static_budget_started < DESKTOP_STATIC_CARD_BUDGET_USEC
+		if card_static_refresh: pending_static_card_keys.erase(key)
 		var skill_id := str(card.get("skill_id", ""))
 		if host.current_screen == "skill" and not _adjacent_pages().card_update_allowed(skill_id):
 			continue
@@ -3797,7 +3837,7 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 				if action_id.is_empty() and not key.begins_with("thieving_heist:"):
 					action_id = key.substr(separator + 1)
 		if card.get("heist_id") != null:
-			if static_refresh:
+			if card_static_refresh:
 				host._thieving_surface()._update_thieving_heist_card(card, delta, instant)
 			continue
 		if card.get("is_fishing_area"):
@@ -3808,7 +3848,7 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 			if bool(card.get("fluid_was_running", false)) and not area_running:
 				card["fluid_exiting"] = true
 			var area_camera_returning: bool = host._fishing_ui_surface()._fishing_area_has_active_camera_return(card)
-			if not static_refresh and not area_running and not bool(card.get("fluid_exiting", false)) and not area_camera_returning:
+			if not card_static_refresh and not area_running and not bool(card.get("fluid_exiting", false)) and not area_camera_returning:
 				continue
 			host._fishing_ui_surface()._update_fishing_area_module(card, skill_id, area_running, delta, instant)
 			continue
@@ -3822,7 +3862,7 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 				)
 			if float(card.get("active_camera_zoom", 0.0)) > 1.0 and bool(card.get("active_camera_was_running", false)) and not method_running:
 				card["active_camera_returning"] = true
-			if not static_refresh and not method_running and not bool(card.get("active_camera_returning", false)):
+			if not card_static_refresh and not method_running and not bool(card.get("active_camera_returning", false)):
 				continue
 			host._fishing_ui_surface()._update_fishing_method_slot(card, skill_id, action_id, {}, false, method_running, delta, instant)
 			continue
@@ -3830,9 +3870,10 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 		var event_running: bool = temporary_events.event_running_skill_id == skill_id and temporary_events.event_running_action_id == action_id
 		var running: bool = (host.running_skill_id == skill_id and host.running_action_id == action_id) or event_running
 		var running_progress: float = temporary_events.event_action_progress if event_running else host.action_progress
-		if not running and not static_refresh and not instant:
+		var draining: bool = host._action_runtime()._canceled_action_progress(skill_id, action_id) > 0.0 or bool(card.get("progress_draining", false))
+		if not running and not draining and not card_static_refresh and not instant:
 			continue
-		if not running and not static_refresh and (skill_swipe_tracking or skill_swipe_animating):
+		if not running and not card_static_refresh and (skill_swipe_tracking or skill_swipe_animating):
 			continue
 		host._fighting_runtime().sync_blue_guy_chicken_brawl_stage_active(card, skill_id, action_id, running)
 		host._fighting_runtime().sync_rooster_punch_out_stage_active(card, skill_id, action_id, running)
@@ -3840,12 +3881,12 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 			continue
 		var unlocked: bool = host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
 		if host._passive_modules_runtime().is_passive_action(action):
-			if static_refresh:
+			if card_static_refresh:
 				host._passive_firepit_surface()._update_passive_card_static_state(card, skill_id, action, unlocked)
 			elif passive_card_progress_refresh:
 				host._passive_firepit_surface()._update_passive_card_progress(card, action, unlocked, instant)
 			continue
-		if static_refresh:
+		if card_static_refresh:
 			if not card.has("xp") or not card.has("stamina") or not card.has("time") or not card.has("success"):
 				host._skill_detail_surface()._discard_action_card_key(key)
 				continue
@@ -3928,7 +3969,7 @@ func _action_stamina_stat_text(skill_id: String, action: Dictionary) -> String:
 
 
 func _action_stat_time_chip_buffed(skill_id: String, action: Dictionary) -> bool:
-	if host._fishing_rework_active_for_skill(skill_id):
+	if host._fishing_rework_active_for_skill(skill_id) and not FishingState.is_xp_training(action):
 		return AchievementState.activity_medal_time_reduction(host, skill_id, action) > 0.0 or AchievementState.activity_tier_time_reduction(host, skill_id, action) > 0.0 or host._hub_runtime().mission_bonus_applies(skill_id, action)
 	return (
 		AchievementState.global_reward_bonus(host, "speed_mult", skill_id) > 0.0
@@ -3940,7 +3981,7 @@ func _action_stat_time_chip_buffed(skill_id: String, action: Dictionary) -> bool
 
 
 func _base_success_chance_for_chip(skill_id: String, action: Dictionary) -> float:
-	if host._fishing_rework_active_for_skill(skill_id):
+	if host._fishing_rework_active_for_skill(skill_id) and not FishingState.is_xp_training(action):
 		return clampf(host.fishing_runtime.attempt_success_chance(host, str(action.get("id", ""))), 5.0, 100.0)
 	return clampf(float(action.get("success", 90.0)), 5.0, 100.0)
 
@@ -3978,7 +4019,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		or success_label == null or not is_instance_valid(success_label)
 	):
 		return
-	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
+	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false)) or bool(card.get("wisdom_unlock_active", false))
 	var action_id = str(action.get("id", card.get("action_id", "")))
 	var lock_blocks_button = (not unlocked) or ceremony_active or bool(card.get("unlock_ready_pending", false)) or host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id)
 	var button = card.get("button") as Button
@@ -3987,6 +4028,13 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(button, true)
 		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color(1, 1, 1, 0))
 	var static_refresh_key = _action_card_static_refresh_key(skill_id, action, unlocked, ceremony_active)
+	if not static_refresh_key.is_empty() and str(card.get("action_card_static_refresh_key", "")) == static_refresh_key:
+		# The key includes stat invalidation, tools, mission and hub state. Reuse
+		# the existing chip text until those inputs change.
+		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, unlocked)
+		ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
+		host._activity_unlock_ceremony_surface().sync_locked_preview_presence(card, skill_id, action)
+		return
 	var xp_reward_parts = host._action_runtime()._action_xp_reward_parts_for_display(skill_id, action)
 	var xp_text = "+%s" % GameFormatting.info_chip_number(float(host._action_runtime()._action_xp_reward_total(xp_reward_parts)))
 	var show_stamina_stat = _action_shows_stamina_stat(skill_id, action)
@@ -4001,22 +4049,6 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		time_label = "CYCLE"
 		time_text = "%ss" % GameFormatting.info_chip_number(host._convergence_runtime()._convergence_total_cycle_seconds(action))
 		success_text = ""
-	if not static_refresh_key.is_empty() and str(card.get("action_card_static_refresh_key", "")) == static_refresh_key:
-		host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, xp_text)
-		host._app_lifecycle_runtime().set_label_text_if_changed(stamina_label, stamina_text)
-		host._app_lifecycle_runtime().set_label_text_if_changed(time_value_label, time_text)
-		host._app_lifecycle_runtime().set_label_text_if_changed(success_label, success_text)
-		host._skill_detail_surface()._sync_action_stat_chip_title(xp_label, "XP")
-		host._skill_detail_surface()._sync_action_stat_chip_title(stamina_label, "STAM" if show_stamina_stat else "")
-		host._skill_detail_surface()._sync_action_stat_chip_title(time_value_label, time_label)
-		host._skill_detail_surface()._sync_action_stat_chip_title(success_label, "" if host._convergence_runtime()._is_convergence_action(action) else "RATE")
-		host._skill_detail_surface()._sync_activity_lock_overlay(card, action, unlocked)
-		ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
-		var cached_stat_boxes = card.get("stat_boxes", {}) as Dictionary
-		_sync_xp_reward_chips(cached_stat_boxes.get("xp") as Control, xp_label, skill_id, action)
-		host._skill_detail_surface()._sync_normal_activity_stat_text(card, show_stamina_stat, time_label)
-		host._activity_unlock_ceremony_surface().sync_locked_preview_presence(card, skill_id, action)
-		return
 	if not static_refresh_key.is_empty():
 		card["action_card_static_refresh_key"] = static_refresh_key
 	var previous_stat_texts := {
@@ -4120,6 +4152,10 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 
 
 func _on_action_card_input(event: InputEvent, skill_id: String, action_id: String, source: Control) -> void:
+	# Fishing receives GUI events directly, including Godot's emulated copy of a
+	# physical pointer event. The copy must not arm a second release-to-stop tap.
+	if skill_id == "fishing" and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	var card = _action_card_for_input_source(skill_id, action_id, source)
 	if card.is_empty():
 		return
@@ -4144,6 +4180,19 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			var stat_kind = host._skill_detail_surface()._activity_stat_kind_from_positions(card, event_positions)
 			if stat_kind.is_empty() and _action_card_medal_hit_from_positions(card, event_positions):
 				stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
+			# Fishing's native scroll route bypasses the global card press handler.
+			# Standard activity cards still need the same opportunity hit/miss checks.
+			if skill_id == "fishing" and host.current_screen == "skill" and not host.queue_selection_mode:
+				var press_position: Vector2 = host._input_routing_shell()._first_event_position(event_positions)
+				var runtime = host._action_runtime()
+				if runtime._try_action_opportunity_click(skill_id, action_id, press_position) or (stat_kind.is_empty() and runtime._miss_action_opportunity_click(skill_id, action_id, press_position)):
+					# Do not arm the release-to-toggle path for this same gesture.
+					host._skill_detail_surface().action_card_press_key = ""
+					host._skill_detail_surface().action_card_press_stat_kind = ""
+					host._skill_detail_surface().action_card_press_dragged = false
+					_cancel_skill_swipe_feedback(false)
+					host.get_viewport().set_input_as_handled()
+					return
 			if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
 				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), pointer_index)
 				host.get_viewport().set_input_as_handled()
@@ -4996,7 +5045,7 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 	var passive_runtime = host._passive_modules_runtime()
 	var now: int = host._unix_now()
 	var state = passive_runtime.passive_module_state(module_id, now)
-	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
+	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false)) or bool(card.get("wisdom_unlock_active", false))
 	host._skill_detail_surface()._sync_activity_lock_overlay(card, action, unlocked)
 	ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	var button = card.get("button") as Button
@@ -5106,7 +5155,7 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 	var passive_runtime = host._passive_modules_runtime()
 	var now: int = host._unix_now()
 	var state = passive_runtime.firepit_state(now)
-	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
+	var ceremony_active = bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false)) or bool(card.get("wisdom_unlock_active", false))
 	host._skill_detail_surface()._sync_activity_lock_overlay(card, action, unlocked)
 	ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	var active = passive_runtime.firepit_active(now)
@@ -5167,7 +5216,7 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 	if buff_label != null:
 		var buff_text = ""
 		if active or cooling:
-			buff_text = "+%s%% stamina\nregen boost" % GameFormatting.percent_points(regen_bonus * 100.0)
+			buff_text = "+%s%% stamina\nregen" % GameFormatting.percent_points(regen_bonus * 100.0)
 		host._app_lifecycle_runtime().set_label_text_if_changed(buff_label, buff_text)
 		buff_label.visible = active or cooling
 	var toggle_button = card.get("toggle") as Button
@@ -5541,6 +5590,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	var root = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
 	if root == null or root.is_queued_for_deletion():
 		return
+	host._skill_detail_surface()._kill_detail_lazy_reveal_tween(root)
 	host._app_lifecycle_runtime()._kill_card_tween(card, "preview_fade_tween")
 	var pop = host._app_lifecycle_runtime().valid_control_ref(card.get("pop"))
 	var expand_from_zero = card.has("preview_enter_target_height")
@@ -5555,6 +5605,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	var card_key = str(card.get("card_key", host._action_key(skill_id, action_id)))
 	var lock_overlay = card.get("lock_overlay", {}) as Dictionary
 	var lock_rig = host._app_lifecycle_runtime().state_object_ref(lock_overlay.get("group"))
+	var composed_reveal: bool = host.desktop_layout.enabled()
 	var show_lock_fade = (
 		lock_rig != null
 		and not action.is_empty()
@@ -5564,14 +5615,14 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 		host._onboarding_runtime()._release_onboarding_first_module_centering()
 	if show_lock_fade:
 		host._skill_detail_surface()._set_activity_lock_overlay_active(lock_overlay, true)
-		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(lock_rig, Color(1, 1, 1, 0))
+		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(lock_rig, Color(1, 1, 1, 1 if composed_reveal else 0))
 		lock_rig.reset_unlock_drop_animation()
 		if lock_rig.has_method("_layout_base"):
 			lock_rig.call("_layout_base")
 	var scroll_preserve_context = {}
 	var skill_detail_surface = host._skill_detail_surface()
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(root, true)
-	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(root, Color(1, 1, 1, 0))
+	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(root, Color(1, 1, 1, 1 if composed_reveal else 0))
 	if expand_from_zero:
 		scroll_preserve_context = skill_detail_surface._detail_scroll_height_change_preserve_context(root)
 		host._app_lifecycle_runtime().set_control_minimum_height(root, 0.0)
@@ -5585,27 +5636,29 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	card["preview_fade_tween"] = tween
 	tween.set_parallel(true)
 	var root_id = root.get_instance_id()
+	if composed_reveal:
+		preload("res://scripts/ui/reveal_cover.gd").apply(root, 0.0, host)
 	tween.tween_method(
-		Callable(host._app_lifecycle_runtime(), "set_canvas_item_alpha_safe").bind(root_id),
+		preload("res://scripts/ui/reveal_cover.gd").apply_safe.bind(root_id, host) if composed_reveal else Callable(host._app_lifecycle_runtime(), "set_canvas_item_alpha_safe").bind(root_id),
 		0.0,
 		1.0,
 		host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-	).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if show_lock_fade:
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	if show_lock_fade and not composed_reveal:
 		var lock_rig_fade_id = lock_rig.get_instance_id()
 		tween.tween_method(
 			Callable(host._app_lifecycle_runtime(), "set_canvas_item_alpha_safe").bind(lock_rig_fade_id),
 			0.0,
 			1.0,
 			host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-		).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	if expand_from_zero:
 		tween.tween_method(
 			Callable(host._app_lifecycle_runtime(), "set_control_minimum_height_safe").bind(root_id),
 			0.0,
 			target_height,
 			host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		if not scroll_preserve_context.is_empty():
 			tween.tween_method(
 				Callable(skill_detail_surface, "_apply_detail_scroll_height_change_preserve_context").bind(scroll_preserve_context),
@@ -5621,7 +5674,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 				0.0,
 				entry_target_height,
 				host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-			).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	if pop != null:
 		var start_offset = 0.0 if stable_preview_fade else ActivityUnlockCeremonySurface.NEXT_PREVIEW_SETTLE_OFFSET if smooth_unlock_reveal else 34.0
 		var pop_offset_id = pop.get_instance_id()
@@ -5630,7 +5683,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			start_offset,
 			0.0,
 			host.ACTIVITY_PREVIEW_FADE_IN_SECONDS
-		).set_trans(Tween.TRANS_QUINT if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		).set_trans(Tween.TRANS_QUINT if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	var pop_id = pop.get_instance_id() if pop != null else 0
 	var lock_rig_id = lock_rig.get_instance_id() if lock_rig != null else 0
 	tween.finished.connect(Callable(unlock_ceremony_surface, "finish_activity_preview_fade_in").bind(card_key, root_id, pop_id, lock_rig_id, expand_from_zero, target_height, skill_id, action_id))

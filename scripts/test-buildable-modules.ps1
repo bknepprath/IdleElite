@@ -42,20 +42,22 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.get("activity_data_catalog").call("load_action_data", scene)
-	scene.call("_save_runtime").call("_init_state")
+	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
+	while not scene.startup_initialized or scene._boot_warmup_runtime().active:
+		await process_frame
+	scene._test_state_runtime()._god_mode_unlock_onboarding_state()
 	var fight := scene.skills["fight"] as Dictionary
 	fight["level"] = 5
 	fight["xp"] = maxi(int(fight.get("xp", 0)), SkillState.xp_for_level(5))
 	scene.skills["fight"] = fight
 	scene.material_runtime.set_amount("scrapwood", 3.0)
-	var action := scene.call("_action_data", "fight", "duel-leaning-fence-post") as Dictionary
+	var action := scene.call("_action_data", "fight", "duel-fence-post") as Dictionary
 	_expect(not action.is_empty(), "prototype buildable action should load")
 	_expect(BuildableModules.is_buildable(action), "prototype action should have a build contract")
 	_expect(not BuildableModules.is_built(scene.built_modules, "fight", action, Callable(scene, "_action_key")), "prototype action should begin unbuilt")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
 	var card := built.get("card", {}) as Dictionary
-	scene.call("_skill_detail_surface").call("_register_action_card", scene.call("_action_key", "fight", "duel-leaning-fence-post"), card)
+	scene.call("_skill_detail_surface").call("_register_action_card", scene.call("_action_key", "fight", "duel-fence-post"), card)
 	_expect((card.get("build_overlay") as Control) != null, "unbuilt card should show blueprint overlay")
 	var plank_nodes = card.get("build_plank_nodes", [])
 	_expect(plank_nodes is Array and plank_nodes.size() == 1, "build cover should use one full-width generated plank")
@@ -66,12 +68,12 @@ func _run() -> void:
 	_expect((card.get("build_module_title") as Label) == (card.get("title") as Label), "build cover should reuse the normal module title")
 	_expect(str((card.get("build_module_title") as Label).text) == "Duel Fence Post", "build cover should show the normal module title above the planks")
 	_expect(str((card.get("build_cta_title") as Label).text) == "BUILD", "blueprint CTA should use the build label")
-	_expect(str((card.get("build_cost_heading") as Label).text) == "COST", "blueprint CTA should show a COST heading")
+	_expect(str((card.get("build_cost_heading") as Label).text) == "Cost", "blueprint CTA should show an outlined Cost label")
 	var cost_rows := card.get("build_cost_rows", []) as Array
 	_expect(cost_rows.size() >= 1, "blueprint CTA should show at least one cost row")
 	var starting_xp := int((scene.skills["fight"] as Dictionary).get("xp", 0))
 	var starting_build_xp := int((scene.skills["build"] as Dictionary).get("xp", 0))
-	var start_result := bool(scene.call("_action_runtime").call("_start_action", "fight", "duel-leaning-fence-post", true, false))
+	var start_result := bool(scene.call("_action_runtime").call("_start_action", "fight", "duel-fence-post", true, false))
 	_expect(not start_result, "first tap should build instead of starting the action")
 	_expect((card.get("build_overlay") as Control).has_meta("build_complete_animation_tween"), "visible build should animate the build overlay before refresh")
 	_expect(BuildableModules.is_built(scene.built_modules, "fight", action, Callable(scene, "_action_key")), "first tap should persist built state")
@@ -80,14 +82,14 @@ func _run() -> void:
 	_expect(int((scene.skills["build"] as Dictionary).get("xp", 0)) == starting_build_xp + 60, "build should grant material-based Building XP")
 	_expect(str(scene.running_action_id).is_empty(), "build tap should not start the module in the same tap")
 	var payload := scene.call("_save_runtime").call("_save_payload", int(scene.call("_unix_now"))) as Dictionary
-	_expect(bool((payload.get("built_modules", {}) as Dictionary).get(scene.call("_action_key", "fight", "duel-leaning-fence-post"), false)), "built module should be present in save payload")
+	_expect(bool((payload.get("built_modules", {}) as Dictionary).get(scene.call("_action_key", "fight", "duel-fence-post"), false)), "built module should be present in save payload")
 	for _frame in range(24):
 		await process_frame
 	fight = scene.skills["fight"] as Dictionary
 	fight["level"] = 6
 	fight["xp"] = maxi(int(fight.get("xp", 0)), SkillState.xp_for_level(6))
 	scene.skills["fight"] = fight
-	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "duel-leaning-fence-post", "buildable module test unlock")
+	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "duel-fence-post", "buildable module test unlock")
 	var built_card := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
 	var normal_card := built_card.get("card", {}) as Dictionary
 	_expect((normal_card.get("build_overlay") as Control) == null, "built card should no longer show blueprint overlay")

@@ -6,7 +6,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const SUBMIT_INTERVAL_SECONDS := 15 * 60
-const REPAIR_PUBLISH_VERSION := 1
+const REPAIR_PUBLISH_VERSION := 2
 const TOP_COUNT := 50
 const CATEGORY_TOTAL_LEVEL := "total_level"
 const CATEGORY_TOTAL_XP_COMPAT := "total_xp"
@@ -23,11 +23,13 @@ var fetch_in_flight := false
 var fetch_category_id := ""
 var process_seconds := 0.0
 var status_message := ""
+var submission_error := ""
 var last_submitted_score := 0
 var last_submitted_total_xp := 0
 var last_submitted_scores_by_category := {}
 var last_submit_unix := 0
 var repair_publish_version := 0
+var session_publish_confirmed := false
 var pending_score_updates := {}
 var pending_repair_publish_version := 0
 var last_submit_payload_categories := []
@@ -154,7 +156,7 @@ func has_pending_category_score() -> bool:
 
 
 func repair_publish_due() -> bool:
-	if repair_publish_version >= REPAIR_PUBLISH_VERSION or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
+	if (session_publish_confirmed and repair_publish_version >= REPAIR_PUBLISH_VERSION) or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
 		return false
 	for raw_category in categories():
 		var category := raw_category as Dictionary
@@ -199,17 +201,57 @@ func last_submitted_scores_for_save() -> Dictionary:
 	return normalized
 
 func reset_submission_metadata() -> void:
+	submission_error = ""
 	last_submitted_score = 0
 	last_submitted_total_xp = 0
 	last_submitted_scores_by_category.clear()
 	last_submit_unix = 0
 	repair_publish_version = 0
+	session_publish_confirmed = false
 	clear_pending_submit()
 
 func clear_pending_submit() -> void:
 	pending_score_updates.clear()
 	pending_repair_publish_version = 0
 	last_submit_payload_categories.clear()
+
+
+func acknowledge_score_update(category_id: String, payload: Dictionary) -> void:
+	# Only checkpoint values actually accepted by the server. Gameplay can keep
+	# earning XP while a request is in flight.
+	var accepted_score := maxi(0, int(payload.get("score", 0)))
+	last_submitted_scores_by_category[category_id] = maxi(accepted_score, int(last_submitted_scores_by_category.get(category_id, 0)))
+	if category_id == CATEGORY_TOTAL_LEVEL:
+		last_submitted_total_xp = maxi(last_submitted_total_xp, int(payload.get("total_xp", 0)))
+		last_submitted_score = maxi(last_submitted_score, last_submitted_total_xp)
+
+
+func reconcile_published_rows(category_id: String, rows: Array) -> bool:
+	if host.god_mode_save_tainted or not LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS):
+		return false
+	for row in rows:
+		if str(row.get("player_id", "")) == host.leaderboard_profile.player_id:
+			var recorded_score := int(last_submitted_scores_by_category.get(category_id, 0))
+			var recorded_xp := last_submitted_total_xp
+			acknowledge_score_update(category_id, row)
+			# A stale local checkpoint must not prevent repairing a missing update.
+			if recorded_score > int(row.get("score", 0)) or (category_id == CATEGORY_TOTAL_LEVEL and recorded_xp > int(row.get("total_xp", 0))):
+				repair_publish_version = 0
+			return true
+	var local_score := score_for_category(category_id)
+	if local_score <= 0:
+		return false
+	# Absence below the fetched top 50 says nothing about the player's upload.
+	# Repair only when the local score belongs inside the returned list.
+	var should_be_listed := rows.size() < TOP_COUNT
+	if not should_be_listed and not rows.is_empty():
+		var cutoff: Dictionary = rows.back()
+		should_be_listed = local_score > int(cutoff.get("score", 0))
+		if category_id == CATEGORY_TOTAL_LEVEL and local_score == int(cutoff.get("score", 0)):
+			should_be_listed = score() > int(cutoff.get("total_xp", 0))
+	if should_be_listed:
+		repair_publish_version = 0
+	return should_be_listed
 
 func restore_submission_metadata_from_save(data: Dictionary) -> void:
 	last_submitted_score = maxi(0, int(data.get("leaderboard_last_submitted_score", 0)))

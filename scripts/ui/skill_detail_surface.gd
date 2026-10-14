@@ -194,7 +194,7 @@ class BuildableModuleOverlay:
 	static func build(parent: Control, title_text: String, meta_text: String, button_text: String, can_afford: bool, ink_color: Color, bold_font: Font, regular_font: Font, body_font_size: int, plank_textures: Array = [], cost: Dictionary = {}, cost_icon_paths: Dictionary = {}) -> Dictionary:
 		if parent == null:
 			return {}
-		var overlay := rounded_panel(Color("#1d6f82", 0.88), 33, 33, 33, 33)
+		var overlay := rounded_panel(Color("#30271e", 0.80), 33, 33, 33, 33)
 		overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		overlay.z_index = 239
@@ -232,27 +232,6 @@ class BuildableModuleOverlay:
 				var layout := layouts[index] as Dictionary
 				var top := float(layout.get("top", 0.0))
 				var height := float(layout.get("height", 60.0))
-				var shadow := Panel.new()
-				shadow.name = "BuildRequiredBoardShadow%02d" % [index + 1]
-				shadow.anchor_left = 0.0
-				shadow.anchor_right = 1.0
-				shadow.offset_left = float(layout.get("left", 0.0)) + 12.0
-				shadow.offset_right = float(layout.get("right", 0.0)) - 12.0
-				shadow.offset_top = top + 14.0
-				shadow.offset_bottom = top + height + 18.0
-				var shadow_style := StyleBoxFlat.new()
-				shadow_style.bg_color = Color(0, 0, 0, 0.01)
-				shadow_style.corner_radius_top_left = 43
-				shadow_style.corner_radius_top_right = 43
-				shadow_style.corner_radius_bottom_left = 43
-				shadow_style.corner_radius_bottom_right = 43
-				shadow_style.shadow_color = Color(0, 0, 0, 0.24)
-				shadow_style.shadow_size = 11
-				shadow_style.shadow_offset = Vector2(0, 5)
-				shadow.add_theme_stylebox_override("panel", shadow_style)
-				shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				shadow.z_index = index * 2
-				plank_layer.add_child(shadow)
 				var plank := TextureRect.new()
 				plank.name = "BuildRequiredBoardPiece%02d" % [index + 1]
 				plank.texture = texture
@@ -270,64 +249,41 @@ class BuildableModuleOverlay:
 				plank_layer.add_child(plank)
 				plank_nodes.append(plank)
 
+		# All cost elements share one centered row; the board stays on its authored aspect.
 		var cta := PanelContainer.new()
-		cta.custom_minimum_size = Vector2(520, 150)
-		cta.anchor_left = 0.5
-		cta.anchor_right = 0.5
+		cta.name = "BuildRequiredCost"
+		cta.anchor_left = 0.0
+		cta.anchor_right = 1.0
 		cta.anchor_top = 0.5
 		cta.anchor_bottom = 0.5
-		cta.offset_left = -260
-		cta.offset_right = 260
-		cta.offset_top = -32
-		cta.offset_bottom = 95
+		cta.offset_left = 100
+		cta.offset_right = -100
+		cta.offset_top = -44
+		cta.offset_bottom = 132
 		cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta.z_index = 730
 		cta.z_as_relative = false
 		cta.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		parent.add_child(cta)
 
-		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 14)
-		margin.add_theme_constant_override("margin_right", 14)
-		margin.add_theme_constant_override("margin_top", 9)
-		margin.add_theme_constant_override("margin_bottom", 9)
-		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cta.add_child(margin)
-
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 12)
+		row.add_theme_constant_override("separation", 24)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		margin.add_child(row)
-
-		var text_stack := VBoxContainer.new()
-		text_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-		text_stack.add_theme_constant_override("separation", 1)
-		text_stack.custom_minimum_size = Vector2(280, 102)
-		text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(text_stack)
-
+		cta.add_child(row)
 		var meta: Label = null
 		var cost_heading: Label = null
 		var cost_rows := []
 		if cost.is_empty():
-			meta = label(meta_text, maxi(body_font_size, 48), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+			meta = label(meta_text, maxi(body_font_size, 52), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 			meta.add_theme_color_override("font_outline_color", ink_color)
-			meta.add_theme_constant_override("outline_size", 15)
-			meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			text_stack.add_child(meta)
+			meta.add_theme_constant_override("outline_size", 12)
+			row.add_child(meta)
 		else:
-			cost_heading = label("COST", maxi(body_font_size, 60), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
-			cost_heading.add_theme_constant_override("outline_size", 0)
-			cost_heading.add_theme_font_size_override("font_size", maxi(body_font_size, 60))
-			text_stack.add_child(cost_heading)
-			var underline := ColorRect.new()
-			underline.color = Color.BLACK
-			underline.custom_minimum_size = Vector2(150, 7)
-			underline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			text_stack.add_child(underline)
+			cost_heading = label("Cost", 64, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+			cost_heading.add_theme_color_override("font_outline_color", ink_color)
+			cost_heading.add_theme_constant_override("outline_size", 16)
+			row.add_child(cost_heading)
 			for raw_mat_id in cost.keys():
 				var mat_id := str(raw_mat_id)
 				var amount := float(cost.get(raw_mat_id, 0.0))
@@ -335,24 +291,26 @@ class BuildableModuleOverlay:
 					continue
 				var cost_row := HBoxContainer.new()
 				cost_row.alignment = BoxContainer.ALIGNMENT_CENTER
-				cost_row.add_theme_constant_override("separation", 14)
+				cost_row.add_theme_constant_override("separation", 8)
 				cost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				text_stack.add_child(cost_row)
+				row.add_child(cost_row)
 				var icon_path := str(cost_icon_paths.get(mat_id, ""))
 				if not icon_path.is_empty():
 					var icon := TextureRect.new()
 					icon.name = "BuildCostIcon_%s" % mat_id
 					icon.texture = load(icon_path) as Texture2D
-					icon.custom_minimum_size = Vector2(67, 67)
+					icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+					icon.custom_minimum_size = Vector2(176, 176)
 					icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 					icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 					icon.mouse_filter = Control.MOUSE_FILTER_STOP
-					icon.pivot_offset = Vector2(33.5, 33.5)
+					icon.pivot_offset = Vector2(88, 88)
 					_wire_cost_icon_feedback(parent, icon, mat_id, bold_font, regular_font)
 					cost_row.add_child(icon)
 				var amount_text := "%d" % int(round(amount)) if is_equal_approx(amount, round(amount)) else str(amount)
-				var amount_label := label(amount_text, maxi(body_font_size, 59), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
-				amount_label.add_theme_constant_override("outline_size", 0)
+				var amount_label := label(amount_text, 80, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+				amount_label.add_theme_color_override("font_outline_color", ink_color)
+				amount_label.add_theme_constant_override("outline_size", 18)
 				cost_row.add_child(amount_label)
 				cost_rows.append(cost_row)
 
@@ -577,9 +535,9 @@ const MODULE_COLLAPSED_ROW_HEIGHT := 88.0
 const MODULE_COLLAPSE_SQUEEZE_SECONDS := 0.34
 const MODULE_COLLAPSED_TITLE_LIFT_Y := -12.0
 const DETAIL_PULL_TIP_FONT_SIZE := 52
-const DETAIL_PULL_TIP_HEIGHT := 94.0
-const DETAIL_PULL_TIP_TRIGGER_OFFSET := 46.0
-const DETAIL_PULL_TIP_FULL_OFFSET := 105.0
+const DETAIL_PULL_TIP_HEIGHT := 156.0
+const DETAIL_PULL_TIP_TRIGGER_OFFSET := 164.0
+const DETAIL_PULL_TIP_FULL_OFFSET := 200.0
 const DETAIL_LAZY_TIP_HEIGHT := 87.0
 const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
@@ -624,24 +582,24 @@ const ACTIVITY_BACK_BUTTON_SIZE := Vector2(230, 70)
 const ACTIVITY_BACK_ARROW_SIZE := Vector2(125, 37)
 const DETAIL_PULL_TIP_TEXTS := [
 	"tip: tap the top right corner of an activity to collapse it.",
-	"tip: tap the top left corner of an activity to pin it into the Pins page.",
+	"tip: tap an activity's top left corner to pin it.",
 	"tip: you can collapse activities by pressing the top right.",
-	"tip: you can expand collapsed activities by clicking anywhere on them.",
+	"tip: tap a collapsed activity to expand it.",
 	"tip: use the sort button to change how activities are ordered.",
 	"tip: hold info chips to see what is changing an activity's stats.",
 	"tip: XP, stamina, time, and rate chips can explain their bonuses.",
-	"tip: info chips show details like badge boosts, mission boosts, and other stat changes.",
+	"tip: hold a stat chip to see its boosts.",
 	"tip: tap earned medals to see their celebration animation again.",
-	"tip: training a combo skill is great XP without spending that skill's stamina.",
-	"tip: toggle the fish button at the top left of the stamina gauge to automatically eat fish.",
+	"tip: combos give the second skill XP without spending its stamina.",
+	"tip: use the fish button by your stamina to eat fish automatically.",
 	"tip: pinned activities stay easy to reach from the Pins page.",
-	"tip: high-level sort puts your newest challenges closer to the top.",
+	"tip: high-level sort puts newer activities first.",
 	"tip: low-level sort makes it easier to clean up older medals.",
 	"tip: combo activities can train two skills at once.",
 	"tip: rating the game five stars will make the dev very happy.",
 	"tip: badge boosts are strongest next door and fade with distance.",
-	"tip: badges on lower activities can make the next few activities cost less stamina and finish faster.",
-	"tip: badges on higher activities can give earlier activities more success rate and lower stamina cost."
+	"tip: badges improve speed and stamina use for higher activities.",
+	"tip: badges improve accuracy and stamina use for lower activities."
 ]
 
 var host
@@ -888,8 +846,8 @@ func _build_detail_pull_tip_overlay(parent: Control) -> void:
 	var label: Label = host._label("", DETAIL_PULL_TIP_FONT_SIZE, Color("#4b3828"), HORIZONTAL_ALIGNMENT_CENTER)
 	detail_pull_tip_label = label
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.max_lines_visible = 2
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.max_lines_visible = -1
+	label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_position_detail_pull_tip_label(true, DETAIL_PULL_TIP_FULL_OFFSET)
 	label.add_theme_color_override("font_outline_color", Color("#fff4ce"))
 	label.add_theme_constant_override("outline_size", 5)
@@ -905,7 +863,7 @@ func _position_detail_pull_tip_label(at_top: bool, pull_amount: float) -> void:
 	detail_pull_tip_label.anchor_right = 1.0
 	detail_pull_tip_label.offset_left = host.ACTION_CARD_POP_GUTTER
 	detail_pull_tip_label.offset_right = -host.ACTION_CARD_POP_GUTTER
-	var centered_top: float = pull_amount * 0.5 - DETAIL_PULL_TIP_HEIGHT * 0.5
+	var centered_top: float = maxf(8.0, pull_amount * 0.5 - DETAIL_PULL_TIP_HEIGHT * 0.5)
 	if at_top:
 		detail_pull_tip_label.anchor_top = 0.0
 		detail_pull_tip_label.anchor_bottom = 0.0
@@ -945,24 +903,7 @@ func _record_detail_pull_tip_seen(tip_text: String) -> void:
 
 
 func _detail_pull_tip_display_text(tip_text: String) -> String:
-	var text := str(tip_text).strip_edges()
-	if text.length() <= 42 or text.find("\n") >= 0:
-		return text
-	var target := text.length() / 2
-	var best_index := -1
-	var best_distance := 100000
-	for i in range(text.length()):
-		if text[i] != " ":
-			continue
-		if i < 12 or i > text.length() - 12:
-			continue
-		var distance := absi(i - target)
-		if distance < best_distance:
-			best_distance = distance
-			best_index = i
-	if best_index < 0:
-		return text
-	return "%s\n%s" % [text.substr(0, best_index), text.substr(best_index + 1)]
+	return tip_text.strip_edges()
 
 
 func _on_detail_actions_pull_offset_changed(offset_y: float) -> void:
@@ -1070,8 +1011,14 @@ func detail_card_texture_prewarm_counts() -> Dictionary:
 
 
 func _append_detail_eager_entry(stack: VBoxContainer, skill_id: String, entry_data: Dictionary, content_width: float, actions_width: float) -> void:
-	if str(entry_data.get("kind", "")) == "beta_notice":
-		_detail_eager_add_to_stack(stack, _detail_stack_entry(_build_beta_notice_board(content_width), content_width, actions_width))
+	var entry_kind := str(entry_data.get("kind", ""))
+	if entry_kind in ["beta_notice", "tier_banner"]:
+		var track_id := _detail_lazy_track_id_for_entry(entry_data)
+		if detail_rendered_action_ids.has(track_id):
+			return
+		detail_rendered_action_ids.append(track_id)
+		var board := _build_tier_banner(skill_id, int(entry_data.get("tier", 1)), content_width) if entry_kind == "tier_banner" else _build_beta_notice_board(content_width)
+		_detail_eager_add_to_stack(stack, _detail_stack_entry(board, content_width, actions_width))
 		return
 	if str(entry_data.get("kind", "")) == "thieving_heist":
 		var heist := entry_data.get("heist", {}) as Dictionary
@@ -1273,10 +1220,14 @@ func _process_detail_lazy_window(delta: float) -> int:
 	var mounted_count := 0
 	if _detail_lazy_should_sync_visible_window():
 		mounted_count = _sync_detail_lazy_visible_cards(true, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
-	if mounted_count > 0:
+	if mounted_count > 0 or detail_lazy_mounted_this_frame:
+		# Building a cached card consumes this frame's budget too. Do not also
+		# detach an old card and trigger a second tree/layout update this frame.
 		detail_lazy_mounted_this_frame = true
 		return mounted_count
-	_prune_detail_lazy_far_cards(DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME)
+	# Keep pruning during staged builds so a long scroll cannot grow the live list.
+	if _prune_detail_lazy_far_cards(DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME) > 0:
+		detail_lazy_mounted_this_frame = true
 	return 0
 
 
@@ -1338,6 +1289,9 @@ func _finish_detail_lazy_settle_warm_mount(skill_id: String, detail_scroll_visua
 
 
 func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> void:
+	# Visible mounts and adjacent prewarming share the same per-frame budget.
+	if detail_lazy_mounted_this_frame:
+		return
 	var skill_id := detail_lazy_settle_warm_mount_skill_id
 	if skill_id.is_empty():
 		return
@@ -1389,6 +1343,7 @@ func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> 
 		_finish_detail_lazy_settle_warm_mount(skill_id, detail_scroll_visual_work)
 		return
 	if cached_count > 0:
+		detail_lazy_mounted_this_frame = true
 		return
 	detail_lazy_settle_warm_mount_exhausted = true
 	_finish_detail_lazy_settle_warm_mount(skill_id, detail_scroll_visual_work)
@@ -1581,6 +1536,8 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.anchor_top = 0.0
 	background.anchor_bottom = 1.0
 	var bleed: float = maxf(host.PAGE_PAD, (host._skill_column_host_width() - content_width) * 0.5) + host._skill_swipe_activity_surface()._skill_swipe_page_span()
+	if host.desktop_layout.enabled():
+		bleed = 0.0
 	var adjacent_pages = host._skill_swipe_activity_surface()._adjacent_pages()
 	if adjacent_pages.enabled():
 		# Neighbour pages sit one screen width away: bleed only to the middle of
@@ -1592,7 +1549,7 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.offset_bottom = host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.z_index = -20
-	background.visible = true
+	background.visible = not host.desktop_layout.enabled()
 	if host._skill_swipe_activity_surface()._skill_swipe_shelf_background_should_start_hidden():
 		background.modulate.a = 0.0
 		background.visible = false
@@ -2112,8 +2069,7 @@ func _toggle_activity_stat_popup_for_card(card: Dictionary, skill_id: String, ac
 	last_activity_stat_toggle_kind = stat_kind
 	last_activity_stat_toggle_msec = now
 	if expanded_activity_stat_key == key and expanded_activity_stat_kind == stat_kind:
-		expanded_activity_stat_key = ""
-		expanded_activity_stat_kind = ""
+		_clear_activity_stat_popup()
 	else:
 		expanded_activity_stat_key = key
 		expanded_activity_stat_kind = stat_kind
@@ -2121,6 +2077,14 @@ func _toggle_activity_stat_popup_for_card(card: Dictionary, skill_id: String, ac
 	action_card_press_key = ""
 	host._update_ui(0.0, false)
 	host._skill_swipe_activity_surface()._press_activity_stat_box(key, stat_kind)
+
+
+func show_activity_help_for_control(control: Control, kind: String) -> void:
+	for card in host.action_cards.values():
+		var entry = card.get("entry", card.get("root"))
+		if is_instance_valid(entry) and entry.is_ancestor_of(control):
+			_toggle_activity_stat_popup_for_card(card, str(card.skill_id), str(card.action_id), kind)
+			return
 
 
 func _clear_activity_stat_popup() -> void:
@@ -2421,8 +2385,8 @@ func _sync_normal_activity_stat_text(card: Dictionary, show_stamina_stat: bool, 
 	var success_label := card.get("success") as Label
 	if xp_label == null or time_label == null or success_label == null:
 		return
-	var top_text := "%s XP  •  %s %s" % [xp_label.text, time_label.text, time_title]
-	var normal_separator := "  •  "
+	var top_text := "%s XP  â€¢  %s %s" % [xp_label.text, time_label.text, time_title]
+	var normal_separator := "  â€¢  "
 	top_text = "%s XP%s%s %s" % [xp_label.text, normal_separator, time_label.text, time_title]
 	var bottom_parts := []
 	if show_stamina_stat and stamina_label != null and not stamina_label.text.is_empty():
@@ -2432,7 +2396,7 @@ func _sync_normal_activity_stat_text(card: Dictionary, show_stamina_stat: bool, 
 	var bottom_text := ""
 	for part_index in range(bottom_parts.size()):
 		if part_index > 0:
-			bottom_text += "  •  "
+			bottom_text += "  â€¢  "
 		bottom_text += str(bottom_parts[part_index])
 	bottom_text = ""
 	for part_index in range(bottom_parts.size()):
@@ -2521,6 +2485,8 @@ func _action_stat_box_style_key(box: Control, active := false, pressed := false)
 
 
 func _stat_box_style_for_box(box: Control, active := false, pressed := false) -> StyleBox:
+	if box != null and box.has_meta("fishing_area_stat_style"):
+		return box.get_meta("fishing_area_stat_style") as StyleBox
 	if box != null and bool(box.get_meta("normal_activity_stat_box", false)):
 		return _normal_activity_stat_box_style(pressed)
 	if box != null and bool(box.get_meta("stat_box_buffed", false)):
@@ -2557,10 +2523,35 @@ func _thieving_skill_info_button() -> Button:
 
 
 func _fishing_skill_info_button() -> Button:
-	return _skill_header_info_button(
+	var button := _skill_header_info_button(
 		"Fishing",
-		"Fishing costs no stamina. Instead, you can collect fish to recover your stamina in other skills. Tap your stamina gauges to restore stamina."
+		"Fishing costs no stamina. Leave a fishing activity running to progress offline, up to your offline limit.\n\nFish restore stamina in other skills: tap a stamina gauge to use them.\n\nAt level 2, Practice Pool gives XP only. It awards no fish."
 	)
+	button.set_meta("fishing_help", true)
+	return button
+
+
+func _maybe_show_first_fishing_help() -> void:
+	if host._save_runtime().fishing_help_seen or current_screen != "skill" or selected_skill_id != "fishing":
+		return
+	if host._onboarding_runtime().tutorial_active or host._tutorial_overlay_surface().blocking_tip_active:
+		return
+	if host._boot_warmup_runtime().active or host._navigation_shell()._page_switch_transition_active() or host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
+		return
+	for button in host.get_tree().get_nodes_in_group("skill_header_info_buttons"):
+		if not button.get_meta("fishing_help", false) or not button.is_visible_in_tree():
+			continue
+		if not host.get_viewport_rect().has_point(button.get_global_rect().get_center()):
+			continue
+		var popover := button.get_meta("info_popover") as PanelContainer
+		# Prewarming temporarily makes the panel visible; wait before toggling it.
+		if not popover.get_meta("info_popover_prewarmed", false):
+			continue
+		if not popover.visible:
+			_toggle_skill_header_info_popover(button, popover)
+		host._save_runtime().fishing_help_seen = true
+		host._mark_save_dirty("fishing help seen")
+		return
 
 
 func _skill_header_info_button(title_text: String, body_text: String) -> Button:
@@ -2583,7 +2574,9 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
 	host.button_press_runtime.attach_button_depress_animation(button, 0.90)
+	host.desktop_layout.style_info_button(button)
 	var popover := _skill_header_info_popover(title_text, body_text)
+	button.set_meta("info_popover", popover)
 	button.add_child(popover)
 	host._passive_firepit_surface()._prewarm_passive_info_popover(popover)
 	button.pressed.connect(Callable(self, "_toggle_skill_header_info_popover").bind(button, popover))
@@ -2593,14 +2586,26 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 func _toggle_skill_header_info_popover(button: Button, popover: PanelContainer) -> void:
 	if button == null or not is_instance_valid(button) or popover == null or not is_instance_valid(popover):
 		return
-	var base_position := Vector2(-570, 45)
-	popover.position = base_position
-	var viewport_width: float = float(host._current_canvas_size().x)
-	var popover_width := maxf(popover.size.x, popover.custom_minimum_size.x)
-	var global_x := button.get_global_rect().position.x + base_position.x
-	var clamped_x := clampf(global_x, 24.0, maxf(24.0, viewport_width - popover_width - 24.0))
-	popover.position.x += clamped_x - global_x
+	# Use canvas coordinates: a button's animated/scaled parent is not the screen.
+	popover.set_as_top_level(true)
+	popover.scale = Vector2.ONE
 	host._passive_firepit_surface()._toggle_passive_info_popover(popover)
+	if popover.visible:
+		_position_skill_header_info_popover(button, popover)
+		call_deferred("_position_skill_header_info_popover", button, popover)
+
+func _position_skill_header_info_popover(button: Button, popover: PanelContainer) -> void:
+	if not is_instance_valid(button) or not is_instance_valid(popover) or not popover.visible:
+		return
+	var bounds := Rect2(Vector2(24, 24), host._current_canvas_size() - Vector2(48, 48))
+	popover.size = popover.get_combined_minimum_size()
+	var anchor := button.get_global_rect()
+	var desired := Vector2(anchor.end.x - popover.size.x, anchor.end.y + 12)
+	if desired.y + popover.size.y > bounds.end.y:
+		desired.y = anchor.position.y - popover.size.y - 12
+	desired.x = clampf(desired.x, bounds.position.x, maxf(bounds.position.x, bounds.end.x - popover.size.x))
+	desired.y = clampf(desired.y, bounds.position.y, maxf(bounds.position.y, bounds.end.y - popover.size.y))
+	popover.global_position = desired
 
 
 func _apply_info_symbol_button_text_color(button: Button) -> void:
@@ -2944,6 +2949,20 @@ func _detail_stack_child_is_module_content(control: Control) -> bool:
 func _detail_control_has_any_group(control: Control, group_names: Array) -> bool:
 	if control == null or not is_instance_valid(control):
 		return false
+	if control.is_inside_tree():
+		# Tutorial groups are sparse. Query their members instead of walking every
+		# label, border and icon in each activity card during scroll-bound checks.
+		var tree := control.get_tree()
+		for raw_group in group_names:
+			for member in tree.get_nodes_in_group(str(raw_group)):
+				if member != control and not control.is_ancestor_of(member):
+					continue
+				var ancestor: Node = member
+				while ancestor is Control:
+					if ancestor == control:
+						return true
+					ancestor = ancestor.get_parent()
+		return false
 	for raw_group in group_names:
 		if control.is_in_group(str(raw_group)):
 			return true
@@ -3203,9 +3222,11 @@ func _consume_passive_card_progress_refresh(delta: float, instant: bool, static_
 
 
 func _update_detail_header_gauges(static_refresh: bool, skill_frame_refresh: bool, detail_header_gauge_refresh: bool, delta: float, instant: bool) -> void:
+	_maybe_show_first_fishing_help()
 	var detail_xp := SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
 	if static_refresh and detail_xp_label != null:
 		host._app_lifecycle_runtime().set_label_text_if_changed(detail_xp_label, _detail_header_xp_text())
+		_fit_desktop_header_xp(detail_xp_label)
 	if skill_frame_refresh and detail_xp_bar != null:
 		if static_refresh:
 			ThemeStyles.apply_xp_progress_bar_theme(detail_xp_bar, ThemeStyles.skill_theme_color(selected_skill_id, host.COLOR_BLUE), host.COLOR_INK)
@@ -3346,21 +3367,24 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		await _render_frame_yield()
 		if current_screen != "skill" or selected_skill_id != render_skill_id or not is_instance_valid(page):
 			return
+	# Keep the authored gauge and text sizes; recover spacing in capped desktop columns.
+	var compact_header: bool = host.desktop_layout.enabled() and content_width < 1000.0
+	var header_xp_width: float = 340.0 if compact_header else host.SKILL_DETAIL_XP_BAR_WIDTH
 	var header_margin = MarginContainer.new()
 	header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	header_margin.add_theme_constant_override("margin_left", 33)
-	header_margin.add_theme_constant_override("margin_right", 23)
+	header_margin.add_theme_constant_override("margin_left", 24 if compact_header else 33)
+	header_margin.add_theme_constant_override("margin_right", 18 if compact_header else 23)
 	header_margin.add_theme_constant_override("margin_top", 44)
 	header_margin.add_theme_constant_override("margin_bottom", SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
 	header_body.add_child(header_margin)
 	var header_row = HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 33)
+	header_row.add_theme_constant_override("separation", 18 if compact_header else 33)
 	header_margin.add_child(header_row)
 
 	var left_block = HBoxContainer.new()
 	left_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_block.alignment = BoxContainer.ALIGNMENT_CENTER
-	left_block.add_theme_constant_override("separation", SKILL_DETAIL_LEFT_SEPARATION)
+	left_block.add_theme_constant_override("separation", 18 if compact_header else SKILL_DETAIL_LEFT_SEPARATION)
 	left_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header_row.add_child(left_block)
 	detail_header_left_block = left_block
@@ -3374,6 +3398,9 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	left_block.add_child(title_stack)
 	var title = host._label(SkillState.skill_name(host.skill_defs, selected_skill_id), SkillState.skill_detail_title_font_size(selected_skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE, host.SKILL_DETAIL_FISHING_TITLE_FONT_SIZE), COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if host.desktop_layout.enabled():
+		title.free()
+		title = host.desktop_layout.make_skill_title(selected_skill_id, strip_index, host.SKILL_DETAIL_TITLE_FONT_SIZE)
 	if selected_skill_id in ["thieving", "fishing", "fight"]:
 		var title_line = HBoxContainer.new()
 		title_line.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -3392,7 +3419,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	var xp = SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
 	# "Lv 5   120/400" followed by a small XP symbol so the fraction reads as XP.
 	var xp_row := HBoxContainer.new()
-	xp_row.custom_minimum_size.x = host.SKILL_DETAIL_XP_BAR_WIDTH
+	xp_row.custom_minimum_size.x = header_xp_width
 	xp_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 	xp_row.add_theme_constant_override("separation", 4)
 	xp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3402,6 +3429,9 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	detail_xp_label.max_lines_visible = 1
 	detail_xp_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if host.desktop_layout.enabled():
+		detail_xp_label.set_meta("desktop_xp_text_width", header_xp_width - DETAIL_HEADER_XP_SYMBOL_SIZE - 4.0)
+		_fit_desktop_header_xp(detail_xp_label)
 	xp_row.add_child(detail_xp_label)
 	var xp_symbol := TextureRect.new()
 	xp_symbol.custom_minimum_size = Vector2(DETAIL_HEADER_XP_SYMBOL_SIZE, DETAIL_HEADER_XP_SYMBOL_SIZE)
@@ -3413,7 +3443,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	xp_symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	xp_row.add_child(xp_symbol)
 	title_stack.add_child(xp_row)
-	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
+	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, header_xp_width)
 	title_stack.add_child(detail_xp_bar)
 
 	if boot_detail_card_yield or yield_under_cover:
@@ -3602,9 +3632,18 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 
 ## Frame break inside a staged page render. A neighbour page rendered beside the
 ## current one hands the real current page back while it waits for the frame.
+func _fit_desktop_header_xp(label: Label) -> void:
+	if not is_instance_valid(label) or not label.has_meta("desktop_xp_text_width"): return
+	if label.get_meta("desktop_fitted_xp_text", "") == label.text: return
+	var available: float = label.get_meta("desktop_xp_text_width")
+	var font := label.get_theme_font("font")
+	var width := font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, SKILL_DETAIL_XP_FONT_SIZE).x
+	var fitted := mini(SKILL_DETAIL_XP_FONT_SIZE, int(floor(SKILL_DETAIL_XP_FONT_SIZE * available / maxf(1.0, width))))
+	label.add_theme_font_size_override("font_size", maxi(28, fitted))
+	label.set_meta("desktop_fitted_xp_text", label.text)
+
 func _detail_header_xp_text() -> String:
-	# The XP symbol next to the label replaces the trailing " XP" word shown at level 99;
-	# the tighter gap keeps "Lv 98  1.09M/1.22M" + symbol clear of the stamina circle.
+	# The fraction is XP earned within the current level; lifetime XP is on Progress.
 	return SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)).trim_suffix(" XP").replace("   ", "  ")
 
 
@@ -3623,6 +3662,9 @@ func _detail_restore_scroll_value(restore_detail_scroll: int) -> int:
 
 
 func _refresh_visible_skill_detail_action_list(restore_detail_scroll: int = -1, expected_skill_id: String = "", allow_thieving_scroll_restore := false, suppress_layout_transition := false):
+	if host.desktop_layout.enabled():
+		host.desktop_layout.queue_column_refresh(expected_skill_id if not expected_skill_id.is_empty() else host.selected_skill_id)
+		return
 	if host.current_screen != "skill":
 		return
 	var target_skill_id: String = expected_skill_id if not expected_skill_id.is_empty() else host.selected_skill_id
@@ -3671,6 +3713,8 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 		return false
 	if _skill_detail_layout_refresh_held():
 		return false
+	if host.selected_skill_id == "thieving" and not host.thieving_state.pending_trophy_reward_float.is_empty():
+		return false
 	if host._activity_unlock_runtime().has_pending_readiness_for_skill(host.selected_skill_id) or host._activity_unlock_ceremony_surface().ceremony_count > 0:
 		return false
 	if (
@@ -3680,15 +3724,19 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 	):
 		return false
 	var expected_action_ids: Array = []
+	var expected_card_ids: Array = []
 	if host._fishing_rework_active_for_skill(host.selected_skill_id):
 		expected_action_ids = host._fishing_ui_surface()._fishing_detail_render_signature()
 	else:
 		for entry in _visible_detail_entries_for_skill(host.selected_skill_id):
 			var entry_data := entry as Dictionary
-			if str(entry_data.get("kind", "")) == "thieving_heist":
-				expected_action_ids.append("heist:%s" % str((entry_data.get("heist", {}) as Dictionary).get("id", "")))
-			else:
-				expected_action_ids.append(str((entry_data.get("action", {}) as Dictionary).get("id", "")))
+			var track_id := _detail_lazy_track_id_for_entry(entry_data)
+			if track_id.is_empty():
+				continue
+			expected_action_ids.append(track_id)
+			# Banners and notices share the render signature, but are not action cards.
+			if str(entry_data.get("kind", "")) not in ["tier_banner", "beta_notice"]:
+				expected_card_ids.append(track_id)
 	if expected_action_ids.size() != detail_rendered_action_ids.size():
 		return true
 	for i in range(expected_action_ids.size()):
@@ -3707,7 +3755,7 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 		var stack := _detail_actions_stack()
 		if stack == null or not is_instance_valid(stack) or not host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(stack):
 			return true
-		for raw_track_id in expected_action_ids:
+		for raw_track_id in expected_card_ids:
 			var track_id := str(raw_track_id)
 			if track_id.is_empty():
 				continue
@@ -3900,6 +3948,25 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"medal_destination": Vector2(medal.offset_left, medal.offset_top) if medal != null else Vector2.ZERO
 	}
 	card["module_action_zones"] = _add_module_action_zones(pop_card, ModuleUiRuntime.action_for_record(skill_id, action, host.FISHING_ACTION_ID_ALIASES))
+	if int(action.get("wisdom_required", 0)) > 0 or int(action.get("wisdom_reward", 0)) > 0:
+		var wisdom_panel := preload("res://scripts/ui/wisdom_panel.gd").new()
+		wisdom_panel.position = Vector2(24, host.ACTION_CARD_HEIGHT)
+		wisdom_panel.size = Vector2(content_width - 48, ActivityCardStyles.WISDOM_REQUIREMENT_HEIGHT)
+		if int(action.get("wisdom_required", 0)) > 0:
+			pop_card.add_child(wisdom_panel)
+			wisdom_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+			wisdom_panel.offset_top = host.ACTION_CARD_HEIGHT - ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
+			wisdom_panel.offset_bottom = wisdom_panel.offset_top + ActivityCardStyles.WISDOM_REQUIREMENT_HEIGHT
+		else:
+			card_root.add_child(wisdom_panel)
+		wisdom_panel.setup(host, card)
+		card["wisdom_panel"] = wisdom_panel
+		if is_instance_valid(progress):
+			progress.anchor_top = 0.0
+			progress.anchor_bottom = 0.0
+			var rail_anchor_y: float = host.ACTION_CARD_HEIGHT
+			progress.offset_top += rail_anchor_y
+			progress.offset_bottom += rail_anchor_y
 	return {
 		"card_root": card_root,
 		"card": card,
@@ -4701,10 +4768,34 @@ func _finish_collapsed_module_title_lift(title_id: int, target_position: Vector2
 			live_title.remove_meta("module_collapsed_title_tween")
 
 
+func _set_collapsed_activity_body(root: Control, collapsed: bool) -> void:
+	for raw_card in host.action_cards.values():
+		var card := raw_card as Dictionary
+		var pop: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("pop"))
+		if pop == null or not root.is_ancestor_of(pop):
+			continue
+		for key in ["button", "art_panel", "stat_row", "medal", "mastery", "mastery_ring", "progress", "mat_collection", "recovery_label", "boss_label", "status", "bonus_panel", "fluid_strip", "mission_badge", "event_badge"]:
+			var visual: Control = host._app_lifecycle_runtime().valid_control_ref(card.get(key))
+			if visual == null: continue
+			if collapsed:
+				if not visual.has_meta("module_body_alpha"):
+					visual.set_meta("module_body_alpha", visual.modulate.a)
+				visual.modulate.a = 0.0
+			elif visual.has_meta("module_body_alpha"):
+				visual.modulate.a = float(visual.get_meta("module_body_alpha"))
+				visual.remove_meta("module_body_alpha")
+
 func _set_collapsed_module_visual_clipping(root: Control, module_key: String, collapsed: bool, title_instant := true) -> void:
 	if root == null or not is_instance_valid(root):
 		return
+	_set_collapsed_activity_body(root, collapsed)
 	_set_collapsed_module_title_lift(root, collapsed, title_instant)
+	var wisdom_panel := _find_named_control_descendant(root, "WisdomPanel")
+	if is_instance_valid(wisdom_panel):
+		wisdom_panel.visible = not collapsed and not bool(wisdom_panel.get("requirement_retracted"))
+		var wisdom_badge := wisdom_panel.get("reward_badge") as Control
+		if is_instance_valid(wisdom_badge):
+			wisdom_badge.visible = not collapsed
 	var card_face := _find_module_card_face(root, module_key)
 	if card_face != null:
 		if not card_face.has_meta("module_ui_original_face_clip_contents"):
@@ -5797,7 +5888,7 @@ func _action_card_background(skill_id: String, action: Dictionary) -> Control:
 	bg.crop_left = host.FISHING_BACKGROUND_CROP_LEFT if skill_id == "fishing" else 0.0
 	bg.crop_top = host.FISHING_BACKGROUND_CROP_TOP if skill_id == "fishing" else 0.0
 	bg.crop_right = host.FISHING_BACKGROUND_CROP_RIGHT if skill_id == "fishing" else 0.0
-	bg.art_height = host.ACTION_CARD_HEIGHT
+	bg.art_height = ActivityCardStyles.face_height_for_action(action, host.ACTION_CARD_HEIGHT)
 	bg.fallback_color = ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 	if host._convergence_runtime()._is_convergence_action(action):
 		bg.aspect_mode = 2
@@ -5819,8 +5910,21 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	var layout_depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else card_depth_offset.y
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, layout_depth_offset_y))
+	var wisdom_layer_height := ActivityCardStyles.WISDOM_REQUIREMENT_LAYOUT_HEIGHT
+	if int(action.get("wisdom_required", 0)) > 0 and host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
+		card_root.custom_minimum_size.y -= wisdom_layer_height
+		wisdom_layer_height = 0.0
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_root.clip_contents = false
+
+	var visual_root: Control = card_root
+	if int(action.get("wisdom_required", 0)) > 0:
+		visual_root = Control.new()
+		visual_root.name = "WisdomActivityFace"
+		visual_root.anchor_right = 1.0
+		visual_root.offset_bottom = host.ACTION_CARD_HEIGHT + layout_depth_offset_y + wisdom_layer_height
+		visual_root.mouse_filter = Control.MOUSE_FILTER_PASS
+		card_root.add_child(visual_root)
 
 	var pop_card := Control.new()
 	pop_card.name = "ActivityCardFace"
@@ -5858,12 +5962,13 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 			depth.bottom_color = Color("#1f9ab8")
 			depth.highlight_color = Color(0.72, 0.95, 1.0, 0.24)
 			depth.shadow_color = Color(0.02, 0.08, 0.10, 0.32)
-		card_root.add_child(depth)
+		visual_root.add_child(depth)
 		pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
-	card_root.add_child(pop_card)
+	visual_root.add_child(pop_card)
 
 	if uses_flat_normal_card:
-		var body_plate := Panel.new()
+		var body_plate := preload("res://scripts/ui/segmented_activity_base.gd").new()
+		body_plate.segment_colors = ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
 		body_plate.name = "NormalActivityCardBackFace"
 		body_plate.set_anchors_preset(Control.PRESET_FULL_RECT)
 		body_plate.offset_left = pop_card.offset_left
@@ -5873,7 +5978,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		body_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		body_plate.z_index = 145
 		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS, host.COLOR_INK, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)))
-		card_root.add_child(body_plate)
+		visual_root.add_child(body_plate)
 		var body_connectors := ActivityCardStyles.prism_connector_overlay(card_depth_offset, host.ACTION_CARD_FACE_RADIUS, "", ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, host.COLOR_INK)
 		body_connectors.name = "NormalActivityCardPrismConnectors"
 		body_connectors.offset_left = pop_card.offset_left
@@ -5882,8 +5987,9 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		var normal_card_base_color := ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.42)
 		body_connectors.side_fill_color = normal_card_base_color
 		body_connectors.bottom_fill_color = normal_card_base_color
+		body_connectors.segment_theme_colors = body_plate.segment_colors
 		body_connectors.z_index = 146
-		card_root.add_child(body_connectors)
+		visual_root.add_child(body_connectors)
 		pop_card.set_meta("activity_card_connector_node_id", body_connectors.get_instance_id())
 	var bg = _action_card_background(skill_id, action)
 	_apply_recovery_card_background_shape(bg, action)
@@ -6033,9 +6139,17 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	else:
 		art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
 	if uses_flat_normal_card and not uses_fishing_button_art:
-		art.custom_minimum_size = Vector2(208, 208)
-		art.size = Vector2(208, 208)
-		art.position = Vector2(-4, -4)
+		var training_art := FishingState.is_xp_training(action)
+		# Fixed authored inset keeps the rod clear of the rounded frame.
+		var art_box := Vector2(164, 164) if training_art else Vector2(208, 208)
+		art.custom_minimum_size = art_box
+		if training_art:
+			art.set_deferred("size", art_box)
+		else:
+			art.size = art_box
+		art.position = Vector2(18, 18) if training_art else Vector2(-4, -4)
+		if training_art:
+			(art as TextureRect).stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
@@ -6046,6 +6160,16 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		ActionArtUi.special_type_icon_path(action, Callable(host, "_is_event_action")),
 		Callable(host.visual_texture_cache, "_texture_or_visual_fallback")
 	)
+	var unlock_badge_index := 0
+	for drop in host._project_runtime().drops_for(action):
+		# Stored drops retain bottom-left; current unlock resources use top-right.
+		var unlock_badge := preload("res://scripts/ui/unlock_resource_badge.gd").new()
+		var badge_action: Dictionary = action.duplicate()
+		badge_action["unlock_drop"] = drop
+		unlock_badge.slot_index = unlock_badge_index
+		unlock_badge_index += 1
+		unlock_badge.setup(host, skill_id, badge_action)
+		art_panel.add_child(unlock_badge)
 	var art_border := ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style")))
 	art_panel.add_child(art_border)
 
@@ -6062,6 +6186,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	var build_title_button_panel: PanelContainer = null
 	var build_title_button_label: Label = null
 	if BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
+		copy.add_theme_constant_override("separation", 16)
 		title_row = HBoxContainer.new()
 		title_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		title_row.add_theme_constant_override("separation", 9)
@@ -6097,7 +6222,8 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_panel.add_child(build_title_button_label)
 	else:
 		var title_spacer := Control.new()
-		title_spacer.custom_minimum_size = Vector2(0, 60)
+		# Keep the stat panel below the full title band, including the outline.
+		title_spacer.custom_minimum_size = Vector2(0, 82)
 		title_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		copy.add_child(title_spacer)
 		var title_band := MarginContainer.new()
@@ -6150,7 +6276,7 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 		var stat_panel := _normal_activity_stat_panel(Vector2(0, 136), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		var stat_items := GridContainer.new()
 		stat_items.columns = 2
-		stat_items.add_theme_constant_override("h_separation", 10)
+		stat_items.add_theme_constant_override("h_separation", 24 if FishingState.is_xp_training(action) else 10)
 		stat_items.add_theme_constant_override("v_separation", -12)
 		stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		xp_box = _normal_activity_stat_item(xp_label, "xp", true, skill_id, action_id)
@@ -6161,6 +6287,7 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 		stat_items.add_child(time_box)
 		stat_items.add_child(stamina_box)
 		stat_items.add_child(success_box)
+
 		stat_panel.add_child(stat_items)
 		stat_row.add_child(stat_panel)
 	else:
@@ -6176,7 +6303,7 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 		else:
 			success_label.visible = false
 			stat_row.add_child(success_label)
-	host._material_collection_surface().call_deferred("sync_berry_prep_badges")
+	host._material_collection_surface().queue_berry_prep_badge_sync()
 
 	var initial_xp_parts = host._action_runtime()._action_xp_reward_parts_for_display(skill_id, action)
 	host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, "+%s" % GameFormatting.info_chip_number(float(host._action_runtime()._action_xp_reward_total(initial_xp_parts))))
@@ -6243,6 +6370,37 @@ func _detail_action_boss_line(copy: VBoxContainer, action: Dictionary) -> Label:
 	return node
 
 
+func _show_medal_information(skill_id: String, action_id: String) -> void:
+	var card: Dictionary = host.action_cards.get(host._action_key(skill_id, action_id), {})
+	_toggle_activity_stat_popup_for_card(card, skill_id, action_id, "medal")
+
+
+func _medal_information_lines(skill_id: String, action: Dictionary) -> Array:
+	var level := MasteryState.level(host.mastery, host._action_key(skill_id, str(action.id)))
+	var lines: Array = []
+	if level > 0 and skill_id != "fishing":
+		lines.append("This activity: +%s%% success chance." % level)
+	elif level == 0:
+		lines.append("Earn a medal by repeating this activity.")
+	for kind in ["stamina", "time", "accuracy"]:
+		lines.append_array(AchievementState.activity_medal_buff_lines(host, skill_id, action, kind, ""))
+	var global_lines: Array[String] = []
+	var stat_names := {"xp_mult": "XP", "speed_mult": "speed", "success_bonus": "success chance", "crit_chance_mult": "critical hit chance"}
+	for stat in ["xp_mult", "speed_mult", "success_bonus", "crit_chance_mult"]:
+		var value := AchievementState.global_medal_bonus(host, stat)
+		if value > 0:
+			if stat == "speed_mult":
+				global_lines.append("%s%% less time" % GameFormatting.percent_points(value * 100.0))
+			else:
+				global_lines.append("+%s%% %s" % [GameFormatting.percent_points(value * 100.0 if str(stat).ends_with("_mult") else value), stat_names[stat]])
+	if not global_lines.is_empty():
+		lines.append("All activities: " + ", ".join(global_lines) + ".")
+	var stamina := AchievementState.global_medal_bonus(host, "max_stamina")
+	if stamina > 0.0:
+		lines.append("All skills: +%s maximum stamina." % GameFormatting.percent_points(stamina))
+	return lines
+
+
 func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill_id: String, action: Dictionary) -> Dictionary:
 	var medal: TextureRect = null
 	var mastery_progress: CleanProgressBar = null
@@ -6268,6 +6426,17 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 		art_panel.add_child(medal)
+		var medal_help := Button.new()
+		medal_help.name = "MedalInformationButton"
+		medal_help.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		medal_help.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		medal_help.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		medal_help.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		medal_help.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		medal_help.focus_mode = Control.FOCUS_NONE
+		medal_help.add_to_group("feedback_help_buttons")
+		medal_help.pressed.connect(_show_medal_information.bind(skill_id, str(action.id)))
+		medal.add_child(medal_help)
 		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
 		mastery_progress.border_color = COLOR_INK
 		mastery_progress.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
@@ -6654,6 +6823,8 @@ func _hide_generic_activity_lock_overlay(card: Dictionary) -> void:
 
 
 func _action_requirement_unlocks_complete_after(skill_id: String, action: Dictionary, clicked_requirement_index: int) -> bool:
+	if not preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, action):
+		return false
 	var states = host._activity_unlock_runtime()._action_requirement_states(skill_id, action)
 	if states.is_empty():
 		return false
@@ -6834,6 +7005,10 @@ func _pulse_missing_action_requirements(group: Control, skill_id: String, action
 
 
 func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked: bool) -> void:
+	if is_instance_valid(card.get("wisdom_panel")):
+		card.wisdom_panel.sync()
+	if bool(card.get("wisdom_unlock_active", false)):
+		return
 	if bool(card.get("is_fishing_area", false)) or bool(card.get("is_fishing_method", false)):
 		_hide_generic_activity_lock_overlay(card)
 		_reset_activity_lock_overlay_pieces(card)
@@ -6860,7 +7035,14 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 	var overlay_root = host._app_lifecycle_runtime().valid_control_ref(overlay.get("root"))
 	if overlay_root == null:
 		return
+	if card.has("wisdom_panel"):
+		overlay_root.anchor_bottom = 0.0
+		overlay_root.offset_bottom = host.ACTION_CARD_HEIGHT
+		if int(action.get("wisdom_required", 0)) > 0:
+			overlay_root.z_index = 320
 	var rig = host._app_lifecycle_runtime().valid_control_ref(overlay.get("group"))
+	if rig != null and lock_visible and not ceremony_active and rig.has_method("set_requirement_progress"):
+		rig.set_requirement_progress(host._activity_unlock_runtime()._action_requirement_states(skill_id, action))
 	if (
 		rig != null
 		and bool(rig.get("unlock_drop_active"))
@@ -7008,7 +7190,7 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 		card["stat_popup_visual_key"] = visual_key
 		var bg = card.get("bg") as RoundedTextureRect
 		if bg != null:
-			bg.art_height = host.ACTION_CARD_HEIGHT
+			bg.art_height = ActivityCardStyles.face_height_for_action(card.action, host.ACTION_CARD_HEIGHT)
 			bg.feather_height = 170.0
 			bg.fallback_color = ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 			bg._update_mask_params()
@@ -7019,6 +7201,9 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 			border.queue_redraw()
 		_sync_activity_stat_box_styles(card, stat_kind)
 	if expanded:
+		if card.has("wisdom_panel"):
+			card.wisdom_panel.help.hide()
+			card["wisdom_help_height"] = 0.0
 		if _ensure_activity_stat_bonus_panel(card).is_empty():
 			return
 		var displayed_stat_kind = str(card.get("bonus_displayed_stat_kind", ""))
@@ -7038,11 +7223,15 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 
 func _sync_activity_stat_box_styles(card: Dictionary, active_kind: String) -> void:
 	var boxes = card.get("stat_boxes", {}) as Dictionary
+	var showing_stat_bonus := boxes.has(active_kind)
 	for kind in boxes.keys():
 		var box = boxes[kind] as Control
 		if box == null:
 			continue
 		var active = str(kind) == active_kind
+		var opacity := 0.38 if showing_stat_bonus and not active else 1.0
+		if not is_equal_approx(box.modulate.a, opacity):
+			box.modulate.a = opacity
 		if bool(box.get_meta("stat_box_style_active", false)) == active:
 			continue
 		box.set_meta("stat_box_style_active", active)
@@ -7068,12 +7257,47 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		card["bonus_expanded"] = false
 		return
 	var action = card.get("action", {}) as Dictionary
+	var art_divider: Control = (card.get("bonus_panel", {}) as Dictionary).get("art_divider")
+	if is_instance_valid(art_divider):
+		art_divider.visible = expanded
+	var background: Control = card.get("bg")
+	if is_instance_valid(background):
+		if not background.has_meta("collapsed_bottom_offset"):
+			background.set_meta("collapsed_bottom_offset", background.offset_bottom)
+		var separate_information: bool = expanded or int(action.get("wisdom_required", 0)) > 0 or float(card.get("wisdom_help_height", 0.0)) > 0.0
+		background.anchor_bottom = 0.0 if separate_information else 1.0
+		var art_bottom: float = ActivityCardStyles.face_height_for_action(action, host.ACTION_CARD_HEIGHT)
+		if int(action.get("wisdom_reward", 0)) > 0 or int(action.get("wisdom_required", 0)) > 0:
+			art_bottom -= ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
+		background.offset_bottom = art_bottom if separate_information else float(background.get_meta("collapsed_bottom_offset"))
+		if background is RoundedTextureRect:
+			if not background.has_meta("collapsed_bottom_shape"):
+				background.set_meta("collapsed_bottom_shape", background.bottom_shape)
+				background.set_meta("collapsed_corner_mask_mode", background.corner_mask_mode)
+			background.bottom_shape = "round" if expanded else str(background.get_meta("collapsed_bottom_shape"))
+			background.corner_mask_mode = 2 if expanded else int(background.get_meta("collapsed_corner_mask_mode"))
+			background._update_mask_params()
 	var uses_diamond_arena: bool = bool(host._fighting_runtime().action_uses_diamond_combat_arena(action))
 	var depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
-	var target_height = ActivityCardStyles.root_height_for_action(action, expanded, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y)
+	var target_height = ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y)
+	var wisdom_removed_height: float = ActivityCardStyles.WISDOM_REQUIREMENT_LAYOUT_HEIGHT * (1.0 - float(card.get("wisdom_layer_fraction", 1.0)))
+	target_height -= wisdom_removed_height
+	var information: Control = (card.get("bonus_panel", {}) as Dictionary).get("root")
+	if is_instance_valid(information) and int(action.get("wisdom_required", 0)) > 0:
+		information.offset_top = host.ACTION_CARD_HEIGHT + ActivityCardStyles.WISDOM_REQUIREMENT_LAYOUT_HEIGHT - wisdom_removed_height
+		if is_instance_valid(art_divider):
+			art_divider.offset_top = information.offset_top - 8.0
+			art_divider.offset_bottom = information.offset_top
+	target_height += float(card.get("wisdom_help_height", 0.0))
+	if expanded:
+		var info: Control = (card.get("bonus_panel", {}) as Dictionary).get("root")
+		if is_instance_valid(info):
+			target_height += info.get_combined_minimum_size().y + (160.0 if RecoveryModules.has_recovery(action) else 92.0)
 	var mat_collection = card.get("mat_collection", {}) as Dictionary
 	var mat_collection_height = host._material_collection_surface().visible_collection_height(mat_collection)
 	var target_entry_height = target_height + mat_collection_height
+	if is_instance_valid(entry):
+		target_entry_height = maxf(target_entry_height, float(entry.get_meta("detail_barrier_reserved_height", 0.0)))
 	host._material_collection_surface()._sync_mat_collection_row_position(card, target_height)
 	var target_size = Vector2(root.custom_minimum_size.x, target_height)
 	var target_entry_size = Vector2(target_size.x, target_entry_height)
@@ -7084,8 +7308,10 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 	var state_changed = bool(card.get("bonus_expanded", false)) != expanded
 	card["bonus_expanded"] = expanded
 	var entry_at_height = entry == null or not is_instance_valid(entry) or absf(entry.custom_minimum_size.y - target_entry_height) <= 0.5
-	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5 and entry_at_height:
+	var height_tolerance := 0.001 if bool(card.get("wisdom_unlock_active", false)) else 0.5
+	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= height_tolerance and entry_at_height:
 		return
+	host._app_lifecycle_runtime()._kill_meta_tween(root, "mat_collection_height_tween")
 	host._app_lifecycle_runtime()._kill_card_tween(card, "bonus_tween")
 	if bonus_root != null:
 		bonus_root.visible = true
@@ -7118,7 +7344,12 @@ func _update_detail_lazy_entry_height_for_card(card: Dictionary, height: float) 
 		return
 	var lazy_entry: Dictionary = _detail_lazy_entry_for_track_id(action_id)
 	if not lazy_entry.is_empty():
-		lazy_entry["height"] = maxf(1.0, height)
+		_apply_detail_lazy_entry_height(maxf(1.0, height), action_id)
+		var y := 0.0
+		for raw_entry in detail_lazy_plan:
+			var entry := raw_entry as Dictionary
+			entry["y"] = y
+			y += float(entry.get("height", 0.0)) + DETAIL_LAZY_STACK_SEPARATION
 
 
 func _finish_activity_card_expanded(card_key: String, bonus_root_id: int, expanded: bool) -> void:
@@ -7139,17 +7370,28 @@ func _update_activity_stat_bonus_panel(card: Dictionary, skill_id: String, actio
 	var original = bonus.get("original") as Label
 	var current = bonus.get("current") as Label
 	var bonuses = bonus.get("bonuses") as Label
+	var values: Control = bonus.values
+	values.visible = stat_kind not in ["medal", "berries"]
+	var bonus_heading: Label = bonus.heading
+	bonus_heading.visible = values.visible
+	var bonus_font_size := 40 if values.visible else 52
+	if bonuses.get_theme_font_size("font_size") != bonus_font_size:
+		bonuses.add_theme_font_size_override("font_size", bonus_font_size)
+		bonuses.add_theme_constant_override("outline_size", 10 if values.visible else host.ACTION_CARD_TITLE_OUTLINE_SIZE)
+	if stat_kind == "medal":
+		title.text = MasteryState.medal_name(MasteryState.level(host.mastery, host._action_key(skill_id, str(action.id)))) + " medal bonuses"
+		bonuses.text = "\n".join(_medal_information_lines(skill_id, action))
+		return
+	if stat_kind == "berries":
+		title.text = "Berry boosts"
+		bonuses.text = "Double XP and loot for 1 berry per successful attempt.\nTap Berries to choose activities."
+		return
 	var details = _activity_stat_bonus_details(skill_id, action, stat_kind)
-	for value_label in [original, current]:
-		if stat_kind == "xp":
-			value_label.add_theme_font_override("font", _activity_stat_value_font())
-		else:
-			value_label.remove_theme_font_override("font")
-	host._app_lifecycle_runtime().set_label_text_if_changed(title, str(details.get("title", "")))
-	host._app_lifecycle_runtime().set_label_text_if_changed(original, "Base: %s" % str(details.get("original", "")))
-	host._app_lifecycle_runtime().set_label_text_if_changed(current, "Now: %s" % str(details.get("current", "")))
+	host._app_lifecycle_runtime().set_label_text_if_changed(title, str(details.get("title", "")).capitalize().replace("Xp", "XP"))
+	host._app_lifecycle_runtime().set_label_text_if_changed(original, str(details.get("original", "")))
+	host._app_lifecycle_runtime().set_label_text_if_changed(current, str(details.get("current", "")))
 	var bonus_lines = details.get("bonuses", []) as Array
-	host._app_lifecycle_runtime().set_label_text_if_changed(bonuses, "Boosts\n%s" % _format_activity_bonus_lines(bonus_lines))
+	host._app_lifecycle_runtime().set_label_text_if_changed(bonuses, _format_activity_bonus_lines(bonus_lines))
 
 
 func _transition_activity_stat_bonus_panel(card: Dictionary, skill_id: String, action: Dictionary, stat_kind: String, instant: bool) -> void:
@@ -7206,10 +7448,11 @@ func _format_xp_reward_parts(parts: Array, use_full_names := false) -> String:
 		var part := raw_part as Dictionary
 		var reward_skill_id := str(part.get("skill", ""))
 		var label: String = SkillState.skill_name(host.skill_defs, reward_skill_id) if use_full_names else SkillState.skill_short_code(host.skill_defs, reward_skill_id)
-		packed.append("+%s %s" % [GameFormatting.info_chip_number(float(part.get("amount", 0))), label])
+		var amount := str(int(part.get("amount", 0))) if use_full_names else GameFormatting.info_chip_number(float(part.get("amount", 0)))
+		packed.append("+%s %s" % [amount, label])
 	if packed.is_empty():
 		packed.append("+0 XP")
-	return " / ".join(packed)
+	return ("\n" if use_full_names else " / ").join(packed)
 
 
 func _activity_xp_bonus_lines_for_rewards(owner_skill_id: String, action: Dictionary) -> Array:
@@ -7217,19 +7460,21 @@ func _activity_xp_bonus_lines_for_rewards(owner_skill_id: String, action: Dictio
 	var rewards: Dictionary = host._action_runtime()._base_xp_reward_map(action, owner_skill_id)
 	var medal_xp := AchievementState.global_medal_bonus(host, "xp_mult")
 	var ad_xp: float = host._ad_bonus_runtime().xp_multiplier()
+	if rewards.has("fight") and host._hub_runtime().fighting_xp_bonus() > 0.0:
+		lines.append("Training Dummy: +%s%% Fighting XP" % GameFormatting.percent_points(host._hub_runtime().fighting_xp_bonus() * 100.0))
 	if medal_xp > 0.0:
-		lines.append("+%s%% global medal XP" % GameFormatting.percent_points(medal_xp * 100.0))
+		lines.append("Medals: +%s%% XP" % GameFormatting.percent_points(medal_xp * 100.0))
 	if ad_xp > 0.0:
-		lines.append("+%s%% ad XP" % GameFormatting.percent_points(ad_xp * 100.0))
+		lines.append("Ad bonus: +%s%% XP" % GameFormatting.percent_points(ad_xp * 100.0))
 	for raw_reward_skill_id in host._action_runtime()._ordered_xp_reward_skill_ids(owner_skill_id, rewards):
 		var reward_skill_id := str(raw_reward_skill_id)
 		var achievement_xp := AchievementState.reward_bonus(AchievementState.milestones(host), "xp_mult", reward_skill_id)
 		if achievement_xp > 0.0:
-			lines.append("+%s%% %s achievement XP" % [GameFormatting.percent_points(achievement_xp * 100.0), SkillState.skill_name(host.skill_defs, reward_skill_id)])
+			lines.append("Achievements: +%s%% %s XP" % [GameFormatting.percent_points(achievement_xp * 100.0), SkillState.skill_name(host.skill_defs, reward_skill_id)])
 	if rewards.has(owner_skill_id) and host._passive_modules_runtime().plank_bonus_applies(owner_skill_id):
-		lines.append("+5% plank build XP")
+		lines.append("Planks: +5% Building XP")
 	if rewards.has(owner_skill_id) and host._hub_runtime().mission_bonus_applies(owner_skill_id, action):
-		lines.append("+%s%% mission board XP" % GameFormatting.percent_points(host._hub_runtime().mission_xp_bonus() * 100.0))
+		lines.append("Mission Board: +%s%% XP" % GameFormatting.percent_points(host._hub_runtime().mission_xp_bonus() * 100.0))
 	if lines.is_empty():
 		lines.append("None active")
 	return lines
@@ -7240,23 +7485,32 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 		"xp":
 			var base_parts = host._action_runtime()._base_xp_reward_parts_for_display(skill_id, action)
 			var current_parts = host._action_runtime()._action_xp_reward_parts_for_display(skill_id, action)
+			var xp_lines := _activity_xp_bonus_lines_for_rewards(skill_id, action)
+			var rounding_hides_bonus := false
+			for part in base_parts:
+				var reward_skill_id := str(part.skill)
+				var raw_amount: float = host._action_runtime()._unrounded_xp_reward_amount(action, skill_id, reward_skill_id, int(part.amount))
+				if raw_amount > float(part.amount) and roundi(raw_amount) == int(part.amount):
+					rounding_hides_bonus = true
+			if rounding_hides_bonus:
+				xp_lines.append("XP is rounded to whole numbers.")
 			return {
 				"title": "XP REWARDS" if current_parts.size() > 1 else "XP",
-				"original": _format_xp_reward_parts(base_parts),
-				"current": _format_xp_reward_parts(current_parts),
-				"bonuses": _activity_xp_bonus_lines_for_rewards(skill_id, action)
+				"original": _format_xp_reward_parts(base_parts, true),
+				"current": _format_xp_reward_parts(current_parts, true),
+				"bonuses": xp_lines
 			}
 		"stamina":
-			var base_stamina = maxi(1, int(action.get("stamina", 1)))
+			var base_stamina = int(action.get("stamina", 1))
 			var stamina_lines = []
 			var medal_reduction = AchievementState.activity_medal_stamina_cost_reduction(host, skill_id, action)
 			if medal_reduction > 0.0:
 				stamina_lines.append_array(AchievementState.activity_medal_buff_lines(host, skill_id, action, "stamina", "-"))
 			var tier_stamina = AchievementState.activity_tier_stamina_cost_reduction(host, skill_id, action)
 			if tier_stamina > 0.0:
-				stamina_lines.append("-%s%% tier medal support" % GameFormatting.percent_points(tier_stamina * 100.0))
+				stamina_lines.append("Previous tier medals: %s%% less stamina" % GameFormatting.percent_points(tier_stamina * 100.0))
 			if host._hub_runtime().mission_bonus_applies(skill_id, action):
-				stamina_lines.append("-%s%% mission board stamina" % GameFormatting.percent_points(host._hub_runtime().mission_stamina_reduction() * 100.0))
+				stamina_lines.append("Mission board: %s%% less stamina" % GameFormatting.percent_points(host._hub_runtime().mission_stamina_reduction() * 100.0))
 			if stamina_lines.is_empty():
 				stamina_lines.append("None active")
 			return {
@@ -7266,14 +7520,14 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				"bonuses": stamina_lines
 			}
 		"time":
-			if host._action_runtime()._fishing_batch_soak_active(skill_id):
+			if host._action_runtime()._fishing_batch_soak_active(skill_id) and not FishingState.is_xp_training(action):
 				var batch_lines = ["Fish enter the net in batches, then the full net hauls at 10+ fish."]
 				var batch_medal_time = AchievementState.activity_medal_time_reduction(host, skill_id, action)
 				if batch_medal_time > 0.0:
 					batch_lines.append_array(AchievementState.activity_medal_buff_lines(host, skill_id, action, "time", "-"))
 				var batch_tier_time = AchievementState.activity_tier_time_reduction(host, skill_id, action)
 				if batch_tier_time > 0.0:
-					batch_lines.append("-%s%% tier medal support" % GameFormatting.percent_points(batch_tier_time * 100.0))
+					batch_lines.append("Previous tier medals: %s%% less time" % GameFormatting.percent_points(batch_tier_time * 100.0))
 				return {
 					"title": "FILL",
 					"original": "%ss" % GameFormatting.significant_digits(float(action.get("seconds", 1.0))),
@@ -7288,21 +7542,21 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var activity_medal_speed = AchievementState.activity_medal_time_reduction(host, skill_id, action)
 			var activity_tier_speed = AchievementState.activity_tier_time_reduction(host, skill_id, action)
 			if medal_speed > 0.0:
-				time_lines.append("-%s%% global medal speed" % GameFormatting.percent_points(medal_speed * 100.0))
+				time_lines.append("Medals: %s%% less time" % GameFormatting.percent_points(medal_speed * 100.0))
 			if achievement_speed > 0.0:
-				time_lines.append("-%s%% achievement speed" % GameFormatting.percent_points(achievement_speed * 100.0))
+				time_lines.append("Achievements: %s%% less time" % GameFormatting.percent_points(achievement_speed * 100.0))
 			if activity_medal_speed > 0.0:
 				time_lines.append_array(AchievementState.activity_medal_buff_lines(host, skill_id, action, "time", "-"))
 			if activity_tier_speed > 0.0:
-				time_lines.append("-%s%% tier medal support" % GameFormatting.percent_points(activity_tier_speed * 100.0))
+				time_lines.append("Previous tier medals: %s%% less time" % GameFormatting.percent_points(activity_tier_speed * 100.0))
 			if ad_speed > 0.0:
-				time_lines.append("-%s%% ad speed" % GameFormatting.percent_points(ad_speed * 100.0))
+				time_lines.append("Ad bonus: %s%% less time" % GameFormatting.percent_points(ad_speed * 100.0))
 			if host._hub_runtime().mission_bonus_applies(skill_id, action):
-				time_lines.append("-%s%% mission board speed" % GameFormatting.percent_points(host._hub_runtime().mission_time_reduction() * 100.0))
+				time_lines.append("Mission board: %s%% less time" % GameFormatting.percent_points(host._hub_runtime().mission_time_reduction() * 100.0))
 			if time_lines.is_empty():
 				time_lines.append("None active")
 			return {
-				"title": "TIME",
+				"title": "TIME BONUSES",
 				"original": "%ss" % GameFormatting.significant_digits(base_seconds),
 				"current": "%ss" % GameFormatting.significant_digits(host._action_runtime()._action_cycle_seconds(skill_id, action)),
 				"bonuses": time_lines
@@ -7313,33 +7567,34 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var medal_success = AchievementState.global_medal_bonus(host, "success_bonus")
 			var achievement_success = AchievementState.reward_bonus(AchievementState.milestones(host), "success_bonus", skill_id)
 			if medal_success > 0.0:
-				success_lines.append("+%s%% global medal success" % GameFormatting.percent_points(medal_success))
+				success_lines.append("Medals: +%s%%" % GameFormatting.percent_points(medal_success))
 			if achievement_success > 0.0:
-				success_lines.append("+%s%% achievement success" % GameFormatting.percent_points(achievement_success))
+				success_lines.append("Achievements: +%s%%" % GameFormatting.percent_points(achievement_success))
 			var action_id = str(action.get("id", ""))
 			var medal_level = MasteryState.level(host.mastery, host._action_key(skill_id, action_id))
 			if medal_level > 0:
-				success_lines.append("+%s%% %s medal" % [GameFormatting.percent_points(float(medal_level)), MasteryState.medal_name(medal_level)])
+				success_lines.append("%s medal: +%s%%" % [MasteryState.medal_name(medal_level), GameFormatting.percent_points(float(medal_level))])
 			var activity_medal_accuracy = AchievementState.activity_medal_accuracy_bonus(host, skill_id, action)
 			if activity_medal_accuracy > 0.0:
-				success_lines.append_array(AchievementState.activity_medal_buff_lines(host, skill_id, action, "accuracy", "+"))
+				for line in AchievementState.activity_medal_buff_lines(host, skill_id, action, "accuracy", "+"):
+					success_lines.append(str(line).trim_suffix(" success chance"))
 			var tier_accuracy = AchievementState.activity_tier_accuracy_bonus(host, skill_id, action)
 			if tier_accuracy > 0.0:
-				success_lines.append("+%s%% tier medal support" % GameFormatting.percent_points(tier_accuracy))
+				success_lines.append("Previous tier medals: +%s%%" % GameFormatting.percent_points(tier_accuracy))
 			if not host._fishing_rework_active_for_skill(skill_id):
 				var success_before_barn = clampf(base_success + medal_success + achievement_success + float(medal_level) + activity_medal_accuracy + tier_accuracy, 5.0, 100.0)
 				var barn_bonus = (100.0 - success_before_barn) * host._hub_surface()._hub_barn_failure_factor()
 				if barn_bonus > 0.0:
-					success_lines.append("+%s%% Barn reliability" % GameFormatting.percent_points(barn_bonus))
+					success_lines.append("Barn: +%s%%" % GameFormatting.percent_points(barn_bonus))
 				var trophy_success = host._hub_runtime().trophy_success_bonus() * 100.0
 				if trophy_success > 0.0:
-					success_lines.append("+%s%% Trophy display" % GameFormatting.percent_points(trophy_success))
+					success_lines.append("Trophy display: +%s%%" % GameFormatting.percent_points(trophy_success))
 			if host._action_runtime()._success_chance(skill_id, action) >= 100.0:
-				success_lines.append("RATE maxed at 100%")
+				success_lines.append("Maximum: 100%")
 			if success_lines.is_empty():
 				success_lines.append("None active")
 			return {
-				"title": "RATE",
+				"title": "SUCCESS CHANCE",
 				"original": "%s%%" % GameFormatting.percent_points(base_success),
 				"current": "%s%%" % GameFormatting.percent_points(host._action_runtime()._success_chance(skill_id, action)),
 				"bonuses": success_lines
@@ -7348,42 +7603,58 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 
 
 func _activity_stat_bonus_panel() -> Dictionary:
-	var root = HBoxContainer.new()
-	root.custom_minimum_size = Vector2(0, 260)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 20)
+	var root := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.65)
+	style.set_corner_radius_all(12)
+	style.content_margin_left = 26
+	style.content_margin_right = 26
+	style.content_margin_top = 12
+	style.content_margin_bottom = 14
+	root.add_theme_stylebox_override("panel", style)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 14)
+	root.add_child(stack)
+	root.name = "ActivityExpandedInformation"
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.modulate.a = 0.0
 	root.visible = false
-	var values = VBoxContainer.new()
-	values.custom_minimum_size = Vector2(410, 0)
-	values.add_theme_constant_override("separation", 4)
-	values.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(values)
-	var title = _activity_bonus_label("", 60)
-	values.add_child(title)
-	var original = _activity_bonus_label("", 52)
-	values.add_child(original)
-	var current = _activity_bonus_label("", 52)
-	values.add_child(current)
-	var bonus_column = VBoxContainer.new()
-	bonus_column.custom_minimum_size = Vector2(200, 0)
-	bonus_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bonus_column.add_theme_constant_override("separation", 4)
-	bonus_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(bonus_column)
-	var bonuses = _activity_bonus_label("", 52)
-	bonuses.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bonuses.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var title := _activity_bonus_label("", 60)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(title)
+	var values := HBoxContainer.new()
+	values.add_theme_constant_override("separation", 30)
+	stack.add_child(values)
+	var value_columns: Array[VBoxContainer] = []
+	for heading in ["Base", "With bonuses"]:
+		var column := VBoxContainer.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation", 8)
+		values.add_child(column)
+		var heading_label := _activity_bonus_label(heading, 52)
+		heading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		column.add_child(heading_label)
+		value_columns.append(column)
+	var original := _activity_bonus_label("", 52)
+	original.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	original.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	original.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value_columns[0].add_child(original)
+	var current := _activity_bonus_label("", 52)
+	current.add_theme_color_override("font_color", Color("#ffe56b"))
+	current.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	current.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	current.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value_columns[1].add_child(current)
+	var bonus_heading := _activity_bonus_label("Active bonuses", 52)
+	bonus_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(bonus_heading)
+	var bonuses := _activity_bonus_label("", 52)
+	bonuses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bonuses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bonus_column.add_child(bonuses)
-	return {
-		"root": root,
-		"title": title,
-		"original": original,
-		"current": current,
-		"bonuses": bonuses
-	}
+	bonuses.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_child(bonuses)
+	return {"root": root, "title": title, "original": original, "current": current, "bonuses": bonuses, "values": values, "heading": bonus_heading}
 
 
 func _activity_stat_value_font() -> Font:
@@ -7405,11 +7676,39 @@ func _ensure_activity_stat_bonus_panel(card: Dictionary) -> Dictionary:
 		var root = host._app_lifecycle_runtime().valid_control_ref(existing.get("root"))
 		if root != null:
 			return existing
-	var parent = card.get("bonus_parent") as Control
+	var parent = card.get("pop") as Control
 	if parent == null or not is_instance_valid(parent):
 		return {}
 	var bonus = _activity_stat_bonus_panel()
 	parent.add_child(bonus["root"] as Control)
+	var panel: Control = bonus.root
+	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	panel.offset_left = 12
+	panel.offset_right = -12
+	panel.offset_top = (host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT if host._fighting_runtime().action_uses_diamond_combat_arena(card.action) else ActivityCardStyles.face_height_for_action(card.action, host.ACTION_CARD_HEIGHT))
+	if int(card.action.get("wisdom_required", 0)) > 0:
+		panel.offset_top += ActivityCardStyles.WISDOM_REQUIREMENT_LAYOUT_HEIGHT
+	panel.offset_bottom = panel.offset_top
+	panel.z_index = 210
+	var style := panel.get_theme_stylebox("panel") as StyleBoxFlat
+	style.bg_color = ThemeStyles.skill_theme_color(str(card.skill_id), host.COLOR_BLUE).darkened(0.42)
+	var depth := card.get("depth") as ActivityCardDepth
+	if is_instance_valid(depth) and depth.visible:
+		style.bg_color = depth.back_color
+	style.set_corner_radius_all(0)
+	var divider := ColorRect.new()
+	divider.name = "ActivityInformationArtDivider"
+	divider.color = host.COLOR_INK
+	divider.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	divider.offset_left = 12
+	divider.offset_right = -12
+	divider.offset_top = panel.offset_top - 8
+	divider.offset_bottom = panel.offset_top
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	divider.z_index = 211
+	divider.visible = false
+	parent.add_child(divider)
+	bonus["art_divider"] = divider
 	card["bonus_panel"] = bonus
 	return bonus
 
@@ -7418,7 +7717,7 @@ func _activity_bonus_label(text: String, font_size: int) -> Label:
 	var label = host._label(text, font_size, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", maxi(12, int(round(float(font_size) * 0.30))))
+	label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
@@ -7482,7 +7781,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	header.add_theme_constant_override("separation", 9)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(header)
-	var title: Label = host._label("TIER %s" % tier, 81 + mini(tier, 4) * 2, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label("Tier %s" % tier, 81 + mini(tier, 4) * 2, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -7597,14 +7896,14 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	var earned_medals := int(counts.get("earned", 0))
 	var possible_medals := int(counts.get("possible", 0))
 	var completion := 0.0 if possible_medals <= 0 else float(earned_medals) / float(possible_medals) * 100.0
-	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary: Label = host._label("T%s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(summary)
 	header.add_child(_skill_header_info_button(
 		"Tier Medal Support",
-		"Earn Bronze, Silver, and Gold on every activity in this tier to unlock the listed Tier %s bonuses." % (tier + 1)
+		"Earn Bronze, Silver, and Gold on every activity in this tier to unlock the listed T%s bonuses." % (tier + 1)
 	))
 	stack.add_child(_tier_banner_progress_bar(earned_medals, possible_medals, Color("#dc8b32"), "%s%%" % GameFormatting.percent_points(completion), 70.0))
 	_add_tier_banner_expanded_content(stack, skill_id, tier)
@@ -7654,28 +7953,18 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	var medal_stack := VBoxContainer.new()
-	medal_stack.custom_minimum_size = Vector2(115, 0)
-	medal_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	medal_stack.add_theme_constant_override("separation", -4)
-	medal_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(medal_stack)
 	var medal_source := load(str(AchievementPresentation.MASTERY_MEDAL_TEXTURES[clampi(medal_level - 1, 0, AchievementPresentation.MASTERY_MEDAL_TEXTURES.size() - 1)])) as Texture2D
 	var medal_texture := AtlasTexture.new()
 	medal_texture.atlas = medal_source
 	medal_texture.region = Rect2(168, 168, 432, 432)
 	var medal := TextureRect.new()
 	medal.texture = medal_texture
-	medal.custom_minimum_size = Vector2(84, 84)
+	medal.custom_minimum_size = Vector2(60, 60)
 	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	medal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	medal_stack.add_child(medal)
-	var medal_name: Label = host._label_on_light_panel(str(goal.get("medal", "Medal")), 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	medal_stack.add_child(medal_name)
 	var progress_stack := VBoxContainer.new()
 	progress_stack.custom_minimum_size.x = 280
 	progress_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -7683,10 +7972,15 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	progress_stack.add_theme_constant_override("separation", 7)
 	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(progress_stack)
-	var requirement: Label = host._label_on_light_panel("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 36, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var requirement_row := HBoxContainer.new()
+	requirement_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	requirement_row.add_theme_constant_override("separation", 8)
+	requirement_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	progress_stack.add_child(requirement_row)
+	requirement_row.add_child(medal)
+	var requirement: Label = host._label_on_light_panel("on every T%s activity" % tier, 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	progress_stack.add_child(requirement)
+	requirement_row.add_child(requirement)
 	var progress_text := "%s / %s  COMPLETE" % [earned, possible] if completed else "%s / %s" % [earned, possible]
 	progress_stack.add_child(_tier_banner_progress_bar(earned, possible, medal_color, progress_text, 70.0))
 	row.add_child(_tier_banner_reward_chip(str(goal.get("reward_text", "")), medal_color))
@@ -7757,6 +8051,15 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	main.add_theme_constant_override("outline_size", 12)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
+	if detail_text.contains("accuracy"):
+		var icon := TextureRect.new()
+		icon.texture = host.visual_texture_cache._texture_or_visual_fallback("res://assets/content/ui/infochip-symbol-rate-outlined.png")
+		icon.custom_minimum_size = Vector2(64, 64)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		reward.add_child(icon)
+		detail_text = detail_text.replace(" accuracy", "")
 	if not detail_text.is_empty():
 		var detail: Label = host._label(detail_text, 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		detail.custom_minimum_size.y = 100
@@ -7892,6 +8195,8 @@ func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
 	var entry_data = lazy_entry.get("entry", {}) as Dictionary
 	var action = entry_data.get("action", {}) as Dictionary
 	match str(lazy_entry.get("kind", "")):
+		"project":
+			return preload("res://scripts/ui/project_panel.gd").height_for(action, bool(entry_data.get("next_unlock", true)))
 		"beta_notice":
 			return BETA_NOTICE_HEIGHT
 		"tier_banner":
@@ -7908,7 +8213,10 @@ func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
 			return DETAIL_LAZY_TIP_HEIGHT
 	var uses_diamond_arena: bool = bool(host._fighting_runtime().action_uses_diamond_combat_arena(action))
 	var depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y
-	return ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y) + host._material_collection_surface().layout_height_for_action(selected_skill_id, action, host._action_runtime()._action_has_mat_rewards(action), host.running_skill_id, host.running_action_id)
+	var completed_wisdom_height := 0.0
+	if int(action.get("wisdom_required", 0)) > 0 and host._activity_unlock_runtime()._is_action_unlocked(selected_skill_id, action):
+		completed_wisdom_height = ActivityCardStyles.WISDOM_REQUIREMENT_LAYOUT_HEIGHT
+	return ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, depth_offset_y) - completed_wisdom_height + host._material_collection_surface().layout_height_for_action(selected_skill_id, action, host._action_runtime()._action_has_mat_rewards(action), host.running_skill_id, host.running_action_id)
 
 
 func _detail_lazy_track_id_for_entry(entry_data: Dictionary) -> String:
@@ -8063,6 +8371,8 @@ func _detail_lazy_slot_has_real_content(slot: Control) -> bool:
 func _detail_lazy_prepare_host_for_mount(stack_host: Control, placeholder: Control) -> void:
 	if placeholder == null or not is_instance_valid(placeholder):
 		return
+	if bool(placeholder.get_meta("detail_outgoing_barrier", false)):
+		return
 	if stack_host != null and is_instance_valid(stack_host) and stack_host.has_meta("detail_lazy_placeholder"):
 		stack_host.remove_meta("detail_lazy_placeholder")
 	if placeholder == stack_host:
@@ -8083,6 +8393,12 @@ func _detail_lazy_add_child_to_host(stack_host: Control, child: Control, content
 	if child_height <= 1.0:
 		child_height = child.size.y
 	var host_height = maxf(1.0, child_height)
+	for existing in stack_host.get_children():
+		if bool(existing.get_meta("detail_outgoing_barrier", false)):
+			# Metal covers include extra clearance. Keep that space for this row
+			# so completing it cannot pull every following activity upward.
+			host_height = maxf(host_height, previous_height)
+			break
 	stack_host.custom_minimum_size.y = host_height
 	if absf(stack_host.size.y - host_height) > 0.5 or bool(stack_host.get_meta("detail_lazy_placeholder", false)):
 		stack_host.size.y = host_height
@@ -8118,7 +8434,7 @@ func _detail_lazy_kind_is_module(kind: String) -> bool:
 	return kind == "heist" or _detail_lazy_kind_is_fishing_module(kind)
 
 
-func _play_detail_lazy_fade_in(target: Control) -> void:
+func _play_detail_lazy_fade_in(target: Control, delay := 0.0, duration := DETAIL_LAZY_FADE_IN_SECONDS, composed := false) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	_kill_detail_lazy_reveal_tween(target)
@@ -8126,25 +8442,51 @@ func _play_detail_lazy_fade_in(target: Control) -> void:
 	var base_scale = target.scale
 	target.set_meta("detail_lazy_reveal_base_y", base_y)
 	target.set_meta("detail_lazy_reveal_base_scale", base_scale)
-	target.modulate.a = 0.0
+	if composed:
+		preload("res://scripts/ui/reveal_cover.gd").apply(target, 0.0, host)
+	else:
+		target.modulate.a = 0.0
 	target.position.y = base_y + DETAIL_LAZY_SLIDE_IN_OFFSET_Y
 	target.pivot_offset = target.size * 0.5
 	target.scale = base_scale * DETAIL_LAZY_SCALE_IN_AMOUNT
 	var tween = host.create_tween()
 	target.set_meta("detail_lazy_reveal_tween", tween)
 	tween.set_parallel(true)
-	tween.tween_property(target, "modulate:a", 1.0, DETAIL_LAZY_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(target, "position:y", base_y, DETAIL_LAZY_FADE_IN_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(target, "scale", base_scale, DETAIL_LAZY_FADE_IN_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if composed:
+		tween.tween_method(preload("res://scripts/ui/reveal_cover.gd").apply_safe.bind(target.get_instance_id(), host), 0.0, 1.0, duration).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	else:
+		tween.tween_property(target, "modulate:a", 1.0, duration).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(target, "position:y", base_y, duration).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(target, "scale", base_scale, duration).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tween.set_parallel(false)
 	tween.tween_callback(_finish_detail_lazy_reveal.bind(target.get_instance_id(), base_y, base_scale))
+
+
+func _play_detail_progression_reveal(lazy_entry: Dictionary) -> bool:
+	if not lazy_entry.has("progression_reveal_delay"):
+		return false
+	var stack_host: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
+	var target := _detail_lazy_primary_child_control(stack_host)
+	if target == null:
+		return false
+	var delay := float(lazy_entry["progression_reveal_delay"])
+	lazy_entry.erase("progression_reveal_delay")
+	stack_host.remove_meta("progression_reveal_pending")
+	stack_host.set_meta("progression_reveal_until_msec", Time.get_ticks_msec() + int((delay + host.ACTIVITY_PREVIEW_FADE_IN_SECONDS + 0.08) * 1000.0))
+	var action_id := str(lazy_entry.get("track_id", ""))
+	var card: Dictionary = host.action_cards.get(str(lazy_entry.get("skill_id", host.selected_skill_id)) + ":" + action_id, {})
+	if bool(card.get("fade_in_pending", false)) or bool(card.get("unlock_next_preview_pending", false)):
+		return true
+	_play_detail_lazy_fade_in(target, delay, host.ACTIVITY_PREVIEW_FADE_IN_SECONDS, host.desktop_layout.enabled())
+	_hold_skill_detail_layout_refresh(delay + host.ACTIVITY_PREVIEW_FADE_IN_SECONDS + 0.08)
+	return true
 
 
 func _finish_detail_lazy_reveal(target_id: int, base_y: float, base_scale: Vector2) -> void:
 	var target = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(target_id))
 	if target == null or target.is_queued_for_deletion():
 		return
-	target.modulate.a = 1.0
+	preload("res://scripts/ui/reveal_cover.gd").apply(target, 1.0, host)
 	target.position.y = base_y
 	target.scale = base_scale
 	if target.has_meta("detail_lazy_reveal_tween"):
@@ -8159,6 +8501,7 @@ func _kill_detail_lazy_reveal_tween(target: Control) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	host._app_lifecycle_runtime()._kill_meta_tween(target, "detail_lazy_reveal_tween")
+	preload("res://scripts/ui/reveal_cover.gd").apply(target, 1.0, host)
 	if target.has_meta("detail_lazy_reveal_base_y"):
 		target.position.y = float(target.get_meta("detail_lazy_reveal_base_y"))
 		target.remove_meta("detail_lazy_reveal_base_y")
@@ -8196,6 +8539,7 @@ func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, actio
 	var running_here = (host.running_skill_id == skill_id and host.running_action_id == action_id) or (temporary_events.event_running_skill_id == skill_id and temporary_events.event_running_action_id == action_id)
 	host._material_collection_surface()._sync_mat_collection_card(card, running_here, true)
 	host._tutorial_overlay_surface()._apply_onboarding_fight_action_card_stats_visibility(card, skill_id)
+
 
 
 func _ensure_interactive_action_card_button(card: Dictionary, skill_id: String, action_id: String) -> void:
@@ -8315,6 +8659,7 @@ func _detail_lazy_build_cached_entry(
 	if root == null or not is_instance_valid(root):
 		return false
 	_park_detail_lazy_cached_root(root)
+	detail_lazy_mounted_this_frame = true
 	lazy_entry["cached_root"] = root
 	if not cached_card.is_empty():
 		lazy_entry["cached_card"] = cached_card
@@ -8436,7 +8781,8 @@ func _detail_lazy_copy_runtime_entry_state(target_entry: Dictionary, source_entr
 		"card",
 		"built",
 		"cached_root",
-		"cached_card"
+		"cached_card",
+		"progression_reveal_delay"
 	]:
 		if source_entry.has(key):
 			target_entry[key] = source_entry[key]
@@ -8450,7 +8796,7 @@ func _detail_lazy_stack_insert_index_for_plan_index(stack: VBoxContainer, plan_i
 	for child_index in range(stack.get_child_count()):
 		var child = stack.get_child(child_index)
 		var control = child as Control
-		if control != null and control.name == "DetailActionsBottomSpacer":
+		if control != null and (control.name in ["DetailActionsBottomSpacer", "PageSwitchModule"] or bool(control.get_meta("page_switch_module_entry", false))):
 			fallback_index = child_index
 			break
 		if control != null and control.name == "DetailActionsTopSpacer":
@@ -8511,13 +8857,34 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	if not _detail_lazy_mount_item(preview_entry, selected_skill_id, content_width, actions_width, false):
 		_detail_lazy_remove_unmounted_inserted_host(preview_entry)
 		return false
-	_detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan, action_id)
+	# One unlock can reveal combo activities and tier banners as well as the
+	# next locked activity. Give every entry a slot before publishing the plan.
+	_detail_lazy_reconcile_plan_slots(stack, new_plan, selected_skill_id, content_width, actions_width)
+	_detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan)
 	detail_lazy_plan = new_plan
 	detail_rendered_action_ids = new_signature
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	if not layout_snapshot.is_empty():
 		call_deferred("_play_detail_module_layout_transition", layout_snapshot)
 	return true
+
+
+func _detail_lazy_reconcile_plan_slots(stack: VBoxContainer, new_plan: Array, skill_id: String, content_width: float, actions_width: float) -> void:
+	var new_track_ids := {}
+	var reveal_index := 0
+	for raw_new_entry in new_plan:
+		var new_entry := raw_new_entry as Dictionary
+		new_track_ids[str(new_entry.get("track_id", ""))] = true
+		var entry_host = host._app_lifecycle_runtime().valid_control_ref(new_entry.get("stack_host"))
+		if entry_host == null or entry_host.get_parent() != stack:
+			new_entry["progression_reveal_delay"] = minf(reveal_index * 0.12, 0.6)
+			reveal_index += 1
+			new_entry["mounted"] = false
+			_detail_lazy_create_slot_for_entry(stack, skill_id, new_entry, content_width, actions_width)
+	for raw_old_entry in detail_lazy_plan:
+		var old_entry := raw_old_entry as Dictionary
+		if not new_track_ids.has(str(old_entry.get("track_id", ""))):
+			_detail_lazy_remove_unmounted_inserted_host(old_entry)
 
 
 func _detail_lazy_primary_child_control(module_host: Control) -> Control:
@@ -8527,7 +8894,7 @@ func _detail_lazy_primary_child_control(module_host: Control) -> Control:
 		var control = child as Control
 		if control == null:
 			continue
-		if bool(control.get_meta("detail_lazy_placeholder", false)):
+		if bool(control.get_meta("detail_lazy_placeholder", false)) or bool(control.get_meta("detail_outgoing_barrier", false)):
 			continue
 		return control
 	return module_host
@@ -8547,18 +8914,21 @@ func _detail_lazy_remove_unmounted_inserted_host(inserted_entry: Dictionary) -> 
 	stack_host.queue_free()
 
 
-func _detail_lazy_reorder_existing_hosts_for_plan(stack: VBoxContainer, plan: Array, skip_track_id: String) -> void:
+func _detail_lazy_reorder_existing_hosts_for_plan(stack: VBoxContainer, plan: Array) -> void:
 	if stack == null or not is_instance_valid(stack):
 		return
-	for plan_index in range(plan.size()):
-		var lazy_entry = plan[plan_index] as Dictionary
-		if str(lazy_entry.get("track_id", "")) == skip_track_id:
-			continue
+	var target_index := 0
+	for child in stack.get_children():
+		if child.name == "DetailActionsTopSpacer":
+			stack.move_child(child, 0)
+			target_index = 1
+			break
+	for lazy_entry in plan:
 		var stack_host = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
 		if stack_host == null or not is_instance_valid(stack_host) or stack_host.get_parent() != stack:
 			continue
-		var target_index = _detail_lazy_stack_insert_index_for_plan_index(stack, plan_index)
 		stack.move_child(stack_host, clampi(target_index, 0, maxi(0, stack.get_child_count() - 1)))
+		target_index += 1
 
 
 func _try_refresh_detail_module_order_in_place() -> bool:
@@ -8584,6 +8954,7 @@ func _try_refresh_detail_module_order_in_place() -> bool:
 		return false
 	var new_signature = plan_data.get("signature", []) as Array
 	var old_entries_by_track_id = _detail_lazy_runtime_entries_by_track_id(detail_lazy_plan)
+	var replaced_project_ids := {}
 	var new_track_ids = {}
 	for raw_new_entry in new_plan:
 		var new_entry = raw_new_entry as Dictionary
@@ -8593,49 +8964,79 @@ func _try_refresh_detail_module_order_in_place() -> bool:
 		new_track_ids[track_id] = true
 		if old_entries_by_track_id.has(track_id):
 			_detail_lazy_copy_runtime_entry_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
+		elif str(new_entry.get("kind", "")) in ["action", "passive"]:
+			var action: Dictionary = (new_entry.get("entry", {}) as Dictionary).get("action", {})
+			var project_id := "project:" + str((action.get("unlock_project", {}) as Dictionary).get("id", ""))
+			var old_project: Dictionary = old_entries_by_track_id.get(project_id, {})
+			var project_slot: Control = host._app_lifecycle_runtime().valid_control_ref(old_project.get("stack_host"))
+			if is_instance_valid(project_slot) and bool(old_project.get("mounted", false)):
+				# A barrier and its activity occupy the same place. Replace their
+				# contents in one frame rather than removing and re-inserting a row.
+				new_entry["stack_host"] = project_slot
+				var outgoing_barrier := _detail_lazy_primary_child_control(project_slot)
+				var retain_barrier := is_instance_valid(outgoing_barrier) and outgoing_barrier.has_method("reveal_mounted_activity")
+				if retain_barrier:
+					outgoing_barrier.set_meta("detail_outgoing_barrier", true)
+				new_entry["placeholder"] = outgoing_barrier
+				new_entry["skill_id"] = selected_skill_id
+				project_slot.custom_minimum_size.y = maxf(project_slot.size.y, float(new_entry.get("height", 0.0)))
+				project_slot.set_meta("detail_barrier_reserved_height", project_slot.custom_minimum_size.y)
+				project_slot.set_meta("module_ui_key", _detail_lazy_module_ui_key(new_entry, selected_skill_id))
+				var was_scrolling := detail_scroll_visual_work_this_frame
+				detail_scroll_visual_work_this_frame = false
+				var mounted := _detail_lazy_mount_item(new_entry, selected_skill_id, host._skill_content_width(), host._skill_content_width(), false)
+				detail_scroll_visual_work_this_frame = was_scrolling
+				if mounted:
+					if retain_barrier:
+						outgoing_barrier.reveal_mounted_activity()
+					replaced_project_ids[project_id] = true
+					detail_action_card_nodes.erase(project_id)
+				elif retain_barrier:
+					outgoing_barrier.remove_meta("detail_outgoing_barrier")
 	var content_width = host._skill_content_width()
 	var actions_width = content_width
+	var reveal_index := 0
 	for plan_index in range(new_plan.size()):
 		var new_entry = new_plan[plan_index] as Dictionary
 		var stack_host = host._app_lifecycle_runtime().valid_control_ref(new_entry.get("stack_host"))
 		if stack_host != null and is_instance_valid(stack_host):
 			continue
+		new_entry["progression_reveal_delay"] = minf(reveal_index * 0.12, 0.6)
+		reveal_index += 1
 		_detail_lazy_create_slot_for_entry(stack, selected_skill_id, new_entry, content_width, actions_width)
-		if _detail_lazy_should_mount_entry(new_entry, _detail_lazy_pinned_track_ids(), plan_index):
+		if not host.desktop_layout.enabled() and _detail_lazy_should_mount_entry(new_entry, _detail_lazy_pinned_track_ids(), plan_index):
 			_detail_lazy_mount_item(new_entry, selected_skill_id, content_width, actions_width, false)
 	for raw_old_entry in detail_lazy_plan:
 		var old_entry = raw_old_entry as Dictionary
 		var old_track_id = str(old_entry.get("track_id", ""))
-		if old_track_id.is_empty() or new_track_ids.has(old_track_id):
+		if old_track_id.is_empty() or new_track_ids.has(old_track_id) or replaced_project_ids.has(old_track_id):
 			continue
 		_detail_lazy_remove_unmounted_inserted_host(old_entry)
 	detail_lazy_stack = stack
 	detail_lazy_plan = new_plan
 	detail_rendered_action_ids = new_signature
-	_detail_lazy_reorder_existing_hosts_for_plan(stack, detail_lazy_plan, "")
+	_detail_lazy_reorder_existing_hosts_for_plan(stack, detail_lazy_plan)
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
-	call_deferred("_play_detail_module_layout_transition", layout_snapshot)
-	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
+	call_deferred("_play_detail_module_layout_transition", layout_snapshot, stack)
+	if not host.desktop_layout.enabled(): Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
 	return true
 
 
 func _detail_lazy_rebind_plan_to_existing_stack(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
-	var plan_index = 0
-	for child in stack.get_children():
-		if not child is Control:
+	# Keep the slot identity carried by the plan. Child positions also include
+	# navigation, tips and spacers and cannot identify an activity safely.
+	for lazy_entry in detail_lazy_plan:
+		var control: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
+		if control == null or control.get_parent() != stack or control.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer", "PageSwitchModule"] or bool(control.get_meta("page_switch_module_entry", false)):
+			_detail_lazy_create_slot_for_entry(stack, skill_id, lazy_entry, content_width, actions_width)
+			lazy_entry["mounted"] = false
 			continue
-		var control = child as Control
-		if control.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
-			continue
-		if plan_index >= detail_lazy_plan.size():
-			break
-		var lazy_entry = detail_lazy_plan[plan_index] as Dictionary
-		lazy_entry["stack_host"] = control
 		lazy_entry["direct_stack_child"] = skill_id == "thieving" and str(lazy_entry.get("kind", "")) == "heist"
+		if bool(lazy_entry.get("mounted", false)):
+			continue
 		if bool(control.get_meta("detail_lazy_placeholder", false)):
 			lazy_entry["mounted"] = false
 			lazy_entry["placeholder"] = control
-			plan_index += 1
 			continue
 		if _detail_lazy_slot_has_real_content(control):
 			lazy_entry["mounted"] = true
@@ -8658,7 +9059,7 @@ func _detail_lazy_rebind_plan_to_existing_stack(stack: VBoxContainer, skill_id: 
 					placeholder.custom_minimum_size.x = actions_width
 				lazy_entry["placeholder"] = placeholder
 				control.add_child(placeholder)
-		plan_index += 1
+	_detail_lazy_reorder_existing_hosts_for_plan(stack, detail_lazy_plan)
 
 
 func _detail_lazy_initial_force_mount_count_for_skill(skill_id: String) -> int:
@@ -8804,6 +9205,7 @@ func _repair_blank_detail_lazy_stack() -> bool:
 	_detail_lazy_create_slots(stack, selected_skill_id, content_width, content_width)
 	_detail_lazy_mount_initial_window_sync(true, _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id))
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
+	host._navigation_shell()._render_page_switch_module(stack, selected_skill_id, content_width, content_width)
 	if had_bottom_spacer and bottom_spacer != null and is_instance_valid(bottom_spacer):
 		stack.add_child(bottom_spacer)
 	return host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(stack)
@@ -8811,6 +9213,13 @@ func _repair_blank_detail_lazy_stack() -> bool:
 
 func _maybe_repair_blank_detail_lazy_stack() -> void:
 	if current_screen != "skill" or detail_lazy_plan.is_empty():
+		return
+	# An outgoing trophy or incoming reveal may intentionally be transparent.
+	if _skill_detail_layout_refresh_held() or (selected_skill_id == "thieving" and not host.thieving_state.pending_trophy_reward_float.is_empty()):
+		return
+	# A staged card can be built this frame and attached on the next one. Let
+	# that work finish instead of discarding it and rebuilding the whole list.
+	if detail_lazy_mounted_this_frame:
 		return
 	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition() or host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
 		return
@@ -8851,6 +9260,9 @@ func _detail_lazy_create_slot_for_entry(
 			stack_entry.set_meta("module_ui_key", module_key)
 		stack.add_child(stack_entry)
 		lazy_entry["stack_host"] = stack_entry
+	lazy_entry["skill_id"] = skill_id
+	if lazy_entry.has("progression_reveal_delay"):
+		lazy_entry["stack_host"].set_meta("progression_reveal_pending", true)
 
 
 func _detail_lazy_create_slots(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
@@ -9149,7 +9561,7 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 			"placeholder": null,
 			"direct_stack_child": false
 		})
-	return plan
+	return host._project_runtime().decorate_plan(plan, skill_id, DETAIL_LAZY_STACK_SEPARATION)
 
 func _detail_lazy_mount_cached_item(
 	lazy_entry: Dictionary,
@@ -9284,6 +9696,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 	var fade_allowed = false
 	var mounted_ok = false
 	if lazy_entry.has("cached_root") and _detail_lazy_mount_cached_item(lazy_entry, skill_id, content_width, actions_width, fade_in):
+		_play_detail_progression_reveal(lazy_entry)
 		if trace_mount:
 			var cached_mount_us = Time.get_ticks_usec() - trace_started_usec
 			if cached_mount_us >= 1500:
@@ -9297,13 +9710,22 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 		return true
 	if (
 		detail_scroll_visual_work_this_frame
-		and skill_id == "fight"
+		and not host._fishing_rework_active_for_skill(skill_id)
 		and kind in ["action", "passive"]
 		and _detail_lazy_build_cached_entry(lazy_entry, skill_id, content_width, actions_width)
 	):
 		detail_lazy_mounted_this_frame = true
 		return false
 	match kind:
+		"project":
+			var project_panel := preload("res://scripts/ui/project_panel.gd").new()
+			project_panel.setup(host, skill_id, (lazy_entry.entry as Dictionary).action, content_width, bool(lazy_entry.entry.get("next_unlock", true)))
+			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
+			lazy_entry["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, project_panel, content_width, actions_width)
+			fade_target = project_panel
+			fade_allowed = true
+			mounted_ok = true
 		"beta_notice":
 			var notice := _build_beta_notice_board(content_width)
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
@@ -9424,7 +9846,9 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 		return false
 	lazy_entry["mounted"] = true
 	host._skill_swipe_activity_surface()._mark_detail_lazy_module_mounted(host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host")))
-	if fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
+	if _play_detail_progression_reveal(lazy_entry):
+		pass
+	elif fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
 		_play_detail_lazy_fade_in(fade_target)
 	if trace_mount:
 		var mount_us = Time.get_ticks_usec() - trace_started_usec
@@ -10624,12 +11048,13 @@ func _capture_detail_module_layout_snapshot() -> Dictionary:
 			continue
 		var module_key := _module_list_transition_key_for_control(control)
 		if module_key.is_empty():
-			continue
+			module_key = "slot:" + str(control.get_instance_id())
 		var occurrence_index := int(occurrence_counts.get(module_key, 0))
 		occurrence_counts[module_key] = occurrence_index + 1
 		var occurrence_key := "%s#%s" % [module_key, occurrence_index]
 		snapshot[occurrence_key] = {
-			"global_rect": control.get_global_rect()
+			"global_rect": control.get_global_rect(),
+			"instance_id": control.get_instance_id()
 		}
 	return snapshot
 
@@ -10719,13 +11144,18 @@ func _first_control_with_bool_meta(control: Control, meta_key: String) -> Contro
 	return null
 
 
-func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
+func _play_detail_module_layout_transition(snapshot: Dictionary, target_stack: VBoxContainer = null) -> void:
 	if snapshot.is_empty() or current_screen != "skill":
 		return
-	await host.get_tree().process_frame
+	var stack := target_stack if is_instance_valid(target_stack) else _detail_actions_stack() as VBoxContainer
+	# Containers finish sorting before draw. Starting on the next process frame
+	# exposes the final layout once, then snaps it back to begin the animation.
+	if DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_pre_draw
+	else:
+		await host.get_tree().process_frame
 	if current_screen != "skill":
 		return
-	var stack = _detail_actions_stack() as VBoxContainer
 	if stack == null or not is_instance_valid(stack):
 		return
 	var animated_count = 0
@@ -10737,11 +11167,20 @@ func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
 		if control.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
 			continue
 		var module_key = _module_list_transition_key_for_control(control)
+		if control.has_meta("progression_reveal_pending") or Time.get_ticks_msec() < int(control.get_meta("progression_reveal_until_msec", 0)):
+			continue
 		if module_key.is_empty() or not _detail_module_transition_child_visible(control):
 			continue
 		var occurrence_index = int(occurrence_counts.get(module_key, 0))
 		occurrence_counts[module_key] = occurrence_index + 1
 		var occurrence_key = "%s#%s" % [module_key, occurrence_index]
+		# A completed project changes its module key, not its physical row.
+		# Retained rows must never be treated as new content and faded out.
+		if not snapshot.has(occurrence_key):
+			for old_key in snapshot:
+				if int(snapshot[old_key].get("instance_id", 0)) == control.get_instance_id():
+					occurrence_key = str(old_key)
+					break
 		_kill_module_list_transition_tween(control)
 		var final_position = control.position
 		var final_scale = control.scale

@@ -242,6 +242,7 @@ func _play_tutorial_level_two_fast_unlock_ceremony(card: Dictionary, group: Cont
 		return
 	finish_ceremony_safe(card, overlay_root, shade, button, true)
 	await run_post_ceremony_preview(card)
+	if bool(card.get("desktop_auto_unlock", false)): return
 	var preview_id = preview_after_ceremony_id
 	if heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
 		host._skill_detail_surface().call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
@@ -338,12 +339,14 @@ func _start_ceremony_motion_after_delay(card: Dictionary, group_ref: WeakRef, ov
 		return
 	finish_ceremony_safe(card, overlay_root, shade, button, true)
 	await run_post_ceremony_preview(card)
+	if bool(card.get("desktop_auto_unlock", false)): return
 	var preview_id = preview_after_ceremony_id
 	if heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
 		host._skill_detail_surface().call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
 
 
 func run_post_ceremony_preview(card: Dictionary):
+	if bool(card.get("desktop_auto_unlock", false)): return
 	if host.current_screen != "skill":
 		return
 	if bool(card.get("unlock_ceremony_finalized", false)) == false:
@@ -423,7 +426,9 @@ func finish_ceremony(card: Dictionary, overlay_root: Control, shade: CanvasItem,
 	ceremony_count = maxi(0, ceremony_count - 1)
 	call_deferred("finish_card_static_state_deferred", card)
 	host._activity_unlock_runtime()._schedule_auto_unlock_pending_lockpads()
-	if refresh_detail and ceremony_count <= 0 and not detail_refresh_done:
+	if refresh_detail and bool(card.get("desktop_auto_unlock", false)):
+		host.desktop_layout.queue_column_refresh(pending_skill_id)
+	elif refresh_detail and ceremony_count <= 0 and not detail_refresh_done:
 		host.call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 
 
@@ -466,6 +471,7 @@ func finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: int
 		card["fade_in_pending"] = false
 		return
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(callback_root, Color.WHITE)
+	preload("res://scripts/ui/reveal_cover.gd").apply(callback_root, 1.0, host)
 	if expand_from_zero:
 		host._app_lifecycle_runtime().set_control_minimum_height(callback_root, target_height)
 		callback_root.clip_contents = bool(card.get("preview_enter_original_clip", false))
@@ -583,6 +589,7 @@ func stage_preview_enter(card: Dictionary, collapse_height = true) -> void:
 	var root = card.get("root") as Control
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
+	host._skill_detail_surface()._kill_detail_lazy_reveal_tween(root)
 	host._skill_detail_surface()._preserve_detail_scroll_after_height_change_if_above_view(root)
 	var target_height = root.custom_minimum_size.y
 	if target_height <= 0.0:
@@ -778,8 +785,9 @@ func stage_preview_for_action_id(action_id: String, collapse_height = true) -> b
 	if bool(card.get("unlock_next_preview_pending", false)):
 		return true
 	card["unlock_next_preview_smooth"] = true
-	if not stage_preview_once(action_id, card, collapse_height):
-		stage_preview_enter(card, collapse_height)
+	if bool(preview_played_action_ids.get(action_id, false)):
+		return true
+	stage_preview_once(action_id, card, collapse_height)
 	card["fade_in_pending"] = true
 	card["unlock_next_preview_pending"] = true
 	return true
@@ -818,14 +826,15 @@ func play_next_locked_preview_fade(_collapse_height = false) -> bool:
 	var card = activity_preview_card_for_action_id(preview_id, true)
 	if card.is_empty():
 		return false
-	if not bool(card.get("unlock_next_preview_pending", false)):
-		card["unlock_next_preview_smooth"] = true
-		stage_preview_enter(card, false)
-		card["fade_in_pending"] = true
-	card.erase("unlock_next_preview_pending")
+	# Claim before staging: a repeated refresh must never hide an entered card.
 	if not claim_preview_play(preview_id):
 		set_preview_after_ceremony("")
 		return true
+	if not bool(card.get("unlock_next_preview_pending", false)):
+		card["unlock_next_preview_smooth"] = true
+		stage_preview_once(preview_id, card, false)
+		card["fade_in_pending"] = true
+	card.erase("unlock_next_preview_pending")
 	host._skill_swipe_activity_surface()._play_activity_preview_fade_in(card)
 	set_preview_after_ceremony("")
 	center_scroll_target = -1

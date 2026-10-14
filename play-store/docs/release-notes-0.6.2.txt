@@ -1,0 +1,13 @@
+Update 10/11/26
+v0.6.2
+fixed a crash when resuming during a page change
+improved recovery from damaged saves
+protected newer progress during cloud sync
+fixed offline progress after switching apps or tabs
+fixed mission cooldown saving
+fixed a fishing animation leak during long sessions
+fixed music resuming after switching windows
+fixed dragging outside the game leaving pages halfway across
+fixed remaining-count text in dark mode
+fixed shop boosts being granted without an ad reward
+removed unused images from the download

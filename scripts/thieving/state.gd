@@ -89,6 +89,9 @@ func visible_heists_for_render() -> Array:
 	var pending_key := str(pending_trophy_reward_float.get("key", "")) if not pending_trophy_reward_float.is_empty() else ""
 	if pending_key.begins_with("thieving_heist:"):
 		pending_heist_id = pending_key.substr("thieving_heist:".length())
+		# Finish the trophy flight and card exit before revealing its successor.
+		var pending_heist := heist_def(pending_heist_id)
+		return [pending_heist] if not pending_heist.is_empty() else []
 	for i in range(HEIST_DEFS.size()):
 		var heist := HEIST_DEFS[i] as Dictionary
 		var heist_id := str(heist.get("id", ""))

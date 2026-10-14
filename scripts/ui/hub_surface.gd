@@ -528,6 +528,8 @@ var hub_detail_cost: Label
 var hub_detail_button: Button
 var hub_detail_secondary_button: Button
 var hub_detail_missions_box: VBoxContainer
+var hub_mission_upgrade_view := false
+var hub_mission_view_buttons: Array[Button] = []
 var hub_build_mode := false
 var hub_hotspot_hold_module_id := ""
 var hub_hotspot_hold_pointer_id := -2
@@ -668,7 +670,9 @@ func _hub_runtime() -> HubRuntime:
 	return host._hub_runtime()
 
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
-	return host._label(text, font_size, color, align)
+	var label: Label = host._label(text, font_size, color, align)
+	label.add_theme_constant_override("outline_size", maxi(12, roundi(font_size * 0.24)))
+	return label
 
 func _menu_button(text: String) -> Button:
 	return host._menu_button(text)
@@ -790,8 +794,8 @@ func _render_hub_page() -> void:
 	hub_frame.anchor_right = 0.5
 	hub_frame.anchor_top = 0.0
 	hub_frame.anchor_bottom = 1.0
-	hub_frame.offset_left = -HUB_FIELD_SIZE.x * 0.5
-	hub_frame.offset_right = HUB_FIELD_SIZE.x * 0.5
+	hub_frame.offset_left = -_hub_display_width() * 0.5
+	hub_frame.offset_right = _hub_display_width() * 0.5
 	hub_frame.offset_top = 0.0
 	hub_frame.offset_bottom = 0.0
 	hub_frame.clip_contents = true
@@ -806,7 +810,7 @@ func _render_hub_page() -> void:
 	grass_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_frame.add_child(grass_bg)
 	var hub_viewport_height := maxf(1.0, host._current_canvas_size().y - float(BOTTOM_NAV_HEIGHT))
-	var hub_render_size := Vector2(HUB_FIELD_SIZE.x, maxf(HUB_FIELD_SIZE.y, hub_viewport_height))
+	var hub_render_size := Vector2(_hub_display_width(), maxf(HUB_FIELD_SIZE.y, hub_viewport_height))
 	var field := Control.new()
 	field.position = Vector2.ZERO
 	field.custom_minimum_size = hub_render_size
@@ -831,6 +835,7 @@ func _render_hub_page() -> void:
 		_update_hub_detail_panel()
 	_update_hub_decor_visibility()
 	_add_hub_tutorial_info_button(hub_frame)
+	if host.desktop_layout.enabled(): host.desktop_layout.dock_hub_panel()
 
 func _add_hub_tutorial_info_button(parent: Control) -> void:
 	if parent == null or not is_instance_valid(parent):
@@ -1013,7 +1018,7 @@ func _add_hub_decor(parent: Control) -> void:
 			item = _hub_sheet_image("res://assets/content/hub/hub-tree-sheet.png", clampi(index, 0, 5), Vector2(512, 512), display_size)
 		else:
 			item = _hub_sheet_image("res://assets/content/hub/hub-decor-sheet.png", clampi(index, 0, 15), Vector2(256, 256), display_size)
-		item.position = decor_position
+		item.position = _hub_to_display(decor_position + display_size * 0.5) - display_size * 0.5
 		item.z_index = _hub_decor_depth_z_index(decor_position, display_size)
 		parent.add_child(item)
 		_register_hub_decor_item(item)
@@ -1204,10 +1209,11 @@ func _add_hub_trophy_display(parent: Control) -> void:
 	if not trophy_def.is_empty():
 		var trophy := TextureRect.new()
 		trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(ThievingState.HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), ThievingState.HEIST_TROPHY_CELL)
+		# Disable the texture's native minimum before assigning the authored draw box.
+		trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		trophy.custom_minimum_size = Vector2(157.5, 157.5)
 		trophy.size = trophy.custom_minimum_size
-		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -58.0)
-		trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -26.0)
 		trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		trophy.z_index = 2
@@ -1222,7 +1228,7 @@ func _add_hub_module(parent: Control, module_id: String) -> void:
 		return
 	var level := _hub_module_level(module_id)
 	var building := _hub_module_building(module_id)
-	var sprite_index := clampi(level, 0, int(def.get("cell_count", 5)) - 1)
+	var sprite_index := int(def.get("sprite_index", clampi(level, 0, int(def.get("cell_count", 5)) - 1)))
 	var button := Button.new()
 	button.text = ""
 	button.focus_mode = Control.FOCUS_NONE
@@ -1241,7 +1247,9 @@ func _add_hub_module(parent: Control, module_id: String) -> void:
 	hub_module_buttons[module_id] = button
 	host._skill_detail_surface()._add_module_action_zones(button, ModuleUiRuntime.hub(module_id))
 	var visual_size := _hub_module_visual_size(module_id, sprite_index)
-	var art := _hub_sheet_image(str(def.get("sheet", "")), sprite_index, Vector2(512, 512), visual_size)
+	var art := _hub_sheet_image(str(def.get("sheet", "")), sprite_index, def.get("cell_size", Vector2(512, 512)), visual_size)
+	if def.has("cell_size"):
+		art.size = visual_size
 	art.position = _hub_module_art_position(button.size, module_id, sprite_index, visual_size)
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	button.add_child(art)
@@ -1298,17 +1306,17 @@ func _on_hub_module_gui_input(event: InputEvent, module_id: String) -> void:
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
 		if touch_event.pressed:
-			_begin_hub_hotspot_hold(module_id, host._control_local_point_to_global(button, touch_event.position), touch_event.index)
+			_begin_hub_hotspot_hold(module_id, (button.get_global_transform_with_canvas() * touch_event.position), touch_event.index)
 		else:
-			_finish_hub_hotspot_press(module_id, host._control_local_point_to_global(button, touch_event.position), touch_event.index)
+			_finish_hub_hotspot_press(module_id, (button.get_global_transform_with_canvas() * touch_event.position), touch_event.index)
 		accept_event()
 	elif event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
 		if hub_hotspot_hold_module_id == module_id and hub_hotspot_hold_pointer_id == drag_event.index:
-			_update_hub_hotspot_hold_position(host._control_local_point_to_global(button, drag_event.position))
+			_update_hub_hotspot_hold_position((button.get_global_transform_with_canvas() * drag_event.position))
 			accept_event()
 		elif hub_drag_module_id == module_id and hub_drag_pointer_id == drag_event.index:
-			_drag_hub_module_to(button, host._control_local_point_to_global(button, drag_event.position))
+			_drag_hub_module_to(button, (button.get_global_transform_with_canvas() * drag_event.position))
 			accept_event()
 
 func _route_hub_hotspot_hold_input(event: InputEvent) -> bool:
@@ -1443,9 +1451,9 @@ func _drag_hub_module_to(button: Control, global_point: Vector2) -> void:
 		return
 	var field_point := _hub_global_to_field_point(button, global_point)
 	var next_center = field_point - hub_drag_offset
-	next_center = _clamp_hub_module_center(next_center)
+	next_center = _hub_to_display(_clamp_hub_module_center(_hub_from_display(next_center)))
 	hub_drag_valid = _hub_module_position_valid(hub_drag_module_id, next_center)
-	hub_module_positions[hub_drag_module_id] = next_center
+	hub_module_positions[hub_drag_module_id] = _hub_from_display(next_center)
 	button.position = next_center - button.size * 0.5
 	button.modulate = Color.WHITE if hub_drag_valid else Color(1.0, 0.02, 0.02, 1.0)
 	_update_hub_build_overlays_position(hub_drag_module_id)
@@ -1457,7 +1465,7 @@ func _finish_hub_module_drag() -> void:
 	var module_id = hub_drag_module_id
 	var button := _valid_hub_module_button(module_id)
 	if not hub_drag_valid:
-		hub_module_positions[module_id] = hub_drag_start_center
+		hub_module_positions[module_id] = _hub_from_display(hub_drag_start_center)
 		if button != null:
 			button.position = hub_drag_start_center - button.size * 0.5
 		_update_hub_build_overlays_position(module_id)
@@ -1482,8 +1490,8 @@ func _hub_module_center(module_id: String) -> Vector2:
 	if hub_module_positions.has(module_id):
 		var raw_position = hub_module_positions[module_id]
 		if raw_position is Vector2:
-			return _clamp_hub_module_center(raw_position as Vector2)
-	return _hub_default_module_center(module_id)
+			return _hub_to_display(_clamp_hub_module_center(raw_position as Vector2))
+	return _hub_to_display(_hub_default_module_center(module_id))
 
 func _hub_default_module_center(module_id: String) -> Vector2:
 	if module_id == "trophy":
@@ -1533,7 +1541,7 @@ func _update_hub_path_dots() -> void:
 	_update_hub_decor_visibility()
 
 func _hub_path_origin() -> Vector2:
-	return Vector2(HUB_FIELD_SIZE.x * 0.5, HUB_FIELD_SIZE.y + 110.0)
+	return Vector2(_hub_display_width() * 0.5, HUB_FIELD_SIZE.y + 110.0)
 
 func _hub_route_seed(module_id: String) -> float:
 	var route_seed := 0.0
@@ -1704,9 +1712,9 @@ func _refresh_hub_module_art(module_id: String) -> void:
 	if button == null or art == null:
 		return
 	var def := HUB_MODULE_DEFS[module_id] as Dictionary
-	var sprite_index := clampi(_hub_module_level(module_id), 0, int(def.get("cell_count", 5)) - 1)
+	var sprite_index := int(def.get("sprite_index", clampi(_hub_module_level(module_id), 0, int(def.get("cell_count", 5)) - 1)))
 	var visual_size := _hub_module_visual_size(module_id, sprite_index)
-	art.texture = _hub_sheet_or_visual_fallback(str(def.get("sheet", "")), sprite_index, Vector2(512, 512))
+	art.texture = _hub_sheet_or_visual_fallback(str(def.get("sheet", "")), sprite_index, def.get("cell_size", Vector2(512, 512)))
 	art.custom_minimum_size = visual_size
 	art.size = visual_size
 	art.position = _hub_module_art_position(button.size, module_id, sprite_index, visual_size)
@@ -1851,7 +1859,7 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	margin.add_child(stack)
 	hub_detail_title = _label("", 60, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	stack.add_child(hub_detail_title)
-	hub_detail_body = _label("", 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_body = _label("", 52, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(hub_detail_body)
 	hub_detail_missions_box = VBoxContainer.new()
@@ -1863,11 +1871,13 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	hub_detail_button = _menu_button("")
 	hub_detail_button.custom_minimum_size = Vector2(0, 63)
 	hub_detail_button.add_theme_font_size_override("font_size", 48)
+	hub_detail_button.add_theme_constant_override("outline_size", 14)
 	hub_detail_button.pressed.connect(_upgrade_selected_hub_module)
 	stack.add_child(hub_detail_button)
 	hub_detail_secondary_button = _menu_button("")
 	hub_detail_secondary_button.custom_minimum_size = Vector2(0, 55)
 	hub_detail_secondary_button.add_theme_font_size_override("font_size", 48)
+	hub_detail_secondary_button.add_theme_constant_override("outline_size", 14)
 	hub_detail_secondary_button.pressed.connect(_jump_to_hub_mission_task)
 	hub_detail_secondary_button.visible = false
 	stack.add_child(hub_detail_secondary_button)
@@ -1905,7 +1915,7 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	margin.custom_minimum_size = HUB_MISSION_BOARD_ART_SIZE
 	margin.add_theme_constant_override("margin_left", 90)
 	margin.add_theme_constant_override("margin_right", 90)
-	margin.add_theme_constant_override("margin_top", 115)
+	margin.add_theme_constant_override("margin_top", 90)
 	margin.add_theme_constant_override("margin_bottom", 115)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	board.add_child(margin)
@@ -1924,35 +1934,47 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	hub_detail_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(hub_detail_title)
 
+	hub_mission_view_buttons.clear()
+	var views := HBoxContainer.new()
+	views.add_theme_constant_override("separation", 16)
+	stack.add_child(views)
+	for view_name in ["Missions", "Upgrade"]:
+		var view_button := _menu_button(view_name)
+		view_button.custom_minimum_size = Vector2(0, 80)
+		view_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		view_button.add_theme_font_size_override("font_size", 52)
+		view_button.add_theme_color_override("font_outline_color", Color.BLACK)
+		view_button.add_theme_constant_override("outline_size", 14)
+		for state in ["normal", "hover", "pressed", "hover_pressed"]:
+			var style := _hub_mission_slab_style(false)
+			style.bg_color = Color("#2878b5") if state in ["pressed", "hover_pressed"] else Color("#369bfa")
+			style.content_margin_top = 4
+			style.content_margin_bottom = 4
+			view_button.add_theme_stylebox_override(state, style)
+		view_button.toggle_mode = true
+		view_button.pressed.connect(_set_hub_mission_view.bind(view_name == "Upgrade"))
+		views.add_child(view_button)
+		hub_mission_view_buttons.append(view_button)
+
 	hub_detail_body = _label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	hub_detail_body.custom_minimum_size = Vector2(0, 128)
+	hub_detail_body.custom_minimum_size = Vector2(0, 0)
 	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hub_detail_body.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_body.add_theme_constant_override("outline_size", 10)
+	hub_detail_body.add_theme_constant_override("outline_size", 14)
 	hub_detail_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(hub_detail_body)
-
-	var missions_scroll := MobileScrollContainer.new()
-	missions_scroll.name = "MissionSlotsScroll"
-	missions_scroll.custom_minimum_size = Vector2(0, 520)
-	missions_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	missions_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	missions_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	missions_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	missions_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	stack.add_child(missions_scroll)
 
 	hub_detail_missions_box = VBoxContainer.new()
 	hub_detail_missions_box.add_theme_constant_override("separation", 7)
 	hub_detail_missions_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hub_detail_missions_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	hub_detail_missions_box.visible = false
-	missions_scroll.add_child(hub_detail_missions_box)
+	stack.add_child(hub_detail_missions_box)
 
 	hub_detail_cost = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_cost.custom_minimum_size = Vector2(0, 0)
 	hub_detail_cost.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_cost.add_theme_constant_override("outline_size", 5.5)
+	hub_detail_cost.add_theme_constant_override("outline_size", 14)
 	hub_detail_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_detail_cost.visible = false
 	stack.add_child(hub_detail_cost)
@@ -1969,9 +1991,10 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	hub_detail_button.custom_minimum_size = Vector2(725, 150)
 	hub_detail_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	hub_detail_button.add_theme_font_size_override("font_size", 48)
+	hub_detail_button.add_theme_constant_override("outline_size", 14)
 	hub_detail_button.add_theme_color_override("font_disabled_color", Color.WHITE)
 	hub_detail_button.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_button.add_theme_constant_override("outline_size", 8.5)
+	hub_detail_button.add_theme_constant_override("outline_size", 14)
 	hub_detail_button.pressed.connect(_upgrade_selected_hub_module)
 	button_holder.add_child(hub_detail_button)
 
@@ -1993,19 +2016,47 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	var button_title := _label("", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	button_title.name = "Title"
 	button_title.add_theme_color_override("font_outline_color", Color.BLACK)
-	button_title.add_theme_constant_override("outline_size", 10)
+	button_title.add_theme_constant_override("outline_size", 14)
 	button_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_copy.add_child(button_title)
 	var button_cost := _label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	button_cost.name = "Cost"
 	button_cost.add_theme_color_override("font_outline_color", Color.BLACK)
-	button_cost.add_theme_constant_override("outline_size", 7)
+	button_cost.add_theme_constant_override("outline_size", 14)
 	button_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_copy.add_child(button_cost)
 
 	hub_detail_secondary_button = null
+	if host.desktop_layout.enabled():
+		_adapt_desktop_mission_panel(parent, board, stack)
+
+func _adapt_desktop_mission_panel(parent: Control, board: Control, stack: VBoxContainer) -> void:
+	# Keep the live mission controls and their callbacks; desktop uses a flowing
+	# panel instead of fitting the mobile board art around variable-length tasks.
+	var desktop = host.desktop_layout
+	var panel := PanelContainer.new()
+	panel.name = "DesktopMissionBoard"
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	panel.add_child(margin)
+	stack.reparent(margin, false)
+	stack.add_theme_constant_override("separation", 32)
+	hub_detail_button.reparent(stack, false)
+	hub_detail_button.custom_minimum_size = Vector2(0, 150)
+	hub_detail_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desktop.style_button(hub_detail_button, true)
+	hub_detail_missions_box.add_theme_constant_override("separation", 20)
+	desktop.soften_labels(stack, 44)
+	hub_detail_title.add_theme_font_size_override("font_size", 56)
+	hub_detail_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	for button in hub_mission_view_buttons: desktop.style_button(button)
+	desktop.style_hub_text(stack)
+	board.get_parent().remove_child(board)
+	board.queue_free()
+	hub_detail_panel = panel
 
 func _add_hub_detail_dismiss_layer(parent: Control) -> void:
+	if host.desktop_layout.enabled(): return
 	var dismiss_layer := Control.new()
 	dismiss_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dismiss_layer.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2020,6 +2071,7 @@ func _on_hub_detail_dismiss_gui_input(event: InputEvent) -> void:
 		accept_event()
 
 func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
+	if host.desktop_layout.enabled(): return
 	if not host._input_routing_shell()._is_primary_press_event(event):
 		return
 	if _hub_runtime().hub_selected_module_id == "mission":
@@ -2038,6 +2090,13 @@ func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
 	accept_event()
 
 func _close_hub_detail_popup() -> void:
+	if host.desktop_layout.enabled():
+		if hub_detail_transition_pending: return
+		hub_detail_transition_pending = true
+		host.desktop_layout.animate_panel(host.desktop_layout.hub_inspector, false, Vector2(-36, 0))
+		await get_tree().create_timer(host.desktop_layout.CLOSE_SECONDS).timeout
+		_apply_close_hub_detail_popup()
+		return
 	if not hub_detail_open or hub_detail_transition_pending:
 		return
 	if _hub_runtime().hub_selected_module_id == "mission":
@@ -2068,6 +2127,9 @@ func _apply_close_hub_detail_popup() -> void:
 	host._navigation_shell()._render_screen()
 
 func _animate_hub_mission_board_open() -> void:
+	if host.desktop_layout.enabled():
+		hub_detail_transition_pending = false
+		return
 	if hub_detail_panel == null or not is_instance_valid(hub_detail_panel):
 		hub_detail_transition_pending = false
 		return
@@ -2095,7 +2157,7 @@ func _finish_open_hub_detail_popup_tween() -> void:
 	hub_detail_transition_pending = false
 
 func _hub_mission_board_target_position() -> Vector2:
-	return Vector2((HUB_FIELD_SIZE.x - HUB_MISSION_BOARD_SIZE.x) * 0.5, HUB_MISSION_BOARD_TARGET_Y)
+	return Vector2((_hub_display_width() - HUB_MISSION_BOARD_SIZE.x) * 0.5, HUB_MISSION_BOARD_TARGET_Y)
 
 func _hub_mission_board_offscreen_position() -> Vector2:
 	return _hub_mission_board_target_position() + Vector2(0, -HUB_MISSION_BOARD_SIZE.y - 60.0)
@@ -2143,7 +2205,7 @@ func _hub_detail_bubble_layout(module_id: String) -> Dictionary:
 	return {"position": pos, "size": panel_size, "target": target}
 
 func _hub_clamped_bubble_position(pos: Vector2, panel_size: Vector2) -> Vector2:
-	pos.x = clampf(pos.x, 24.0, HUB_FIELD_SIZE.x - panel_size.x - 24.0)
+	pos.x = clampf(pos.x, 24.0, _hub_display_width() - panel_size.x - 24.0)
 	pos.y = clampf(pos.y, 65.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - panel_size.y - 36.0)
 	return pos
 
@@ -2334,7 +2396,8 @@ func _hub_mission_badge() -> Dictionary:
 	paper.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(paper)
-	var label := _label("", 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	# The badge remains pale paper in both themes, so its ink must stay dark.
+	var label: Label = host._label_on_light_panel("", 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.offset_left = 12.0
 	label.offset_right = -12.0
@@ -2568,7 +2631,7 @@ func _hub_mission_summary_text() -> String:
 		return "Build the board to start boosted missions."
 	var lines := [
 		"%s mission slot%s" % [_hub_runtime().mission_slot_count(), "" if _hub_runtime().mission_slot_count() == 1 else "s"],
-		"-%s%% stamina, +%s%% XP, +%s%% speed." % [
+		"%s%% less stamina, +%s%% XP, %s%% less time." % [
 			GameFormatting.percent_points(_hub_runtime().mission_stamina_reduction() * 100.0),
 			GameFormatting.percent_points(_hub_runtime().mission_xp_bonus() * 100.0),
 			GameFormatting.percent_points(_hub_runtime().mission_time_reduction() * 100.0)
@@ -2606,20 +2669,20 @@ func _sync_hub_detail_mission_cards() -> void:
 	if hub_detail_missions_box == null or not is_instance_valid(hub_detail_missions_box):
 		return
 	for child in hub_detail_missions_box.get_children():
+		hub_detail_missions_box.remove_child(child)
 		child.queue_free()
 	var show_cards = _hub_runtime().hub_selected_module_id == "mission"
 	hub_detail_missions_box.visible = show_cards
 	if not show_cards:
 		hub_mission_detail_wait_last_seconds = -1
 		return
+	if hub_mission_upgrade_view:
+		_add_hub_mission_upgrade_comparison()
+		return
 	if _hub_runtime().sync_missions():
 		save_game()
 	var active_slots := _hub_runtime().mission_slot_count()
-	var max_slots := _hub_runtime().mission_max_slot_count()
-	for i in range(max_slots):
-		if i >= active_slots:
-			hub_detail_missions_box.add_child(_hub_mission_locked_slab(i))
-			continue
+	for i in range(active_slots):
 		if i >= _hub_runtime().hub_missions.size():
 			hub_detail_missions_box.add_child(_hub_mission_wait_slab(i))
 			continue
@@ -2630,6 +2693,42 @@ func _sync_hub_detail_mission_cards() -> void:
 			continue
 		hub_detail_missions_box.add_child(_hub_mission_slab(mission, action, i))
 	hub_mission_detail_wait_last_seconds = maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now()) if _hub_runtime().hub_missions.size() < active_slots else -1
+
+func _set_hub_mission_view(upgrade: bool) -> void:
+	hub_mission_upgrade_view = upgrade
+	_update_hub_detail_panel()
+
+func _add_hub_mission_upgrade_comparison() -> void:
+	var level := _hub_module_level("mission")
+	var next_level := mini(level + 1, HUB_MODULE_MAX_LEVEL)
+	var grid := GridContainer.new()
+	grid.name = "MissionUpgradeComparison"
+	grid.columns = 3 if next_level > level else 2
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 20)
+	hub_detail_missions_box.add_child(grid)
+	var rows := [
+		["", "Current", "Lv %s" % next_level if next_level > level else "Max"],
+		["Mission slots", str(HubRuntime.HUB_MISSION_SLOT_COUNT_BY_LEVEL[level]), str(HubRuntime.HUB_MISSION_SLOT_COUNT_BY_LEVEL[next_level])],
+		["Stamina cost", "-%s%%" % roundi(HubRuntime.HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL[level] * 100), "-%s%%" % roundi(HubRuntime.HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL[next_level] * 100)],
+		["XP", "+%s%%" % roundi(HubRuntime.HUB_MISSION_XP_BONUS_BY_LEVEL[level] * 100), "+%s%%" % roundi(HubRuntime.HUB_MISSION_XP_BONUS_BY_LEVEL[next_level] * 100)],
+		["Task time", "-%s%%" % roundi(HubRuntime.HUB_MISSION_TIME_REDUCTION_BY_LEVEL[level] * 100), "-%s%%" % roundi(HubRuntime.HUB_MISSION_TIME_REDUCTION_BY_LEVEL[next_level] * 100)],
+		["New mission", GameFormatting.duration(HubRuntime.HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[level]), GameFormatting.duration(HubRuntime.HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[next_level])]
+	]
+	for row_index in range(rows.size()):
+		var row: Array = rows[row_index]
+		if level == 0 and row_index > 1:
+			row[1] = "—"
+		for column in range(grid.columns):
+			var label := _label(row[column], 52, Color("#ffdf58") if column == 2 else Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT if column == 0 else HORIZONTAL_ALIGNMENT_CENTER)
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.add_theme_color_override("font_outline_color", Color.BLACK)
+			label.add_theme_constant_override("outline_size", 14)
+			label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			grid.add_child(label)
+	if host.desktop_layout.enabled():
+		host.desktop_layout.soften_labels(grid, 40)
+		host.desktop_layout.style_hub_text(grid)
 
 func _hub_mission_detail_wait_refresh_needed() -> bool:
 	if current_screen != "hub" or not hub_detail_open or _hub_runtime().hub_selected_module_id != "mission":
@@ -2649,7 +2748,7 @@ func _hub_mission_detail_wait_refresh_needed() -> bool:
 
 func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 180)
+	panel.custom_minimum_size = Vector2(0, 150)
 	panel.add_theme_stylebox_override("panel", _hub_mission_wait_slab_style())
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 22)
@@ -2684,7 +2783,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(copy)
-	var title_text := "Next mission in %s" % GameFormatting.duration(float(wait)) if wait > 0 else "Finding mission..."
+	var title_text := "Next mission: %s" % GameFormatting.duration(float(wait)) if wait > 0 else "Finding mission..."
 	if wait <= 0 and slot_index > 0:
 		title_text = "Open mission slot"
 	var title := _label(title_text, 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -2692,69 +2791,25 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
-	var body_text := "A fresh boosted task will appear here."
+	var body_text := ""
 	if wait <= 0 and _hub_runtime().mission_eligible_actions({}).is_empty():
 		body_text = "Unlock more actions to get missions."
 	var body := _label(body_text, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	body.visible = not body_text.is_empty()
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_color_override("font_outline_color", Color.BLACK)
-	body.add_theme_constant_override("outline_size", 10)
+	body.add_theme_constant_override("outline_size", 14)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(body)
+	if host.desktop_layout.enabled():
+		host.desktop_layout.soften_labels(panel, 42)
+		host.desktop_layout.style_hub_text(panel)
 	return panel
-
-func _hub_mission_locked_slab(slot_index: int) -> Button:
-	var required_level := _hub_runtime().mission_required_level_for_slot(slot_index)
-	var button := Button.new()
-	button.text = ""
-	button.disabled = true
-	button.custom_minimum_size = Vector2(0, 180)
-	button.clip_contents = true
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_theme_stylebox_override("normal", _hub_mission_slab_style(false, true))
-	button.add_theme_stylebox_override("hover", _hub_mission_slab_style(false, true))
-	button.add_theme_stylebox_override("pressed", _hub_mission_slab_style(false, true))
-	button.add_theme_stylebox_override("disabled", _hub_mission_slab_style(false, true))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(margin)
-
-	var copy := VBoxContainer.new()
-	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 4)
-	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(copy)
-
-	var title := _label("Higher Tier Sign Needed", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 12)
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	copy.add_child(title)
-
-	var detail := _label("Mission Slot %s - unlocks at Lv %s" % [slot_index + 1, required_level], 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	detail.autowrap_mode = TextServer.AUTOWRAP_OFF
-	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	detail.add_theme_color_override("font_outline_color", Color.BLACK)
-	detail.add_theme_constant_override("outline_size", 10)
-	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	copy.add_child(detail)
-	return button
 
 func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: int) -> Button:
 	var button := Button.new()
 	button.text = ""
-	button.custom_minimum_size = Vector2(0, 180)
+	button.custom_minimum_size = Vector2(0, 156)
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_stylebox_override("normal", _hub_mission_slab_style(false))
@@ -2769,8 +2824,8 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 17)
 	margin.add_theme_constant_override("margin_right", 17)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(margin)
 
@@ -2820,26 +2875,25 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
-	var meta := _label("%s task" % SkillState.skill_name(host.skill_defs, str(mission.get("skill_id", ""))), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var meta := _label("%s · %s left" % [SkillState.skill_name(host.skill_defs, str(mission.get("skill_id", ""))), int(mission.get("remaining", 0))], 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	meta.add_theme_color_override("font_outline_color", Color.BLACK)
-	meta.add_theme_constant_override("outline_size", 10)
+	meta.add_theme_constant_override("outline_size", 14)
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(meta)
 
-	var remaining_label := _label("%s left" % int(mission.get("remaining", 0)), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	remaining_label.custom_minimum_size = Vector2(180, 0)
-	remaining_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	remaining_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	remaining_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	remaining_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	remaining_label.add_theme_constant_override("outline_size", 12)
-	remaining_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(remaining_label)
+	if host.desktop_layout.enabled():
+		host.desktop_layout.soften_labels(button, 42)
+		meta.add_theme_font_size_override("font_size", 36)
+		host.desktop_layout.style_hub_text(button)
+		button.custom_minimum_size.y = 170
 	return button
 
 func _hub_mission_slab_style(pressed: bool, disabled := false) -> StyleBoxFlat:
+	if host.desktop_layout.enabled():
+		var desktop = host.desktop_layout
+		return desktop.panel_style(desktop.inset_fill().darkened(0.06) if pressed else desktop.inset_fill(), false, 16)
 	var style := StyleBoxFlat.new()
 	if disabled:
 		style.bg_color = Color("#77736c")
@@ -2863,6 +2917,7 @@ func _hub_mission_slab_style(pressed: bool, disabled := false) -> StyleBoxFlat:
 
 func _hub_mission_wait_slab_style() -> StyleBoxFlat:
 	var style := _hub_mission_slab_style(false)
+	if host.desktop_layout.enabled(): return style
 	style.bg_color = Color("#6f6a5e")
 	style.border_color = Color("#2e2a24")
 	return style
@@ -2882,7 +2937,7 @@ func _set_hub_mission_upgrade_button_copy(title_text: String, cost_text: String)
 func _on_hub_module_pressed(module_id: String) -> void:
 	if hub_build_mode or hub_detail_transition_pending:
 		return
-	if hub_detail_open:
+	if hub_detail_open and (not host.desktop_layout.enabled() or _hub_runtime().hub_selected_module_id == module_id):
 		_close_hub_detail_popup()
 		return
 	hub_detail_transition_pending = true
@@ -2892,8 +2947,14 @@ func _apply_open_hub_detail_popup(module_id: String) -> void:
 	if current_screen != "hub" or hub_build_mode:
 		hub_detail_transition_pending = false
 		return
+	if host.desktop_layout.enabled() and is_instance_valid(host.desktop_layout.hub_inspector):
+		host.desktop_layout.animate_panel(host.desktop_layout.hub_inspector, false, Vector2(-36, 0))
+		await get_tree().create_timer(host.desktop_layout.CLOSE_SECONDS).timeout
 	_hub_runtime().hub_selected_module_id = module_id
+	hub_mission_upgrade_view = module_id == "mission" and _hub_module_level("mission") <= 0
 	hub_detail_open = true
+	if host.desktop_layout.enabled() and host.get_window().size.x < 1200 and not host.desktop_layout.social_tab.is_empty():
+		await host.desktop_layout.set_social("")
 	hub_detail_transition_pending = module_id == "mission"
 	host._navigation_shell()._render_screen()
 	_pop_hub_module(module_id)
@@ -2956,7 +3017,7 @@ func _update_hub_detail_panel() -> void:
 	hub_detail_body.text = "\n".join(body_lines)
 	var next_level_locked := not _hub_module_next_level_unlocked(module_id)
 	var cost_text := _hub_module_cost_text(module_id)
-	hub_detail_cost.visible = not next_level_locked and not cost_text.is_empty()
+	hub_detail_cost.visible = not cost_text.is_empty()
 	hub_detail_cost.text = cost_text if hub_detail_cost.visible else ""
 	_sync_hub_detail_mission_cards()
 	if hub_detail_secondary_button != null:
@@ -2969,7 +3030,7 @@ func _update_hub_detail_panel() -> void:
 		hub_detail_button.text = "Maxed Out"
 		hub_detail_button.disabled = true
 	elif next_level_locked:
-		hub_detail_button.text = "Building Lv %s" % _hub_module_next_unlock_level(module_id)
+		hub_detail_button.text = _hub_runtime().module_requirement_text(module_id)
 		hub_detail_button.disabled = true
 	else:
 		hub_detail_button.text = "Build" if level <= 0 else "Upgrade"
@@ -2979,14 +3040,14 @@ func _update_hub_mission_board_panel(_def: Dictionary, level: int, building: boo
 	if hub_detail_title != null and is_instance_valid(hub_detail_title):
 		hub_detail_title.text = "Mission Board Lv %s" % level
 	if hub_detail_body != null and is_instance_valid(hub_detail_body):
-		if level <= 0:
-			hub_detail_body.text = "Build the board to start boosted task missions."
-		else:
-			hub_detail_body.text = "Tap a mission to jump to its task. -%s%% stamina, +%s%% XP, +%s%% speed." % [
-				GameFormatting.percent_points(_hub_runtime().mission_stamina_reduction() * 100.0),
-				GameFormatting.percent_points(_hub_runtime().mission_xp_bonus() * 100.0),
-				GameFormatting.percent_points(_hub_runtime().mission_time_reduction() * 100.0)
-			]
+		hub_detail_body.visible = hub_mission_upgrade_view or level <= 0
+		hub_detail_body.text = "Bonuses apply to mission tasks." if hub_mission_upgrade_view else "Build the board to unlock missions."
+	for i in range(hub_mission_view_buttons.size()):
+		hub_mission_view_buttons[i].set_pressed_no_signal(hub_mission_upgrade_view == (i == 1))
+		if host.desktop_layout.enabled():
+			host.desktop_layout.style_button(hub_mission_view_buttons[i], hub_mission_upgrade_view == (i == 1))
+			host.desktop_layout.style_hub_text(hub_mission_view_buttons[i])
+	hub_mission_view_buttons[1].text = "Bonuses" if level >= HUB_MODULE_MAX_LEVEL else "Upgrade"
 	_sync_hub_detail_mission_cards()
 	var next_level_locked := not _hub_module_next_level_unlocked("mission")
 	var cost_text := _hub_module_cost_text("mission")
@@ -2995,9 +3056,9 @@ func _update_hub_mission_board_panel(_def: Dictionary, level: int, building: boo
 		hub_detail_cost.text = ""
 	if hub_detail_button == null or not is_instance_valid(hub_detail_button):
 		return
-	hub_detail_button.visible = true
+	hub_detail_button.visible = hub_mission_upgrade_view
 	var button_title := ""
-	var button_cost := cost_text if not next_level_locked and not cost_text.is_empty() else ""
+	var button_cost := cost_text
 	if building:
 		button_title = "Building..."
 		hub_detail_button.disabled = true
@@ -3006,8 +3067,7 @@ func _update_hub_mission_board_panel(_def: Dictionary, level: int, building: boo
 		button_cost = ""
 		hub_detail_button.disabled = true
 	elif next_level_locked:
-		button_title = "Building Lv %s" % _hub_module_next_unlock_level("mission")
-		button_cost = ""
+		button_title = _hub_runtime().module_requirement_text("mission")
 		hub_detail_button.disabled = true
 	else:
 		button_title = "Build" if level <= 0 else "Upgrade"
@@ -3016,13 +3076,17 @@ func _update_hub_mission_board_panel(_def: Dictionary, level: int, building: boo
 
 func _hub_module_current_bonus_text(module_id: String) -> String:
 	var level := _hub_module_level(module_id)
+	if module_id == "woodcutting_totem":
+		return "Current: +%s%% collected wood." % (level * 10)
+	if module_id == "fighting_display":
+		return "Current: +%s%% Fighting XP." % (level * 5)
 	match module_id:
 		"pond":
-			return "Current: +%s%% stamina regen speed." % GameFormatting.percent_points(_hub_pond_regen_bonus() * 100.0)
+			return "Current: stamina recovers %s%% faster." % GameFormatting.percent_points(_hub_pond_regen_bonus() * 100.0)
 		"barn":
-			return "Current: %s%% success rate bonus." % GameFormatting.percent_points(_hub_barn_failure_factor() * 100.0)
+			return "Current: %s%% fewer failed attempts outside Fishing." % GameFormatting.percent_points(_hub_barn_failure_factor() * 100.0)
 		"garden":
-			return "Current: +%sh offline progress cap." % level
+			return "Current: up to %sh offline progress." % int(_hub_offline_cap_seconds() / 3600)
 		"trophy":
 			return "Current: trophy display tier %s." % level
 		"mission":
@@ -3033,20 +3097,21 @@ func _hub_module_next_bonus_text(module_id: String) -> String:
 	var next_level := _hub_module_level(module_id) + 1
 	if next_level > HUB_MODULE_MAX_LEVEL:
 		return "Next: maxed."
-	var unlock_level := _hub_module_next_unlock_level(module_id)
-	if _hub_build_level() < unlock_level:
-		return ""
+	if module_id == "woodcutting_totem":
+		return "Next: +%s%% collected wood." % (next_level * 10)
+	if module_id == "fighting_display":
+		return "Next: +%s%% Fighting XP." % (next_level * 5)
 	match module_id:
 		"pond":
-			return "Next: +%s%% total stamina regen speed." % GameFormatting.percent_points(float(HUB_POND_REGEN_BONUS_BY_LEVEL[next_level]) * 100.0)
+			return "Next: stamina recovers %s%% faster." % GameFormatting.percent_points(float(HUB_POND_REGEN_BONUS_BY_LEVEL[next_level]) * 100.0)
 		"barn":
-			return "Next: %s%% success rate bonus." % GameFormatting.percent_points(float(HUB_BARN_FAILURE_GAP_FACTORS[next_level]) * 100.0)
+			return "Next: %s%% fewer failed attempts outside Fishing." % GameFormatting.percent_points(float(HUB_BARN_FAILURE_GAP_FACTORS[next_level]) * 100.0)
 		"garden":
-			return "Next: +%sh offline progress cap." % next_level
+			return "Next: up to %sh offline progress." % int((host.MAX_OFFLINE_SECONDS + next_level * HubRuntime.HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL) / 3600)
 		"trophy":
 			return "Next: better stolen trophy display."
 		"mission":
-			return "Next: %s slots, -%s%% stamina, +%s%% XP, +%s%% speed, %s cooldown." % [
+			return "Next: %s mission slots, %s%% less stamina, +%s%% XP, %s%% less time, %s cooldown." % [
 				int(HUB_MISSION_SLOT_COUNT_BY_LEVEL[next_level]),
 				GameFormatting.percent_points(float(HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL[next_level]) * 100.0),
 				GameFormatting.percent_points(float(HUB_MISSION_XP_BONUS_BY_LEVEL[next_level]) * 100.0),
@@ -3096,9 +3161,6 @@ func _hub_module_cost_text(module_id: String) -> String:
 	var level := _hub_module_level(module_id)
 	if level >= HUB_MODULE_MAX_LEVEL:
 		return "Cost: maxed"
-	var unlock_level := _hub_module_next_unlock_level(module_id)
-	if _hub_build_level() < unlock_level:
-		return ""
 	var costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", []) as Array
 	var cost := int(costs[level])
 	if module_id == "pond":
@@ -3242,3 +3304,14 @@ func _hub_tutorial_info_button_style(pressed := false, hovered := false) -> Styl
 	style.shadow_size = 3.5 if not pressed else 1.5
 	style.shadow_offset = Vector2(0, 2.5 if not pressed else 1)
 	return style
+
+
+# Stored hub coordinates remain portrait-compatible. Only display positions expand.
+func _hub_display_width() -> float:
+	return maxf(HUB_FIELD_SIZE.x, host.desktop_layout.gameplay_width() - host.desktop_layout.hub_left_width()) if host.desktop_layout.enabled() else HUB_FIELD_SIZE.x
+
+func _hub_to_display(point: Vector2) -> Vector2:
+	return Vector2(point.x * _hub_display_width() / HUB_FIELD_SIZE.x, point.y)
+
+func _hub_from_display(point: Vector2) -> Vector2:
+	return Vector2(point.x * HUB_FIELD_SIZE.x / _hub_display_width(), point.y)

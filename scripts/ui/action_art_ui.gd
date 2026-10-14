@@ -566,6 +566,7 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, textu
 
 
 static func resource_icon_paths(action: Dictionary, action_mat_reward_defs: Callable, mat_icon_path: Callable, temporary_event_log_reward_mat_id: Callable) -> Array:
+	if str(action.get("id", "")) == "trick-or-treat": return ["res://assets/content/events/halloween/candy.tres"]
 	var icon_paths := []
 	var mat_rewards := action_mat_reward_defs.call(action) as Array
 	for raw_reward in mat_rewards:

@@ -1,9 +1,13 @@
 extends RefCounted
 
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 
 const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 18.0)
+const WISDOM_REQUIREMENT_HEIGHT := 96.0
+const WISDOM_REQUIREMENT_LAYOUT_HEIGHT := WISDOM_REQUIREMENT_HEIGHT
 const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
+const RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT := 48.0
 const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
 const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
@@ -177,6 +181,7 @@ class PrismConnectorOverlay extends Control:
 	var ink_color := Color("#171615")
 	var side_fill_color := Color("#8f521f")
 	var bottom_fill_color := Color("#c8792c")
+	var segment_theme_colors: Array[Color] = []
 	var stroke_width := ACTION_CARD_STROKE_WIDTH
 	var radius := 33.0
 	var diagonal_radius := 16.0
@@ -259,7 +264,19 @@ class PrismConnectorOverlay extends Control:
 		var polygon := PackedVector2Array(front_perimeter)
 		for index in range(back_perimeter.size() - 1, -1, -1):
 			polygon.append(back_perimeter[index])
-		draw_polygon(polygon, PackedColorArray([side_fill_color]))
+		if segment_theme_colors.size() <= 1:
+			draw_polygon(polygon, PackedColorArray([side_fill_color]))
+			return
+		var origin := _connector_face_origin()
+		var face_size := _connector_face_size()
+		for segment in range(segment_theme_colors.size()):
+			var left := origin.x + face_size.x * segment / segment_theme_colors.size()
+			var right := origin.x + face_size.x * (segment + 1) / segment_theme_colors.size()
+			if segment == 0: left -= absf(travel.x) + stroke_width
+			if segment == segment_theme_colors.size() - 1: right += absf(travel.x) + stroke_width
+			var clip := PackedVector2Array([Vector2(left, -100), Vector2(right, -100), Vector2(right, size.y + 100), Vector2(left, size.y + 100)])
+			for piece in Geometry2D.intersect_polygons(polygon, clip):
+				draw_colored_polygon(piece, segment_theme_colors[segment].darkened(0.42))
 
 	func _rounded_visible_perimeter(origin: Vector2, face_size: Vector2, inset: float, travel: Vector2) -> PackedVector2Array:
 		var corner_radius := maxf(0.0, minf(radius, minf(face_size.x, face_size.y) * 0.5 - inset))
@@ -658,7 +675,13 @@ static func root_height(expanded: bool, action_card_height: float, action_card_e
 static func root_height_for_action(action: Dictionary, expanded: bool, uses_diamond_arena: bool, action_card_height: float, expanded_height: float, diamond_height: float, depth_offset_y: float) -> float:
 	if uses_diamond_arena:
 		return float(diamond_height) + depth_offset_y
-	return root_height(expanded, action_card_height, expanded_height, depth_offset_y)
+	var wisdom_height := WISDOM_REQUIREMENT_LAYOUT_HEIGHT if int(action.get("wisdom_required", 0)) > 0 else 0.0
+	var actual_depth := RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y if RecoveryModules.has_recovery(action) else depth_offset_y
+	return root_height(expanded, face_height_for_action(action, action_card_height), face_height_for_action(action, expanded_height), actual_depth) + wisdom_height
+
+
+static func face_height_for_action(action: Dictionary, base_height: float) -> float:
+	return base_height + (RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT if RecoveryModules.has_recovery(action) else 0.0)
 
 
 static func mat_collection_layout_height(skill_id: String, action: Dictionary, has_mat_rewards: bool, running_skill_id: String, running_action_id: String, mat_collection_area_height: float) -> float:

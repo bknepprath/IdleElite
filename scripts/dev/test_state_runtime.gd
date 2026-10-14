@@ -144,6 +144,10 @@ func _god_mode_unlock_thieving_trophies_state() -> void:
 	host.thieving_state.pending_trophy_reward_float.clear()
 	host._hub_runtime().sync_trophy_level_from_thieving()
 func _god_mode_unlock_onboarding_state() -> void:
+	host.desktop_layout.intro_guided = false
+	host.desktop_layout.intro_stage = 3
+	host.desktop_layout.intro_reveal_elapsed = host.desktop_layout.INTRO_REVEAL_SECONDS
+	host.desktop_layout.intro_ribbon_elapsed = host.desktop_layout.INTRO_UI_FADE_SECONDS
 	host._onboarding_runtime().tutorial_active = false
 	host._onboarding_runtime().tutorial_target_activity_started = false
 	host._onboarding_runtime().tutorial_completion_exit_running = false

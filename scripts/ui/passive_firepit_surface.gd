@@ -1228,6 +1228,7 @@ func _passive_info_controls(pop_card: Control, module_id: String, info_text: Str
 	if interactive:
 		info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
 		info_button.pressed.connect(_toggle_passive_info_popover.bind(info_popover))
+	host.desktop_layout.style_info_button(info_button)
 	pop_card.add_child(info_button)
 	return {"button": info_button, "popover": info_popover, "label": info_label}
 
@@ -1259,6 +1260,8 @@ func _hide_passive_info_popover(info_popover: Control) -> void:
 
 
 func _prewarm_passive_info_popover(info_popover: Control) -> void:
+	if host.desktop_layout.enabled():
+		return
 	if info_popover == null or not is_instance_valid(info_popover):
 		return
 	if bool(info_popover.get_meta("info_popover_prewarm_started", false)):
@@ -1600,7 +1603,7 @@ func _firepit_entry_shell(content_width: float, firepit_card_height: float, depe
 	card_root.name = "FirepitCardRoot"
 	card_root.custom_minimum_size = Vector2(content_width, firepit_card_height)
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_root.clip_contents = true
+	card_root.clip_contents = false
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
 	card_root.position = Vector2(0.0, dependency_height)
 	root.add_child(card_root)
@@ -1614,7 +1617,7 @@ func _firepit_entry_shell(content_width: float, firepit_card_height: float, depe
 	pop_card.offset_right = -host.ACTION_CARD_POP_GUTTER
 	pop_card.offset_top = 0.0
 	pop_card.offset_bottom = 0.0
-	pop_card.clip_contents = true
+	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
 	card_root.add_child(pop_card)
 
@@ -1677,7 +1680,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	var firepit_ring_size = Vector2(410, 410)
 	var art_root_size = Vector2(480, 450)
 	var module_center_x = face_width * 0.5
-	var firepit_layout_shift_x = -65.0
+	var firepit_layout_shift_x = 0.0
 
 	var art_root = Control.new()
 	art_root.position = Vector2(module_center_x - art_root_size.x * 0.5 + firepit_layout_shift_x, 20)
@@ -1738,25 +1741,28 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 
 func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	var status_panel = Control.new()
-	status_panel.custom_minimum_size = Vector2(310, 235)
-	status_panel.position = Vector2(585.0, 70)
+	status_panel.custom_minimum_size = Vector2(200, 280)
+	status_panel.anchor_left = 1.0
+	status_panel.anchor_right = 1.0
+	status_panel.position = Vector2(-224, 100)
 	status_panel.size = status_panel.custom_minimum_size
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.z_index = 242
 	pop_card.add_child(status_panel)
 
-	var status_label = host._label("", 44, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	var status_label = host._label("", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_label.position = Vector2(0, 0)
-	status_label.size = Vector2(310, 56)
+	status_label.size = Vector2(200, 88)
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	status_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	status_label.add_theme_constant_override("outline_size", 7)
 	status_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(status_label)
-	var buff_label = host._label("", 40, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
-	buff_label.position = Vector2(0, 64)
-	buff_label.size = Vector2(310, 112)
+	var buff_label = host._label("", 34, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
+	buff_label.position = Vector2(0, 94)
+	buff_label.size = Vector2(200, 116)
 	buff_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	buff_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	buff_label.add_theme_constant_override("outline_size", 7)
@@ -1764,9 +1770,9 @@ func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	buff_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(buff_label)
-	var timer_label = host._label("", 44, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	timer_label.position = Vector2(0, 188)
-	timer_label.size = Vector2(310, 56)
+	var timer_label = host._label("", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	timer_label.position = Vector2(0, 218)
+	timer_label.size = Vector2(200, 56)
 	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	timer_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	timer_label.add_theme_constant_override("outline_size", 7)
@@ -2718,12 +2724,8 @@ func _finish_firepit_dependency_visuals(module_id: int, connector_id: int, show_
 
 
 func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, instant := false) -> void:
-	# The running gatherer's output already shows this balance on the skill page.
-	if show_dependency and host.current_screen == "skill" and host.selected_skill_id == "woodcutting":
-		var gathering: Dictionary = host.action_cards.get(host._action_key(host.running_skill_id, host.running_action_id), {})
-		var collection := gathering.get("mat_collection", {}) as Dictionary
-		if bool(collection.get("visible", false)) and (collection.get("modules", {}) as Dictionary).has("scrapwood"):
-			show_dependency = false
+	# Fuel visibility belongs to the fire's state, not the currently focused
+	# desktop column or the gatherer's changing reward display.
 	var firepit_entry_root = card.get("firepit_entry_root") as Control
 	var card_root = card.get("root") as Control
 	var scrapwood_module = card.get("scrapwood_module") as Control
@@ -2739,6 +2741,10 @@ func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, in
 	var card_root_id = card_root.get_instance_id() if card_root != null and is_instance_valid(card_root) else 0
 	var entry_root_id = firepit_entry_root.get_instance_id() if firepit_entry_root != null and is_instance_valid(firepit_entry_root) else 0
 	var entry_id = entry.get_instance_id() if entry != null and is_instance_valid(entry) else 0
+	if not seed_layout and card.get("firepit_dependency_target") == show_dependency and int(card.get("firepit_dependency_entry_id", 0)) == entry_id:
+		return
+	card["firepit_dependency_target"] = show_dependency
+	card["firepit_dependency_entry_id"] = entry_id
 	if absf(current_reveal_height - target_reveal_height) > 0.5:
 		if card_root != null and is_instance_valid(card_root):
 			host._app_lifecycle_runtime()._kill_meta_tween(card_root, "firepit_dependency_height_tween")

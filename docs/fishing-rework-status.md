@@ -40,6 +40,7 @@ Last updated: 2026-05-31 (in progress on branch / working tree)
 | Level | Area | Location |
 |-------|------|----------|
 | 1 | Beach | Shallows |
+| 2 | Beach | Practice Pool (normal activity; XP only, no fish) |
 | 4 | Beach | Rocks |
 | 7 | Pier | Dock Edge |
 | 11 | Pier | Piling Line |
@@ -90,3 +91,9 @@ python scripts\reorganize-fishing-areas.py
 ```
 
 Installs **Idle Elite Preview** (`com.idleelite.game.preview`) so the Play/release app and saves stay untouched.
+
+## October 5, 2026 feedback changes
+
+- Practice Pool unlocks at Fishing 2: 3 XP per 3-second cycle, 100% base success, no fish, no stamina cost. It uses a normal activity card and does not inherit fishing tool multipliers or storage. Base XP rate is 60/min, below level-2 stamina activities (about 103-150/min before bonuses).
+- Fishing help opens once on the first Fishing page visit and remains available through the header info button. It explains offline progress, fish use, and Practice Pool.
+- Recovery board tasks require 25% of the ordinary repetition count, rounded up. Legacy assignments migrate once, scaling target and remaining repetitions together. Recovery speed and output are unchanged.
