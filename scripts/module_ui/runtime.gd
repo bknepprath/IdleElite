@@ -317,16 +317,8 @@ func clear_module_pin_press() -> void:
 	module_ui_pin_press_touch_index = -1
 	module_ui_pin_press_dragged = false
 func begin_module_collapse_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int, allow_key: Callable) -> bool:
-	var normalized_key := normalize(module_key)
-	if not _allowed(normalized_key, allow_key):
-		return false
-	module_ui_collapse_press_active = true
-	module_ui_collapse_press_module_key = normalized_key
-	module_ui_collapse_press_card_host_id = card_host_id
-	module_ui_collapse_press_position = press_position
-	module_ui_collapse_press_touch_index = touch_index
-	module_ui_collapse_press_dragged = false
-	return true
+	return false
+
 func update_pending_module_collapse_press(event: InputEvent, tap_slop: float, drag_suppressed: bool, click_suppressed: bool, commit_tap: Callable) -> bool:
 	if not module_ui_collapse_press_active:
 		return false
@@ -436,15 +428,11 @@ func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: flo
 	return plan
 
 func is_collapsed(module_key: String, allow_key: Callable) -> bool:
-	var key := normalize(module_key)
-	return bool(collapsed.get(key, false)) and _allowed(key, allow_key)
+	# Compatibility API: minimization was removed; old flags never hide activities.
+	return false
 
 func collapse_key(module_key: String, allow_key: Callable) -> String:
-	var key := normalize(module_key)
-	if not _allowed(key, allow_key) or bool(collapsed.get(key, false)):
-		return ""
-	collapsed[key] = true
-	return key
+	return ""
 
 func expand_key(module_key: String) -> String:
 	var key := normalize(module_key)
@@ -567,8 +555,7 @@ func apply_pin_badge_texture(badge: TextureButton, module_key: String, valid_pat
 
 
 func collapsed_for_save(allow_key: Callable) -> Dictionary:
-	return collapsed_unlocked_only(normalized_flags(collapsed), allow_key)
-
+	return {}
 
 func sort_mode_for_save() -> String:
 	return normalized_sort_mode(sort_mode)
@@ -582,13 +569,13 @@ func restore_from_save(data: Dictionary, valid_paths: Array, fallback_path: Stri
 		if not key.is_empty() and not pin_color_paths.has(key):
 			assign_random_pin_texture_path(key, valid_paths, fallback_path)
 	pin_preview_tokens.clear()
-	var collapse_save_version := int(data.get("module_ui_collapse_save_version", 0))
 	var loaded_collapsed := normalized_flags(data.get("module_ui_collapsed", {}))
-	collapsed = collapsed_unlocked_only(loaded_collapsed, allow_key) if collapse_save_version >= COLLAPSE_SAVE_VERSION else {}
+	# Keep the save keys compatible while restoring every minimized activity.
+	collapsed.clear()
 	sort_mode = normalized_sort_mode(data.get("module_ui_sort_mode", SORT_LEVEL))
 	combo_first = bool(data.get("module_ui_combo_first", false))
 	collection_first = bool(data.get("module_ui_collection_first", false))
-	return collapse_save_version < COLLAPSE_SAVE_VERSION and not loaded_collapsed.is_empty()
+	return not loaded_collapsed.is_empty()
 
 
 func pinned_order_unlocked_only(keys: Array, allow_key: Callable) -> Array:

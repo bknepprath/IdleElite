@@ -67,7 +67,8 @@ func _run() -> void:
 	var ink := Color("#171615")
 	MainScript.ThemeStyles.apply_activity_progress_rail_action_theme(rail, primary_theme, [primary_theme, secondary_theme], ink)
 	_expect(rail.fill_segments.size() == 2, "Combo action progress should retain one fill segment per contributing skill.")
-	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
+	# 0.7.0: an empty combo rail shows both skill colors before any progress.
+	_expect(rail.empty_segments.size() == 2 and rail.empty_segments[0].is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)) and rail.empty_segments[1].is_equal_approx(MainScript.ThemeStyles.progress_empty_color(secondary_theme, ink)), "Idle combo action progress should show each contributing skill's empty-track color.")
 	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
 
 	rail.set_opportunity_windows([Vector2(0.78, 0.88)], true, true, false)

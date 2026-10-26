@@ -1,0 +1,91 @@
+extends "res://scripts/tests/action_art_oct22.gd"
+
+func inventory_count(layout, id: String) -> Label:
+	return instance_from_id(int(layout.boxes[id].get_meta("amount_label_id"))) as Label
+
+func audit_action_art() -> void:
+	game.material_runtime.set_amount("sand",40)
+	game.material_runtime.set_amount("scrapwood",0)
+	game.material_runtime.set_amount("glass",5)
+	game.built_modules["build:melt-sand"]=true
+	await open_notes_skill("build")
+	var card:=await notes_card("melt-sand")
+	await align_notes_card(card)
+	var stage: Control=card.production_stage
+	var inventory: Control=stage.factory_inventory
+	check(inventory!=null,"Factory inventory layout mounts in the real card")
+	await capture("melt-sand-compact-idle")
+	await click(stage.output_hit.get_global_rect().get_center(),true)
+	await settle(.5)
+	check(inventory.top_clip.visible and inventory.bottom_clip.visible,"Tapping the output starts production and reveals inventories")
+	check(inventory.boxes.size()==2 and inventory.top_items.size()==1 and not inventory.boxes.has("scrapwood"),"Only the Sand input and Glass output inventories appear")
+	check(inventory_count(inventory,"sand").text=="38" and inventory_count(inventory,"glass").text=="5","Live owned counts are separate from compact recipe amounts")
+	await capture("melt-sand-inventory-menu")
+	if is_instance_valid(stage.output_menu) and stage.output_menu.visible: await click(stage.menu_choice.get_global_rect().get_center(),true)
+	await settle(.35)
+	check(game.running_action_id=="melt-sand","Actual recipe selector starts the factory")
+	check(game.material_runtime.amount("sand")==38 and game.material_runtime.amount("scrapwood")==0,"Starting reserves exactly 2 Sand and no wood")
+	check(inventory_count(inventory,"sand").text=="38","Inventory immediately reflects spent Sand")
+	var face: Rect2=card.root.get_global_rect()
+	check(inventory.top_items[0].get_global_rect().end.y<face.position.y,"Sand inventory is above the factory")
+	check(absf(inventory.top_items[0].get_global_rect().get_center().x-face.get_center().x)<1,"The single Sand input inventory is centered above the factory")
+	check(inventory.boxes.glass.get_global_rect().position.y>face.end.y,"Glass inventory is below the factory")
+	check(float(card.mat_room)==inventory.TOTAL_ROOM,"List reserves both inventory rows")
+	check(stage.input_panel.visible and stage.input_panel.size==Vector2(200,200) and stage.output_panel.size==Vector2(200,200),"Factory retains the full input/output action boxes")
+	check(card.medal.get_parent()==stage.output_panel,"Medal is attached to the output action box")
+	check(card.medal.position+card.medal.size*.5==Vector2.ZERO,"Medal overlaps the action box top-left corner")
+	check(absf(stage.stat_strip.position.x+stage.stat_strip.size.x-stage.size.x+28)<2 and stage.stat_strip.position.y<10,"XP/time share the top-right header")
+	var rear: Control=card.pop.get_parent().get_node("ProductionBuildingBackFace")
+	var notch_tip:=rear.get_global_transform()*Vector2(rear.size.x*.5,rear.size.y-preload("res://scripts/ui/production_building_shape.gd").NOTCH_DEPTH)
+	var connector_rect: Rect2=inventory.output_connector.get_global_rect()
+	check(connector_rect.position.y<notch_tip.y and connector_rect.end.y>inventory.boxes.glass.get_global_rect().position.y,"Output connector overlaps both the rear V tip and output box")
+	check(not inventory.output_connector.get_parent().clip_contents,"Inventory clipping cannot cut off the output connector")
+	await capture("melt-sand-live-inventories")
+	await RenderingServer.frame_post_draw
+	var viewport_image:=root.get_texture().get_image()
+	var gaps:=0
+	for y in range(ceili(notch_tip.y+3),floori(inventory.boxes.glass.get_global_rect().position.y-2)):
+		var pixel:=viewport_image.get_pixel(roundi(connector_rect.get_center().x),y)
+		if pixel.r>.7 and pixel.g>.7 and pixel.b>.65: gaps+=1
+	check(gaps==0,"Rendered output connector has no paper-colored gaps from V tip to Glass inventory")
+	await click(inventory.boxes.glass.get_global_rect().get_center(),true)
+	await settle(.1)
+	check(not is_instance_valid(stage.output_menu),"Repeated Glass inventory tap has no single-choice popup")
+	await click(Vector2(1038,1120),true)
+	await settle(.1)
+	check(not is_instance_valid(stage.output_menu),"Plain factory never constructs a one-choice popup")
+	check(game.material_runtime.amount("sand")==38 and game.material_runtime.amount("scrapwood")==0,"Inspecting Glass does not charge another batch or any wood")
+	for frame in 2000:
+		await process_frame
+		if game.material_runtime.amount("glass")>5: break
+	check(game.material_runtime.amount("glass")==6,"A real completed recipe produces one Glass")
+	await settle(.35)
+	await capture("melt-sand-glass-dropping")
+	await settle(.7)
+	check(inventory_count(inventory,"glass").text=="6","Glass inventory updates after production")
+	await capture("melt-sand-glass-collected")
+	game._action_runtime()._stop_running_action("build","melt-sand")
+	await settle(.6)
+	check(is_zero_approx(card.root.position.y) and is_zero_approx(float(card.mat_room)),"Stopping closes inventories and restores the compact list height")
+	check(not inventory.output_connector.visible,"Stopping hides the whole output connector")
+	await capture("melt-sand-compact-stopped")
+	# Simulate a fresh unpaid batch; stopping normally retains paid reservations.
+	game._production_runtime().state.escrow.erase("melt-sand")
+	game.material_runtime.set_amount("sand",1)
+	game.material_runtime.set_amount("scrapwood",0)
+	await click(stage.output_hit.get_global_rect().get_center(),true)
+	await settle(.5)
+	check(inventory_count(inventory,"sand").text=="1","Sand inventory follows externally changed resource amounts")
+	await capture("melt-sand-low-inventory")
+	if is_instance_valid(stage.output_menu) and stage.output_menu.visible: await click(stage.menu_choice.get_global_rect().get_center(),true)
+	await settle(.4)
+	check(game.material_runtime.amount("sand")==1 and game.material_runtime.amount("scrapwood")==0 and not game._production_runtime().state.escrow.has("melt-sand"),"Missing ingredients cannot reserve or spend an unpaid recipe")
+	await settle(5)
+	check(game.material_runtime.amount("glass")==6,"Waiting without ingredients cannot produce unpaid Glass")
+	game._action_runtime()._stop_running_action("build","melt-sand")
+	print("FACTORY_INVENTORY failures=",JSON.stringify(failures))
+	var report:=FileAccess.open(capture_dir+"/result.json",FileAccess.WRITE)
+	report.store_string(JSON.stringify({"failures":failures}))
+	report.close()
+	game._app_lifecycle_runtime()._prepare_for_shutdown()
+	quit(0 if failures.is_empty() else 1)

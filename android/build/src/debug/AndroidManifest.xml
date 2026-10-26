@@ -27,7 +27,7 @@
 
 	<meta-data
 		android:name="com.google.android.gms.ads.APPLICATION_ID"
-		android:value="ca-app-pub-3570919669688101~3616255490"/>
+		android:value="ca-app-pub-4125359195200512~1607281974"/>
 	
 <!-- End of manifest application element contents from PoingAdMobAndroid -->
         <activity android:name=".GodotApp" tools:replace="android:screenOrientation,android:excludeFromRecents,android:resizeableActivity" tools:node="mergeOnlyAttributes" android:excludeFromRecents="false" android:screenOrientation="portrait" android:resizeableActivity="true">

@@ -13,7 +13,7 @@ func _init() -> void:
 	runtime.pinned_order.append("fishing_area:shore")
 	assert(not runtime.is_collapsed("fishing_area:shore", allowed))
 	assert(not runtime.is_pinned("fishing_area:shore", allowed))
-	assert(calls == 2)
+	assert(calls == 1) # Removed minimization never calls the unlock predicate.
 	var plan: Array = []
 	for i in range(40):
 		plan.append({"kind": "fishing_area", "area_def": {"id": str(i), "unlock": (i * 7) % 11, "module_index": i}, "height": 200})

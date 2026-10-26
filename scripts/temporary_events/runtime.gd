@@ -76,6 +76,7 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
 		"art": _res_path(str(source.get("art", ""))),
+		"art_framing": (source.get("art_framing", {}) as Dictionary).duplicate(),
 		"bg": _res_path(str(source.get("background", source.get("bg", "")))),
 		"requirements": requirements,
 		"xp_rewards": _action_xp_rewards_for_load(source, page, xp_value),
@@ -257,9 +258,18 @@ func _temporary_event_page_level_eligible(event_def: Dictionary) -> bool:
 	return _temporary_event_highest_unlocked_page_level(page) >= _temporary_event_minimum_level(event_def)
 
 
+# Writing the save asks for a page's level twice per active event, and each
+# answer checks every activity on the page. Nothing can change while one save
+# payload is being built, so the answers are kept for that long and no longer.
+var page_level_memo_open := false
+var page_level_memo := {}
+
+
 func _temporary_event_highest_unlocked_page_level(page: String) -> int:
 	if page.is_empty() or not host.actions_by_skill.has(page):
 		return 0
+	if page_level_memo_open and page_level_memo.has(page):
+		return int(page_level_memo[page])
 	var page_level = SkillState.host_skill_level(host, page) if host.skills.has(page) else 0
 	var highest := 0
 	for raw_action in host.actions_by_skill.get(page, []):
@@ -274,7 +284,10 @@ func _temporary_event_highest_unlocked_page_level(page: String) -> int:
 		if page_level > 0 and display_level > page_level:
 			continue
 		highest = maxi(highest, display_level)
-	return maxi(highest, page_level)
+	var answer := maxi(highest, page_level)
+	if page_level_memo_open:
+		page_level_memo[page] = answer
+	return answer
 
 
 func _temporary_event_spawn_level_bounds_for_page(page: String) -> Dictionary:
@@ -484,7 +497,28 @@ func _temporary_event_action_for_entry(event_def: Dictionary, event_entry: Dicti
 	return event_action
 
 
+# Asked on every frame while an event activity runs, and every answer walked the
+# page's activities once per active event. The answer can only change with the
+# clock second (expiry), the event list, or what is unlocked, so remember it until
+# one of those does. Callers get their own copy, as before.
+var active_event_actions_cache := {}
+var active_event_actions_cache_stamp := 0
+
+
 func _active_event_actions_for_skill(skill_id: String) -> Array:
+	if skill_id.is_empty() or temporary_event_active.is_empty():
+		return []
+	var projects = host._project_runtime()
+	var stamp := hash([host._unix_now(), temporary_event_active, projects._reveal_inputs_stamp(), projects.work])
+	if stamp != active_event_actions_cache_stamp:
+		active_event_actions_cache_stamp = stamp
+		active_event_actions_cache.clear()
+	if not active_event_actions_cache.has(skill_id):
+		active_event_actions_cache[skill_id] = _build_active_event_actions_for_skill(skill_id)
+	return (active_event_actions_cache[skill_id] as Array).duplicate(true)
+
+
+func _build_active_event_actions_for_skill(skill_id: String) -> Array:
 	var active_actions := []
 	if skill_id.is_empty() or temporary_event_active.is_empty():
 		return active_actions
@@ -787,7 +821,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		var log_reward_mat_id := _temporary_event_log_reward_mat_id()
 		var log_reward_amount = host.material_runtime.buffed_log_collection_amount_for_host(log_reward_mat_id, float(log_reward), host)
 		if log_reward > 0:
-			host.material_runtime.add_amount(log_reward_mat_id, log_reward_amount)
+			host.material_runtime.collect_amount(log_reward_mat_id,log_reward_amount,reward_key)
 		var xp_reward = host._action_runtime()._reward_map_total(xp_reward_map)
 		host.last_result = "Event complete: %s" % host._action_runtime()._xp_reward_result_sentence(xp_reward_map, skill_id, str(action.get("name", "Event")))
 		if log_reward > 0:
@@ -836,8 +870,13 @@ func _complete_temporary_event_action_state(event_id: String, completed_unix: in
 
 
 func _temporary_events_for_save() -> Dictionary:
+	page_level_memo.clear()
+	page_level_memo_open = true
+	var active := _normalized_temporary_event_active(temporary_event_active)
+	page_level_memo_open = false
+	page_level_memo.clear()
 	return {
-		"active": _normalized_temporary_event_active(temporary_event_active),
+		"active": active,
 		"cooldowns": _normalized_temporary_event_cooldowns(temporary_event_cooldowns),
 		"next_roll_unix": maxi(0, temporary_event_next_roll_unix)
 	}

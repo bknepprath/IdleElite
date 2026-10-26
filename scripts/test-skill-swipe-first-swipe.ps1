@@ -99,7 +99,7 @@ func _frames(count: int) -> void:
 
 $previousUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 try {
-    $env:IDLE_ELITE_TEST_USER_DATA_DIR = Join-Path ([IO.Path]::GetTempPath()) ("idle-elite-first-swipe-" + [guid]::NewGuid().ToString("N"))
+    $env:IDLE_ELITE_TEST_USER_DATA_DIR = if ($previousUserData) { $previousUserData } else { Join-Path ([IO.Path]::GetTempPath()) ("idle-elite-first-swipe-" + [guid]::NewGuid().ToString("N")) }
     $output = & $runner --headless --path $projectRoot --script "res://.codex-tmp/skill-swipe-first-swipe/skill_swipe_first_swipe_test.gd" 2>&1
     $output | ForEach-Object { Write-Host $_ }
     Assert-True (($output | Out-String) -match "skill-swipe-first-swipe-ok") "The first swipe after the neighbour pages rebuild must land on the next skill."

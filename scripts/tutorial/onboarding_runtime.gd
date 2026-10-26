@@ -18,6 +18,7 @@ var skill_swipe_tip_seen := false
 var onboarding_explore_tip_seen := false
 var onboarding_tutorial_complete := false
 var passive_module_tip_seen := false
+var soft_interactions_seen := {}
 var silver_opportunity_tip_seen := false
 var silver_opportunity_tip_action_key := ""
 var stamina_gauge_tip_seen := false
@@ -38,7 +39,15 @@ func _init(host_ref) -> void:
 	host = host_ref
 
 
+func acknowledge_soft_interaction(interaction_id: String) -> void:
+	if soft_interactions_seen.has(interaction_id):
+		return
+	soft_interactions_seen[interaction_id] = true
+	host._mark_save_dirty("interaction learned")
+
+
 func prepare_tutorial_state() -> void:
+	host.desktop_layout.reset_intro()
 	onboarding_tutorial_complete = false
 	onboarding_swipe_tip_eligible = false
 	onboarding_swipe_navigation_unlocked = false
@@ -111,7 +120,12 @@ func _skip_tutorial() -> void:
 
 func _activate_tutorial_target() -> void:
 	if host._navigation_shell().screen_render_in_progress:
-		call_deferred("_activate_tutorial_target")
+		# A render spans frames. Re-queuing at once would spin inside this one
+		# (deferred calls run until the queue is empty) and the render would never
+		# get the frame it needs to finish.
+		await host.get_tree().process_frame
+		if is_instance_valid(host) and host.is_inside_tree():
+			_activate_tutorial_target()
 		return
 	match tutorial_step:
 		0:
@@ -196,7 +210,8 @@ func _graduate_onboarding_tutorial() -> void:
 		return
 	# Cover everything except the starter card before the rest of the game UI is
 	# made visible, then fade the cover out so the game builds around the player.
-	host._navigation_shell().play_post_onboarding_reveal_veil()
+	if not host.desktop_layout.enabled():
+		host._navigation_shell().play_post_onboarding_reveal_veil()
 	onboarding_tutorial_complete = true
 	host._navigation_shell().module_utility_collapsed = true
 	host.save_game()
@@ -206,7 +221,8 @@ func _graduate_onboarding_tutorial() -> void:
 	host._navigation_shell().call_deferred("_sync_bottom_nav_visibility")
 	host._navigation_shell().call_deferred("_sync_module_utility_row_visibility")
 	host._skill_detail_surface().call_deferred("_sync_skill_detail_back_arrow_visibility")
-	host._navigation_shell().call_deferred("_fade_in_post_onboarding_bottom_chrome")
+	if not host.desktop_layout.enabled():
+		host._navigation_shell().call_deferred("_fade_in_post_onboarding_bottom_chrome")
 	if host.auto_unlock_lockpads_enabled:
 		host._activity_unlock_runtime().call_deferred("_run_startup_auto_unlock_lockpads")
 
@@ -253,7 +269,11 @@ func _record_activity_start_for_tips() -> void:
 	if not activity_start_tip_seen:
 		activity_start_tip_seen = true
 		host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
-	host.save_game()
+		host.save_game()
+		return
+	# Starts are as frequent as completions. Like them, they ride the autosave and
+	# the pause/close save instead of writing the whole save on the tap.
+	host._mark_save_dirty("activity started")
 
 
 func _swipe_offset_accessible(offset: int) -> bool:
@@ -271,7 +291,7 @@ func _record_activity_completion_for_tips(skill_id: String = "", action_id: Stri
 		and action_id == host.TUTORIAL_STARTER_ACTION_ID
 	)
 	if is_starter_completion:
-		save_immediately = true
+		save_immediately = not onboarding_tutorial_complete
 		onboarding_starter_action_completion_count += 1
 		if onboarding_starter_action_completion_count == 1 and not onboarding_first_module_center_released:
 			onboarding_first_module_center_release_pending = true
@@ -453,7 +473,7 @@ func _clear_tutorial_gate_latch_only_after_skill_swipe(refresh_current_page := t
 	if not tutorial_gate_latch_only_until_swipe:
 		return
 	tutorial_gate_latch_only_until_swipe = false
-	host.activity_unlock_detail_refresh_done = false
+	host._activity_unlock_ceremony_surface().detail_refresh_done = false
 	if refresh_current_page and host.current_screen == "skill":
 		host.call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 

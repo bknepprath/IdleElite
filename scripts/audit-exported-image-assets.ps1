@@ -715,7 +715,13 @@ foreach ($path in $trackedPaths) {
     })
 }
 
-$sortedRows = @($rows | Sort-Object -Property Path)
+# Windows PowerShell and PowerShell 7 use different culture collation for
+# hyphens. Asset inventory order must not depend on the invoking shell.
+$rowsByPath = @{}
+foreach ($row in $rows) { $rowsByPath[[string]$row.Path] = $row }
+[string[]]$orderedPaths = @($rowsByPath.Keys)
+[Array]::Sort($orderedPaths, [StringComparer]::Ordinal)
+$sortedRows = @($orderedPaths | ForEach-Object { $rowsByPath[$_] })
 $snapshotRows = @($sortedRows | Select-Object `
     Path,
     ExportStatus,

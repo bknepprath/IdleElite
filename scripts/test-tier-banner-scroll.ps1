@@ -201,7 +201,7 @@ func _frames(count: int) -> void:
 
 $previousUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 try {
-    $env:IDLE_ELITE_TEST_USER_DATA_DIR = Join-Path ([IO.Path]::GetTempPath()) ("idle-elite-tier-banner-" + [guid]::NewGuid().ToString("N"))
+    $env:IDLE_ELITE_TEST_USER_DATA_DIR = if ($previousUserData) { $previousUserData } else { Join-Path ([IO.Path]::GetTempPath()) ("idle-elite-tier-banner-" + [guid]::NewGuid().ToString("N")) }
     $output = & $runner --headless --path $projectRoot --script "res://.codex-tmp/tier-banner-scroll/tier_banner_scroll_test.gd" 2>&1
     $output | ForEach-Object { Write-Host $_ }
     Assert-True (($output | Out-String) -match "tier-banner-scroll-ok") "Dragging the page from an open tier menu must scroll without closing it."

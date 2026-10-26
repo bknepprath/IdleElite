@@ -10,6 +10,7 @@ var activity_queue_running := false
 var activity_queue_index := -1
 var activity_queue_attempt_key := ""
 var fishing_attempt_completed := false
+var validated_queue_stamp := 0
 
 func _init(host_ref) -> void:
 	host = host_ref
@@ -158,10 +159,21 @@ func _stop_activity_queue_runtime(clear_running_action := false) -> void:
 		host.action_progress = 0.0
 		host._action_runtime()._reset_action_opportunity_state()
 
+# get_activity_queue() re-checks every entry against the unlock rules. A running
+# queue asked on every frame; it only needs to when the queue or something that
+# can lock or unlock an entry has changed.
+func _validated_activity_queue() -> Array:
+	var projects = host._project_runtime()
+	var stamp := hash([activity_queue, projects._reveal_inputs_stamp(), projects.work, host.fishing_runtime.equipped_tool_id, host.fishing_runtime.mirror_collected])
+	if stamp != validated_queue_stamp:
+		validated_queue_stamp = stamp
+		activity_queue = _activity_queue_unlocked_only(_normalized_queue(activity_queue))
+	return activity_queue
+
 func _process_activity_queue_runtime() -> void:
 	if not activity_queue_running:
 		return
-	var queue := get_activity_queue()
+	var queue := _validated_activity_queue()
 	if queue.is_empty() or activity_queue_index < 0:
 		_stop_activity_queue_runtime()
 		return
@@ -221,7 +233,10 @@ func _advance_activity_queue_to_runnable() -> bool:
 			continue
 		activity_queue_attempt_key = module_key
 		fishing_attempt_completed = false
-		if (host.running_skill_id == skill_id and host.running_action_id == action_id) or host._action_runtime()._start_action(skill_id, action_id, true, false, true):
+		# While a skill page is open the queue must not change which skill counts as
+		# selected: the page on screen would no longer be the one the code updates.
+		var select_page: bool = host.current_screen != "skill"
+		if (host.running_skill_id == skill_id and host.running_action_id == action_id) or host._action_runtime()._start_action(skill_id, action_id, select_page, false, true):
 			host._reward_feedback_surface()._set_result("Queue: %s started." % str(action.get("name", "Activity")))
 			host._update_ui(0.0, true)
 			return true

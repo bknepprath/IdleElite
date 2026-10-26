@@ -45,11 +45,11 @@ func _run() -> void:
 	game._navigation_shell()._select_skill("fishing")
 	await settle(1.0)
 	var fishing = game._fishing_ui_surface()
-	var circle = game._skill_detail_surface().detail_fish_circle
+	var circle := await reveal_area_tool("shallows")
 	await click(circle.get_global_rect().get_center())
-	check(fishing.fishing_tool_wallet_open, "Native wallet click must open exactly once")
+	check(fishing.fishing_tool_wallet_open, "Native area tool click must open exactly once")
 	await click(circle.get_global_rect().get_center(), true)
-	check(not fishing.fishing_tool_wallet_open, "Native touch must close the wallet exactly once")
+	check(not fishing.fishing_tool_wallet_open, "Native area tool touch must close the wallet exactly once")
 	await game._skill_detail_surface()._restore_detail_actions_scroll(400)
 	await settle(0.6)
 	var locked: Dictionary = fishing._fishing_method_card_for_action("fishing", "dock-edge")
@@ -58,6 +58,15 @@ func _run() -> void:
 		var lock_button: Button = locked.lock_root.get_meta("padlock_button") as Button
 		check(lock_button != null, "Fishing lock must be a native button")
 		if lock_button != null:
+			# The bottom bars lie over the lower part of the list and take taps there,
+			# so bring the padlock to the middle of the list before tapping it.
+			var detail = game._skill_detail_surface()
+			var list_center: Vector2 = detail.detail_actions_scroll.get_global_rect().get_center()
+			await detail._restore_detail_actions_scroll(maxi(0, detail.detail_actions_scroll.scroll_vertical + int(lock_button.get_global_rect().get_center().y - list_center.y)))
+			await settle(0.6)
+			locked = fishing._fishing_method_card_for_action("fishing", "dock-edge")
+			lock_button = locked.lock_root.get_meta("padlock_button") as Button
+			check(not game._input_routing_shell()._position_inside_bottom_interactive_ui(lock_button.get_global_rect().get_center()), "Fishing lock must be clear of the bottom bars before the tap")
 			game.last_result = ""
 			await click(lock_button.get_global_rect().get_center(), true)
 			check(game.last_result.contains("needs"), "Native lock click must explain its requirements")
@@ -86,14 +95,14 @@ func _run() -> void:
 	await click(net.get_global_rect().get_center(), true)
 	await settle(4.5)
 	check(game.fishing_runtime.net_collected, "Native net tap after a drag must collect the net")
-	circle = game._skill_detail_surface().detail_fish_circle
+	circle = await reveal_area_tool("shallows")
 	await click(circle.get_global_rect().get_center())
 	await settle(0.4)
 	for button in fishing.fishing_tool_wallet_popup.find_children("FishingToolPopupButton*", "Button", true, false):
 		if str(button.get_meta("tool_id", "")) == "net":
 			await click(button.get_global_rect().get_center(), true)
 			break
-	check(game.fishing_runtime.equipped_tool_id == "net", "Native wallet tool tap must equip the net")
+	check(game.fishing_runtime.tool_id_for_action("shallows") == "net", "Native area tool tap must save the net")
 	# Keep the purchase targets stable while testing late-game offers.
 	game.auto_unlock_lockpads_enabled = false
 	game.skills.fishing.xp = SkillState.xp_for_level(99)
@@ -116,3 +125,12 @@ func _run() -> void:
 	game.queue_free()
 	await settle(0.5)
 	quit(0 if failures.is_empty() else 1)
+
+func reveal_area_tool(action_id: String) -> Control:
+	var fishing = game._fishing_ui_surface()
+	var definition: Dictionary = fishing.render_area_module_for_action("fishing", action_id)
+	var key: String = game.fishing_runtime.area_module_key("fishing", definition)
+	await game._skill_detail_surface()._scroll_to_activity_card(key, false, true)
+	await settle(0.8)
+	var card: Dictionary = fishing._fishing_method_card_for_action("fishing", action_id)
+	return card.tool_selector as Control

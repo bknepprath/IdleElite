@@ -34,15 +34,16 @@ void fragment() {
 	vec3 col = fluid_deep.rgb;
 	if (mask > 0.001) {
 		vec2 uv = UV;
-		float wave = 0.06 * sin((uv.x * 7.0 + foam_scroll) * 6.28318)
-			+ 0.03 * sin((uv.x * 11.0 - foam_scroll * 0.6) * 6.28318);
+		float wave = 0.035 * sin((uv.x * 3.0 + foam_scroll * 0.35) * 6.28318)
+			+ 0.018 * sin((uv.x * 5.0 - foam_scroll * 0.2) * 6.28318);
 		float surface_y = 0.36 + wave;
 		float depth_mix = smoothstep(surface_y - 0.12, surface_y + 0.04, uv.y);
 		col = mix(fluid_color.rgb, fluid_deep.rgb, clamp(depth_mix, 0.0, 1.0));
 		float crest = smoothstep(surface_y - 0.02, surface_y + 0.03, uv.y)
 			* (1.0 - smoothstep(surface_y + 0.03, surface_y + 0.07, uv.y));
-		crest *= 0.18 + 0.1 * sin((uv.x * 20.0 + foam_scroll * 1.5) * 6.28318);
+		crest *= 0.14 + 0.06 * sin((uv.x * 8.0 + foam_scroll * 0.4) * 6.28318);
 		col = mix(col, vec3(0.92, 0.98, 1.0), crest * 0.55);
 	}
-	COLOR = vec4(col, mask);
+	float surface = 0.10 + 0.035 * sin((UV.x * 3.0 + foam_scroll * 0.35) * 6.28318);
+	COLOR = vec4(col, mask * smoothstep(surface - 0.015, surface + 0.015, UV.y));
 }

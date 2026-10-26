@@ -134,13 +134,13 @@ static func stamina_bank_for_save(skill_defs: Array, stamina: Dictionary, stamin
 
 static func stamina_value(stamina: Dictionary, skill_id: String, max_stamina: Callable) -> float:
 	var maximum := int(max_stamina.call(skill_id))
-	return clampf(float(stamina.get(skill_id, maximum)), 0.0, float(maximum))
+	return clampf(float(stamina.get(skill_id, maximum)), 0.0, float(maximum) + 15.0)
 
 static func host_stamina_value(skill_id: String, host) -> float:
 	return stamina_value(host.stamina, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
 
 static func stamina_int(stamina: Dictionary, skill_id: String, max_stamina: Callable) -> int:
-	return clampi(int(floor(stamina_value(stamina, skill_id, max_stamina))), 0, int(max_stamina.call(skill_id)))
+	return clampi(int(floor(stamina_value(stamina, skill_id, max_stamina))), 0, int(max_stamina.call(skill_id)) + 15)
 
 static func host_stamina_int(skill_id: String, host) -> int:
 	return stamina_int(host.stamina, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
@@ -148,7 +148,7 @@ static func host_stamina_int(skill_id: String, host) -> int:
 static func stamina_fraction(stamina: Dictionary, skill_id: String, max_stamina: Callable) -> float:
 	var value := stamina_value(stamina, skill_id, max_stamina)
 	if value >= float(max_stamina.call(skill_id)) - 0.0001:
-		return 1.0
+		return 0.0
 	return clampf(value - floorf(value), 0.0, 1.0)
 
 static func stamina_regen_fraction(stamina: Dictionary, stamina_bank: Dictionary, skill_id: String, max_stamina: Callable) -> float:
@@ -158,7 +158,7 @@ static func stamina_regen_fraction(stamina: Dictionary, stamina_bank: Dictionary
 
 static func sync_stamina_bank(stamina: Dictionary, stamina_bank: Dictionary, skill_id: String, max_stamina: Callable) -> void:
 	if stamina_value(stamina, skill_id, max_stamina) >= float(max_stamina.call(skill_id)) - 0.0001:
-		stamina[skill_id] = float(max_stamina.call(skill_id))
+		stamina[skill_id] = stamina_value(stamina, skill_id, max_stamina)
 		stamina_bank[skill_id] = 0.0
 		return
 	stamina_bank[skill_id] = clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
@@ -208,15 +208,25 @@ static func restore_action_stamina(stamina: Dictionary, stamina_bank: Dictionary
 	if skill_id.is_empty() or amount <= 0.0 or not stamina.has(skill_id):
 		return 0.0
 	var before := stamina_value(stamina, skill_id, max_stamina)
-	var restored := minf(float(max_stamina.call(skill_id)), before + amount)
+	var restored := maxf(before, minf(float(max_stamina.call(skill_id)), before + amount))
 	stamina[skill_id] = restored
 	sync_stamina_bank(stamina, stamina_bank, skill_id, max_stamina)
 	return maxf(0.0, restored - before)
 
-static func honey_stamina_regen_multiplier(player_has_stamina_honey: bool) -> float:
-	return HONEY_STAMINA_REGEN_MULT if player_has_stamina_honey else 1.0
+# The curve is fixed. Level lookups walk it from level 1, several times per frame,
+# so keep the thresholds in a table instead of recomputing two pow() calls each.
+static var _xp_for_level_table := PackedInt64Array()
 
 static func xp_for_level(level: int) -> int:
+	if level <= 1:
+		return 0
+	if level > 4096:
+		return _computed_xp_for_level(level)
+	while _xp_for_level_table.size() <= level:
+		_xp_for_level_table.append(_computed_xp_for_level(_xp_for_level_table.size()))
+	return _xp_for_level_table[level]
+
+static func _computed_xp_for_level(level: int) -> int:
 	if level <= 1:
 		return 0
 	var base_xp := SKILL_XP_CURVE_BASE * pow(float(level - 1), SKILL_XP_CURVE_EXPONENT)
@@ -238,7 +248,7 @@ static func xp_progress(skills: Dictionary, skill_id: String, level: int) -> Dic
 	var needed := maxi(1, end)
 	var level_current := clampi(xp_total - start, 0, end - start)
 	var level_needed := maxi(1, end - start)
-	return {"current": current, "needed": needed, "pct": clampf(float(level_current) / float(level_needed) * 100.0, 0.0, 100.0)}
+	return {"current": current, "needed": needed, "level_current": level_current, "level_needed": level_needed, "pct": clampf(float(level_current) / float(level_needed) * 100.0, 0.0, 100.0)}
 
 static func level_xp_text(skills: Dictionary, skill_id: String, level: int) -> String:
 	var xp := xp_progress(skills, skill_id, level)
@@ -249,16 +259,22 @@ static func level_xp_text(skills: Dictionary, skill_id: String, level: int) -> S
 		]
 	return "Lv %s   %s/%s" % [
 		level,
-		GameFormatting.compact_number(float(xp["current"])),
-		GameFormatting.compact_number(float(xp["needed"]))
+		GameFormatting.compact_number(float(xp["level_current"])),
+		GameFormatting.compact_number(float(xp["level_needed"]))
 	]
 
 
 static func skill_level_for_xp(xp_total: int) -> int:
-	var level := 1
-	while level < 99 and xp_total >= xp_for_level(level + 1):
-		level += 1
-	return level
+	# Thresholds only rise with level, so search the table instead of walking it.
+	var low := 1
+	var high := 99
+	while low < high:
+		var mid := (low + high + 1) >> 1
+		if xp_total >= xp_for_level(mid):
+			low = mid
+		else:
+			high = mid - 1
+	return low
 
 static func recalculate_level(host, skill_id: String, apply_unlocks := true) -> void:
 	var raw_state = host.skills.get(skill_id, null)

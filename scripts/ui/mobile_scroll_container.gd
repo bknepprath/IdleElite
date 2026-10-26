@@ -47,6 +47,18 @@ func _ready() -> void:
 	set_process(false)
 	scroll_deadzone = int(DRAG_DEADZONE)
 
+func _notification(what: int) -> void:
+	# Switching away mid-drag means the release never arrives. Let go of the
+	# pointer now instead of scrolling with the next one that moves.
+	if (what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT) and drag_tracking and is_inside_tree():
+		drag_tracking = false
+		drag_scrolling = false
+		drag_touch_index = -1
+		_clear_pending_drag_motion()
+		_snap_pull_offset()
+		if child_click_suppressed:
+			call_deferred("_clear_child_click_suppression")
+
 func _gui_input(event: InputEvent) -> void:
 	if not content_scroll_enabled:
 		if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_DOWN or event.button_index == MOUSE_BUTTON_WHEEL_UP):
@@ -88,7 +100,7 @@ func set_max_scroll_override(next_max_scroll: int) -> void:
 
 func set_scroll_enabled_by_content(enabled: bool) -> void:
 	content_scroll_enabled = enabled
-	vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if enabled else ScrollContainer.SCROLL_MODE_DISABLED
+	vertical_scroll_mode = (ScrollContainer.SCROLL_MODE_AUTO if bool(get_meta("desktop_scrollbar", false)) else ScrollContainer.SCROLL_MODE_SHOW_NEVER) if enabled else ScrollContainer.SCROLL_MODE_DISABLED
 	if not enabled:
 		drag_tracking = false
 		drag_scrolling = false
@@ -137,7 +149,10 @@ func _input(event: InputEvent) -> void:
 			if drag_scrolling:
 				_apply_pending_drag_motion()
 				child_click_suppressed = true
-				_apply_release_velocity(event.global_position)
+				# With a finger owning the drag this release is the emulated mouse, which
+				# follows the first finger down and may be another finger: fling from
+				# where the owner last was, not from where that finger lifted.
+				_apply_release_velocity(drag_last if drag_touch_index >= 0 else event.global_position)
 				get_viewport().set_input_as_handled()
 			drag_tracking = false
 			drag_scrolling = false
@@ -156,10 +171,18 @@ func _input(event: InputEvent) -> void:
 			drag_scrolling = true
 		if drag_scrolling:
 			child_click_suppressed = true
-			_apply_or_queue_drag_motion(event.global_position)
+			# A finger that owns the drag moves the list with its own drag events.
+			# Applying the emulated mouse as well made the list jump between two
+			# fingers whenever a second one touched the screen.
+			if drag_touch_index < 0:
+				_apply_or_queue_drag_motion(event.global_position)
 			get_viewport().set_input_as_handled()
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			# One finger owns a drag until it lifts. A second finger landing on the
+			# list (a resting thumb) used to take the drag over mid-scroll.
+			if drag_tracking and drag_touch_index >= 0 and event.index != drag_touch_index:
+				return
 			if _contains_global_point(event.position):
 				_cancel_scroll_tween()
 				_cancel_pull_tween()
@@ -248,7 +271,12 @@ func _clamp_to_current_content_height() -> void:
 		_pin_scroll_to_active_pull_edge(max_scroll)
 		return
 	if scroll_vertical <= max_scroll and drag_scroll_position <= float(max_scroll):
-		drag_scroll_position = clampf(float(scroll_vertical), 0.0, float(max_scroll))
+		# scroll_vertical is the rounded position. Copy it back only when something
+		# else moved the list; copying it every frame threw away the sub-pixel part,
+		# so slow drags did not move and flings stopped dead below ~30 px/s.
+		if absf(drag_scroll_position - float(scroll_vertical)) > 0.5:
+			drag_scroll_position = float(scroll_vertical)
+		drag_scroll_position = clampf(drag_scroll_position, 0.0, float(max_scroll))
 		return
 	velocity = 0.0
 	_set_scroll_vertical_float(float(max_scroll))
@@ -394,7 +422,13 @@ func _pin_scroll_to_active_pull_edge(max_scroll := -1) -> void:
 	scroll_vertical = int(round(boundary))
 
 func _contains_global_point(point: Vector2) -> bool:
-	return Rect2(global_position, size).has_point(point)
+	if not is_visible_in_tree() or not Rect2(global_position, size).has_point(point): return false
+	# A mounted carousel neighbor must not receive wheel/drag input through a dock.
+	var ancestor := get_parent()
+	while ancestor != null:
+		if ancestor is Control and ancestor.clip_contents and not ancestor.get_global_rect().has_point(point): return false
+		ancestor = ancestor.get_parent()
+	return true
 
 func _reset_drag_velocity_samples(pointer_position: Vector2) -> void:
 	drag_velocity_samples.clear()

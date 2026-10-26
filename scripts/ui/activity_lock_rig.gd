@@ -100,6 +100,8 @@ var padlock_shadow: TextureRect
 var padlock: TextureRect
 var padlock_shackle: TextureRect
 var padlock_tint: TextureRect
+var unlock_progress_enabled := false
+var unlock_progress: Control
 var level_label: _ActivityLockNumber
 var level := 1
 var theme_color := Color("#ffd238")
@@ -154,6 +156,14 @@ func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, next_p
 	set_process(false)
 	call_deferred("_layout_base")
 
+func set_unlock_progress(amount: float) -> void:
+	if not is_instance_valid(unlock_progress): return
+	if not unlock_progress_enabled:
+		unlock_progress_enabled = true
+		_apply_lock_state_visuals()
+		_layout_base()
+	unlock_progress.set_progress(amount)
+
 func set_unlock_level(next_level: int) -> void:
 	level = next_level
 	if level_label != null:
@@ -166,6 +176,10 @@ func set_theme_color(next_theme_color: Color) -> void:
 		padlock_tint.modulate = _padlock_tint_modulate()
 	if level_label != null:
 		level_label.set_fill_color(Color.WHITE)
+	if unlock_progress != null:
+		unlock_progress.fill_color = theme_color
+		unlock_progress.track_color = theme_color.darkened(0.6)
+		unlock_progress.queue_redraw()
 
 
 func set_lock_state(next_state: String) -> void:
@@ -187,10 +201,14 @@ func set_chain_visible(next_visible: bool) -> void:
 
 
 func set_custom_chain_path(points: Array, render_count := 0) -> void:
-	custom_chain_path_points = []
+	var next_points: Array = []
 	for raw_point in points:
 		if raw_point is Vector2:
-			custom_chain_path_points.append(raw_point as Vector2)
+			next_points.append(raw_point as Vector2)
+	# The lock cluster sends the same path on every refresh; repaint on a change.
+	if next_points == custom_chain_path_points and custom_chain_render_count == maxi(0, render_count):
+		return
+	custom_chain_path_points = next_points
 	custom_chain_render_count = maxi(0, render_count)
 	queue_redraw()
 
@@ -311,6 +329,12 @@ func _build(font: Font, fallback_font: Font) -> void:
 	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	level_label.z_index = 7
 	add_child(level_label)
+	unlock_progress = preload("res://scripts/ui/lock_progress_bar.gd").new()
+	unlock_progress.setup(level_label.font)
+	unlock_progress.fill_color = theme_color
+	unlock_progress.track_color = theme_color.darkened(0.6)
+	unlock_progress.z_index = 7
+	add_child(unlock_progress)
 	_apply_lock_state_visuals()
 	_layout_base()
 
@@ -355,6 +379,8 @@ func _apply_lock_state_visuals() -> void:
 		padlock_shackle.texture = _active_shackle_texture()
 	if level_label != null:
 		level_label.visible = lock_visible and padlock_visible
+	if unlock_progress != null:
+		unlock_progress.visible = unlock_progress_enabled and lock_visible and padlock_visible
 	mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible and padlock_visible else Control.MOUSE_FILTER_IGNORE
 	if not lock_visible or not padlock_visible:
 		pressing_lock = false
@@ -1250,10 +1276,16 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 		padlock_tint.scale = Vector2.ONE * pop_scale
 	if level_label != null:
 		level_label.size = Vector2(120, 105)
-		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 7.5, PADLOCK_SIZE.y * 0.52)
+		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 7.5, PADLOCK_SIZE.y * 0.52 - (18.0 if unlock_progress_enabled else 0.0))
 		level_label.pivot_offset = shared_pivot - (level_label.position - lock_position)
 		level_label.rotation = shared_rotation
 		level_label.scale = Vector2.ONE * pop_scale
+	if unlock_progress != null:
+		unlock_progress.size = Vector2(164, 26)
+		unlock_progress.position = lock_position + Vector2(45, 248)
+		unlock_progress.pivot_offset = shared_pivot - (unlock_progress.position - lock_position)
+		unlock_progress.rotation = shared_rotation
+		unlock_progress.scale = Vector2.ONE * pop_scale
 
 func _unlock_pop_scale() -> float:
 	if not unlock_drop_active:
@@ -1301,6 +1333,8 @@ func _set_padlock_pop_scale(next_scale: float) -> void:
 		padlock_tint.scale = Vector2.ONE * next_scale
 	if level_label != null:
 		level_label.scale = Vector2.ONE * next_scale
+	if unlock_progress != null:
+		unlock_progress.scale = Vector2.ONE * next_scale
 
 func _clear_children() -> void:
 	for child in get_children():

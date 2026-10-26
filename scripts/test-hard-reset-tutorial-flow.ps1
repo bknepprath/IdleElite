@@ -28,6 +28,7 @@ try {
 extends SceneTree
 
 const SkillState := preload("res://scripts/progression/skill_state.gd")
+const NavigationShell := preload("res://scripts/ui/navigation_shell.gd")
 
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
@@ -275,7 +276,7 @@ func _fresh_game_locked_nav_buttons_ok(scene: Node) -> bool:
 			return false
 		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_STOP:
 			return false
-		if not _color_nearly_equal(button.modulate, Color("#3f3f3f")):
+		if not _color_nearly_equal(button.modulate, NavigationShell.HUB_NAV_LOCKED_MODULATE):
 			return false
 	return true
 
@@ -287,7 +288,8 @@ func _non_settings_nav_buttons_locked(scene: Node) -> bool:
 			return false
 		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 			return false
-		if not _color_nearly_equal(button.modulate, Color("#3f3f3f")):
+		# Gated navigation shows as a translucent black silhouette since 0.7.0.
+		if not _color_nearly_equal(button.modulate, NavigationShell.HUB_NAV_LOCKED_MODULATE):
 			return false
 	return true
 

@@ -595,6 +595,10 @@ func _apply_enemy_art_path(idle_art_path: String) -> void:
 
 
 func _apply_enemy_preview_art_path(idle_art_path: String) -> void:
+	if enemy_id == "guys":
+		idle_chicken = load_png_texture("res://assets/content/fight/enemies/guys/guys-cover-clean.png")
+		cover_clean_chicken = idle_chicken
+		return
 	if enemy_id == "chicken-swarm":
 		cover_clean_chicken = load_png_texture(CHICKEN_COVER_CLEAN_PATH)
 		idle_chicken = cover_clean_chicken

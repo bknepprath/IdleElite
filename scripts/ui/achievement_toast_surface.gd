@@ -26,6 +26,7 @@ var achievement_toast_queue := []
 var achievement_toast_queue_ids := {}
 var achievement_toast_queue_active := false
 var reward_italic_font: Font
+var toast_canvas_width := 0.0
 
 func _init(host_ref) -> void:
 	host = host_ref
@@ -223,9 +224,27 @@ func _update_achievement_toast_queue_badge(toast: Control, badge: Control, queue
 	if label != null:
 		label.text = "+%s" % queued_count
 
+func sync_desktop_position() -> void:
+	if not is_instance_valid(achievement_toast_root): return
+	var offset := Vector2.ZERO
+	if host.desktop_layout.enabled() and toast_canvas_width > 0.0:
+		# Move the parent so entry/exit tweens keep their authored local coordinates.
+		offset.x = (host.desktop_layout.gameplay_width() - toast_canvas_width) * 0.5
+		var navigation = host.desktop_layout.skill_navigation
+		if is_instance_valid(navigation) and navigation.is_visible_in_tree() and not host.desktop_layout.carousel_discovered:
+			offset.y = -104.0
+	elif toast_canvas_width > 0.0:
+		# The phone layout in a window whose width can change (web, desktop): a
+		# toast keeps the place it was given for the canvas it appeared in, and
+		# with others queued behind it the same banner stays for a long time.
+		offset.x = (host._current_canvas_size().x - toast_canvas_width) * 0.5
+	achievement_toast_root.position = offset
+
 func _present_achievement_toast(achievement: Dictionary) -> void:
 	_prune_achievement_toasts()
 	var canvas_size: Vector2 = host._current_canvas_size()
+	toast_canvas_width = canvas_size.x
+	sync_desktop_position()
 	var card_size := _card_size(achievement)
 	var fitted_scale: float = host._fit_scale_to_canvas(card_size, VIEWPORT_MARGIN)
 	var presentation_size: Vector2 = card_size * fitted_scale
@@ -560,8 +579,10 @@ func card(achievement: Dictionary) -> Control:
 
 	return card
 
+# The toast's panel is dark in Dark Mode, so its ink is the theme's ink. Forced
+# to the light theme's ink it was dark text on the dark panel.
 func _force_toast_ink(label: Label) -> void:
-	label.add_theme_color_override("font_color", host.COLOR_INK)
+	label.add_theme_color_override("font_color", ThemeStyles.ink_color(host.dark_mode_enabled, host.COLOR_INK, host.COLOR_DARK_INK))
 	label.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
 
 func _reward_italic_font() -> Font:

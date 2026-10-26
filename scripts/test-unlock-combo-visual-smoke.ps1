@@ -103,7 +103,7 @@ func _stage_art_review_test_save(scene: Node) -> void:
 	scene.call("_settings_surface").call("_refresh_auto_unlock_lockpad_controls")
 	scene.set("selected_skill_id", "fishing" if SkillState.has_skill_id(scene.get("skill_defs") as Array, "fishing") else "fight")
 	scene.set("current_screen", "skill")
-	scene.call("_set_result", "Art Review Test staged. Everything is unlocked; Auto Unlock Lockpads is OFF.")
+	scene.call("_reward_feedback_surface").call("_set_result", "Art Review Test staged. Everything is unlocked; Auto Unlock Lockpads is OFF.")
 
 
 func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void:
@@ -114,7 +114,7 @@ func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void
 		manual_unlocks.erase(key)
 		scene.set("manual_activity_unlocks", manual_unlocks)
 	activity_unlock_runtime.call("_clear_activity_requirement_manual_unlocks", skill_id, action_id)
-	scene.call("_clear_pending_activity_readiness_action", skill_id, action_id)
+	activity_unlock_runtime.call("clear_pending_readiness_action", skill_id, action_id)
 	activity_unlock_runtime.set("manual_activity_unlocks_trust_checked", true)
 	activity_unlock_runtime.set("manual_activity_unlocks_trusted", true)
 
@@ -350,15 +350,18 @@ func _check_event_insertion(scene: Node) -> void:
 		_record("missing covered wagon event definition")
 		return
 	var page := str(event_def.get("page", ""))
+	# The event's activity has an id of its own; the list, the plan and the card
+	# registry all know it by that id, not by the event's.
+	var event_action_id := str(event_def.get("id", event_id))
 	var now := int(scene.call("_unix_now"))
-	var active := scene.get("temporary_event_active") as Dictionary
+	var active := runtime.get("temporary_event_active") as Dictionary
 	active[event_id] = {
 		"event_id": event_id,
 		"spawned_unix": now,
 		"expires_unix": now + 900,
 		"completed": false,
 	}
-	scene.set("temporary_event_active", active)
+	runtime.set("temporary_event_active", active)
 	var event_actions := runtime.call("_active_event_actions_for_skill", page) as Array
 	if event_actions.is_empty():
 		_record("active event action did not appear for %s" % page)
@@ -368,7 +371,7 @@ func _check_event_insertion(scene: Node) -> void:
 	for index in range(entries.size()):
 		var entry := entries[index] as Dictionary
 		var action := entry.get("action", {}) as Dictionary
-		if str(action.get("id", "")) == event_id:
+		if str(action.get("id", "")) == event_action_id:
 			event_index = index
 			break
 	if event_index < 0:
@@ -386,12 +389,12 @@ func _check_event_insertion(scene: Node) -> void:
 			_record("event module sorted after a lower-level next action")
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", page)
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(4):
 		await process_frame
-	var event_plan_item := scene.call("_skill_detail_surface").call("_detail_lazy_entry_for_track_id", event_id) as Dictionary
+	var event_plan_item := scene.call("_skill_detail_surface").call("_detail_lazy_entry_for_track_id", event_action_id) as Dictionary
 	if event_plan_item.is_empty():
 		_record("event module was not present in the detail lazy plan")
 		return
@@ -406,9 +409,9 @@ func _check_event_insertion(scene: Node) -> void:
 		scroll.set("scroll_vertical", target_scroll)
 		await process_frame
 	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", event_id)
+	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", event_action_id)
 	var cards := scene.get("action_cards") as Dictionary
-	var card_key := "%s:%s" % [page, event_id]
+	var card_key := "%s:%s" % [page, event_action_id]
 	if not cards.has(card_key):
 		_record("event module did not render an action card at %s after scrolling to its lazy slot; target_scroll=%s max_scroll=%s actual_scroll=%s plan=%s cards=%s nodes=%s" % [
 			card_key,
@@ -417,7 +420,7 @@ func _check_event_insertion(scene: Node) -> void:
 			int(scroll.get("scroll_vertical")) if scroll != null else -1,
 			_detail_lazy_plan_debug(scene),
 			_string_array(scene.get("action_cards") as Dictionary),
-			_string_array(scene.get("detail_action_card_nodes") as Dictionary),
+			_string_array(scene.call("_skill_detail_surface").get("detail_action_card_nodes") as Dictionary),
 		])
 
 
@@ -432,11 +435,11 @@ func _check_fishing_combo_progress_rails(scene: Node) -> void:
 	var stack := VBoxContainer.new()
 	stack.custom_minimum_size = Vector2(1800, 1)
 	root.add_child(stack)
-	scene.set("detail_lazy_stack", stack)
-	scene.call("_render_fishing_area_modules", stack, 1800.0)
+	scene.call("_skill_detail_surface").set("detail_lazy_stack", stack)
+	scene.call("_fishing_ui_surface").call("render_area_modules_into_stack", stack, 1800.0)
 	for _i in range(4):
 		await process_frame
-	var plan := scene.get("detail_lazy_plan") as Array
+	var plan := scene.call("_skill_detail_surface").get("detail_lazy_plan") as Array
 	for raw_action in combo_actions:
 		var action := raw_action as Dictionary
 		var action_id := str(action.get("id", ""))
@@ -481,7 +484,7 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
 	scene.set("_last_rendered_screen_key", "")
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(8):
@@ -608,7 +611,7 @@ func _lock_hit_global_point(rig: Control) -> Vector2:
 func _render_live_fishing_page(scene: Node) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(4):
@@ -620,19 +623,19 @@ func _check_fishing_scroll_limit_reaches_lazy_bottom(scene: Node) -> void:
 	if scroll == null:
 		_record("Fishing detail page did not create an actions scroll")
 		return
-	scene.call("_sync_detail_actions_scroll_limit")
+	scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	await process_frame
-	var plan := scene.get("detail_lazy_plan") as Array
+	var plan := scene.call("_skill_detail_surface").get("detail_lazy_plan") as Array
 	var expected_bottom := _expected_fishing_lazy_module_bottom(scene, plan)
 	if expected_bottom <= 1.0:
 		_record("Fishing lazy plan had no scrollable module bottom")
 		return
-	var viewport_height := float(scene.call("_detail_actions_scroll_viewport_height"))
+	var viewport_height := float(scene.call("_skill_detail_surface").call("_detail_actions_scroll_viewport_height"))
 	var bottom_gap := maxf(
 		0.0,
-		float(scene.call("_skill_detail_bottom_scroll_pad", "fishing")) - float(scene.call("_skills_content_bottom_inset_for_screen"))
+		float(scene.call("_skill_detail_surface").call("_skill_detail_bottom_scroll_pad", "fishing")) - float(scene.call("_navigation_shell").call("_skills_content_bottom_inset_for_screen"))
 	)
-	if float(scene.call("_detail_stack_page_switch_bottom")) >= 0.0:
+	if float(scene.call("_skill_detail_surface").call("_detail_stack_page_switch_bottom")) >= 0.0:
 		# Matches _sync_detail_actions_scroll_limit: page gap 48 plus 12px when the page switch module is in-stack.
 		bottom_gap = maxf(0.0, bottom_gap - 60.0)
 	var expected_max := maxi(0, int(ceil(expected_bottom + bottom_gap - viewport_height)))
@@ -666,8 +669,8 @@ func _check_fishing_scroll_limit_reaches_lazy_bottom(scene: Node) -> void:
 
 
 func _expected_fishing_lazy_module_bottom(scene: Node, plan: Array) -> float:
-	var top_spacer_height := float(scene.call("_detail_actions_top_spacer_height"))
-	var stack := scene.get("detail_lazy_stack") as VBoxContainer
+	var top_spacer_height := float(scene.call("_skill_detail_surface").call("_detail_actions_top_spacer_height"))
+	var stack := scene.call("_skill_detail_surface").get("detail_lazy_stack") as VBoxContainer
 	var stack_separation := 56.0
 	if stack != null:
 		stack_separation = float(stack.get_theme_constant("separation"))
@@ -931,7 +934,7 @@ func _collect_labels(node: Node, labels: Array) -> void:
 
 func _detail_lazy_plan_debug(scene: Node) -> Array:
 	var result := []
-	var plan := scene.get("detail_lazy_plan") as Array
+	var plan := scene.call("_skill_detail_surface").get("detail_lazy_plan") as Array
 	for raw_item in plan:
 		var item := raw_item as Dictionary
 		result.append("%s:%s:%s" % [str(item.get("kind", "")), str(item.get("track_id", "")), str(item.get("mounted", false))])

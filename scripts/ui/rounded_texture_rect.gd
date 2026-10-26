@@ -84,6 +84,8 @@ uniform float art_height_px = 0.0;
 uniform float mask_inset_px = 0.0;
 uniform int corner_mask_mode = 0;
 uniform int bottom_shape = 0;
+uniform float production_notch_depth = 64.0;
+uniform float production_notch_half_width = 64.0;
 uniform float wide_u_bottom_rise_px = 58.0;
 uniform float wide_u_shoulder_ratio = 0.285;
 uniform int aspect_mode = 0;
@@ -91,6 +93,11 @@ uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
 uniform float sample_zoom = 1.0;
 uniform vec2 sample_offset_px = vec2(0.0, 0.0);
 
+// Preserve parent fades when sampling the separate background texture.
+varying vec4 item_modulate;
+void vertex() {
+	item_modulate = COLOR;
+}
 void fragment() {
 	vec2 p = UV * control_size;
 	float inset = clamp(mask_inset_px, 0.0, min(control_size.x, control_size.y) * 0.45);
@@ -102,6 +109,10 @@ void fragment() {
 		r = min(radius_px, min(half_size.x, half_size.y));
 	} else {
 		r = min(max(0.0, radius_px - inset), min(half_size.x, half_size.y));
+	}
+	// Expanded information cards keep rounded top corners and a straight divider edge.
+	if (corner_mask_mode == 2 && mask_p.y > half_size.y) {
+		r = 0.0;
 	}
 	vec2 q = abs(mask_p - half_size) - (half_size - vec2(r));
 	float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
@@ -123,11 +134,18 @@ void fragment() {
 		}
 		alpha *= 1.0 - smoothstep(curve_y - 1.0, curve_y + 1.0, mask_p.y);
 	}
+	if (bottom_shape == 2) {
+		float centre_distance = abs(mask_p.x - mask_size.x * 0.5);
+		float cut_y = mask_size.y - production_notch_depth * max(0.0, 1.0 - centre_distance / production_notch_half_width);
+		alpha *= 1.0 - smoothstep(cut_y - 0.75, cut_y + 0.75, mask_p.y);
+	}
 	vec4 fill_color = vec4(fallback_color.rgb, 1.0);
 	vec4 color;
 
 	vec2 tex_size = vec2(textureSize(bg_texture, 0));
-	if (aspect_mode == 2) {
+	if (aspect_mode == 3) {
+		color = texture(bg_texture, UV);
+	} else if (aspect_mode == 2) {
 		if (tex_size.x < 1.0 || tex_size.y < 1.0) {
 			color = fill_color;
 		} else {
@@ -184,7 +202,7 @@ void fragment() {
 		}
 	}
 	color.a = alpha;
-	COLOR = color;
+	COLOR = color * item_modulate;
 }
 """
 		if mask_material == null:
@@ -205,6 +223,9 @@ func _draw_fast_flat_texture() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), fallback_color)
 		return
 	var source_rect := Rect2(Vector2.ZERO, texture_size)
+	if aspect_mode == 3:
+		draw_texture_rect(current_texture,Rect2(Vector2.ZERO,size),false)
+		return
 	if aspect_mode == 2:
 		var control_aspect := size.x / maxf(size.y, 1.0)
 		var texture_aspect := texture_size.x / maxf(texture_size.y, 1.0)
@@ -256,7 +277,9 @@ func _update_mask_params() -> void:
 	shader_material.set_shader_parameter("art_height_px", art_height)
 	shader_material.set_shader_parameter("mask_inset_px", mask_inset)
 	shader_material.set_shader_parameter("corner_mask_mode", corner_mask_mode)
-	shader_material.set_shader_parameter("bottom_shape", 1 if bottom_shape == "wide_u" else 0)
+	shader_material.set_shader_parameter("production_notch_depth", preload("res://scripts/ui/production_building_shape.gd").NOTCH_DEPTH)
+	shader_material.set_shader_parameter("production_notch_half_width", preload("res://scripts/ui/production_building_shape.gd").NOTCH_HALF_WIDTH)
+	shader_material.set_shader_parameter("bottom_shape", 2 if bottom_shape == "production_v" else 1 if bottom_shape == "wide_u" else 0)
 	shader_material.set_shader_parameter("wide_u_bottom_rise_px", wide_u_bottom_rise)
 	shader_material.set_shader_parameter("wide_u_shoulder_ratio", wide_u_shoulder_ratio)
 	shader_material.set_shader_parameter("aspect_mode", aspect_mode)
@@ -279,7 +302,7 @@ func _mask_shader_params_unchanged() -> bool:
 		and absf(mask_shader_params_art_height - art_height) <= 0.001
 		and absf(mask_shader_params_inset - mask_inset) <= 0.001
 		and mask_shader_params_corner_mode == corner_mask_mode
-		and mask_shader_params_bottom_shape == (1 if bottom_shape == "wide_u" else 0)
+		and mask_shader_params_bottom_shape == (2 if bottom_shape == "production_v" else 1 if bottom_shape == "wide_u" else 0)
 		and absf(mask_shader_params_wide_u_bottom_rise - wide_u_bottom_rise) <= 0.001
 		and absf(mask_shader_params_wide_u_shoulder_ratio - wide_u_shoulder_ratio) <= 0.001
 		and mask_shader_params_aspect_mode == aspect_mode
@@ -304,7 +327,7 @@ func _store_mask_shader_params(current_texture: Texture2D) -> void:
 	mask_shader_params_art_height = art_height
 	mask_shader_params_inset = mask_inset
 	mask_shader_params_corner_mode = corner_mask_mode
-	mask_shader_params_bottom_shape = 1 if bottom_shape == "wide_u" else 0
+	mask_shader_params_bottom_shape = 2 if bottom_shape == "production_v" else 1 if bottom_shape == "wide_u" else 0
 	mask_shader_params_wide_u_bottom_rise = wide_u_bottom_rise
 	mask_shader_params_wide_u_shoulder_ratio = wide_u_shoulder_ratio
 	mask_shader_params_aspect_mode = aspect_mode

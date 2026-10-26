@@ -6,6 +6,8 @@ class ActionArtTextureRect:
 	static var shared_mask_shader: Shader
 
 	var use_mask_material := false
+	var framing_zoom := 1.0
+	var framing_focus := Vector2(0.5, 0.5)
 	var radius := 56.0
 	var mask_shader_params_initialized := false
 	var mask_shader_params_size := Vector2(-1.0, -1.0)
@@ -41,6 +43,25 @@ class ActionArtTextureRect:
 			material = null
 			return
 		_ensure_mask_material()
+
+	func set_art_framing(framing: Dictionary) -> void:
+		framing_zoom = clampf(float(framing.get("zoom", 1.0)), 0.75, 3.0)
+		var focus: Array = framing.get("focus", [0.5, 0.5])
+		framing_focus = Vector2(float(focus[0]), float(focus[1])) if focus.size() == 2 else Vector2(0.5, 0.5)
+		set_mask_material_enabled(true)
+		_update_framing_params()
+
+	func _update_framing_params() -> void:
+		var shader_material := material as ShaderMaterial
+		if shader_material == null: return
+		var region := Rect2(0, 0, 1, 1)
+		if texture is AtlasTexture:
+			var frame := texture as AtlasTexture
+			var atlas_size := frame.atlas.get_size()
+			region = Rect2(frame.region.position / atlas_size, frame.region.size / atlas_size)
+		shader_material.set_shader_parameter("art_zoom", framing_zoom)
+		shader_material.set_shader_parameter("art_focus", framing_focus)
+		shader_material.set_shader_parameter("texture_region", Vector4(region.position.x, region.position.y, region.size.x, region.size.y))
 
 	func set_paint_recolor_effect(enabled: bool) -> void:
 		if paint_effect_enabled == enabled:
@@ -93,6 +114,16 @@ class ActionArtTextureRect:
 
 	uniform vec2 control_size = vec2(1.0, 1.0);
 	uniform float radius_px = 56.0;
+	uniform float art_zoom = 1.0;
+	uniform vec2 art_focus = vec2(0.5);
+	uniform vec4 texture_region = vec4(0.0, 0.0, 1.0, 1.0);
+	varying vec2 art_vertex;
+	varying vec4 art_tint;
+
+	void vertex() {
+		art_vertex = VERTEX;
+		art_tint = COLOR;
+	}
 	uniform bool paint_recolor_enabled = false;
 	uniform float paint_progress = 0.0;
 	uniform vec4 paint_color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -107,13 +138,18 @@ class ActionArtTextureRect:
 	}
 
 	void fragment() {
-		vec2 p = UV * control_size;
+		vec2 p = art_vertex;
 		vec2 half_size = control_size * 0.5;
 		float r = min(radius_px, min(half_size.x, half_size.y));
 		vec2 q = abs(p - half_size) - (half_size - vec2(r));
 		float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
 		float alpha = 1.0 - smoothstep(0.0, 1.0, distance);
-		vec4 color = texture(TEXTURE, UV) * COLOR;
+		// One fixed authored crop for the whole action, including every atlas
+		// frame. Preserve modulation once when sampling the reframed texture.
+		vec2 local_uv = (UV - texture_region.xy) / texture_region.zw;
+		vec2 source_uv = (local_uv - vec2(0.5)) / art_zoom + art_focus;
+		vec4 color = texture(TEXTURE, texture_region.xy + source_uv * texture_region.zw) * art_tint;
+		if (any(lessThan(source_uv, vec2(0.0))) || any(greaterThan(source_uv, vec2(1.0)))) color.a = 0.0;
 		if (paint_recolor_enabled) {
 			float blue_dominance = color.b - max(color.r, color.g);
 			float saturated_blue = smoothstep(0.015, 0.18, blue_dominance) * smoothstep(0.20, 0.48, color.b);
@@ -165,6 +201,7 @@ class ActionArtTextureRect:
 		shader_material.shader = shared_mask_shader
 		material = shader_material
 		_update_mask_params()
+		_update_framing_params()
 
 	func _update_mask_params() -> void:
 		var shader_material := material as ShaderMaterial
@@ -220,6 +257,11 @@ class ActionArtAnimationRect:
 	var effect_last_progress := 0.0
 	var effect_random_scenario := false
 	var effect_scenario_index := 0
+	var frame_overlay: ActionArtTextureRect
+	var overlay_frames: Array[Texture2D] = []
+	var overlay_start := 0.0
+	var overlay_end := 1.0
+	var overlay_frame_index := -1
 
 
 	func _ready() -> void:
@@ -263,6 +305,10 @@ class ActionArtAnimationRect:
 
 
 	func _configure_effects(effects: Variant) -> void:
+		if is_instance_valid(frame_overlay): frame_overlay.queue_free()
+		frame_overlay = null
+		overlay_frames.clear()
+		overlay_frame_index = -1
 		effect_name = ""
 		effect_colors.clear()
 		effect_scenario_palettes.clear()
@@ -276,6 +322,8 @@ class ActionArtAnimationRect:
 			return
 		var source := effects as Dictionary
 		effect_name = str(source.get("name", ""))
+		if effect_name == "frame_overlay":
+			_configure_frame_overlay(source)
 		effect_splash_visible = bool(source.get("splash", source.get("brush", false)))
 		effect_random_scenario = bool(source.get("random_scenario", false))
 		effect_cycle_seconds = maxf(0.25, float(source.get("cycle_seconds", 1.15)))
@@ -321,7 +369,7 @@ class ActionArtAnimationRect:
 			_apply_sequence_frame(0)
 			_apply_effect_state(0.0)
 		queue_redraw()
-		set_process(animation_playing and (not progress_synced or not effect_name.is_empty()))
+		set_process(animation_playing and (not progress_synced or effect_name == "paint_recolor"))
 
 
 	func set_action_progress(progress: float) -> void:
@@ -346,7 +394,7 @@ class ActionArtAnimationRect:
 				sequence_index = (sequence_index + 1) % frame_sequence.size()
 				_apply_sequence_frame(sequence_index)
 				guard += 1
-		if not effect_name.is_empty():
+		if not effect_name.is_empty() and (not progress_synced or effect_name == "paint_recolor"):
 			_apply_effect_state(_stepped_paint_progress())
 			queue_redraw()
 
@@ -364,6 +412,7 @@ class ActionArtAnimationRect:
 		var frame_index := frame_sequence[sequence_index]
 		effect_scenario_index = frame_index
 		texture = frame_textures[clampi(frame_index, 0, frame_textures.size() - 1)]
+		_update_framing_params()
 
 
 	func _apply_scenario_frame(frame_index: int) -> void:
@@ -372,6 +421,7 @@ class ActionArtAnimationRect:
 		effect_scenario_index = clampi(frame_index, 0, frame_textures.size() - 1)
 		sequence_index = _sequence_index_for_frame(effect_scenario_index)
 		texture = frame_textures[effect_scenario_index]
+		_update_framing_params()
 
 
 	func _apply_progress_frame(progress: float) -> void:
@@ -394,6 +444,9 @@ class ActionArtAnimationRect:
 
 
 	func _apply_effect_state(progress: float) -> void:
+		if effect_name == "frame_overlay":
+			_apply_frame_overlay(progress)
+			return
 		if effect_name != "paint_recolor":
 			return
 		if effect_scenario_palettes.is_empty():
@@ -450,6 +503,42 @@ class ActionArtAnimationRect:
 			var t := clampf(local_elapsed / effect_paint_seconds, 0.0, 1.0)
 			return t * t * (3.0 - 2.0 * t)
 		return 1.0
+
+	func _configure_frame_overlay(source: Dictionary) -> void:
+		var path := str(source.get("atlas", ""))
+		var overlay_atlas := load(path) as Texture2D if not path.is_empty() else null
+		if overlay_atlas == null: return
+		var cell_size := Vector2(float(source.get("cell_width",384)),float(source.get("cell_height",384)))
+		for index in int(source.get("frame_count",1)):
+			var frame := AtlasTexture.new()
+			frame.atlas = overlay_atlas
+			frame.region = Rect2(Vector2(index*cell_size.x,0),cell_size)
+			frame.filter_clip = true
+			overlay_frames.append(frame)
+		overlay_start = float(source.get("start_progress",0))
+		overlay_end = maxf(overlay_start+.001,float(source.get("end_progress",1)))
+		frame_overlay = ActionArtTextureRect.new()
+		frame_overlay.name = "ActionArtFrameOverlay"
+		frame_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(frame_overlay)
+		frame_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		frame_overlay.hide()
+
+	func set_art_framing(framing: Dictionary) -> void:
+		super.set_art_framing(framing)
+		if is_instance_valid(frame_overlay): frame_overlay.set_art_framing(framing)
+
+	func _apply_frame_overlay(progress: float) -> void:
+		if not is_instance_valid(frame_overlay) or overlay_frames.is_empty(): return
+		frame_overlay.visible = animation_playing and progress >= overlay_start and progress < overlay_end
+		if not frame_overlay.visible:
+			overlay_frame_index = -1
+			return
+		var t := clampf((progress-overlay_start)/(overlay_end-overlay_start),0,1)
+		overlay_frame_index = mini(overlay_frames.size()-1,int(t*overlay_frames.size()))
+		frame_overlay.texture = overlay_frames[overlay_frame_index]
+		frame_overlay.modulate.a = smoothstep(0,.05,t)*(1-smoothstep(.88,1,t))
+		frame_overlay._update_framing_params()
 
 
 	func _draw() -> void:
@@ -511,6 +600,7 @@ static func image(action: Dictionary, texture_or_fallback: Callable, visual_fall
 				str(animation.get("sync", "")),
 				animation.get("effects", {})
 			)
+	node.set_art_framing(action.get("art_framing", {}))
 	var art_size := display_size(action)
 	node.custom_minimum_size = art_size
 	node.size = art_size
@@ -566,6 +656,7 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, textu
 
 
 static func resource_icon_paths(action: Dictionary, action_mat_reward_defs: Callable, mat_icon_path: Callable, temporary_event_log_reward_mat_id: Callable) -> Array:
+	if str(action.get("id", "")) == "trick-or-treat": return ["res://assets/content/events/halloween/candy.tres"]
 	var icon_paths := []
 	var mat_rewards := action_mat_reward_defs.call(action) as Array
 	for raw_reward in mat_rewards:

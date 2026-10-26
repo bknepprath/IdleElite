@@ -1,0 +1,8 @@
+v0.7.0
+- Added activity unlock projects, resource barriers and expanded Wisdom progression.
+- Added Halloween Trick or Treat and stamina-restoring candy.
+- Improved activity layouts, artwork, dark mode and resource hints.
+- Fixed fishing Wisdom feedback, fishing controls and touch collapse buttons.
+- Fixed overlapping activity cards and improved scrolling.
+- Improved save recovery, offline progress, queues and resume behavior.
+- Reduced saving and activity-completion stutter.

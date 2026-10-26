@@ -132,7 +132,10 @@ func _queue_activity_unlock_readiness(trigger_skill_id: String, old_level: int, 
 	if host.auto_unlock_lockpads_enabled:
 		call_deferred("_auto_unlock_pending_lockpads")
 	if host.current_screen == "skill" and has_pending_readiness_for_skill(host.selected_skill_id):
-		host.call_deferred("_update_ui", 0.0, false)
+		if host.desktop_layout.enabled():
+			host._performance_runtime().request_ui_static_refresh()
+		else:
+			host.call_deferred("_update_ui", 0.0, false)
 func _auto_unlock_nonvisible_ready_lockpads(ready_by_skill: Dictionary) -> Dictionary:
 	if not host.auto_unlock_lockpads_enabled:
 		return ready_by_skill
@@ -149,7 +152,7 @@ func _auto_unlock_nonvisible_ready_lockpads(ready_by_skill: Dictionary) -> Dicti
 			var action_id := str(raw_action_id)
 			if action_id.is_empty():
 				continue
-			if host.current_screen == "skill" and owner_skill_id == host.selected_skill_id:
+			if _auto_unlock_skill_is_visible(owner_skill_id):
 				visible_ready_ids.append(action_id)
 			else:
 				if not _auto_finalize_ready_lockpad(owner_skill_id, action_id):
@@ -249,10 +252,11 @@ func _auto_unlock_visible_fishing_location_lockpad() -> bool:
 func _fishing_next_visible_auto_unlock_action_id() -> String:
 	if host.selected_skill_id != "fishing":
 		return ""
-	var best_action_id := ""
-	var best_unlock := 999999
-	var best_render_order := 999999
-	var render_order := 0
+	# Only the global locked teaser can be visible. Resolve it once instead of
+	# rediscovering it for every locked location during each scroll-window scan.
+	var teaser_key: String = host.fishing_runtime.global_teaser_location_key(host, "fishing", FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS)
+	if teaser_key.is_empty():
+		return ""
 	for raw_area in host.fishing_runtime.area_definitions:
 		var area_def := raw_area as Dictionary
 		if not host.fishing_runtime.area_uses_location_tiles(area_def, FishingState.FISHING_LOCATION_DEFS):
@@ -260,24 +264,13 @@ func _fishing_next_visible_auto_unlock_action_id() -> String:
 		var area_id := str(area_def.get("id", ""))
 		for raw_location in host.fishing_runtime.locations_for_area(area_id, FishingState.FISHING_LOCATION_DEFS):
 			var location := raw_location as Dictionary
-			var candidate_render_order := render_order
-			render_order += 1
-			if host.fishing_runtime.location_is_unlocked(host, area_id, location, FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS):
+			var location_id := str(location.get("id", ""))
+			if host.fishing_runtime.location_key(area_id, location_id) != teaser_key:
 				continue
-			if not host.fishing_runtime.location_should_show(host, area_id, location, FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS):
-				continue
-			var action_id: String = host.fishing_runtime.location_action_id(area_id, str(location.get("id", "")), FishingState.FISHING_TOOL_LOCATION_ACTIONS)
-			if action_id.is_empty():
-				continue
+			var action_id: String = host.fishing_runtime.location_action_id(area_id, location_id, FishingState.FISHING_TOOL_LOCATION_ACTIONS)
 			var action: Dictionary = host._action_data("fishing", action_id)
-			if action.is_empty() or not _can_unlock_action("fishing", action):
-				continue
-			var unlock_level := int(action.get("unlock", location.get("unlock", 1)))
-			if unlock_level < best_unlock or (unlock_level == best_unlock and candidate_render_order < best_render_order):
-				best_unlock = unlock_level
-				best_render_order = candidate_render_order
-				best_action_id = action_id
-	return best_action_id
+			return action_id if not action.is_empty() and _can_unlock_action("fishing", action) else ""
+	return ""
 
 func _auto_unlock_pending_lockpads() -> void:
 	if not host.auto_unlock_lockpads_enabled:
@@ -285,7 +278,7 @@ func _auto_unlock_pending_lockpads() -> void:
 	var pages := pending_readiness_pages()
 	for raw_skill_id in pages.keys():
 		var skill_id := str(raw_skill_id)
-		if skill_id.is_empty() or (host.current_screen == "skill" and skill_id == host.selected_skill_id):
+		if skill_id.is_empty() or _auto_unlock_skill_is_visible(skill_id):
 			continue
 		var entry := pages.get(raw_skill_id, {}) as Dictionary
 		var ready_ids := entry.get("ready", []) as Array
@@ -306,6 +299,48 @@ func _auto_unlock_pending_lockpads() -> void:
 		if host._activity_unlock_ceremony_surface().ceremony_count <= 0:
 			_auto_cleanup_visible_pending_lockpads(host.selected_skill_id)
 			_auto_unlock_visible_pending_lockpads(host.selected_skill_id)
+
+		_auto_unlock_desktop_side_columns()
+
+func _auto_unlock_skill_is_visible(skill_id: String) -> bool:
+	if host.current_screen != "skill": return false
+	if skill_id == host.selected_skill_id: return true
+	if host.desktop_layout.enabled():
+		for column in host.desktop_layout.columns:
+			if str(column.skill_id) == skill_id and is_instance_valid(column.page) and column.page.is_visible_in_tree(): return true
+	return false
+
+func _auto_unlock_desktop_side_columns() -> void:
+	if not host.desktop_layout.enabled() or host.desktop_layout.rendering or host.current_screen != "skill": return
+	var ceremony = host._activity_unlock_ceremony_surface()
+	if ceremony.ceremony_count > 0: return
+	for column in host.desktop_layout.columns:
+		var skill_id := str(column.skill_id)
+		if skill_id == host.selected_skill_id or not column.page.is_visible_in_tree(): continue
+		for raw_id in pending_readiness_action_ids(skill_id).duplicate():
+			var action_id := str(raw_id)
+			var action: Dictionary = host._action_data(skill_id, action_id)
+			if action.is_empty() or _is_action_unlocked(skill_id, action):
+				clear_pending_readiness_action(skill_id, action_id)
+				continue
+			if not _can_unlock_action(skill_id, action): continue
+			var card: Dictionary = host.action_cards.get(host._action_key(skill_id, action_id), {})
+			var root: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("root"))
+			var scroll: Control = host._app_lifecycle_runtime().valid_control_ref(column.context.get("detail_actions_scroll"))
+			var on_screen := root != null and scroll != null and root.is_visible_in_tree() and root.get_global_rect().intersects(scroll.get_global_rect())
+			if not on_screen:
+				_auto_finalize_ready_lockpad(skill_id, action_id)
+				clear_pending_readiness_action(skill_id, action_id)
+				host.desktop_layout.queue_column_refresh(skill_id)
+				continue
+			if bool(card.get("unlock_ceremony_active", false)): return
+			# Reuse the actual lock-drop ceremony without borrowing mouse focus or
+			# staging a next-card preview in the currently selected column.
+			card["desktop_auto_unlock"] = true
+			_queue_manual_activity_unlock_for_ceremony(card, skill_id, action_id)
+			host._audio_director()._play_padlock_cluster_sfx()
+			ceremony.play_ceremony(card)
+			return
 
 func _auto_unlock_visible_activity_requirement_lock(card: Dictionary, skill_id: String, action: Dictionary) -> bool:
 	if card.is_empty() or bool(card.get("is_fishing_method", false)):
@@ -466,6 +501,9 @@ func _action_matches_pending_unlock_preview(action_id: String) -> bool:
 	var entry := pending_readiness_for_skill(host.selected_skill_id)
 	return not entry.is_empty() and str(entry.get("preview", "")) == action_id
 func _is_action_unlocked(skill_id: String, action: Dictionary) -> bool:
+	if not host._project_runtime().complete(action): return false
+	if not preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, action):
+		return false
 	if host._is_event_action(action):
 		var event_action_id := str(action.get("id", ""))
 		return not event_action_id.is_empty() and host._temporary_event_runtime()._temporary_event_is_active(event_action_id)
@@ -483,13 +521,24 @@ func _is_action_unlocked(skill_id: String, action: Dictionary) -> bool:
 func _visible_actions_for_skill(skill_id: String) -> Array:
 	var visible_actions := []
 	var mono_lock_blocker_seen := false
+	var grove_lock_blocker_seen := false
 	for action in host.actions_by_skill.get(skill_id, []):
 		var action_data := action as Dictionary
 		if action_data.is_empty():
 			continue
+		var is_grove := not (action_data.get("grove", {}) as Dictionary).is_empty()
 		if host._onboarding_runtime()._tutorial_should_defer_action_until_skill_swipe(skill_id, action_data):
-			if not ModuleUiRuntime.action_is_combo_module(skill_id, action_data, Callable(self, "_action_unlock_requirements")):
+			if not is_grove and not ModuleUiRuntime.action_is_combo_module(skill_id, action_data, Callable(self, "_action_unlock_requirements")):
 				mono_lock_blocker_seen = true
+			continue
+		# An unclaimed grove must not hide the ordinary next activity or its
+		# resource project. Retain one grove teaser and the existing early gates.
+		if is_grove:
+			if not _is_action_unlocked(skill_id, action_data):
+				if grove_lock_blocker_seen or mono_lock_blocker_seen:
+					continue
+				grove_lock_blocker_seen = true
+			visible_actions.append(action)
 			continue
 		if not _is_action_unlocked(skill_id, action_data):
 			if mono_lock_blocker_seen:
@@ -534,6 +583,8 @@ func _preview_after_manual_activity_unlock(skill_id: String, unlocked_action_id:
 
 
 func _action_blocks_owner_skill_progression(skill_id: String, action: Dictionary) -> bool:
+	if int(action.get("wisdom_required", 0)) > 0:
+		return false
 	if action.is_empty():
 		return false
 	if ModuleUiRuntime.action_is_combo_module(skill_id, action, Callable(self, "_action_unlock_requirements")):
@@ -632,6 +683,23 @@ func _requirement_met(requirement: Dictionary) -> bool:
 	var skill_id := str(requirement.get("skill", ""))
 	return not skill_id.is_empty() and SkillState.host_skill_level(host, skill_id) >= int(requirement.get("level", 1))
 
+var level_progress_start_xp := {}
+
+func _level_requirement_progress(skill_id: String, required_level: int) -> float:
+	if required_level <= 1: return 1.0
+	var key := skill_id + ":" + str(required_level)
+	if not level_progress_start_xp.has(key):
+		var previous_level := 1
+		for previous_action in host.actions_by_skill.get(skill_id, []):
+			for requirement in _action_unlock_requirements(skill_id, previous_action):
+				var level := int(requirement.level)
+				if str(requirement.skill) == skill_id and level < required_level:
+					previous_level = maxi(previous_level, level)
+		level_progress_start_xp[key] = SkillState.xp_for_level(previous_level)
+	var start := float(level_progress_start_xp[key])
+	var target := float(SkillState.xp_for_level(required_level))
+	return clampf((float(host.skills.get(skill_id, {}).get("xp", 0)) - start) / maxf(1.0, target - start), 0.0, 1.0)
+
 func _action_requirement_states(owner_skill_id: String, action: Dictionary) -> Array:
 	var states := []
 	for raw_requirement in _action_unlock_requirements(owner_skill_id, action):
@@ -646,6 +714,7 @@ func _action_requirement_states(owner_skill_id: String, action: Dictionary) -> A
 			"skill": requirement_skill,
 			"level": required_level,
 			"current_level": current_level,
+			"xp_progress": _level_requirement_progress(requirement_skill, required_level),
 			"met": current_level >= required_level,
 			"dismissed": _action_requirement_manually_unlocked(owner_skill_id, action, requirement_index)
 		})
@@ -687,7 +756,7 @@ func _action_lock_cluster_state(owner_skill_id: String, action: Dictionary) -> D
 		"max_level": _action_requirements_max_level(states)
 	}
 func _can_unlock_action(skill_id: String, action: Dictionary) -> bool:
-	return _action_requirements_met(skill_id, action) and host._fighting_runtime().action_boss_requirements_met(action)
+	return host._project_runtime().complete(action) and _action_requirements_met(skill_id, action) and host._fighting_runtime().action_boss_requirements_met(action) and preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, action)
 func sync_manual_activity_unlocks_from_levels() -> void:
 	_sync_manual_activity_unlocks_from_levels_matching(false)
 func sync_legacy_manual_activity_unlocks_from_levels() -> void:
@@ -717,16 +786,21 @@ func _mark_action_manually_unlocked(skill_id: String, action_id: String) -> void
 	if not key.is_empty():
 		_repair_runtime_manual_activity_unlock_trust()
 		manual_activity_unlocks[key] = true
+		if skill_id == "fishing": host.fishing_runtime.initialize_location_tool(action_id)
 		_clear_activity_requirement_manual_unlocks(skill_id, action_id)
 		manual_activity_unlocks_trust_checked = true
 		manual_activity_unlocks_trusted = true
+		host._project_runtime().queue_availability_refresh()
 func _queue_manual_activity_unlock_for_ceremony(card: Dictionary, skill_id: String, action_id: String) -> void:
 	if card.is_empty() or skill_id.is_empty() or action_id.is_empty():
 		return
 	card["manual_unlock_pending_skill_id"] = skill_id
 	card["manual_unlock_pending_action_id"] = action_id
 func _finalize_manual_activity_unlock(skill_id: String, action_id: String, save_reason := "activity unlock") -> bool:
+	if not host._project_runtime().complete(host._action_data(skill_id, action_id)): return false
 	if skill_id.is_empty() or action_id.is_empty() or host._action_data(skill_id, action_id).is_empty():
+		return false
+	if not preload("res://scripts/progression/wisdom_state.gd").requirement_met(host, skill_id, host._action_data(skill_id, action_id)):
 		return false
 	_mark_action_manually_unlocked(skill_id, action_id)
 	if host.current_screen == "skill" and host._fishing_rework_active_for_skill(skill_id) and host.selected_skill_id == skill_id:
@@ -806,6 +880,8 @@ func _action_requirement_unlock_key(skill_id: String, action: Dictionary, requir
 		return ""
 	return "%s:%s:%s:%s" % [skill_id, action_id, requirement_skill, requirement_level]
 func _canonical_manual_activity_requirement_unlock_key(key: String) -> String:
+	# Retain retired seasonal progress so removal cannot look like save regression.
+	if key == "thieving:trick-or-treat:thieving:8": return key
 	var parts := key.split(":", false, 4)
 	if parts.size() < 4:
 		return ""
@@ -824,7 +900,21 @@ func _canonical_manual_activity_requirement_unlock_key(key: String) -> String:
 		if str(requirement.get("skill", skill_id)) == requirement_skill and int(requirement.get("level", 1)) == requirement_level:
 			return _action_requirement_unlock_key(skill_id, action, index)
 	return ""
+# Asked for every unlock flag on every save and load. An activity from the game's
+# own catalog always gets the same answer, so it is remembered; event activities
+# come and go and are looked up every time.
+var _canonical_unlock_key_memo := {}
+var _canonical_unlock_key_memo_catalog_size := -1
 func _canonical_manual_activity_unlock_key(key: String) -> String:
+	# Retain retired seasonal progress so removal cannot look like save regression.
+	if key == "thieving:trick-or-treat": return key
+	var catalog: Dictionary = host.actions_by_key
+	if catalog.size() != _canonical_unlock_key_memo_catalog_size:
+		_canonical_unlock_key_memo.clear()
+		_canonical_unlock_key_memo_catalog_size = catalog.size()
+	var remembered: Variant = _canonical_unlock_key_memo.get(key, null)
+	if remembered != null:
+		return remembered
 	var separator := key.find(":")
 	if separator < 0:
 		return ""
@@ -835,4 +925,7 @@ func _canonical_manual_activity_unlock_key(key: String) -> String:
 	var action: Dictionary = host._action_data(skill_id, action_id)
 	if action.is_empty():
 		return ""
-	return host._action_key(skill_id, str(action.get("id", action_id)))
+	var canonical: String = host._action_key(skill_id, str(action.get("id", action_id)))
+	if catalog.has(host._action_key(skill_id, action_id)):
+		_canonical_unlock_key_memo[key] = canonical
+	return canonical

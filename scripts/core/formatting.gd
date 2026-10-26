@@ -44,6 +44,15 @@ static func compact_number(value: float, digits := 3) -> String:
 	return "%s%s" % [text, COMPACT_NUMBER_SUFFIXES[suffix_index]]
 
 
+# Inventory must never round up across an unaffordable purchase threshold.
+static func compact_inventory_number(value: float, digits := 3) -> String:
+	var amount := maxf(0.0, value)
+	if amount < 0.000001:
+		return "0"
+	var unit := pow(10.0, floor(log(amount) / log(10.0)) - maxi(1, digits) + 1)
+	return compact_number(floor(amount / unit) * unit, digits)
+
+
 static func compact_number_range(min_value: float, max_value: float, digits := 3) -> String:
 	var safe_min := maxf(0.0, min_value)
 	var safe_max := maxf(safe_min, max_value)
@@ -94,6 +103,8 @@ static func duration(seconds: float) -> String:
 
 static func countdown(seconds: int) -> String:
 	var total := maxi(0, seconds)
+	if total < 60:
+		return "%ds" % total
 	var hours := int(floor(float(total) / 3600.0))
 	var minutes := int(floor(float(total % 3600) / 60.0))
 	var secs := total % 60

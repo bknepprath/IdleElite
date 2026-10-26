@@ -143,7 +143,7 @@ func _position_inside_bottom_interactive_ui(event_position: Vector2) -> bool:
 		var control := raw_control as Control
 		if control == null or not is_instance_valid(control) or not control.is_visible_in_tree():
 			continue
-		var control_rect := control.get_global_rect().grow(4.0)
+		var control_rect := control.get_global_rect()
 		for candidate in _activity_input_position_candidates(event_position):
 			if control_rect.has_point(candidate):
 				return true
@@ -243,7 +243,94 @@ static func event_is_outside_panel_press(event: InputEvent, panel: Control) -> b
 	return false
 
 
+var feedback_help_button: Button
+var feedback_help_press_position := Vector2.ZERO
+
+func _feedback_help_owns_pointer(event: InputEvent) -> bool:
+	if host.current_screen != "skill" or host._onboarding_runtime().tutorial_active:
+		feedback_help_button = null
+		return false
+	var point := Vector2.INF
+	var down := false
+	var up := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		point = event.global_position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventScreenTouch:
+		point = event.position
+		down = event.pressed
+		up = not event.pressed
+	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
+		point = event.position
+	if is_instance_valid(feedback_help_button):
+		var button := feedback_help_button
+		if point != Vector2.INF and point.distance_to(feedback_help_press_position) > 24.0:
+			feedback_help_button = null
+		elif up:
+			feedback_help_button = null
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				button.pressed.emit()
+		host.get_viewport().set_input_as_handled()
+		return true
+	if down:
+		for button in host.get_tree().get_nodes_in_group("feedback_help_buttons"):
+			if (button.name in ["MedalInformationButton", "WisdomInformationButton", "WisdomRewardInformation"] or button.has_meta("wisdom_source")) and not _position_inside_detail_actions_viewport(point):
+				continue
+			# A button that scrolls with the list answers only where the list shows,
+			# with nothing modal open, and only as the top button under the pointer:
+			# the Fishing wallet circle and other controls float over the list.
+			if button.has_meta("inside_detail_list") and (not _position_inside_detail_actions_viewport(point) or _position_inside_bottom_interactive_ui(point) or _modal_blocks_background_input() or host.button_press_runtime._button_at_global_position(host, point) != button):
+				continue
+			if button.is_visible_in_tree() and not button.disabled and button.get_global_rect().has_point(point):
+				feedback_help_button = button
+				feedback_help_press_position = point
+				host.get_viewport().set_input_as_handled()
+				return true
+	return false
+
 func input(event: InputEvent) -> void:
+	if Time.get_ticks_msec() < production_menu_dismiss_until_msec and (event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag):
+		host.get_viewport().set_input_as_handled()
+		return
+	if host._settings_surface().privacy().visible():
+		if _route_system_back_input(event): host.get_viewport().set_input_as_handled()
+		return
+	if host._halloween_runtime().greeting_visible():
+		if _route_system_back_input(event): host.get_viewport().set_input_as_handled()
+		return
+	# The welcome panel owns the pointer before activity chips or gestures can
+	# intercept a click through it. Its buttons receive normal GUI events.
+	if host._achievement_overlay_surface().offline_summary_visible():
+		if _route_system_back_input(event):
+			host.get_viewport().set_input_as_handled()
+		return
+	var fishing = host._fishing_ui_surface()
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		var pressed: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed)
+		if pressed and not fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+			var selector = fishing.fishing_tool_wallet_anchor
+			if not is_instance_valid(selector) or not selector.get_global_rect().has_point(event.position):
+				fishing._clear_fishing_tool_circle_menu()
+				host.get_viewport().set_input_as_handled()
+				return
+	if _production_output_menu_outside_input(event):
+		host.get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag:
+		for menu in host.get_tree().get_nodes_in_group("production_output_menus"):
+			if menu.is_visible_in_tree() and menu.get_global_rect().has_point(event.position):
+				if not _production_control_owns_pointer(event): host.get_viewport().set_input_as_handled()
+				return
+	if _feedback_help_owns_pointer(event):
+		return
+	if _production_control_owns_pointer(event):
+		return
+	if fishing.is_fishing_tool_wallet_open() and is_instance_valid(fishing.fishing_tool_wallet_popup):
+		if event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag:
+			if fishing.fishing_tool_wallet_popup.get_global_rect().has_point(event.position):
+				# Keep wallet events in its GUI tree, away from activity and swipe routing.
+				return
 	# Let Godot's GUI handle synthesized pointer events. Custom gesture routing
 	# must not treat the emulated copy as another player gesture.
 	if event.device == InputEvent.DEVICE_ID_EMULATION and _fishing_detail_input_context_active():
@@ -269,6 +356,93 @@ func input(event: InputEvent) -> void:
 	if _route_input_screen_controls(event):
 		return
 	_route_input_activity_surface(event, press_started_on_button)
+
+
+var production_control_pointer: BaseButton
+var production_control_start := Vector2.ZERO
+var production_menu_dismiss_pending := false
+var production_menu_dismiss_until_msec := 0
+
+func _production_output_menu_outside_input(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton or event is InputEventScreenTouch): return false
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT: return false
+	if production_menu_dismiss_pending and not event.pressed:
+		production_menu_dismiss_pending = false
+		return true
+	if not event.pressed: return false
+	for menu in host.get_tree().get_nodes_in_group("production_output_menus"):
+		if not menu.is_visible_in_tree(): continue
+		if menu.get_global_rect().has_point(event.position): return false
+		menu.get_meta("converter").close_output_menu()
+		if host._input_routing_shell()._any_modal_overlay_visible(): return false
+		production_menu_dismiss_pending = true
+		production_menu_dismiss_until_msec = Time.get_ticks_msec()+240
+		host._skill_detail_surface().action_card_press_key = ""
+		_block_background_input_briefly(240)
+		return true
+	return false
+var production_pointer_id := -2
+
+func _production_control_contains_point(node: Control,point: Vector2) -> bool:
+	if not node.get_global_rect().has_point(point): return false
+	if node.has_method("contains_screen_point"): return node.contains_screen_point(point)
+	return true
+
+func _production_control_owns_pointer(event: InputEvent) -> bool:
+	if _modal_blocks_background_input() or _any_modal_overlay_visible(): return false
+	if not (event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag): return false
+	var point: Vector2=event.position
+	if event.device==InputEvent.DEVICE_ID_EMULATION:
+		for node in host.get_tree().get_nodes_in_group("production_controls"):
+			if is_instance_valid(node) and node.is_visible_in_tree() and _production_control_contains_point(node,point):
+				host.get_viewport().set_input_as_handled()
+				return true
+		return false
+	var pointer_id: int=event.index if event is InputEventScreenTouch or event is InputEventScreenDrag else -1
+	if is_instance_valid(production_control_pointer) and pointer_id==production_pointer_id:
+		if event is InputEventMouseMotion or event is InputEventScreenDrag:
+			var movement := point-production_control_start
+			if movement.length()>host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+				production_control_pointer.button_up.emit()
+				production_control_pointer=null
+				production_pointer_id=-2
+				if absf(movement.x)>absf(movement.y):
+					host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(production_control_start,pointer_id)
+					host._skill_swipe_activity_surface()._update_skill_swipe_feedback(point)
+				else:
+					var scroll=host._skill_detail_surface().detail_actions_scroll
+					if is_instance_valid(scroll): scroll.handoff_drag_scroll(production_control_start,point,pointer_id)
+			host.get_viewport().set_input_as_handled()
+			return true
+		if not event.pressed:
+			var button := production_control_pointer
+			production_control_pointer=null
+			production_pointer_id=-2
+			button.button_up.emit()
+			if OS.get_environment("IDLE_ELITE_PRODUCTION_INPUT_TRACE")=="1": print("PROD_RELEASE ",event.get_class()," ",button.text if button is Button else "ingredient"," start=",production_control_start," end=",point," distance=",point.distance_to(production_control_start))
+			if button.is_visible_in_tree() and not button.disabled and point.distance_to(production_control_start)<=host.PASSIVE_BUTTON_TAP_RELEASE_SLOP and _production_control_contains_point(button,point):
+				button.set_meta("production_valid_tap",true)
+				button.pressed.emit()
+			host.get_viewport().set_input_as_handled()
+			return true
+	if event is InputEventMouseMotion or event is InputEventScreenDrag or not event.pressed: return false
+	if not _position_inside_detail_actions_viewport(point) or _position_inside_bottom_interactive_ui(point): return false
+	if event is InputEventMouseButton and event.button_index!=MOUSE_BUTTON_LEFT: return false
+	var open_menu: Control = null
+	for menu in host.get_tree().get_nodes_in_group("production_output_menus"):
+		if menu.is_visible_in_tree() and menu.get_global_rect().has_point(point): open_menu = menu
+	for node in host.get_tree().get_nodes_in_group("production_controls"):
+		if open_menu != null and not open_menu.is_ancestor_of(node): continue
+		if node is BaseButton and is_instance_valid(node) and node.is_visible_in_tree() and _production_control_contains_point(node,point):
+			production_control_pointer=node
+			production_pointer_id=pointer_id
+			production_control_start=point
+			if OS.get_environment("IDLE_ELITE_PRODUCTION_INPUT_TRACE")=="1": print("PROD_PRESS ",event.get_class()," ",node.text if node is Button else "ingredient"," point=",point)
+			node.button_down.emit()
+			host._skill_detail_surface().action_card_press_key=""
+			host.get_viewport().set_input_as_handled()
+			return true
+	return false
 
 
 func _update_fishing_detail_primary_pointer_down(event: InputEvent) -> void:
@@ -868,12 +1042,18 @@ func _route_system_back_input(event: InputEvent) -> bool:
 
 
 func _handle_system_back_request() -> void:
+	if host._settings_surface().privacy().visible():
+		host._settings_surface().privacy().close()
+		return
+	if host._halloween_runtime().greeting_visible():
+		host._halloween_runtime().dismiss_launch_greeting()
+		return
 	if host._boot_warmup_runtime().active:
 		return
 	if host._onboarding_runtime().tutorial_active:
 		host._onboarding_runtime()._complete_tutorial_target_intro()
 		return
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		host._profile_chat_overlay_surface()._close_chat_overlay()
 		return
 	if host._achievement_overlay_surface().offline_summary_visible():
@@ -899,7 +1079,9 @@ func _handle_system_back_request() -> void:
 
 
 func _any_modal_overlay_visible() -> bool:
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
+	if host._settings_surface().privacy().visible(): return true
+	if host._halloween_runtime().greeting_visible(): return true
+	if host._profile_chat_overlay_surface().chat_overlay_visible() and not (host.desktop_layout.enabled() and host.desktop_layout.social_tab == "chat"):
 		return true
 	if host.settings_overlay != null and host.settings_overlay.visible:
 		return true
@@ -1013,6 +1195,10 @@ func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
 
 
 func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool:
+	# Recipe and equipment buttons own their taps before the whole-card start route.
+	for node in host.get_tree().get_nodes_in_group("production_controls"):
+		if node is BaseButton and is_instance_valid(node) and node.is_visible_in_tree() and _production_control_contains_point(node,press_position):
+			return false
 	if host._navigation_shell()._position_inside_bottom_nav(press_position):
 		return false
 	if not _position_inside_detail_actions_viewport(press_position):
@@ -1077,8 +1263,8 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 				host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
 				return true
 		var stat_kind = host._skill_detail_surface()._activity_stat_kind_at_position(card, routed_position)
-		if stat_kind.is_empty() and host._skill_swipe_activity_surface()._action_card_medal_hit_at_position(card, routed_position):
-			stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
+		if stat_kind.is_empty():
+			stat_kind = host._skill_swipe_activity_surface()._action_card_corner_press_kind(card, press_positions)
 		if stat_kind.is_empty() and (host.queue_selection_mode or host.current_screen == "queue"):
 			if host._skill_detail_surface().detail_actions_scroll != null and is_instance_valid(host._skill_detail_surface().detail_actions_scroll):
 				host._skill_detail_surface().detail_actions_scroll.prepare_child_tap()
@@ -1088,7 +1274,7 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			host._skill_detail_surface().action_card_press_dragged = false
 			host._skill_swipe_activity_surface()._queue_action_card_3d_press(host._skill_detail_surface().action_card_press_key)
 			return true
-		if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
+		if not stat_kind.is_empty() and not host._skill_swipe_activity_surface()._is_action_card_corner_press_kind(stat_kind):
 			host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, routed_position, pointer_id)
 			return true
 		if stat_kind.is_empty() and host.running_skill_id == skill_id and host.running_action_id == action_id:
@@ -1345,12 +1531,19 @@ func _activity_card_is_locked_or_covered(skill_id: String, action: Dictionary, c
 		return true
 	if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
 		return false
+	# A module that still has to be built takes the tap at any level.
+	if _action_needs_building(skill_id, action):
+		return false
 	return (
 		bool(card.get("unlock_ready_pending", false))
 		or bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
 		or not (card.get("lock_overlay", {}) as Dictionary).is_empty()
 	)
+
+
+func _action_needs_building(skill_id: String, action: Dictionary) -> bool:
+	return not action.is_empty() and BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key"))
 
 
 func _action_card_at_position(event_position: Vector2) -> Dictionary:
@@ -1466,9 +1659,9 @@ func _route_action_card_release(event: InputEvent) -> bool:
 		return false
 	var action = host._action_data(skill_id, action_id)
 	var unlocked = not action.is_empty() and host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
-	if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
-		host._skill_swipe_activity_surface()._play_action_card_medal_tap_ceremony(card)
-	elif unlocked:
+	if host._skill_swipe_activity_surface()._is_action_card_corner_press_kind(stat_kind):
+		host._skill_swipe_activity_surface()._play_action_card_corner_tap(card, stat_kind, release_positions)
+	elif unlocked or _action_needs_building(skill_id, action):
 		if host.current_screen == "queue":
 			var module_key = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(card)
 			if not module_key.is_empty():

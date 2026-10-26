@@ -411,11 +411,26 @@ func apply_firepit_fuel(now: int) -> void:
 		SkillState.invalidate_stat_caches(host)
 		host._mark_save_dirty("firepit empty")
 		return
-	var burned := minf(available_fuel, requested_fuel)
-	var previous_whole_scrapwood_burned := int(floor(maxf(0.0, float(state.get("burned_scrapwood", 0.0)))))
-	host.material_runtime.set_amount("scrapwood", available_fuel - burned)
-	state["burned_scrapwood"] = maxf(0.0, float(state.get("burned_scrapwood", 0.0))) + burned
-	var whole_scrapwood_burned := int(floor(maxf(0.0, float(state.get("burned_scrapwood", 0.0)))))
+	# The wallet holds Scrapwood in tenths, and a one-second tick burns a thirtieth.
+	# Charging each tick on its own rounded that away (or up to a full tenth), so
+	# the cost depended on how often this ran. The wallet is charged in whole
+	# tenths of the burn total instead: one Scrapwood per 30 seconds at any tick
+	# size. What has burned past the last whole tenth is still owed; it is read
+	# from the burn total, which is saved, so closing the game cannot forgive it.
+	var burned_before := maxf(0.0, float(state.get("burned_scrapwood", 0.0)))
+	var fuel_due := clampf(burned_before - floorf(burned_before * 10.0 + 0.000001) / 10.0, 0.0, available_fuel)
+	var unburned_fuel := available_fuel - fuel_due
+	var burned := requested_fuel if requested_fuel <= unburned_fuel + 0.000001 else unburned_fuel
+	# Whole Scrapwood are counted with the same allowance as the charge, so the XP
+	# for one arrives on the tick that pays for it, not the tick after.
+	var previous_whole_scrapwood_burned := int(floorf(burned_before + 0.000001))
+	if burned + 0.0001 < requested_fuel:
+		host.material_runtime.set_amount("scrapwood", 0.0)
+	else:
+		var charge := floorf((fuel_due + burned) * 10.0 + 0.000001) / 10.0
+		host.material_runtime.set_amount("scrapwood", available_fuel - charge)
+	state["burned_scrapwood"] = burned_before + burned
+	var whole_scrapwood_burned := int(floorf(burned_before + burned + 0.000001))
 	var newly_burned_whole_scrapwood := maxi(0, whole_scrapwood_burned - previous_whole_scrapwood_burned)
 	if newly_burned_whole_scrapwood > 0:
 		award_firepit_burn_xp(newly_burned_whole_scrapwood)
@@ -433,6 +448,7 @@ func toggle_firepit_pressed(module_id: String, now: int) -> void:
 	host._passive_firepit_surface()._clear_passive_button_press()
 	if not is_firepit_module(module_id) or not is_passive_module_unlocked(module_id):
 		return
+	host._onboarding_runtime().acknowledge_soft_interaction("firepit")
 	apply_firepit_fuel(now)
 	if firepit_active(now):
 		host.last_result = "Hold the firepit to put the fire out."
@@ -441,7 +457,7 @@ func toggle_firepit_pressed(module_id: String, now: int) -> void:
 
 func start_firepit(now: int) -> bool:
 	if host.material_runtime.amount("scrapwood") < FIREPIT_MINIMUM_START_SCRAPWOOD:
-		host.last_result = "Need Scrapwood to start the fire."
+		host.last_result = "You need one scrap wood to light the fire."
 		return false
 	var state := ensure_firepit_state(now)
 	state = _activate_firepit_state(state, now)
@@ -456,7 +472,7 @@ func start_firepit(now: int) -> bool:
 
 func begin_firepit_ignition(now: int) -> bool:
 	if host.material_runtime.amount("scrapwood") + 0.0001 < FIREPIT_START_SCRAPWOOD_COST:
-		host.last_result = "Need Scrapwood to start the fire."
+		host.last_result = "You need one scrap wood to light the fire."
 		host._passive_firepit_surface()._float_firepit_need_scrapwood()
 		return false
 	var state := ensure_firepit_state(now)
@@ -485,7 +501,7 @@ func finish_firepit_ignition(now: int) -> void:
 	if host.material_runtime.amount("scrapwood") + 0.0001 < FIREPIT_START_SCRAPWOOD_COST:
 		state = _shutdown_firepit_state(state, now, "no_fuel")
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
-		host.last_result = "Need Scrapwood to start the fire."
+		host.last_result = "You need one scrap wood to light the fire."
 		host._passive_firepit_surface()._float_firepit_need_scrapwood()
 		host._update_ui(0.0, false)
 		return

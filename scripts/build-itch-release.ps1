@@ -53,6 +53,18 @@ try {
             $text = [regex]::Replace($text, '(?m)^compress/mode=2(\r?)$', 'compress/mode=1$1')
             $text = [regex]::Replace($text, '(?m)^compress/lossy_quality=[^\r\n]*', "compress/lossy_quality=$LossyQuality")
             [IO.File]::WriteAllText($_.FullName, $text, (New-Object Text.UTF8Encoding($false)))
+            # A copied .md5 cache can leave the old VRAM remap valid even after
+            # changing compression. Missing generated destinations force Godot
+            # to rebuild this texture and rewrite the remap for the web export.
+            $cacheRoot = [IO.Path]::GetFullPath((Join-Path $worktree '.godot/imported')) + [IO.Path]::DirectorySeparatorChar
+            $cachedTextures = [regex]::Matches($text, 'res://\.godot/imported/[^"\r\n]+\.ctex') | ForEach-Object { $_.Value } | Select-Object -Unique
+            foreach ($cachedTexture in $cachedTextures) {
+                $cachedPath = [IO.Path]::GetFullPath((Join-Path $worktree $cachedTexture.Substring(6)))
+                Assert-True ($cachedPath.StartsWith($cacheRoot, [StringComparison]::OrdinalIgnoreCase)) 'Generated texture must remain inside the temporary import cache.'
+                if (Test-Path -LiteralPath $cachedPath -PathType Leaf) {
+                    Remove-Item -LiteralPath $cachedPath -Force
+                }
+            }
             $converted++
         }
     }

@@ -218,7 +218,8 @@ func _check_stamina_save(game: Node) -> void:
 	var saved_bank := SkillState.stamina_bank_for_save(game.skill_defs, game.stamina, game.stamina_bank, Callable(SkillState, "host_max_stamina").bind(game))
 	_expect(saved_stamina.has("fight") and saved_stamina.has("thieving") and saved_stamina.has("build"), "Stamina save should include known skills.")
 	_expect(not saved_stamina.has("not-a-real-skill"), "Stamina save should drop unknown skill ids.")
-	_expect(float(saved_stamina.get("fight", -1.0)) == 30.0, "Stamina save should clamp values above max stamina.")
+	# Halloween candy can lift stamina up to 15 above the maximum, and a save keeps that.
+	_expect(float(saved_stamina.get("fight", -1.0)) == 30.0 + 15.0, "Stamina save should clamp values above max stamina plus the candy allowance.")
 	_expect(float(saved_stamina.get("thieving", -1.0)) == 0.0, "Stamina save should clamp negative stamina.")
 	_expect(float(saved_stamina.get("build", -1.0)) == 12.5, "Stamina save should preserve fractional stamina.")
 	_expect(float(saved_bank.get("fight", -1.0)) == 0.0, "Stamina bank save should reset full-stamina banks.")
@@ -341,12 +342,14 @@ func _check_thieving_jail_save(game: Node) -> void:
 	var penny_action := game.call("_action_data", "thieving", "borrow-cookie-permanently") as Dictionary
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 1)) == 7, "Level 1 thieving jail seconds should use base time plus level-one module scaling.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 2)) == 6, "Level 1 thieving jail seconds should shrink with one overlevel.")
-	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 3)) == 0, "Level 1 thieving jail seconds should become no jail once below the minimum punishable timer.")
+	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 3)) == 6, "Jail retains its minimum sentence below the five-level immunity boundary.")
+	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 6)) == 0, "Level 1 activity stops jailing at level 6.")
 	var cookie_action := game.call("_action_data", "thieving", "sneak-past-tip-jar") as Dictionary
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 2)) == 9, "Thieving jail seconds should start at base time plus module unlock level times two.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 4)) == 7, "Thieving jail seconds should shrink as current level rises above the action unlock level.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 5)) == 6, "Thieving jail seconds should keep the minimum punishable jail timer.")
-	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 6)) == 0, "Thieving jail seconds below the minimum punishable timer should become no jail.")
+	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 6)) == 6, "Level 2 activity still has a minimum sentence at level 6.")
+	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 7)) == 0, "Level 2 activity stops jailing at level 7.")
 	thieving_state.action_jails = {
 		"sneak-past-tip-jar": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 		"pocket-a-penny-nobody-wanted": {"cooldown_until_unix": now + 60, "resume_when_free": true, "show_bars": false},
@@ -1278,7 +1281,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_profile_claimed")), "Leaderboard profile save should clear guest profile claims.")
 	_expect(not _truthy(_save_payload_value(game, "leaderboard_name_claim_verified")), "Leaderboard profile save should clear guest profile verification.")
 
-	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == 19, "Leaderboard avatar save should clamp to a valid avatar index.")
+	_expect(int(_save_payload_value(game, "leaderboard_avatar_index")) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard avatar save should clamp to a valid avatar index.")
 	_expect(str(_save_payload_value(game, "leaderboard_player_id")).is_empty(), "Leaderboard player-id save should drop invalid ids.")
 	_expect(str(_save_payload_value(game, "leaderboard_auth_refresh_token")) == "refresh-token", "Leaderboard refresh-token save should strip whitespace.")
 	_expect(int(_save_payload_value(game, "leaderboard_auth_retry_after_unix")) == 0, "Leaderboard auth retry save should clamp negative timestamps.")
@@ -1294,7 +1297,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(str(game.leaderboard_profile.display_name) == "Mira Stone", "Leaderboard profile restore should preserve valid display names.")
 	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should derive missing verified claim keys.")
 	_expect(_truthy(game.leaderboard_profile.profile_claimed) and _truthy(game.leaderboard_profile.name_claim_verified), "Leaderboard profile restore should preserve valid verified claims.")
-	_expect(int(game.leaderboard_profile.avatar_index) == 19, "Leaderboard profile restore should clamp avatar indexes.")
+	_expect(int(game.leaderboard_profile.avatar_index) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Leaderboard profile restore should clamp avatar indexes.")
 	var generated_player_id := str(game.leaderboard_profile.player_id)
 	_expect(not generated_player_id.is_empty() and generated_player_id != " bad id! ", "Leaderboard profile restore should regenerate invalid player ids.")
 
@@ -1667,6 +1670,12 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"activity_completion_count": 10,
 	}
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, legacy_save) == true, "Missing current desktop saves should recover known legacy desktop progress.")
+	var reset_save := {"save_reset_generation": 500, "skills": {"fight": {"xp": 0, "level": 1}}}
+	var pre_reset_legacy := legacy_save.duplicate(true)
+	pre_reset_legacy["save_reset_generation"] = 499
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", reset_save, pre_reset_legacy) != true, "Legacy progress must not undo a newer deliberate reset.")
+	pre_reset_legacy["save_reset_generation"] = 500
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", reset_save, pre_reset_legacy) == true, "Legacy recovery may restore progress from the same reset generation.")
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", fresh_maxed_save, legacy_save) != true, "Any progressed current desktop save should remain authoritative over a legacy candidate.")
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", legacy_save, legacy_save) != true, "Clean current desktop saves should not be replaced by legacy saves.")
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, {"skills": fresh_maxed_skills}) == true, "Progressed legacy all-99 saves must remain eligible for recovery.")
@@ -2027,13 +2036,13 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	var saved_order := module_ui_runtime.pinned_order_for_save(Callable(game.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse")) as Array
 	_expect(saved_order == [unlocked_key], "Module UI pin save should keep only unique unlocked module keys.")
 	var saved_collapsed := module_ui_runtime.collapsed_for_save(Callable(game.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse")) as Dictionary
-	_expect(saved_collapsed.size() == 1 and _truthy(saved_collapsed.get(unlocked_key, false)), "Module UI collapse save should keep only intentional unlocked module flags.")
+	_expect(saved_collapsed.is_empty(), "Removed minimization must not persist collapsed flags.")
 	_expect(str(module_ui_runtime.sort_mode_for_save()) == "level_reverse", "Module UI sort save should preserve valid sort mode.")
 	var module_ui_payload := _save_payload(game, int(game.call("_unix_now")))
 	_expect(int(module_ui_payload.get("module_ui_collapse_save_version", 0)) == ModuleUiRuntime.COLLAPSE_SAVE_VERSION, "Save payload should include the current module collapse save version.")
 	_expect((module_ui_payload.get("module_ui_pinned_order", []) as Array) == [unlocked_key], "Save payload should serialize normalized pinned module order.")
 	var payload_collapsed := module_ui_payload.get("module_ui_collapsed", {}) as Dictionary
-	_expect(payload_collapsed.size() == 1 and _truthy(payload_collapsed.get(unlocked_key, false)), "Save payload should serialize normalized collapsed module flags.")
+	_expect(payload_collapsed.is_empty(), "Save payload should clear removed minimization flags.")
 	_expect(str(module_ui_payload.get("module_ui_sort_mode", "")) == "level_reverse", "Save payload should serialize normalized module sort mode.")
 	module_ui_runtime.set("pin_preview_tokens", {unlocked_key: 7})
 	var restore_pinned_order := [locked_key, hub_key, locked_heist_key, unavailable_offer_key, unlocked_key, "bad"]
@@ -2050,7 +2059,7 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	var restored_order := module_ui_runtime.get("pinned_order") as Array
 	var restored_collapsed := module_ui_runtime.get("collapsed") as Dictionary
 	_expect(restored_order == [unlocked_key], "Module UI pin restore should filter locked and malformed keys.")
-	_expect(restored_collapsed.size() == 1 and _truthy(restored_collapsed.get(unlocked_key, false)), "Module UI collapse restore should filter locked and malformed keys.")
+	_expect(restored_collapsed.is_empty(), "Every previously minimized activity should restore expanded.")
 	_expect(str(module_ui_runtime.get("sort_mode")) == "level", "Module UI sort restore should fall back to default for invalid modes.")
 	_expect((module_ui_runtime.get("pin_preview_tokens") as Dictionary).is_empty(), "Module UI restore should clear transient pin preview tokens.")
 	module_ui_runtime.set("collapsed", {unlocked_key: true})
@@ -2749,7 +2758,7 @@ func _check_save_payload(game: Node) -> void:
 	var payload_stamina_bank := payload.get("stamina_bank", {}) as Dictionary
 	var payload_fight_max := float(SkillState.max_stamina(game, "fight"))
 	_expect(payload_stamina.has("fight") and payload_stamina.has("build") and not payload_stamina.has("not-a-real-skill"), "Save payload should include only known stamina skill ids.")
-	_expect(float(payload_stamina.get("fight", -1.0)) == payload_fight_max, "Save payload should clamp stamina above the max.")
+	_expect(float(payload_stamina.get("fight", -1.0)) == payload_fight_max + 15.0, "Save payload should clamp stamina above the max plus the candy allowance.")
 	_expect(float(payload_stamina.get("thieving", -1.0)) == 0.0, "Save payload should clamp negative stamina.")
 	_expect(float(payload_stamina.get("build", -1.0)) == 12.5, "Save payload should preserve fractional stamina.")
 	_expect(float(payload_stamina_bank.get("fight", -1.0)) == 0.0, "Save payload should reset full-stamina banks.")
@@ -2830,7 +2839,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(str(payload.get("leaderboard_name_key", "bad")).is_empty(), "Save payload should sanitize leaderboard name keys.")
 	_expect(not _truthy(payload.get("leaderboard_profile_claimed", true)), "Save payload should clear invalid leaderboard profile claims.")
 	_expect(not _truthy(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
-	_expect(int(payload.get("leaderboard_avatar_index", -1)) == 19, "Save payload should clamp leaderboard avatar indexes.")
+	_expect(int(payload.get("leaderboard_avatar_index", -1)) == ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT - 1, "Save payload should clamp leaderboard avatar indexes.")
 	_expect(str(payload.get("leaderboard_player_id", "bad")).is_empty(), "Save payload should sanitize leaderboard player ids.")
 	_expect(str(payload.get("leaderboard_auth_provider", "")) == "google", "Save payload should preserve sanitized leaderboard auth providers.")
 	_expect(str(payload.get("leaderboard_auth_refresh_token", "")) == "refresh-token", "Save payload should trim leaderboard refresh tokens.")

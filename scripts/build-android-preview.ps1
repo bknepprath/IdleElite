@@ -35,10 +35,13 @@ if ($projectSettings -notmatch '(?m)^renderer/rendering_method="gl_compatibility
     throw 'Android preview blocked: the native 1080p Samsung build must keep both rendering methods on gl_compatibility to prevent Vulkan framebuffer corruption.'
 }
 
+$originalExportPresetBytes = [System.IO.File]::ReadAllBytes($exportPresetsPath)
+$originalBuildGradleBytes = [System.IO.File]::ReadAllBytes($buildGradlePath)
 $originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
 $originalBuildGradle = Get-Content -Raw -LiteralPath $buildGradlePath
 $patchedExportPresets = $originalExportPresets `
-    -replace '(?m)^package/unique_name="com\.idleelite\.game"\r?$', 'package/unique_name="com.idleelite.game.preview"'
+    -replace '(?m)^package/unique_name="com\.idleelite\.game"\r?$', 'package/unique_name="com.idleelite.game.preview"' `
+    -replace '(?m)^package/name="Idle Elite"\r?$', 'package/name="Idle Elite Preview"'
 $patchedBuildGradle = $originalBuildGradle -replace 'applicationId getExportPackageName\(\)', 'applicationId "com.idleelite.game.preview"'
 
 if ($patchedExportPresets -eq $originalExportPresets) {
@@ -76,8 +79,8 @@ try {
     if ($pushedLocation) {
         Pop-Location
     }
-    Set-Content -LiteralPath $buildGradlePath -Value $originalBuildGradle -NoNewline
-    Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
+    [System.IO.File]::WriteAllBytes($buildGradlePath, $originalBuildGradleBytes)
+    [System.IO.File]::WriteAllBytes($exportPresetsPath, $originalExportPresetBytes)
     if ($null -eq $previousTimeout) {
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
     } else {

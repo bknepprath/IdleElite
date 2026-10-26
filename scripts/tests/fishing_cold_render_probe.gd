@@ -92,6 +92,7 @@ func _force_level_99_fishing_state(main: Node) -> void:
 	_set_skill_level(main, "fishing", 99)
 	main.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	main.call("_test_state_runtime")._god_mode_unlock_fishing_tools_state()
+	_fill_unlock_projects(main)
 	main.call("_activity_unlock_runtime").sync_manual_activity_unlocks_from_levels()
 	main.set("current_screen", "skill")
 	main.set("selected_skill_id", "fishing")
@@ -104,6 +105,19 @@ func _force_level_99_fishing_state(main: Node) -> void:
 	main.fishing_runtime.star_rod_collected = true
 	main.fishing_runtime.boat_built = true
 	main.fishing_runtime.mirror_collected = true
+
+
+# Since 0.7.0 an unlock project gates an activity beside its level (Piling Line
+# needs Lures), so a level-99 page stops at the first unfinished one.
+func _fill_unlock_projects(main: Node) -> void:
+	var project_runtime = main.call("_project_runtime")
+	for definition in project_runtime.definitions.values():
+		var project_work := {}
+		for step in definition.project.steps:
+			project_work[str(step.id)] = int(step.target)
+		if not (definition.project.get("cost", {}) as Dictionary).is_empty():
+			project_work["materials"] = 1
+		project_runtime.work[str(definition.project.id)] = project_work
 
 
 func _set_skill_level(main: Node, skill_id: String, level: int) -> void:

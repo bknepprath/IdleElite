@@ -474,6 +474,16 @@ func _configure_fishing_unlock_state(scene: Node, level: int, auto_unlock: bool,
 	unlock_runtime.call("_invalidate_manual_activity_unlock_trust")
 	for action_id in unlocked_action_ids:
 		unlock_runtime.call("_mark_action_manually_unlocked", "fishing", action_id)
+	# Since 0.7.0 an unlock project (Lures and the like) gates an activity beside
+	# its level. This test walks the level sequence, so every project is filled.
+	var project_runtime = scene.call("_project_runtime")
+	for definition in project_runtime.definitions.values():
+		var project_work := {}
+		for step in definition.project.steps:
+			project_work[str(step.id)] = int(step.target)
+		if not (definition.project.get("cost", {}) as Dictionary).is_empty():
+			project_work["materials"] = 1
+		project_runtime.work[str(definition.project.id)] = project_work
 	scene.call("_test_state_runtime").call("_god_mode_unlock_onboarding_state")
 	scene.call("_test_state_runtime").call("_clear_running_activity_for_test_mode")
 	scene.set("current_screen", "skill")

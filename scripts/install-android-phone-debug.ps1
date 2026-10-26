@@ -1,6 +1,11 @@
 # Export a debug Android build and install it on the connected phone.
 # Uses com.idleelite.game.preview when the release-signed app is already installed.
 
+param(
+    # Reuse a preview bundle already built and verified from this checkout.
+    [switch]$SkipBuild
+)
+
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -46,8 +51,13 @@ $devices = (& $adb devices | Select-String "device$" | Where-Object { $_ -notmat
 if ($devices.Count -eq 0) {
     throw "No authorized Android device found. Accept the USB debugging prompt and retry."
 }
+if ($devices.Count -ne 1) {
+    throw "Connect exactly one intended Android device before installing the preview."
+}
 
-& $buildScript | Out-Host
+if (-not $SkipBuild) {
+    & $buildScript | Out-Host
+}
 
 if (-not (Test-Path -LiteralPath $aab)) { throw "Preview bundle was not produced: $aab" }
 

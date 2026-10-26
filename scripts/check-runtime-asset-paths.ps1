@@ -14,6 +14,7 @@ $ignoredSourcePathPrefixes = @(
     ".codex-tmp",
     ".codex-tools",
     ".git",
+    ".godot",
     "android/build",
     "assets/test-results",
     "builds",
@@ -36,9 +37,9 @@ function Convert-ResourcePathToProjectPath {
 function Convert-ToProjectRelativePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $rootPath = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/")
-    $fullPath = (Resolve-Path -LiteralPath $Path).Path
-    if (-not $fullPath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $rootPath = [IO.Path]::GetFullPath($projectRoot).TrimEnd("\", "/")
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    if (-not $fullPath.StartsWith($rootPath + [IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Path is outside the project root: $Path"
     }
     $relativePath = $fullPath.Substring($rootPath.Length).TrimStart("\", "/")
@@ -78,14 +79,21 @@ function Test-IsIgnoredSourcePath {
 
 $pathsByResourcePath = @{}
 $exportExcludeFilters = New-Object System.Collections.Generic.List[string]
+# Prune generated/build directories before descending into them, rather than
+# traversing every scratch file and resolving its path only to discard it.
+function Get-RuntimeSourceFiles([string]$Directory) {
+    foreach ($item in Get-ChildItem -LiteralPath $Directory) {
+        $relativePath = Convert-ToProjectRelativePath $item.FullName
+        if (Test-IsIgnoredSourcePath $relativePath) { continue }
+        if ($item.PSIsContainer) {
+            Get-RuntimeSourceFiles $item.FullName
+        } elseif ($sourceFileExtensions -contains $item.Extension) {
+            $relativePath
+        }
+    }
+}
 $sourceFiles = @(
-    Get-ChildItem -LiteralPath $projectRoot -File -Recurse |
-        Where-Object {
-            $relativePath = Convert-ToProjectRelativePath $_.FullName
-            ($sourceFileExtensions -contains $_.Extension) -and -not (Test-IsIgnoredSourcePath $relativePath)
-        } |
-        ForEach-Object { Convert-ToProjectRelativePath $_.FullName } |
-        Sort-Object
+    Get-RuntimeSourceFiles $projectRoot | Sort-Object
 )
 
 Assert-True ($sourceFiles.Count -gt 0) "Runtime asset path check did not discover any source files."
@@ -113,6 +121,30 @@ foreach ($sourceFile in $sourceFiles) {
     }
 }
 
+# Formatted material paths are dynamic. Expand the actual catalog so missing
+# construction artwork cannot hide behind the formatter exclusion above.
+$database = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'docs/activity-database.json') | ConvertFrom-Json
+$materials = @($database.skills.actions | Where-Object { $_.unlock_project } | ForEach-Object { $_.unlock_project.material } | Sort-Object -Unique)
+foreach ($material in $materials) {
+    foreach ($stem in @('project-chip','unlock-holder')) {
+        Add-ResourcePath $pathsByResourcePath "res://assets/content/ui/$stem-$material.png" 'construction material catalog'
+    }
+    if ($material -in @('timber','stone')) {
+        Add-ResourcePath $pathsByResourcePath "res://assets/content/ui/project-$material-states.png" 'construction material catalog'
+    } else {
+        foreach ($frame in 0..3) {
+            Add-ResourcePath $pathsByResourcePath "res://assets/content/ui/project-damage-$material-$frame.png" 'construction material catalog'
+        }
+    }
+}
+# The activity database names its art as bare "assets/..." paths that the game
+# turns into res:// paths at run time, so the quoted-res:// scan above cannot see
+# them. The Giants' state sheet was named only there and was excluded from every
+# export as unreferenced, which left the arena without its enemy.
+$databaseText = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'docs/activity-database.json')
+foreach ($match in [regex]::Matches($databaseText, '"(?<path>assets/[^"]+\.(?:png|jpg|jpeg|webp|svg|ogg|wav|mp3))"')) {
+    Add-ResourcePath $pathsByResourcePath ("res://" + $match.Groups["path"].Value) 'docs/activity-database.json'
+}
 $missing = New-Object System.Collections.Generic.List[string]
 foreach ($resourcePath in ($pathsByResourcePath.Keys | Sort-Object)) {
     $projectPath = Convert-ResourcePathToProjectPath $resourcePath

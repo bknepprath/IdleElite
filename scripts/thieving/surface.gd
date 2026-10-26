@@ -24,8 +24,6 @@ const THIEVING_ACTION_JAIL_MIN_SECONDS := ThievingState.ACTION_JAIL_MIN_SECONDS
 
 var host: Node
 
-var THIEVING_JAIL_SECONDS_BY_LEVEL:
-	get: return host.THIEVING_JAIL_SECONDS_BY_LEVEL
 var MODULE_TITLE_OVER_PIN_Z_INDEX: int:
 	get: return host.MODULE_TITLE_OVER_PIN_Z_INDEX
 var COLOR_INK:
@@ -299,7 +297,9 @@ func _route_thieving_heist_button_global_input(event: InputEvent) -> bool:
 		is_motion = true
 	else:
 		return false
-	var hit := _thieving_heist_button_hit(event_position, is_press)
+	# An unrelated card's release must not be claimed by a visible heist.
+	# An armed heist still owns a drag/release outside its button below.
+	var hit := _thieving_heist_button_hit(event_position, true)
 	if hit.is_empty() and (is_release or is_motion):
 		hit = _active_thieving_heist_button_hit()
 	if hit.is_empty():
@@ -484,7 +484,7 @@ func _finish_thieving_heist_preview_fade_in(heist_id: String, root_id: int, pop_
 		card.erase("thieving_heist_reveal_original_pop_offset_bottom")
 		card.erase("preview_fade_tween")
 	activity_unlock_heist_preview_after_ceremony_id = ""
-	host._release_detail_unlock_extra_scroll_space()
+	host._skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 
 
 
@@ -599,6 +599,7 @@ func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int)
 	timer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	timer.z_index = 6
 	overlay.add_child(timer)
+	_add_jail_tap_hint(overlay, timer)
 	card["jail_overlay"] = overlay
 	card["jail_label"] = timer
 	card["jail_bars_shake_body"] = bars_shake_body
@@ -651,6 +652,7 @@ func _reduce_thieving_heist_jail_timer(heist_id: String, card: Dictionary) -> vo
 
 
 func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
+	host._onboarding_runtime().acknowledge_soft_interaction("jail")
 	var timer := _state_object_ref(card.get("jail_label")) as Label
 	var overlay := _valid_control_ref(card.get("jail_overlay"))
 	if timer == null or overlay == null:
@@ -659,9 +661,10 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 		return
 	var reward_size := Vector2(105, 46)
 	var holder := Control.new()
+	holder.name = "JailTimerReduction"
 	holder.size = reward_size
-	holder.z_index = 320
-	holder.z_as_relative = false
+	holder.z_index = 12
+	holder.z_as_relative = true
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(holder)
 
@@ -681,17 +684,15 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 
 	var timer_rect := timer.get_global_rect()
 	var overlay_origin := overlay.global_position
-	var origin := timer_rect.position - overlay_origin + Vector2(
-		randf_range(timer_rect.size.x * 0.34, timer_rect.size.x * 0.66),
-		randf_range(-18.0, 18.0)
-	)
-	origin += Vector2(randf_range(-150.0, 150.0), randf_range(-36.0, 10.0))
+	# Keep the feedback beside the timer and inside the clipped jail card.
+	var side := -1.0 if randf() < 0.5 else 1.0
+	var origin := timer_rect.get_center() - overlay_origin + Vector2(side * randf_range(190.0, 220.0), 68.0)
 	holder.position = origin - reward_size * 0.5
 	holder.rotation = randf_range(-0.22, 0.22)
 	holder.scale = Vector2.ONE * randf_range(0.74, 0.92)
 	holder.modulate = Color(1, 1, 1, 0)
 
-	var rise := Vector2(randf_range(-76.0, 76.0), randf_range(-172.0, -108.0))
+	var rise := Vector2(randf_range(-18.0, 18.0), -70.0)
 	var end_rotation := holder.rotation + randf_range(-0.16, 0.16)
 	var tween := create_tween()
 	tween.set_parallel(true)
@@ -724,10 +725,12 @@ func _thieving_action_jail_seconds(action: Dictionary, skill_level := -1) -> int
 	if level < 0:
 		level = _skill_level("thieving")
 	var unlock_level := maxi(1, int(action.get("unlock", 1)))
+	if level >= unlock_level + host.thieving_state.action_jail_immunity_levels:
+		return 0
 	var base_seconds := THIEVING_ACTION_JAIL_BASE_SECONDS + unlock_level * THIEVING_ACTION_JAIL_SECONDS_PER_UNLOCK_LEVEL
 	var level_reduction := maxi(0, level - unlock_level)
 	var jail_seconds := base_seconds - level_reduction
-	return jail_seconds if jail_seconds >= THIEVING_ACTION_JAIL_MIN_SECONDS else 0
+	return maxi(THIEVING_ACTION_JAIL_MIN_SECONDS, jail_seconds)
 
 
 
@@ -747,6 +750,9 @@ func _jail_thieving_action(action_id: String, resume_when_free := true, jail_sec
 	for card in _thieving_action_cards_for_action(action_id):
 		_sync_thieving_action_jail_overlay(card, action_id)
 	host._update_ui(0.0, true)
+	# Written at once, once per jail: a jail that lived only in memory could be
+	# escaped by closing the game before the next autosave.
+	host._mark_save_dirty("thieving jailed")
 	host.save_game()
 
 
@@ -765,7 +771,7 @@ func _cancel_thieving_action_jail_resumes_for_started_action(skill_id: String, a
 			host.thieving_state.action_jails[jailed_action_id] = state
 			changed = true
 	if changed:
-		host.save_game()
+		host._mark_save_dirty("jail resume cancelled")
 
 
 
@@ -783,13 +789,51 @@ func _clear_thieving_action_jail(action_id: String, resume_if_free := true) -> v
 		card["jail_bars"] = null
 		_set_thieving_action_card_jailed_visual(card, false)
 	if should_resume and running_skill_id.is_empty() and running_action_id.is_empty():
-		host._action_runtime()._start_action("thieving", action_id, false)
-	host.save_game()
+		# The timer can run out mid-swipe or mid-scroll. Those tap guards must not
+		# swallow the resume: the jail entry is already gone.
+		host._action_runtime()._start_action("thieving", action_id, false, false)
+	host._mark_save_dirty("jail ended")
+
+
+
+# A jailed action marked to resume whose timer ran out while the game was not
+# running: free it and put it back to work. Returns how many seconds after
+# away_from_unix it became free, or -1.0 when nothing was due.
+func _resume_jailed_action_freed_while_away(away_from_unix: int, now: int) -> float:
+	if host.thieving_state.action_jails.is_empty() or not running_skill_id.is_empty() or not running_action_id.is_empty():
+		return -1.0
+	var resume_action_id := ""
+	var resume_until := 0
+	for raw_action_id in host.thieving_state.action_jails.keys():
+		var state := host.thieving_state.action_jails.get(raw_action_id, {}) as Dictionary
+		var cooldown_until := int(state.get("cooldown_until_unix", 0))
+		if not bool(state.get("resume_when_free", false)) or cooldown_until > now:
+			continue
+		if resume_action_id.is_empty() or cooldown_until < resume_until:
+			resume_action_id = str(raw_action_id)
+			resume_until = cooldown_until
+	if resume_action_id.is_empty():
+		return -1.0
+	var action := _action_data("thieving", resume_action_id)
+	if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked("thieving", action):
+		return -1.0
+	_clear_thieving_action_jail(resume_action_id, false)
+	host.running_skill_id = "thieving"
+	host.running_action_id = resume_action_id
+	host.action_progress = 0.0
+	host._action_runtime()._reset_action_opportunity_state()
+	host._material_collection_surface()._sync_visible_mat_collection_for_action("thieving", resume_action_id, true)
+	host._mark_save_dirty("jail ended while away")
+	return float(maxi(0, resume_until - away_from_unix))
 
 
 
 func _process_thieving_action_jails() -> void:
 	if host.thieving_state.action_jails.is_empty():
+		return
+	# Jails that ran out while the game was closed are settled by the offline
+	# pass, which also credits the time since the release.
+	if host._save_runtime().pending_post_load_saved_at >= 0:
 		return
 	var now := _unix_now()
 	if now == host.thieving_state.last_action_jail_process_unix:
@@ -910,6 +954,7 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 	timer.modulate = Color(1, 1, 1, 0)
 	timer.scale = Vector2(0.86, 0.86)
 	overlay.add_child(timer)
+	_add_jail_tap_hint(overlay, timer)
 	card["jail_overlay"] = overlay
 	card["jail_label"] = timer
 	card["jail_bars_shake_body"] = bars_shake_body
@@ -972,7 +1017,7 @@ func _reduce_thieving_action_jail_timer(action_id: String, card: Dictionary) -> 
 	if _thieving_action_jail_remaining(action_id) <= 0:
 		_clear_thieving_action_jail(action_id, true)
 	else:
-		host.save_game()
+		host._mark_save_dirty("jail timer reduced")
 
 
 
@@ -1105,6 +1150,8 @@ func _thieving_heist_success_chance(heist: Dictionary) -> float:
 
 
 func _attempt_thieving_heist(heist_id: String) -> void:
+	if not pending_thieving_trophy_reward_float.is_empty():
+		return
 	host._settings_surface()._disarm_reset_data_confirmation()
 	if host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
 		return
@@ -1179,16 +1226,16 @@ func _play_pending_thieving_trophy_reward_float() -> void:
 
 func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void:
 	if not action_cards.has(action_key):
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	var card := action_cards[action_key] as Dictionary
 	var trophy := _state_object_ref(card.get("trophy")) as TextureRect
 	var anchor := _valid_control_ref(card.get("art_panel"))
 	if trophy == null or anchor == null or not anchor.is_inside_tree():
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	if trophy.texture == null:
-		pending_thieving_trophy_reward_float.clear()
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
 		return
 	var source_rect := trophy.get_global_rect()
 	if source_rect.size.x <= 1.0 or source_rect.size.y <= 1.0:
@@ -1306,7 +1353,7 @@ func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
 	if trophy_holder != null:
 		trophy_holder.queue_free()
 		host.button_press_runtime._pop_nav_button(hub_tab)
-		_fade_completed_thieving_heist_card(action_key)
+	_fade_completed_thieving_heist_card(action_key)
 
 
 
@@ -1412,6 +1459,8 @@ func _cleanup_stale_thieving_heist_cards() -> void:
 func _remove_thieving_heist_card_from_detail(action_key: String, restore_scroll: int, update_after := true) -> void:
 	if action_key.is_empty():
 		return
+	if update_after:
+		host._skill_detail_surface()._hold_skill_detail_layout_refresh(0.9)
 	if str(pending_thieving_trophy_reward_float.get("key", "")) == action_key:
 		pending_thieving_trophy_reward_float.clear()
 	var card := action_cards.get(action_key, {}) as Dictionary
@@ -1430,7 +1479,7 @@ func _remove_thieving_heist_card_from_detail(action_key: String, restore_scroll:
 		detail_actions_scroll.scroll_vertical = clamped_scroll
 	call_deferred("_clamp_detail_actions_scroll_to_content_deferred")
 	if update_after:
-		host._update_ui(0.0, true)
+		call_deferred("_refresh_skill_detail_after_thieving_heist_fade", restore_scroll)
 
 
 
@@ -1449,6 +1498,36 @@ func _refresh_skill_detail_after_thieving_heist_fade(restore_scroll: int) -> voi
 				break
 	if not action_key.is_empty():
 		_remove_thieving_heist_card_from_detail(action_key, restore_scroll, false)
+	# Reconcile explicitly: the retired heist is still in the lazy plan, which
+	# can suppress the ordinary refresh check while other rows are unmounted.
+	var reconciled := false
+	for attempt in range(30):
+		if current_screen != "skill" or selected_skill_id != "thieving":
+			return
+		if host._skill_detail_surface()._try_refresh_detail_module_order_in_place():
+			reconciled = true
+			# Reveal the new rows in place before moving the viewport to their end.
+			# Otherwise a high-level tier jump lands on still-transparent content.
+			var detail = host._skill_detail_surface()
+			for entry in detail.detail_lazy_plan.duplicate():
+				if entry.has("progression_reveal_delay"):
+					detail._ensure_detail_lazy_entry_mounted(str(entry.get("track_id", "")))
+			var reveal_until := Time.get_ticks_msec()
+			for entry in detail.detail_lazy_plan:
+				var entry_root := _valid_control_ref(entry.get("stack_host"))
+				if entry_root != null:
+					reveal_until = maxi(reveal_until, int(entry_root.get_meta("progression_reveal_until_msec", 0)))
+			var reveal_wait := maxf(0.0, float(reveal_until - Time.get_ticks_msec()) / 1000.0)
+			if reveal_wait > 0.0:
+				await get_tree().create_timer(reveal_wait).timeout
+			if current_screen != "skill" or selected_skill_id != "thieving":
+				return
+			for heist in host.thieving_state.visible_heists_for_render():
+				await host._skill_detail_surface()._scroll_to_activity_card("heist:" + str(heist.id), true, true)
+			break
+		await get_tree().process_frame
+	if not reconciled and current_screen == "skill" and selected_skill_id == "thieving":
+		await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(restore_scroll, "thieving", true, true)
 	host._update_ui(0.0, true)
 
 
@@ -1515,10 +1594,10 @@ func _discard_action_card_key(action_key: String) -> void:
 	host._skill_detail_surface()._discard_action_card_key(action_key)
 
 func _clamp_detail_actions_scroll_to_content_deferred() -> void:
-	host._clamp_detail_actions_scroll_to_content_deferred()
+	host._skill_detail_surface()._clamp_detail_actions_scroll_to_content_deferred()
 
 func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
-	host._set_detail_unlock_scroll_spacer_height(height)
+	host._skill_detail_surface()._set_detail_unlock_scroll_spacer_height(height)
 
 func _current_canvas_size() -> Vector2:
 	return host._current_canvas_size()
@@ -1528,15 +1607,6 @@ func _action_data(skill_id: String, action_id: String) -> Dictionary:
 
 func _action_key(skill_id: String, action_id: String) -> String:
 	return host._action_key(skill_id, action_id)
-
-func _action_card_key(skill_id: String, action_id: String, visual_card_key := "") -> String:
-	return host._action_card_key(skill_id, action_id, visual_card_key)
-
-func _dim_action_card(card: Dictionary, dimmed: bool) -> void:
-	host._dim_action_card(card, dimmed)
-
-func _started_action_matches(skill_id: String, action_id: String) -> bool:
-	return host._started_action_matches(skill_id, action_id)
 
 func _format_countdown(seconds: int) -> String:
 	return GameFormatting.countdown(seconds)
@@ -1549,3 +1619,14 @@ func _set_button_text_if_changed(button: Button, text: String) -> void:
 
 func _set_base_button_disabled_if_changed(button: BaseButton, disabled: bool) -> void:
 	host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, disabled)
+
+
+func _add_jail_tap_hint(overlay: Control, timer: Label) -> void:
+	var hint := preload("res://scripts/ui/soft_tutorial_arrow.gd").new()
+	hint.name = "JailTapHint"
+	hint.host = host
+	hint.interaction_id = "jail"
+	hint.target = timer
+	hint.target_box = Rect2(Vector2(-76, -35), Vector2(152, 70))
+	hint.target_centered_box = true
+	overlay.add_child(hint)

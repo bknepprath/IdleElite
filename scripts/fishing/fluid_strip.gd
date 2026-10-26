@@ -9,7 +9,7 @@ const EXPAND_SPEED := 14.0
 const STRIP_EDGE_INSET := 3.0
 const STRIP_BOTTOM_RADIUS := 33.0
 const STRIP_BOTTOM_INSET := 0.0
-const STRIP_TOP_LIP_HEIGHT := 3.5
+const STRIP_TOP_LIP_HEIGHT := 0.0
 const STRIP_INK := Color("#171615")
 
 const FLUID_WATER := {
@@ -199,7 +199,10 @@ func _set_phase(next_phase: Phase) -> void:
 	_update_wave_speed()
 	_sync_shader_uniforms()
 func _fluid_table() -> Dictionary:
-	match _fluid_kind:
+	return palette_for(_fluid_kind)
+
+static func palette_for(kind: String) -> Dictionary:
+	match kind:
 		"sewer":
 			return FLUID_SEWER
 		"lava":
@@ -215,12 +218,8 @@ func _fluid_table() -> Dictionary:
 	return FLUID_WATER
 func _update_wave_speed() -> void:
 	var table := _fluid_table()
-	# Bite uses the same scroll rate as calm; a different bite cue will come later.
-	match _phase:
-		Phase.REVEAL:
-			_wave_speed = 0.35
-		_:
-			_wave_speed = float(table.get("scroll_speed", 1.0))
+	# This strip is quiet water ambience; catches animate in their own VFX layer.
+	_wave_speed = float(table.get("scroll_speed", 1.0)) * 0.22
 func _apply_fluid_colors() -> void:
 	var table := _fluid_table()
 	var surface_color: Color = table.get("fluid", FLUID_WATER["fluid"])
@@ -285,6 +284,6 @@ func _sync_strip_visibility() -> void:
 	if _top_lip != null:
 		_top_lip.visible = show_fill and size.y > STRIP_TOP_LIP_HEIGHT
 	if _underlay != null:
-		_underlay.visible = show_fill
+		_underlay.visible = false
 	if _fill != null:
 		_fill.visible = show_fill

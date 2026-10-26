@@ -17,6 +17,7 @@ func load_action_data(host) -> bool:
 	skill_defs.clear()
 	if load_activity_database(host):
 		rebuild_action_lookup(host)
+		host._project_runtime().configure()
 		return true
 	push_error("Failed to load required activity database: %s" % ACTIVITY_DATABASE_PATH)
 	return false
@@ -49,9 +50,22 @@ func load_activity_database(host) -> bool:
 	var activity_database = JSON.parse_string(file.get_as_text())
 	if typeof(activity_database) != TYPE_DICTIONARY:
 		return false
+	host.fishing_runtime.configure_rules(activity_database)
+	host.thieving_state.action_jail_immunity_levels = maxi(1, int(activity_database.get("global_rules", {}).get("thieving_jail_immunity_levels_above_unlock", 5)))
+	host._production_runtime().configure(activity_database)
+	host._halloween_runtime().configure(activity_database.get("seasonal_events", {}))
 	var loaded_skills = activity_database.get("skills", [])
 	if typeof(loaded_skills) != TYPE_ARRAY or loaded_skills.is_empty():
 		return false
+	# Resources that any activity of one skill gives, with how many times the
+	# listed amount a requirement for each asks. Projects in other skills ask too.
+	var skill_wide_target_multipliers := {}
+	for raw_skill in loaded_skills:
+		if typeof(raw_skill) != TYPE_DICTIONARY:
+			continue
+		var shared_drop = (raw_skill as Dictionary).get("skill_unlock_drop", {})
+		if shared_drop is Dictionary and not (shared_drop as Dictionary).is_empty():
+			skill_wide_target_multipliers[str(shared_drop.get("id", ""))] = maxf(1.0, float(shared_drop.get("target_multiplier", 1.0)))
 	for raw_skill in loaded_skills:
 		if typeof(raw_skill) != TYPE_DICTIONARY:
 			continue
@@ -82,9 +96,31 @@ func load_activity_database(host) -> bool:
 				var action := raw_action as Dictionary
 				if not bool(action.get("enabled", true)):
 					continue
+				if action.has("seasonal_event") and not host._halloween_runtime().active(): continue
 				var action_data := _action_for_load(action, skill_id, actions.size(), host._action_runtime()._action_mat_reward_defs(action))
 				for disabled_boss_id in disabled_boss_ids:
 					(action_data.get("requires_bosses", []) as Array).erase(disabled_boss_id)
+				if host._halloween_runtime().active() and action.get("seasonal_unlock_drop", {}) is Dictionary:
+					action_data["seasonal_unlock_drop"] = action.get("seasonal_unlock_drop", {}).duplicate(true)
+				# A skill can name one resource that any of its activities gives, for
+				# unlocks that ask for work in the skill rather than one activity's item.
+				var skill_drop = skill.get("skill_unlock_drop", {})
+				if skill_drop is Dictionary and not (skill_drop as Dictionary).is_empty() and str(action_data.get("kind", "activity")) != "passive_item_collect" and str((action_data.get("unlock_drop", {}) as Dictionary).get("id", "")) != str(skill_drop.get("id", "")):
+					action_data["skill_unlock_drop"] = (skill_drop as Dictionary).duplicate(true)
+					action_data["skill_unlock_drop"]["any_activity_skill"] = skill_id
+					action_data["skill_unlock_drop"]["amount"] = _skill_drop_amount_for_level(loaded_actions as Array, str(skill_drop.get("id", "")), int(action_data.get("unlock", 1)), int(skill_drop.get("amount", 1)))
+				# A requirement that any activity of a skill can fill is easy to meet,
+				# so it asks for more: the skill's target_multiplier times the listed amount.
+				if action_data.has("unlock_project"):
+					for step in (action_data["unlock_project"] as Dictionary).get("steps", []):
+						var target_multiplier := float(skill_wide_target_multipliers.get(str(step.get("resource", "")), 1.0))
+						if target_multiplier > 1.0:
+							# The listed amount and the multiplier stay on the step: a save
+							# counted against a lower multiplier is brought up to this one
+							# (ProjectRuntime.restore).
+							step["listed_target"] = int(step.get("target", 0))
+							step["target_multiplier"] = target_multiplier
+							step["target"] = int(round(float(step.get("target", 0)) * target_multiplier))
 				actions.append(action_data)
 		sort_activity_actions_for_page(skill_id, actions)
 		actions_by_skill[skill_id] = actions
@@ -92,6 +128,25 @@ func load_activity_database(host) -> bool:
 			host.fishing_runtime.load_area_definitions_from_skill(host, skill, actions)
 	host._temporary_event_runtime()._load_event_module_definitions(activity_database)
 	return not skill_defs.is_empty()
+
+
+# What an activity with no amount of its own gives of its skill's shared
+# resource: as much as the highest activity at or below its level that has one,
+# so work at a higher level is worth more whichever activity does it.
+static func _skill_drop_amount_for_level(loaded_actions: Array, resource: String, unlock_level: int, fallback: int) -> int:
+	var amount := maxi(1, fallback)
+	var nearest_level := -1
+	for raw_action in loaded_actions:
+		if typeof(raw_action) != TYPE_DICTIONARY:
+			continue
+		var drop = (raw_action as Dictionary).get("unlock_drop", {})
+		if not drop is Dictionary or str(drop.get("id", "")) != resource:
+			continue
+		var level := int((raw_action as Dictionary).get("unlock", 1))
+		if level <= unlock_level and level > nearest_level:
+			nearest_level = level
+			amount = maxi(1, int(drop.get("amount", fallback)))
+	return amount
 
 
 func sort_activity_actions_for_page(skill_id: String, actions: Array) -> void:
@@ -139,12 +194,28 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 		"tier": int(source.get("tier", 1)),
 		"seconds": float(source.get("seconds", 1.0)),
 		"xp": xp_value,
-		"rewards": {"xp": xp_value},
+		"wisdom_skill": str(source.get("wisdom_skill", owner_skill_id)),
+		"wisdom_reward": maxi(0, int(source.get("wisdom_reward", 0))),
+		"wisdom_required": maxi(0, int(source.get("wisdom_required", 0))),
+		"rewards": (source.get("rewards", {}) as Dictionary).duplicate(true),
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
 		"art": _res_path(str(source.get("art", ""))),
 		"bg": _res_path(str(source.get("background", source.get("bg", ""))))
 	}
+	action_data["art_framing"] = (source.get("art_framing", {}) as Dictionary).duplicate()
+	action_data["production"] = (source.get("production", {}) as Dictionary).duplicate(true)
+	action_data["production_tier_perks_exempt"] = bool(source.get("production_tier_perks_exempt",false))
+	action_data["mastery_enabled"] = bool(source.get("mastery_enabled",true))
+	action_data["presentation"] = (source.get("presentation", {}) as Dictionary).duplicate(true)
+	action_data["rockslide"] = (source.get("rockslide", {}) as Dictionary).duplicate(true)
+	for system in ["grove","slingshot_range"]: action_data[system] = (source.get(system,{}) as Dictionary).duplicate(true)
+	action_data["rewards"]["xp"] = xp_value
+	if source.get("unlock_project", {}) is Dictionary and not (source.get("unlock_project", {}) as Dictionary).is_empty():
+		action_data["unlock_project"] = source.unlock_project.duplicate(true)
+	if source.get("unlock_drop", {}) is Dictionary:
+		action_data["unlock_drop"] = source.get("unlock_drop", {}).duplicate(true)
+	if source.has("seasonal_event"): action_data["seasonal_event"] = source.seasonal_event
 	var art_animation := _action_art_animation_for_load(source.get("art_animation", {}))
 	if not art_animation.is_empty():
 		action_data["art_animation"] = art_animation
@@ -156,6 +227,7 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 	var build := _build_contract_for_load(source.get("build", {}))
 	if not build.is_empty():
 		action_data["build"] = build
+	action_data["mastery_xp_per_completion"] = maxf(1.0, float(source.get("mastery_xp_per_completion", 1.0)))
 	var recovery := _recovery_contract_for_load(source.get("recovery", {}))
 	if not recovery.is_empty():
 		action_data["recovery"] = recovery
@@ -388,6 +460,16 @@ static func _action_art_animation_effects_for_load(value: Variant) -> Dictionary
 	var effect_name := str(source.get("name", "")).strip_edges()
 	if effect_name.is_empty():
 		return {}
+	if effect_name == "frame_overlay":
+		return {
+			"name": effect_name,
+			"atlas": _res_path(str(source.get("atlas", ""))),
+			"frame_count": clampi(int(source.get("frame_count", 1)), 1, 64),
+			"cell_width": maxi(1, int(source.get("cell_width", 384))),
+			"cell_height": maxi(1, int(source.get("cell_height", 384))),
+			"start_progress": clampf(float(source.get("start_progress", 0)), 0, 1),
+			"end_progress": clampf(float(source.get("end_progress", 1)), 0, 1)
+		}
 	var colors := []
 	if typeof(source.get("colors", [])) == TYPE_ARRAY:
 		for raw_color in source.get("colors", []):

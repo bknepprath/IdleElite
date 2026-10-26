@@ -358,7 +358,7 @@ func _check_button_activation(scene: Node) -> void:
 	var floats_before_need := get_node_count_in_group("skill_reward_float")
 	scene.call("_passive_modules_runtime").begin_firepit_ignition(int(scene.call("_unix_now")))
 	var floats_after_need := get_node_count_in_group("skill_reward_float")
-	_expect(floats_after_need >= floats_before_need + 1, "failed firepit start should pop visible Need Scrapwood text")
+	_expect(floats_after_need >= floats_before_need + 1, "failed firepit start should explain the one-scrapwood cost")
 	scene.passive_modules["woodcutting-firepit"] = {
 		"active": false,
 		"igniting": false,

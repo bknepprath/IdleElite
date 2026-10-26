@@ -1,0 +1,4 @@
+- Click players' profiles in chat to see their stats
+- Reworked fishing tools, balance and animations
+- UI improvements
+- Improved ad page

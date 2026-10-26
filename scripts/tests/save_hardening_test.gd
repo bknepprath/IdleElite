@@ -30,6 +30,7 @@ func _run() -> void:
 	_check_code38_rollback_decoder()
 	_check_verified_backup_rotation()
 	_check_semantic_and_future_rejection()
+	_check_malformed_numbers_recover()
 	_check_quarantine_preserves_originals()
 	_check_fail_closed_boot_selection()
 	_check_blocked_boot_can_archive_and_start_fresh()
@@ -53,6 +54,40 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	quit(1)
+
+
+func _check_malformed_numbers_recover() -> void:
+	var primary := "user://malformed-primary.json"
+	var backup := "user://malformed-backup.json"
+	SaveRuntime.write_text(backup, SaveRuntime.encoded_payload(_payload(1, 100)))
+	var shared_wisdom := _payload(2, 200)
+	shared_wisdom["wisdom"] = 17
+	SaveRuntime.write_text(primary, JSON.stringify(shared_wisdom))
+	_expect(SaveRuntime.load_dictionary(primary).get("wisdom", 0) == 17, "Historical shared numeric Wisdom must remain loadable.")
+	for field in ["stamina", "stamina_bank", "mats", "wisdom", "saved_at", "hub_mission_cooldown_until_unix", "action_progress", "fish_currency", "fishing_net_stored_xp", "fishing_boat_successes", "blue_guy_health", "offline_clock_guard_last_rejected_unix", "leaderboard_avatar_index", "leaderboard_auth_retry_after_unix"]:
+		for bad_value in [null, [], {}, "invalid"]:
+			var payload := _payload(2, 200)
+			payload[field] = {"fight": bad_value} if field in ["stamina", "stamina_bank", "mats", "wisdom"] else bad_value
+			SaveRuntime.write_text(primary, JSON.stringify(payload))
+			_expect(not str(SaveRuntime.load_dictionary_result(primary).get("error", "")).is_empty(), "Malformed %s must fail before typed restore." % field)
+			var recovered := SaveRuntime.best_dictionary_from_paths([primary, backup], [{"id": "fight"}])
+			_expect(int(recovered.get("save_revision", 0)) == 1, "Malformed primary must recover the valid backup.")
+	for field in ["passive_modules", "convergence_modules", "hub_modules"]:
+		for bad_value in [null, [], {}, "invalid"]:
+			var payload := _payload(2, 200)
+			var numeric_field := "last_update" if field == "passive_modules" else "build_started_unix" if field == "convergence_modules" else "build_started_msec"
+			payload[field] = {"test_module": {numeric_field: bad_value}}
+			SaveRuntime.write_text(primary, JSON.stringify(payload))
+			_expect(not str(SaveRuntime.load_dictionary_result(primary).get("error", "")).is_empty(), "Malformed %s timer must fail before typed restore." % field)
+			var recovered := SaveRuntime.best_dictionary_from_paths([primary, backup], [{"id": "fight"}])
+			_expect(int(recovered.get("save_revision", 0)) == 1, "Malformed module timer must recover the valid backup.")
+	for bad_value in [null, [], {}, "invalid"]:
+		var payload := _payload(2, 200)
+		payload["hub_missions"] = [{"target": bad_value}]
+		SaveRuntime.write_text(primary, JSON.stringify(payload))
+		_expect(not str(SaveRuntime.load_dictionary_result(primary).get("error", "")).is_empty(), "Malformed mission counts must fail before typed restore.")
+	_remove(primary)
+	_remove(backup)
 
 
 func _check_flat_v1_compatibility() -> void:

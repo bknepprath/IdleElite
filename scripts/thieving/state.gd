@@ -66,6 +66,7 @@ const HEIST_DEFS := [
 ]
 
 var host
+var action_jail_immunity_levels := 5
 var trophies := {}
 var action_jails := {}
 var pending_trophy_reward_float := {}
@@ -89,6 +90,9 @@ func visible_heists_for_render() -> Array:
 	var pending_key := str(pending_trophy_reward_float.get("key", "")) if not pending_trophy_reward_float.is_empty() else ""
 	if pending_key.begins_with("thieving_heist:"):
 		pending_heist_id = pending_key.substr("thieving_heist:".length())
+		# Finish the trophy flight and card exit before revealing its successor.
+		var pending_heist := heist_def(pending_heist_id)
+		return [pending_heist] if not pending_heist.is_empty() else []
 	for i in range(HEIST_DEFS.size()):
 		var heist := HEIST_DEFS[i] as Dictionary
 		var heist_id := str(heist.get("id", ""))
@@ -259,7 +263,9 @@ static func normalized_action_jails(
 			cooldown_until = maxi(0, int(raw_state))
 		else:
 			continue
-		if cooldown_until <= now:
+		# A finished jail still owes its action a resume. Keep it until the game
+		# has put the action back to work.
+		if cooldown_until <= now and not resume_when_free:
 			continue
 		normalized[action_id] = {
 			"cooldown_until_unix": cooldown_until,

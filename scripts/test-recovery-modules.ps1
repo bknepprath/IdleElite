@@ -66,7 +66,9 @@ func _run() -> void:
 	var normal_action := scene.call("_action_data", "fight", "push-ups") as Dictionary
 	var normal_built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", normal_action, 1080.0, 1080.0) as Dictionary
 	var normal_root := normal_built.get("card_root") as Control
-	_expect(recovery_root != null and normal_root != null and is_equal_approx(recovery_root.custom_minimum_size.y - ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y, normal_root.custom_minimum_size.y - ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y), "recovery cards should keep the same front-face height as normal activity cards")
+	# Since 2026-10-08 a recovery card's face is taller by its extra content height,
+	# which clears the stat panels above the wide U rail (docs/activity-title-spacing-2026-10-08.md).
+	_expect(recovery_root != null and normal_root != null and is_equal_approx(recovery_root.custom_minimum_size.y - ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y, normal_root.custom_minimum_size.y - ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y + ActivityCardStyles.RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT), "recovery card faces should be taller than normal activity cards by exactly their extra content height")
 	var depth := card.get("depth") as ActivityCardDepth
 	_expect(depth != null and depth.depth_offset.is_equal_approx(ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET), "recovery cards should expose the same front-face height as normal activity cards")
 	var pop := card.get("pop") as Control
@@ -74,7 +76,11 @@ func _run() -> void:
 	if depth != null:
 		var outline_points := depth.call("_wide_u_back_outline_points", Rect2(Vector2.ZERO, Vector2(1080.0, 720.0)), 12.0) as PackedVector2Array
 		_expect(outline_points.size() > 60 and outline_points[0].is_equal_approx(outline_points[outline_points.size() - 1]), "recovery depth outline should be one closed stroke")
-		_expect(outline_points.has(Vector2(1074.0, 576.0)) and outline_points.has(Vector2(1008.0, 642.0)), "recovery depth outline should round its outer bottom corners")
+		_expect(is_equal_approx(depth.wide_u_bottom_rise, ActivityCardStyles.RECOVERY_WIDE_U_BOTTOM_RISE) and is_equal_approx(depth.wide_u_shoulder_ratio, ActivityCardStyles.RECOVERY_WIDE_U_SHOULDER_RATIO), "recovery depth should use the recovery wide U rise and shoulder")
+		# The outer bottom corner is an arc of the card's own radius that ends where the U begins.
+		var outline_radius := minf(depth.radius, 354.0)
+		var outline_side_y := maxf(6.0 + outline_radius, 714.0 - depth.wide_u_bottom_rise)
+		_expect(outline_radius > 1.0 and outline_points.has(Vector2(1074.0, outline_side_y - outline_radius)) and outline_points.has(Vector2(1074.0 - outline_radius, outline_side_y)), "recovery depth outline should round its outer bottom corners")
 	var stamina_label := card.get("stamina") as Label
 	_expect(stamina_label != null, "recovery card should render a stamina stat chip")
 	_expect(stamina_label == null or stamina_label.text == "+3", "recovery card should display the stamina refund as +3")
@@ -82,7 +88,7 @@ func _run() -> void:
 	_expect(stamina_box != null and bool(stamina_box.get_meta("normal_activity_stat_box", false)), "recovery cards should use normal activity stat chips")
 	_expect(card.get("mastery_ring") as Control != null, "recovery cards should use the normal action-art mastery ring")
 	var progress := card.get("progress") as ActivityProgressRail
-	_expect(progress != null and progress.bottom_radius >= 64.0 and progress.offset_top < -100.0 and progress.bottom_shape == "wide_u", "recovery card should use the wide U recovery progress rail shape")
+	_expect(progress != null and is_equal_approx(progress.bottom_radius, float(scene.ACTION_CARD_FACE_RADIUS)) and is_equal_approx(progress.offset_top, -ActivityCardStyles.RECOVERY_WIDE_U_RAIL_HEIGHT) and progress.bottom_shape == "wide_u", "recovery card should use the wide U recovery progress rail shape")
 	if progress != null:
 		var rail_probe := ActivityProgressRail.new()
 		rail_probe.size = Vector2(1080.0, 142.0)

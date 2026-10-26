@@ -15,8 +15,9 @@ var completed_bosses := {}
 var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
 var blue_guy_health_bank := 0.0
 var parked_combat_stage: Control
-# Arena XP banked toward the next "completion" (mission tick + medal progress), per fight action.
+# Arena XP banked toward medal progress, per fight action.
 var arena_completion_xp_progress := {}
+var fighting_display_xp_remainder := 0.0
 var parked_combat_action_id := ""
 
 
@@ -56,6 +57,20 @@ func sync_parked_combat_stage() -> void:
 
 func _init(host_node = null) -> void:
 	host = host_node
+
+
+# Everything a new save starts without. Reset Data used to leave cleared bosses,
+# health and banked arena XP behind.
+func reset() -> void:
+	completed_bosses.clear()
+	blue_guy_health = float(BLUE_GUY_HEALTH_MAX)
+	blue_guy_health_bank = 0.0
+	arena_completion_xp_progress.clear()
+	fighting_display_xp_remainder = 0.0
+	if is_instance_valid(parked_combat_stage):
+		parked_combat_stage.queue_free()
+	parked_combat_stage = null
+	parked_combat_action_id = ""
 
 
 func apply_blue_guy_health_regen_seconds(seconds: float) -> void:
@@ -244,7 +259,7 @@ func on_rooster_punch_out_stamina_damage(amount: int, stage: Control) -> void:
 		if SkillState.host_stamina_value("fight", host) <= 0.0001 and stage.has_method("close_after_stamina_loss"):
 			stage.call("close_after_stamina_loss")
 	host._update_ui(0.0, false)
-	host.save_game()
+	host._mark_save_dirty("rooster hit")
 func on_blue_guy_chicken_brawl_punch_landed(shield_dropped: bool) -> void:
 	if host == null:
 		return
@@ -262,7 +277,7 @@ func on_blue_guy_chicken_brawl_knocked_out() -> void:
 		SkillState.host_sync_stamina_bank("fight", host)
 	host._reward_feedback_surface()._set_result("Blue Guy was knocked out. -1 stamina.")
 	host._update_ui(0.0, false)
-	host.save_game()
+	host._mark_save_dirty("knocked out")
 func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) -> void:
 	if host == null:
 		return
@@ -270,12 +285,18 @@ func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) ->
 	host._audio_director()._play_chicken_death_sfx()
 	if amount <= 0:
 		return
+	if stage == null or not is_instance_valid(stage):
+		return
+	var action_id := str(stage.get_meta("combat_action_id", ""))
+	if host.running_skill_id != "fight" or host.running_action_id != action_id:
+		return
+	# A kill is one mission unit regardless of its XP reward or wave size.
+	host._hub_runtime().record_mission_action_completion("fight", action_id)
 	_award_fighting_xp(amount, stage)
 	_record_arena_completion_progress(amount)
 
 # Arena fights have no fixed completion, so every activity-XP's worth of kill XP
-# counts as one completion (the unit offline fighting uses): it ticks the mission
-# board and earns medal mastery like any other activity.
+# earns one completion of medal mastery. Mission progress is counted per kill.
 func _record_arena_completion_progress(amount: int) -> void:
 	var action_id: String = host.running_action_id
 	if host.running_skill_id != "fight" or not action_is_free_fighting_proto("fight", action_id):
@@ -285,17 +306,21 @@ func _record_arena_completion_progress(amount: int) -> void:
 	var banked := float(arena_completion_xp_progress.get(action_id, 0.0)) + float(amount)
 	while banked >= xp_per_completion:
 		banked -= xp_per_completion
-		host._hub_runtime().record_mission_action_completion("fight", action_id)
 		MasteryState.add_host_xp(host, "fight", action_id, MasteryState.reward_for_action(host, "fight", action_id, action))
 	arena_completion_xp_progress[action_id] = banked
 func _award_fighting_xp(amount: int, stage: Control) -> void:
 	if not host.skills.has("fight"):
 		host.skills["fight"] = {"xp": 0, "level": 1}
-	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount
+	# Preserve small per-enemy bonuses instead of rounding each one down to zero.
+	fighting_display_xp_remainder += float(amount) * host._hub_runtime().fighting_xp_bonus()
+	var bonus := floori(fighting_display_xp_remainder + 0.000001)
+	fighting_display_xp_remainder = maxf(0.0, fighting_display_xp_remainder - bonus)
+	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount + bonus
 	SkillState.recalculate_level(host, "fight")
 	if stage != null and is_instance_valid(stage) and stage.has_method("setup_fighting_level"):
 		stage.call("setup_fighting_level", SkillState.host_skill_level(host, "fight"))
-	host.save_game()
+	# One per kill. Arena XP rides the autosave like every other completion.
+	host._mark_save_dirty("arena kill")
 func sync_blue_guy_chicken_brawl_stage_active(card: Dictionary, skill_id: String, action_id: String, running: bool) -> void:
 	if host == null:
 		return

@@ -1,4 +1,37 @@
 extends Control
+
+var rockslide_runtime
+
+func _rockslide_runtime():
+	if rockslide_runtime == null:
+		rockslide_runtime = preload("res://scripts/gameplay/rockslide_runtime.gd").new(self)
+	return rockslide_runtime
+
+var grove_runtime
+var slingshot_range_runtime
+
+func _grove_runtime():
+	if grove_runtime == null: grove_runtime = preload("res://scripts/gameplay/grove_runtime.gd").new(self)
+	return grove_runtime
+
+func _slingshot_range_runtime():
+	if slingshot_range_runtime == null: slingshot_range_runtime = preload("res://scripts/gameplay/slingshot_range_runtime.gd").new(self)
+	return slingshot_range_runtime
+
+var production_runtime
+
+func _production_runtime():
+	if production_runtime == null:
+		production_runtime = preload("res://scripts/production/runtime.gd").new(self)
+	return production_runtime
+
+var halloween_runtime
+
+func _halloween_runtime():
+	if halloween_runtime == null:
+		halloween_runtime = preload("res://scripts/seasonal/halloween_runtime.gd").new(self)
+	return halloween_runtime
+
 const FishingState = preload("res://scripts/fishing/state.gd")
 const FishingUiSurface = preload("res://scripts/fishing/ui_surface.gd")
 const ActivityQueueRuntime = preload("res://scripts/activity_queue/runtime.gd")
@@ -63,7 +96,7 @@ const GOD_MODE_TARGET_LEVEL := 99
 const UNMARKED_MAXED_SAVE_COMPLETION_LIMIT := 5000
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
-const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
+const SHOP_ICON_TEXTURE := "res://assets/content/ui/ad-bonus-nav-icon.png"
 const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.png"
 const BASE_MAX_STAMINA := SkillState.BASE_MAX_STAMINA
 const STAMINA_REGEN_SECONDS := SkillState.STAMINA_REGEN_SECONDS
@@ -73,6 +106,8 @@ const MIN_MOBILE_HELP_FONT_SIZE := 52
 const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 60
 const MASTERY_MAX_LEVEL := 20
 const ACTION_CARD_MEDAL_PRESS_KIND := "__medal__"
+# A tap on a card's unlock-resource badge: it jumps to the activity being unlocked.
+const ACTION_CARD_RESOURCE_PRESS_KIND := "__unlock_resource__"
 const BASE_CANVAS := Vector2(1080, 1920)
 const SKILL_DETAIL_BOTTOM_UI_CLEARANCE := 170
 const SKILLS_PAGE_TOP_PAD := 48
@@ -193,7 +228,7 @@ const PROFILE_DISPLAY_NAME_MAX_CHARS := 16
 const PROFILE_NAME_KEY_MAX_CHARS := 16
 const PROFILE_GUEST_NAME_PREFIX := "guest"
 const LOW_STAMINA_ACTION_SPEED_MULT := 0.20
-const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 1.28
+const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 0.55
 const MODAL_OVERLAY_Z := 4096
 const TUTORIAL_LAYER := AchievementToastSurface.CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
@@ -214,6 +249,7 @@ const MODULE_LIST_TRANSITION_MIN_MOVE := 2.0
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
+const DEFERRED_ACTION_PROCESS_MAX_SECONDS := 60.0
 const ACTION_PROGRESS_RAIL_INSET := 0
 const ACTION_PROGRESS_RAIL_HEIGHT := 44
 
@@ -431,6 +467,8 @@ var detail_actions_scroll:
 	get: return _skill_detail_surface().detail_actions_scroll
 	set(value): _skill_detail_surface().detail_actions_scroll = value
 var background_maintenance_elapsed := 0.0
+var deferred_action_process_seconds := 0.0
+var deferred_action_process_key := ""
 var background_maintenance_pending_delta := 0.0
 var background_maintenance_step_index := 0
 var main_process_frame_index := 0
@@ -511,11 +549,19 @@ var startup_initialized := false
 var trace_process_slow_enabled := false
 var trace_process_threshold_us := 2000
 var trace_process_skill_filter := ""
+# Debug builds report texture loads and drawing that ran on the main thread.
+const TEXTURE_WORK_REPORT_INTERVAL_SECONDS := 2.0
+const TEXTURE_WORK_REPORT_MIN_USEC := 4000
+var texture_work_report_enabled := false
+var texture_work_report_elapsed := 0.0
 var action_stop_hold_circle: StopHoldCircle
 var app_resume_repair_pending := false
 var web_fishing_perf_probe_enabled := false
+var desktop_layout = preload("res://scripts/ui/desktop_layout.gd").new(self)
 func _ready() -> void:
+	desktop_layout.configure_window()
 	trace_process_slow_enabled = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	texture_work_report_enabled = OS.is_debug_build()
 	trace_process_threshold_us = 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
 	trace_process_skill_filter = OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
 	_fishing_ui_surface()._load_fishing_debug_env_flags()
@@ -561,6 +607,9 @@ func _ready() -> void:
 	timer.autostart = true
 	timer.timeout.connect(Callable(_save_runtime(), "_autosave_if_needed"))
 	add_child(timer)
+	# The queue page's button textures are slow to draw; do it now, off this thread.
+	if visual_texture_cache._can_create_image_textures():
+		PaperButtonStyles.prewarm_chunky_images(_skill_swipe_activity_surface().chunky_button_prewarm_specs())
 	if _performance_runtime()._performance_overlay_enabled_on_boot():
 		_performance_runtime()._set_performance_overlay_enabled(true)
 	if DisplayServer.get_name() == "headless":
@@ -595,8 +644,16 @@ func _skill_swipe_loading_transition_active() -> bool:
 	)
 
 func _process(delta: float) -> void:
+	_save_runtime().poll_background_save()
+	# Hidden browser tabs may still receive throttled frames. Do not move the
+	# save timestamp forward while waiting to account for the suspended interval.
+	if _app_lifecycle_runtime().suspended_at_unix >= 0:
+		return
 	if not startup_initialized or _app_lifecycle_runtime().recover_suspended_process() or (boot_detail_render_in_progress and not boot_lazy_background_mount_allowed):
 		return
+	_halloween_runtime().process_launch_greeting()
+	if texture_work_report_enabled:
+		_report_main_thread_texture_work(delta)
 	var trace_process := trace_process_slow_enabled
 	if trace_process and not trace_process_skill_filter.is_empty() and selected_skill_id != trace_process_skill_filter:
 		trace_process = false
@@ -635,8 +692,19 @@ func _process(delta: float) -> void:
 	_action_runtime()._apply_stamina_regen_seconds(delta, true)
 	_fighting_runtime().apply_blue_guy_health_regen_seconds(delta)
 	_hub_surface()._process_hub_hotspot_hold(delta)
-	if not _fishing_ui_surface()._fishing_detail_should_defer_action_process_for_scroll():
-		_action_runtime()._process_action(delta)
+	# Completions are held back while the Fishing list is touched or scrolling.
+	# The time still counts: bank it and repay it once the list is at rest. The
+	# bank belongs to the activity that was running; it never carries to another.
+	var deferred_action_key := "%s:%s|%s" % [running_skill_id, running_action_id, _temporary_event_runtime().event_running_action_id]
+	if deferred_action_key != deferred_action_process_key:
+		deferred_action_process_key = deferred_action_key
+		deferred_action_process_seconds = 0.0
+	if _fishing_ui_surface()._fishing_detail_should_defer_action_process_for_scroll():
+		deferred_action_process_seconds = minf(deferred_action_process_seconds + delta, DEFERRED_ACTION_PROCESS_MAX_SECONDS)
+	else:
+		var repaid_seconds := minf(deferred_action_process_seconds, delta * 2.0)
+		deferred_action_process_seconds -= repaid_seconds
+		_action_runtime()._process_action(delta + repaid_seconds)
 	_action_stop_hold().process_action(delta)
 	_passive_firepit_surface()._process_firepit_stop_hold(delta)
 	_temporary_event_runtime()._process_temporary_event_scheduler(delta)
@@ -647,6 +715,8 @@ func _process(delta: float) -> void:
 	_audio_director()._process_music_flow(delta)
 	_profile_chat_overlay_surface()._process_chat_keyboard_lift(delta)
 	_profile_chat_overlay_surface()._process_chat_enter_submit_poll()
+	# Desktop resizing and sibling columns must update even when the focused fishing page is idle.
+	desktop_layout.update(delta)
 	if not _fishing_ui_surface()._fishing_detail_scroll_frame_can_skip_ui_update():
 		_update_ui(delta)
 	_skill_swipe_activity_surface()._maybe_release_ready_skill_swipe_cover()
@@ -691,6 +761,18 @@ func _process(delta: float) -> void:
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
 func _input(event: InputEvent) -> void:
+	if _settings_surface().privacy().visible():
+		_input_routing_shell().input(event)
+		return
+	if _halloween_runtime().greeting_visible():
+		_input_routing_shell().input(event)
+		return
+	_skill_detail_surface()._dismiss_module_collapse_badges_on_outside_press(event)
+	if _halloween_runtime().route_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if desktop_layout.route_input(event):
+		return
 	_input_routing_shell().input(event)
 func _action_stop_hold() -> StopHoldCircle:
 	if action_stop_hold_circle != null and is_instance_valid(action_stop_hold_circle) and not action_stop_hold_circle.is_queued_for_deletion() and action_stop_hold_circle.is_inside_tree():
@@ -748,6 +830,8 @@ func _build_skills_page() -> void:
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
 func _skill_content_width() -> float:
+	if desktop_layout.enabled() and current_screen == "skill":
+		return desktop_layout.column_width
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
 	if skill_id.is_empty():
@@ -783,6 +867,27 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 		_skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 	_skill_detail_surface()._reveal_detail_jump_arrow(direction)
 	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, _skill_detail_surface().DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
+# Headless runs load no texture and draw none, so the benchmarks cannot see this
+# work. A debug build on a device prints it: one line per interval in which the
+# main thread spent a noticeable time loading or drawing textures.
+func _report_main_thread_texture_work(delta: float) -> void:
+	texture_work_report_elapsed += delta
+	if texture_work_report_elapsed < TEXTURE_WORK_REPORT_INTERVAL_SECONDS:
+		return
+	texture_work_report_elapsed = 0.0
+	var loads: Dictionary = visual_texture_cache.take_main_thread_load_stats()
+	var drawn: Dictionary = PaperButtonStyles.take_main_thread_draw_stats()
+	if int(loads.usec) + int(drawn.usec) < TEXTURE_WORK_REPORT_MIN_USEC:
+		return
+	print("TEXTURE_WORK screen=%s skill=%s loads=%d load_ms=%.1f drawn=%d draw_ms=%.1f" % [
+		current_screen,
+		selected_skill_id,
+		int(loads.count),
+		float(loads.usec) / 1000.0,
+		int(drawn.count),
+		float(drawn.usec) / 1000.0,
+	])
+
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
 	var trace_static_refresh := static_refresh and trace_process_slow_enabled
@@ -839,6 +944,7 @@ func _update_ui(delta: float, instant := false) -> void:
 	if static_refresh:
 		_settings_surface()._refresh_audio_volume_controls()
 	if static_refresh:
+		_halloween_runtime().sync_expiry()
 		_shop_surface().sync_bonus_display()
 	_settings_surface()._expire_reset_data_confirm_if_needed()
 	if static_refresh:
@@ -869,7 +975,7 @@ func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
 		event_position = _input_routing_shell()._global_event_position(touch_event.position, touch_event.position, self)
 	else:
 		return false
-	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle"):
+	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle") + get_tree().get_nodes_in_group("auto_eat_candy_toggle"):
 		var button := node as TextureButton
 		if button == null or not is_instance_valid(button) or not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
@@ -941,6 +1047,11 @@ func _mark_save_dirty(reason := "") -> void:
 	_save_runtime()._mark_save_dirty(reason)
 
 func save_game() -> bool:
+	# Snapshot now, write on a worker thread. True means the save is under way.
+	return _save_runtime().save_game_in_background()
+
+# For callers that need the file on disk before they carry on.
+func save_game_now() -> bool:
 	return _save_runtime().save_game()
 
 func _unix_now() -> int:
@@ -1039,6 +1150,13 @@ func _activity_queue_runtime() -> ActivityQueueRuntime:
 	if activity_queue_runtime == null:
 		activity_queue_runtime = ActivityQueueRuntime.new(self)
 	return activity_queue_runtime
+
+var project_runtime
+
+func _project_runtime():
+	if project_runtime == null:
+		project_runtime = preload("res://scripts/progression/project_runtime.gd").new(self)
+	return project_runtime
 
 func _action_runtime() -> ActionRuntime:
 	if action_runtime == null:
@@ -1189,3 +1307,6 @@ func _clear_page_transient_input_state(clear_transition := false) -> void:
 	_skill_detail_surface()._clear_detail_jump_arrow_input_state()
 	_input_routing_shell()._clear_activity_lock_input_state()
 	_action_runtime()._release_current_stamina_gauge_press_state()
+	# A release that never arrives (focus loss, pointer leaving the window) must
+	# not leave the Fishing list thinking a finger is still down.
+	_fishing_ui_surface().fishing_detail_primary_pointer_down = false

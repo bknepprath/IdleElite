@@ -1,6 +1,7 @@
 extends RefCounted
 
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
+const PrivacySurface = preload("res://scripts/ui/privacy_surface.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
@@ -13,6 +14,12 @@ const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 1800
 const DISCORD_LOGO_ICON_TEXTURE := "res://assets/content/ui/discord-logo-icon.png"
 
 var host
+var privacy_surface: PrivacySurface
+
+func privacy() -> PrivacySurface:
+	if privacy_surface == null: privacy_surface = PrivacySurface.new(host)
+	return privacy_surface
+
 var reset_data_confirm_until := 0.0
 var reset_data_confirm_armed_at := 0.0
 var reset_data_confirm_button: Button
@@ -40,6 +47,7 @@ var audio_slider_grabber_highlight_texture: Texture2D
 var active_audio_slider: HSlider
 var active_audio_slider_is_music := false
 var active_audio_slider_touch_index := -1
+var audio_volume_save_pending := false
 var notification_permission_notice: Control
 var notification_permission_notice_tween: Tween
 
@@ -221,6 +229,9 @@ func render_page() -> void:
 	top_spacer.custom_minimum_size = Vector2(0, 16)
 	stack.add_child(top_spacer)
 	stack.add_child(host._label("Settings", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var profile_button := settings_page_button("Account", "", 660, 64, 88)
+	profile_button.pressed.connect(host._profile_chat_overlay_surface().open_profile_overlay)
+	stack.add_child(profile_button)
 	var audio_top_spacer := Control.new()
 	audio_top_spacer.custom_minimum_size = Vector2(0, 4)
 	stack.add_child(audio_top_spacer)
@@ -231,6 +242,9 @@ func render_page() -> void:
 	stack.add_child(stamina_decimal_toggle_button(660, 66))
 	stack.add_child(offline_progress_cap_notification_toggle_button(660, 66))
 	stack.add_child(dark_mode_toggle_button(660, 66))
+	var privacy_button := settings_page_button("Privacy & chat", "", 660, 64, 88)
+	privacy_button.pressed.connect(privacy().show_settings)
+	stack.add_child(privacy_button)
 	var fill_spacer := Control.new()
 	fill_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	fill_spacer.custom_minimum_size = Vector2(0, 6)
@@ -259,17 +273,9 @@ func render_page() -> void:
 	reset.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#ef5656"), 24, 36, true))
 	_register_reset_button(reset, "Hard Reset")
 	if OS.has_feature("web"):
-		# Browsers can drop site storage, and the web build has no cloud save.
-		var transfer_row := HBoxContainer.new()
-		transfer_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		transfer_row.add_theme_constant_override("separation", 20)
-		var export_button := settings_page_button("Export Save", "", 320, 64, 88)
-		export_button.pressed.connect(_settings_export_save_pressed)
-		transfer_row.add_child(export_button)
-		var import_button := settings_page_button("Import Save", "", 320, 64, 88)
-		import_button.pressed.connect(_settings_import_save_pressed.bind(import_button))
-		transfer_row.add_child(import_button)
-		action_stack.add_child(transfer_row)
+		var backups_button := settings_page_button("Save backups", "", 660, 64, 88)
+		backups_button.pressed.connect(_show_save_backups)
+		action_stack.add_child(backups_button)
 	action_stack.add_child(reset)
 	var contact_gap := Control.new()
 	contact_gap.custom_minimum_size.y = 64
@@ -278,7 +284,9 @@ func render_page() -> void:
 	stack.add_child(discord)
 	stack.move_child(discord, fill_spacer.get_index())
 	stack.add_child(action_stack)
-	var version_text := str(ProjectSettings.get_setting("application/config/version", ""))
+	# A build for itch.io carries a code after its number (0.7.1i): the builder
+	# writes it into the build's own project settings.
+	var version_text := str(ProjectSettings.get_setting("application/config/version", "")) + str(ProjectSettings.get_setting("application/config/version_suffix", ""))
 	if not version_text.is_empty():
 		var version_label: Label = host._label("Version %s" % version_text, 36, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 		version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -392,13 +400,24 @@ func _set_music_volume_from_slider(value: float) -> void:
 	host._audio_director().music_volume = clampf(value / 100.0, 0.0, 1.0)
 	host._audio_director()._apply_audio_bus_volumes()
 	_refresh_audio_volume_controls()
-	host.save_game()
+	_save_audio_volume_change()
 
 
 func _set_sfx_volume_from_slider(value: float) -> void:
 	host._audio_director().sfx_volume = clampf(value / 100.0, 0.0, 1.0)
 	host._audio_director()._apply_audio_bus_volumes()
 	_refresh_audio_volume_controls()
+	_save_audio_volume_change()
+
+
+# A drag reports a new value on every pointer move, and writing the whole save
+# each time made the slider stutter. While a slider is held the change is only
+# marked; the save is written once, when the drag ends.
+func _save_audio_volume_change() -> void:
+	if active_audio_slider != null and is_instance_valid(active_audio_slider):
+		audio_volume_save_pending = true
+		host._mark_save_dirty("volume changed")
+		return
 	host.save_game()
 
 
@@ -439,8 +458,8 @@ func _toggle_offline_progress_enabled() -> void:
 	host.offline_progress_enabled = not host.offline_progress_enabled
 	var now: int = host._unix_now()
 	host._save_runtime().last_save_unix_time = now
-	if not host.offline_progress_enabled:
-		host._passive_modules_runtime().reset_passive_module_timestamps(now)
+	# Changing the option starts a new accounting interval in either direction.
+	host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	_refresh_offline_progress_controls()
 	host.save_game()
 
@@ -700,6 +719,9 @@ func _update_active_audio_slider(global_point: Vector2) -> void:
 func _clear_active_audio_slider() -> void:
 	active_audio_slider = null
 	active_audio_slider_touch_index = -1
+	if audio_volume_save_pending:
+		audio_volume_save_pending = false
+		host.save_game()
 
 
 func _clear_settings_page_control_refs() -> void:
@@ -1096,6 +1118,8 @@ func _disarm_reset_data_confirmation() -> void:
 	reset_data_confirm_armed_at = 0.0
 	reset_data_confirm_button = null
 	for raw_button in reset_data_buttons:
+		if not is_instance_valid(raw_button):
+			continue
 		_clear_reset_button_confirmation(raw_button as Button)
 	_refresh_reset_data_buttons()
 
@@ -1271,6 +1295,14 @@ func settings_page_button(text: String, icon_path := "", min_width := 450, icon_
 		row.add_child(label)
 	return button
 
+
+func _show_save_backups() -> void:
+	var dialog = privacy()
+	var stack: VBoxContainer = dialog._panel("Save backups", true)
+	dialog._button(stack, "Download backup", _settings_export_save_pressed)
+	var restore: Button = dialog._button(stack, "Restore backup", func(): pass)
+	restore.pressed.connect(_settings_import_save_pressed.bind(restore))
+	dialog._button(stack, "Close", dialog.close)
 
 func _settings_export_save_pressed() -> void:
 	var text: String = host._save_runtime().export_save_text()

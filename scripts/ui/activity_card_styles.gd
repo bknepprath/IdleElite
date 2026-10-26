@@ -1,13 +1,19 @@
 extends RefCounted
 
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 
 const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 18.0)
+const WISDOM_REQUIREMENT_HEIGHT := 96.0
+const WISDOM_REQUIREMENT_LAYOUT_HEIGHT := WISDOM_REQUIREMENT_HEIGHT
 const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
+const RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT := 48.0
 const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
 const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
 const RECOVERY_WIDE_U_RAIL_HEIGHT := 110.0
+# The room a rest activity keeps under what opens on it, for its curved bar.
+const RECOVERY_INFORMATION_SURROUND := 160.0
 const ACTION_CARD_STROKE_WIDTH := 6.0
 const ACTIVITY_CARD_TITLE_FONT_SIZE := 41
 const ACTIVITY_CARD_TITLE_SIDE_INSET := 24.0
@@ -177,6 +183,7 @@ class PrismConnectorOverlay extends Control:
 	var ink_color := Color("#171615")
 	var side_fill_color := Color("#8f521f")
 	var bottom_fill_color := Color("#c8792c")
+	var segment_theme_colors: Array[Color] = []
 	var stroke_width := ACTION_CARD_STROKE_WIDTH
 	var radius := 33.0
 	var diagonal_radius := 16.0
@@ -259,7 +266,19 @@ class PrismConnectorOverlay extends Control:
 		var polygon := PackedVector2Array(front_perimeter)
 		for index in range(back_perimeter.size() - 1, -1, -1):
 			polygon.append(back_perimeter[index])
-		draw_polygon(polygon, PackedColorArray([side_fill_color]))
+		if segment_theme_colors.size() <= 1:
+			draw_polygon(polygon, PackedColorArray([side_fill_color]))
+			return
+		var origin := _connector_face_origin()
+		var face_size := _connector_face_size()
+		for segment in range(segment_theme_colors.size()):
+			var left := origin.x + face_size.x * segment / segment_theme_colors.size()
+			var right := origin.x + face_size.x * (segment + 1) / segment_theme_colors.size()
+			if segment == 0: left -= absf(travel.x) + stroke_width
+			if segment == segment_theme_colors.size() - 1: right += absf(travel.x) + stroke_width
+			var clip := PackedVector2Array([Vector2(left, -100), Vector2(right, -100), Vector2(right, size.y + 100), Vector2(left, size.y + 100)])
+			for piece in Geometry2D.intersect_polygons(polygon, clip):
+				draw_colored_polygon(piece, segment_theme_colors[segment].darkened(0.42))
 
 	func _rounded_visible_perimeter(origin: Vector2, face_size: Vector2, inset: float, travel: Vector2) -> PackedVector2Array:
 		var corner_radius := maxf(0.0, minf(radius, minf(face_size.x, face_size.y) * 0.5 - inset))
@@ -475,6 +494,13 @@ class ActionArtMasteryRing extends Control:
 	var gap_start_fraction := 0.10
 	var gap_finish_fraction := 0.84
 	var progress := 0.5
+	# Mastery gained fills the ring with an ease in and out instead of a jump.
+	const FILL_SECONDS := 0.55
+	const LEVEL_UP_FILL_SECONDS := 0.3
+	var shown_key := ""
+	var shown_level := -1
+	var target_progress := -1.0
+	var fill_tween: Tween
 
 	func set_progress(next_progress: float) -> void:
 		var clamped := clampf(next_progress, 0.0, 1.0)
@@ -482,6 +508,33 @@ class ActionArtMasteryRing extends Control:
 			return
 		progress = clamped
 		queue_redraw()
+
+	# key names whose mastery this is and level is its medal level. The ring
+	# animates only when the same activity gains mastery while it is on screen;
+	# anything else (first sight, another activity, a reset) is shown at once. A
+	# new medal level runs the ring to full and then starts it again from empty.
+	func show_mastery(key: String, level: int, next_progress: float, animate: bool) -> void:
+		var clamped := clampf(next_progress, 0.0, 1.0)
+		if key == shown_key and level == shown_level and absf(clamped - target_progress) <= 0.001:
+			return
+		var gained := key == shown_key and (level > shown_level or (level == shown_level and clamped > target_progress))
+		var leveled_up := gained and level > shown_level
+		shown_key = key
+		shown_level = level
+		target_progress = clamped
+		if fill_tween != null and fill_tween.is_valid():
+			fill_tween.kill()
+		fill_tween = null
+		if not animate or not gained or not is_visible_in_tree():
+			set_progress(clamped)
+			return
+		fill_tween = create_tween()
+		if leveled_up:
+			fill_tween.tween_method(set_progress, progress, 1.0, LEVEL_UP_FILL_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+			fill_tween.tween_callback(set_progress.bind(0.0))
+			fill_tween.tween_method(set_progress, 0.0, clamped, FILL_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		else:
+			fill_tween.tween_method(set_progress, progress, clamped, FILL_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -658,7 +711,24 @@ static func root_height(expanded: bool, action_card_height: float, action_card_e
 static func root_height_for_action(action: Dictionary, expanded: bool, uses_diamond_arena: bool, action_card_height: float, expanded_height: float, diamond_height: float, depth_offset_y: float) -> float:
 	if uses_diamond_arena:
 		return float(diamond_height) + depth_offset_y
-	return root_height(expanded, action_card_height, expanded_height, depth_offset_y)
+	var wisdom_height := WISDOM_REQUIREMENT_LAYOUT_HEIGHT if int(action.get("wisdom_required", 0)) > 0 else 0.0
+	var actual_depth := RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y if RecoveryModules.has_recovery(action) else depth_offset_y
+	return root_height(expanded, face_height_for_action(action, action_card_height), face_height_for_action(action, expanded_height), actual_depth) + wisdom_height
+
+
+static func face_height_for_action(action: Dictionary, base_height: float) -> float:
+	if not action.get("presentation", {}).is_empty():
+		return maxf(base_height,float(action.presentation.get("height",520)))
+	return base_height + (RECOVERY_ACTIVITY_CONTENT_EXTRA_HEIGHT if RecoveryModules.has_recovery(action) else 0.0)
+
+
+# On an activity with a Wisdom row the progress bar stays under the picture and
+# the row opens below it. A rest activity that gives Wisdom and asks for none is
+# laid out as every other rest activity instead: its curved bar is the foot of
+# the card, and its Wisdom note opens above the bar. Left under the picture, the
+# bar and the card's own curved foot showed as two curved bars.
+static func wisdom_opens_above_bar(action: Dictionary) -> bool:
+	return RecoveryModules.has_recovery(action) and int(action.get("wisdom_required", 0)) == 0
 
 
 static func mat_collection_layout_height(skill_id: String, action: Dictionary, has_mat_rewards: bool, running_skill_id: String, running_action_id: String, mat_collection_area_height: float) -> float:

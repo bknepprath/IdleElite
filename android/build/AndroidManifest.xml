@@ -33,6 +33,9 @@
         <meta-data
             android:name="org.godotengine.plugin.v2.IdleEliteGoogleAuth"
             android:value="com.godot.game.IdleEliteGoogleAuth" />
+        <meta-data
+            android:name="org.godotengine.plugin.v2.IdleEliteConsent"
+            android:value="com.godot.game.IdleEliteConsent" />
 
         <activity
             android:name=".GodotApp"

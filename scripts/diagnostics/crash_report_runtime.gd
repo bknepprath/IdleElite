@@ -5,6 +5,8 @@ const CRASH_SESSION_MARKER_PATH := "user://last-session-marker.json"
 const ANDROID_DIAGNOSTIC_EVENTS_PATH := "user://android-diagnostic-events.txt"
 const MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT := 80
 const CRASH_SESSION_HEARTBEAT_SECONDS := 15.0
+# How long an unchanged session goes between marker writes.
+const CRASH_SESSION_UNCHANGED_MARKER_SECONDS := 60.0
 const ANDROID_LIFECYCLE_EVENTS := ["create", "start", "restart", "resume", "pause", "stop", "destroy"]
 const ANDROID_CLEAN_LIFECYCLE_EVENTS := ["pause", "stop", "destroy"]
 const WebStorageGuard = preload("res://scripts/save_state/web_storage_guard.gd")
@@ -13,6 +15,8 @@ var host
 var pending_crash_report_text := ""
 var crash_session_id := ""
 var crash_session_heartbeat_elapsed := 0.0
+var crash_session_marker_age := 0.0
+var crash_session_marker_signature := 0
 
 
 func _init(host_ref = null) -> void:
@@ -22,6 +26,8 @@ func _init(host_ref = null) -> void:
 func start_session() -> void:
 	crash_session_id = _new_crash_session_id()
 	crash_session_heartbeat_elapsed = 0.0
+	crash_session_marker_age = 0.0
+	crash_session_marker_signature = 0
 
 
 func begin_boot_session() -> void:
@@ -43,6 +49,7 @@ func load_pending_crash_report() -> void:
 		push_warning("Could not read pending crash report.")
 		return
 	pending_crash_report_text = file.get_as_text()
+	file.close()
 	delete_pending_crash_report()
 
 
@@ -70,9 +77,15 @@ func delete_pending_crash_report() -> void:
 
 func process_session_heartbeat(delta: float) -> void:
 	crash_session_heartbeat_elapsed += delta
+	crash_session_marker_age += delta
 	if crash_session_heartbeat_elapsed < CRASH_SESSION_HEARTBEAT_SECONDS:
 		return
 	crash_session_heartbeat_elapsed = 0.0
+	# Each marker is a file write plus a read of the save journal, on the main
+	# thread. A change is still recorded at the next heartbeat; a session that
+	# reads the same as the last marker is re-marked once a minute.
+	if crash_session_marker_age < CRASH_SESSION_UNCHANGED_MARKER_SECONDS and _session_marker_signature() == crash_session_marker_signature:
+		return
 	write_session_marker("running")
 
 
@@ -85,6 +98,38 @@ func write_session_marker(status: String) -> void:
 	file.store_string(JSON.stringify(crash_session_payload(status), "	"))
 	file.flush()
 	file.close()
+	crash_session_marker_age = 0.0
+	# Any other status (booting, clean, save_failed) must be replaced by "running"
+	# at the next heartbeat, so only a running marker counts as unchanged.
+	crash_session_marker_signature = _session_marker_signature() if status == "running" else 0
+
+
+# What a report would say about where the player is, without the values that move
+# on their own (time, progress, the last result line, the save journal).
+func _session_marker_signature() -> int:
+	if not is_instance_valid(host):
+		return 1
+	var save_runtime = host._save_runtime()
+	var online_runtime = host._online_runtime()
+	return maxi(1, absi(hash([
+		crash_session_id,
+		host.startup_initialized,
+		host.loaded_save_this_boot,
+		host.save_restore_complete,
+		host._boot_warmup_runtime().active,
+		host.current_screen,
+		save_runtime._selected_skill_id_for_save(),
+		save_runtime._running_skill_id_for_save(),
+		save_runtime._running_action_id_for_save(),
+		save_runtime._event_running_skill_id_for_save(),
+		save_runtime._event_running_action_id_for_save(),
+		host._profile_chat_overlay_surface().chat_overlay_visible(),
+		online_runtime.chat_stream_connected,
+		online_runtime.chat_stream_connecting,
+		not save_runtime.pending_save_restore_data.is_empty(),
+		save_runtime.save_writes_blocked,
+		save_runtime.save_writes_blocked_reason,
+	])))
 
 
 func crash_session_payload(status: String) -> Dictionary:

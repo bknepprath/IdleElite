@@ -100,11 +100,14 @@ func _run() -> void:
 	scene.stamina["woodcutting"] = 5.0
 	SkillState.host_sync_stamina_bank("woodcutting", scene)
 	var starting_xp := int((scene.skills["woodcutting"] as Dictionary).get("xp", 0))
+	# What one completion pays without Berries, from the game rather than a fixed
+	# number, so a change to the activity's XP in the database does not fail this.
+	var single_xp := int((scene.call("_action_runtime").call("_effective_xp_reward_map", action, "woodcutting", false) as Dictionary).get("woodcutting", 0))
 	var started := bool(scene.call("_action_runtime").call("_start_action", "woodcutting", "prune-orchard-row", true, false))
 	_expect(started, "prepped action should still start normally")
 	scene.call("_action_runtime").call("_process_action", 3.0)
 	var ending_xp := int((scene.skills["woodcutting"] as Dictionary).get("xp", 0))
-	_expect(ending_xp == starting_xp + 28, "Berry mode should double XP")
+	_expect(single_xp > 0 and ending_xp == starting_xp + single_xp * 2, "Berry mode should double XP (one completion pays %s, gained %s)" % [single_xp, ending_xp - starting_xp])
 	_expect(scene.material_runtime.berry_prep_matches("woodcutting", "prune-orchard-row", Callable(scene, "_action_data"), Callable(scene, "_action_key")), "Berry mode should stay enabled after consumption")
 	var berries_left: float = scene.material_runtime.amount("berries")
 	_expect(berries_left >= 1.0 and berries_left <= 3.0, "Berry mode should spend one Berries and then apply doubled loot")

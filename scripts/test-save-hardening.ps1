@@ -3,8 +3,8 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
-$testUserData = Join-Path ([System.IO.Path]::GetTempPath()) ("idle-elite-save-hardening-" + $PID)
 $previousTestUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$testUserData = if ($previousTestUserData) { $previousTestUserData } else { Join-Path ([System.IO.Path]::GetTempPath()) ("idle-elite-save-hardening-" + $PID) }
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 

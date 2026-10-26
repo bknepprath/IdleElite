@@ -5,10 +5,20 @@ static func restored_tip_metadata(data: Dictionary, valid_detail_tips: Array, ac
 	return {
 		"lock_click_tip_seen": bool(data.get("lock_click_tip_seen", false)),
 		"passive_module_tip_seen": bool(data.get("passive_module_tip_seen", false)),
+		"soft_interactions_seen": normalized_soft_interactions(data.get("soft_interactions_seen", {})),
 		"silver_opportunity_tip_seen": bool(data.get("silver_opportunity_tip_seen", false)),
 		"silver_opportunity_tip_action_key": str(action_key_for_save.call(str(data.get("silver_opportunity_tip_action_key", "")))),
 		"detail_pull_recent_tip_texts": normalized_recent_tip_texts(data.get("detail_pull_recent_tip_texts", []), valid_detail_tips)
 	}
+
+
+static func normalized_soft_interactions(value: Variant) -> Dictionary:
+	var result := {}
+	if value is Dictionary:
+		for key in ["firepit", "jail"]:
+			if value.get(key, false) is bool and value.get(key, false):
+				result[key] = true
+	return result
 
 
 static func normalized_recent_tip_texts(value: Variant, valid_detail_tips: Array) -> Array:
@@ -150,8 +160,58 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 
 
 static func payload_regresses_game_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	for system in ["groves","slingshot_range"]:
+		var prior = existing_payload.get(system,{})
+		var next = next_payload.get(system,{})
+		if not prior is Dictionary: continue
+		if not next is Dictionary: return not prior.is_empty()
+		for key in (["axe_xp","felled"] if system=="groves" else ["best_distance","landings"]):
+			if float(next.get(key,0))<float(prior.get(key,0)): return true
+		if system=="groves" and prior.get("upgrades",{}) is Dictionary:
+			var new_components = next.get("upgrades",{})
+			if not new_components is Dictionary: return true
+			for kind in ["handle","head","grip","sharpening","gem"]:
+				if float(new_components.get(kind,0))<float(prior.get("upgrades",{}).get(kind,0)): return true
+		if system=="groves" and prior.get("arena_upgrades",{}) is Dictionary:
+			var old_arenas: Dictionary=prior.get("arena_upgrades",{})
+			var new_arenas=next.get("arena_upgrades",{})
+			if not new_arenas is Dictionary: return not old_arenas.is_empty()
+			for id in old_arenas:
+				if not old_arenas[id] is Dictionary: continue
+				var new_levels=new_arenas.get(id,{})
+				for kind in ["capacity","regrowth","rarity"]:
+					if int(new_levels.get(kind,0) if new_levels is Dictionary else 0)<int(old_arenas[id].get(kind,0)): return true
+	var old_slide = existing_payload.get("rockslide",{})
+	var new_slide = next_payload.get("rockslide",{})
+	if old_slide is Dictionary:
+		if not new_slide is Dictionary: return not old_slide.is_empty()
+		for key in ["lifetime_clears","best_wave"]:
+			var initial := 1 if key=="best_wave" else 0
+			if int(new_slide.get(key,initial))<int(old_slide.get(key,initial)): return true
+		var old_levels = old_slide.get("upgrades",{})
+		var new_levels = new_slide.get("upgrades",{})
+		if old_levels is Dictionary:
+			for key in ["power","speed","volley"]:
+				if int(new_levels.get(key,0) if new_levels is Dictionary else 0)<int(old_levels.get(key,0)): return true
+	var prior_production: Dictionary = existing_payload.get("production", {}) if existing_payload.get("production", {}) is Dictionary else {}
+	var next_production: Dictionary = next_payload.get("production", {}) if next_payload.get("production", {}) is Dictionary else {}
+	if bool(prior_production.get("wheel_built",false)) and not bool(next_production.get("wheel_built",false)): return true
+	for key in ["wheel_clearance","wheel_progress"]:
+		if int(next_production.get(key,0)) < int(prior_production.get(key,0)): return true
+	var prior_mats: Dictionary = existing_payload.get("mats", {}) if existing_payload.get("mats", {}) is Dictionary else {}
+	var next_mats: Dictionary = next_payload.get("mats", {}) if next_payload.get("mats", {}) is Dictionary else {}
+	for item in ["spyglass","lantern","precision-net"]:
+		if float(prior_mats.get(item,0))>=1 and float(next_mats.get(item,0))<1: return true
+	if preload("res://scripts/progression/project_runtime.gd").regresses(existing_payload.get("activity_projects", {}), next_payload.get("activity_projects", {})):
+		return true
 	if _skill_xp_regresses(existing_payload, next_payload, skill_defs):
 		return true
+	var wisdom_state = preload("res://scripts/progression/wisdom_state.gd")
+	var prior_wisdom: Dictionary = wisdom_state.normalize_balances(existing_payload.get("wisdom", {}))
+	var next_wisdom: Dictionary = wisdom_state.normalize_balances(next_payload.get("wisdom", {}))
+	for skill_id in prior_wisdom:
+		if int(next_wisdom.get(skill_id, 0)) < int(prior_wisdom[skill_id]):
+			return true
 	for key in [
 		"activity_start_count",
 		"activity_completion_count",
@@ -272,10 +332,6 @@ static func _canonical_qualified_action_key(key: String, action_id_aliases: Dict
 	if action_id.is_empty():
 		return ""
 	return "%s:%s" % [skill_id, action_id]
-
-
-static func payload_regresses_skill_xp(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
-	return _skill_xp_regresses(existing_payload, next_payload, skill_defs)
 
 
 static func payload_regresses_outside_vetted_progress_repair(
@@ -620,6 +676,9 @@ static func progress_evidence_score(data: Dictionary, skill_defs: Array) -> int:
 	return total_skill_xp_evidence(data, skill_defs) * 100000 + non_xp_progress_evidence(data)
 static func non_xp_progress_evidence(data: Dictionary) -> int:
 	var evidence := 0
+	for balance in preload("res://scripts/progression/wisdom_state.gd").normalize_balances(data.get("wisdom", {})).values():
+		if int(balance) > 0:
+			evidence += 1
 	evidence += _positive_number_evidence(data, [
 		"log_currency",
 		"fish_currency",

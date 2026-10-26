@@ -2,14 +2,13 @@ extends RefCounted
 
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
+const WebRewardedBridge = preload("res://scripts/monetization/web_rewarded_bridge.gd")
 
 const AD_BONUS_SECONDS := 2 * 60 * 60
 const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
 const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
-const AD_BONUS_XP_MULT := 0.10
-const AD_BONUS_SPEED_MULT := 0.10
 const AD_TEST_UNIT_ANDROID_REWARDED := "ca-app-pub-3940256099942544/5224354917"
-const AD_LIVE_UNIT_ANDROID_REWARDED := "ca-app-pub-3570919669688101/7376748559"
+const AD_LIVE_UNIT_ANDROID_REWARDED := "ca-app-pub-4125359195200512/8284370963"
 
 var host
 var seconds_remaining := 0.0
@@ -24,15 +23,36 @@ var ad_showing := false
 var ad_show_after_load := false
 var ad_reward_earned_for_show := false
 var shop_bonus_notice_text := ""
+var consent_bridge: Object
+var consent_started := false
+var consent_busy := false
+var consent_can_request_ads := false
+var privacy_options_required := false
+var consent_pending_ad := false
+var consent_revision := 0
+var web_callback: JavaScriptObject
+var web_bridge: JavaScriptObject
+var web_request_id := 0
+var web_request_active := false
+var web_game_paused := false
+var web_previous_pause := false
+var web_previous_mute := false
 
 func _init(host_ref = null) -> void:
 	host = host_ref
 
 func xp_multiplier() -> float:
-	return AD_BONUS_XP_MULT if seconds_remaining > 0.0 else 0.0
+	return float(bonus_percent()) / 100.0
 
 func speed_multiplier() -> float:
-	return AD_BONUS_SPEED_MULT if seconds_remaining > 0.0 else 0.0
+	return float(bonus_percent()) / 100.0
+
+func bonus_percent() -> int:
+	if seconds_remaining > float(AD_BONUS_WARN_THRESHOLD_SECONDS):
+		return 14
+	if seconds_remaining > float(AD_BONUS_SECONDS):
+		return 12
+	return 10 if seconds_remaining > 0.0 else 0
 
 func shop_status_text() -> String:
 	return status_text(seconds_remaining)
@@ -42,6 +62,48 @@ func shop_label_text() -> String:
 
 func process(delta: float) -> void:
 	seconds_remaining = tick(seconds_remaining, delta)
+	if not consent_started and _ads_supported() and host.startup_initialized and not host._boot_warmup_runtime().active and not host._input_routing_shell()._any_modal_overlay_visible():
+		_request_consent()
+
+func _request_consent() -> void:
+	if consent_busy:
+		return
+	consent_started = true
+	if not Engine.has_singleton("IdleEliteConsent"):
+		return # Missing native consent support must fail closed.
+	consent_bridge = Engine.get_singleton("IdleEliteConsent")
+	if not consent_bridge.is_connected("consent_finished", _on_consent_finished):
+		consent_bridge.connect("consent_finished", _on_consent_finished)
+	consent_busy = true
+	consent_can_request_ads = false
+	consent_bridge.request_consent()
+
+func _on_consent_finished(can_request: bool, options_required: bool, _error: String) -> void:
+	consent_busy = false
+	consent_can_request_ads = can_request
+	privacy_options_required = options_required
+	var open_ad := consent_pending_ad
+	consent_pending_ad = false
+	if open_ad:
+		if can_request:
+			_load_rewarded_ad(true)
+		else:
+			host._reward_feedback_surface()._set_result("Ad privacy check unavailable. Try again.")
+
+func show_privacy_options() -> void:
+	if consent_busy or ad_showing:
+		return
+	if not privacy_options_required or consent_bridge == null:
+		_request_consent()
+		return
+	consent_pending_ad = false
+	consent_can_request_ads = false
+	consent_busy = true
+	consent_revision += 1
+	ad_loading = false
+	ad_show_after_load = false
+	_destroy_rewarded_ad()
+	consent_bridge.show_privacy_options()
 
 func restore_seconds_from_save(data: Dictionary) -> void:
 	seconds_remaining = SaveStateNormalizers.clamped_float(data, "ad_bonus_seconds_remaining", 0.0, float(AD_BONUS_MAX_SECONDS))
@@ -59,6 +121,8 @@ func _init_ads() -> void:
 
 func _ensure_ads_initialized() -> bool:
 	_init_ads()
+	if consent_busy or not consent_can_request_ads:
+		return false
 	if ads_initialized:
 		return true
 	if not _ads_supported() or _rewarded_ad_unit_id().is_empty():
@@ -76,11 +140,6 @@ func _rewarded_ad_unit_id() -> String:
 	return AD_TEST_UNIT_ANDROID_REWARDED if OS.is_debug_build() else AD_LIVE_UNIT_ANDROID_REWARDED
 
 func _load_rewarded_ad(show_when_loaded: bool) -> void:
-	if show_when_loaded and OS.get_name() != "Android":
-		ad_loading = false
-		ad_show_after_load = false
-		_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
-		return
 	var unit_id := _rewarded_ad_unit_id()
 	if unit_id.is_empty():
 		host._reward_feedback_surface()._set_result("Ad Not Configured")
@@ -89,7 +148,13 @@ func _load_rewarded_ad(show_when_loaded: bool) -> void:
 		host._reward_feedback_surface()._set_result("Ads need an Android build.")
 		return
 	if not _ensure_ads_initialized():
-		host._reward_feedback_surface()._set_result("Ads unavailable.")
+		if show_when_loaded:
+			consent_pending_ad = true
+			_request_consent()
+			host._reward_feedback_surface()._set_result("Checking ad privacy settings...")
+			if not consent_busy:
+				consent_pending_ad = false
+				host._reward_feedback_surface()._set_result("Ads unavailable.")
 		return
 	if ad_loading:
 		ad_show_after_load = ad_show_after_load or show_when_loaded
@@ -100,9 +165,22 @@ func _load_rewarded_ad(show_when_loaded: bool) -> void:
 	ad_show_after_load = show_when_loaded
 	if show_when_loaded:
 		host._reward_feedback_surface()._set_result("Ad loading...")
+	var revision := consent_revision
+	ad_load_callback = RewardedAdLoadCallback.new()
+	ad_load_callback.on_ad_loaded = func(ad: RewardedAd):
+		if revision != consent_revision or not consent_can_request_ads:
+			if ad != null: ad.destroy()
+			return
+		_on_rewarded_ad_loaded(ad)
+	ad_load_callback.on_ad_failed_to_load = func(error: LoadAdError):
+		if revision == consent_revision: _on_rewarded_ad_failed_to_load(error)
 	RewardedAdLoader.new().load(unit_id, AdRequest.new(), ad_load_callback)
 
 func _show_rewarded_ad() -> void:
+	if consent_busy or not consent_can_request_ads:
+		_destroy_rewarded_ad()
+		_load_rewarded_ad(true)
+		return
 	if rewarded_ad == null:
 		_load_rewarded_ad(true)
 		return
@@ -162,7 +240,7 @@ func _on_rewarded_ad_user_earned_reward(_item: RewardedItem) -> void:
 	if not ad_showing or ad_reward_earned_for_show:
 		return
 	ad_reward_earned_for_show = true
-	_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
+	_grant_ad_bonus("Added 2 hours of ad bonus.")
 
 func _grant_ad_bonus(message: String) -> void:
 	var bonus_snapshot_before: Dictionary = host._reward_feedback_surface()._capture_visible_bonus_snapshot()
@@ -176,17 +254,75 @@ func _grant_ad_bonus(message: String) -> void:
 	host.save_game()
 
 func press_shop_ad() -> void:
+	if is_itch_browser_build():
+		host._settings_surface().privacy().show_itch_ad_notice()
+		return
 	if seconds_remaining > float(AD_BONUS_WARN_THRESHOLD_SECONDS):
 		host._reward_feedback_surface()._set_result("Max stackable bonus time is 6 hours.")
 		host._shop_surface().sync_bonus_display()
 		return
-	if ad_showing:
+	if ad_showing or ad_loading:
 		host._reward_feedback_surface()._set_result("Ad already open.")
+		return
+	if OS.has_feature("web"):
+		_request_web_rewarded_ad()
 		return
 	if rewarded_ad != null:
 		_show_rewarded_ad()
 	else:
 		_load_rewarded_ad(true)
+
+static func is_itch_browser_build() -> bool:
+	return bool(ProjectSettings.get_setting("application/config/itch_browser", false))
+
+func _request_web_rewarded_ad() -> void:
+	if web_bridge == null:
+		JavaScriptBridge.eval(WebRewardedBridge.SOURCE, true)
+		web_bridge = JavaScriptBridge.get_interface("idleEliteRewardedAds")
+		web_callback = JavaScriptBridge.create_callback(_on_web_ad_event)
+		web_bridge.init(web_callback, WebRewardedBridge.PUBLISHER_ID, WebRewardedBridge.LIVE_ENABLED, OS.is_debug_build())
+	web_request_id += 1
+	web_request_active = true
+	ad_loading = true
+	ad_reward_earned_for_show = false
+	host._reward_feedback_surface()._set_result("Ad loading...")
+	host._shop_surface().sync_bonus_display()
+	var master_bus := AudioServer.get_bus_index("Master")
+	var audio = host._audio_director()
+	var sound_enabled: bool = not AudioServer.is_bus_mute(master_bus) and (not audio.music_muted or not audio.sfx_muted)
+	web_bridge.request(web_request_id, sound_enabled)
+
+func _on_web_ad_event(args: Array) -> void:
+	if args.size() < 2 or not web_request_active or int(args[0]) != web_request_id:
+		return
+	match str(args[1]):
+		"showing":
+			ad_loading = false
+			ad_showing = true
+			web_previous_pause = host.get_tree().paused
+			web_previous_mute = AudioServer.is_bus_mute(AudioServer.get_bus_index("Master"))
+			web_game_paused = true
+			AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), true)
+			host.get_tree().paused = true
+		"reward":
+			_on_rewarded_ad_user_earned_reward(null)
+		"resume":
+			_resume_after_web_ad()
+		"done":
+			_resume_after_web_ad()
+			web_request_active = false
+			ad_loading = false
+			ad_showing = false
+			if not ad_reward_earned_for_show:
+				host._reward_feedback_surface()._set_result("No ad available. Try again later.")
+			host._shop_surface().sync_bonus_display()
+
+func _resume_after_web_ad() -> void:
+	if not web_game_paused:
+		return
+	web_game_paused = false
+	host.get_tree().paused = web_previous_pause
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), web_previous_mute)
 
 static func status_text(seconds_remaining: float) -> String:
 	if seconds_remaining <= 0.0:

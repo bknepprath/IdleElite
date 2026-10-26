@@ -1,0 +1,55 @@
+{
+  "canvas": [
+    640,
+    640
+  ],
+  "ground": [
+    320,
+    600
+  ],
+  "source_pixel_scale": 1,
+  "frames": {
+    "0": {
+      "source_front_sole": [
+        394,
+        490
+      ],
+      "translation": [
+        22,
+        110
+      ],
+      "target_front_sole": [
+        416,
+        600
+      ]
+    },
+    "1": {
+      "source_front_sole": [
+        319,
+        490
+      ],
+      "translation": [
+        97,
+        110
+      ],
+      "target_front_sole": [
+        416,
+        600
+      ]
+    },
+    "2": {
+      "source_front_sole": [
+        339,
+        490
+      ],
+      "translation": [
+        77,
+        110
+      ],
+      "target_front_sole": [
+        416,
+        600
+      ]
+    }
+  }
+}

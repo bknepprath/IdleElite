@@ -112,7 +112,7 @@ func _prepare_skill_page_from_menu(scene: Node, skill_id: String) -> void:
 		await menu_render
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-	scene.call("_select_skill", skill_id)
+	scene.call("_navigation_shell").call("_select_skill", skill_id)
 	for _i in range(SETTLE_FRAMES * 2):
 		await _wait_test_frame()
 		if _selected_skill_ready(scene, skill_id):
@@ -123,9 +123,9 @@ func _prepare_skill_page_from_menu(scene: Node, skill_id: String) -> void:
 func _selected_skill_ready(scene: Node, skill_id: String) -> bool:
 	if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
 		return false
-	if bool(scene.get("screen_render_in_progress")):
+	if bool(scene.call("_navigation_shell").get("screen_render_in_progress")):
 		return false
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return false
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
@@ -154,11 +154,11 @@ func _wait_test_frame() -> void:
 func _first_swipe_page_ready(scene: Node, target_skill_id: String) -> bool:
 	if str(scene.get("selected_skill_id")) != target_skill_id:
 		return false
-	if bool(scene.get("skill_swipe_animating")) or bool(scene.get("skill_swipe_tracking")):
+	if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")) or bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")):
 		return false
-	if bool(scene.get("skill_swipe_pending_full_finalize")):
+	if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")):
 		return false
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return false
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
@@ -190,7 +190,7 @@ func _first_swipe_page_ready(scene: Node, target_skill_id: String) -> bool:
 func _first_swipe_transition_settled(scene: Node, target_skill_id: String) -> bool:
 	if not _first_swipe_page_ready(scene, target_skill_id):
 		return false
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	if cover == null:
 		return true
 	return (not cover.visible) or cover.modulate.a <= 0.05
@@ -201,7 +201,7 @@ func _first_swipe_transition_violation(scene: Node, frame_index: int) -> Diction
 		return {}
 	if not _first_swipe_target_incomplete(scene):
 		return {}
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	var cover_alpha := 0.0
 	var cover_visible := false
 	var cover_cream := false
@@ -222,12 +222,12 @@ func _first_swipe_transition_violation(scene: Node, frame_index: int) -> Diction
 
 
 func _first_swipe_target_incomplete(scene: Node) -> bool:
-	if bool(scene.get("skill_swipe_pending_full_finalize")):
+	if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")):
 		return true
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null:
 		return true
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
 	if page == null or not page.visible or not page.is_visible_in_tree():
 		return true
 	if not scroll.visible or not scroll.is_visible_in_tree():
@@ -251,21 +251,21 @@ func _state_summary(scene: Node) -> String:
 	var counts := _counts(scene)
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
 	var content := _valid_control(scene.get("skills_content"))
-	var page := _valid_control(scene.get("skill_swipe_page"))
+	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
 	var stack := _detail_stack(scene)
 	var cards := scene.get("action_cards") as Dictionary
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	var scroll_ratio := 0.0
 	if scroll != null and content != null and content.size.y > 1.0:
 		scroll_ratio = scroll.size.y / content.size.y
 	return "selected=%s pending=%s animating=%s mode=%s tracking=%s horizontal=%s queued=%s drag=%.1f accessible_next=%s cards=%s real=%s visible_placeholders=%s page_visible=%s scroll_visible=%s stack_visible=%s regen=%s header_gauges=%s scroll=%s scroll_ratio=%.3f cover=%s cover_alpha=%.3f" % [
 		str(scene.get("selected_skill_id")),
-		str(scene.get("skill_swipe_pending_full_finalize")),
-		str(scene.get("skill_swipe_animating")),
-		str(scene.get("skill_swipe_animation_mode")),
-		str(scene.get("skill_swipe_tracking")),
-		str(scene.get("skill_swipe_horizontal")),
-		str(scene.get("skill_swipe_queued_offset")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animation_mode")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_horizontal")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_queued_offset")),
 		float(scene.call("_skill_swipe_activity_surface").get("skill_swipe_drag_offset_x")),
 		str(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)),
 		str(0 if cards == null else cards.size()),

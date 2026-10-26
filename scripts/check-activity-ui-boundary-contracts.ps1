@@ -95,11 +95,11 @@ foreach ($functionName in @("activity_card_depth_layer", "prism_connector_overla
     Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
 }
 
-foreach ($functionName in @("_maybe_show_offline_summary", "_offline_summary_activity_card", "_offline_summary_stat_card", "_offline_summary_mastery_row", "_offline_summary_unlock_card")) {
+foreach ($functionName in @("_maybe_show_offline_summary", "_offline_summary_activity_card", "_offline_summary_stat_card")) {
     Assert-FunctionExists $achievementOverlaySurface $functionName "offline summary presentation"
     Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
 }
-foreach ($functionName in @("_offline_active_cycle_seconds", "_offline_xp_reward", "_offline_mastery_reward")) {
+foreach ($functionName in @("_offline_active_cycle_seconds", "_offline_mastery_reward")) {
     Assert-FunctionExists $actionRuntime $functionName "offline rewards"
     Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
 }

@@ -12,7 +12,7 @@ extends RefCounted
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const OFFSETS := [-1, 1]
-const BUILD_START_DELAY_FRAMES := 6
+const BUILD_START_DELAY_FRAMES := 1
 const MOUNT_STEPS_LIMIT := 24
 const SETTLE_RETRY_LIMIT := 3
 const STALE_CHECK_INTERVAL_FRAMES := 45
@@ -77,6 +77,7 @@ var disabled_by_env := -1
 # offset (-1 / 1) -> page record Dictionary
 var pages := {}
 var build_token := 0
+var last_build_process_frame := -1
 var neighbour_render_active := false
 var render_record := {}
 var render_token := -1
@@ -88,6 +89,9 @@ var render_chunk_started_usec := 0
 var refresh_all_pages_now := false
 var last_swap_process_frame := -1
 var stale_backstop_counter := 0
+# The stride the neighbour pages and the header shelves were last laid out for.
+var laid_out_stride := 0.0
+var preferred_offset := 1
 
 
 func _init(host_ref) -> void:
@@ -103,6 +107,8 @@ func _swipe():
 
 
 func enabled() -> bool:
+	if host.desktop_layout.enabled():
+		return false
 	if disabled_by_env == -1:
 		disabled_by_env = 1 if OS.get_environment("IDLE_ELITE_DISABLE_ADJACENT_SKILL_PAGES") == "1" else 0
 	if disabled_by_env == 1:
@@ -281,6 +287,8 @@ func schedule_build() -> void:
 	build_token += 1
 	if host.current_screen != "skill":
 		return
+	# The page just rendered and its shelf are laid out for the stride of now.
+	laid_out_stride = stride()
 	_build_loop(build_token)
 
 
@@ -290,10 +298,20 @@ func _get_tree() -> SceneTree:
 
 func _build_blocked() -> bool:
 	var swipe = _swipe()
+	var preparing_during_motion: bool = (swipe.skill_swipe_tracking and swipe.skill_swipe_horizontal) or (swipe.skill_swipe_animating and swipe.skill_swipe_animation_mode == "settle")
+	# The previous frame's neighbour mount deliberately marks the shared budget
+	# as used. It must not stall its own preparation on the following frame.
+	var current_page_mount: bool = _detail().detail_lazy_mounted_this_frame and last_build_process_frame < Engine.get_process_frames() - 1
 	return (
-		swipe.skill_swipe_tracking
-		or swipe.skill_swipe_animating
-		or host._skill_swipe_loading_transition_active()
+		(swipe.skill_swipe_tracking and not preparing_during_motion)
+		or (swipe.skill_swipe_animating and not preparing_during_motion)
+		or _detail().detail_scroll_visual_work_this_frame
+		or current_page_mount
+		or (host._skill_swipe_loading_transition_active() and not preparing_during_motion)
+		or swipe.skill_swipe_pending_full_finalize
+		or swipe.direct_skill_nav_cover_active
+		or swipe.skill_swipe_outgoing_cover_active
+		or swipe.skill_swipe_rebuild_cover_active
 		or host._navigation_shell().screen_render_in_progress
 		or swipe.skill_swipe_handoff_cover != null and is_instance_valid(swipe.skill_swipe_handoff_cover)
 		or swipe.skill_swipe_frame == null
@@ -307,9 +325,9 @@ func _build_loop(token: int) -> void:
 	var idle_frames := 0
 	var stale_frames := 0
 	var off_rest_frames := 0
-	while true:
+	while is_instance_valid(host) and host.is_inside_tree():
 		await _get_tree().process_frame
-		if token != build_token:
+		if not is_instance_valid(host) or not host.is_inside_tree() or token != build_token:
 			return
 		if host.current_screen != "skill":
 			if active():
@@ -322,6 +340,7 @@ func _build_loop(token: int) -> void:
 				discard_all()
 			idle_frames = 0
 			continue
+		_sync_layout_to_stride()
 		# Never leave the strip parked between two pages: a finger that caught a
 		# settle and then scrolled vertically or tapped ends with no release
 		# animation, so glide back to the current page.
@@ -361,7 +380,8 @@ func _frame_parked_off_rest() -> bool:
 
 ## One bounded unit of work per frame. Returns true when it did something.
 func _build_step() -> bool:
-	for offset in OFFSETS:
+	# Finish the likely destination before spending frames on the other side.
+	for offset in [preferred_offset, -preferred_offset]:
 		var expected_skill_id := skill_for_offset(offset)
 		var record := pages.get(offset, {}) as Dictionary
 		if not record.is_empty() and (str(record.get("skill_id", "")) != expected_skill_id or not has_page(offset)):
@@ -374,10 +394,8 @@ func _build_step() -> bool:
 				continue
 			await _build_page_skeleton(offset, expected_skill_id)
 			return true
-	for offset in OFFSETS:
 		if not has_page(offset):
 			continue
-		var record := pages[offset] as Dictionary
 		if bool(record.get("ready", false)) and not bool(record.get("needs_landing", false)):
 			continue
 		if _advance_page(record):
@@ -425,6 +443,8 @@ func _build_page_skeleton(offset: int, skill_id: String) -> void:
 	render_aborted = false
 	_enter_neighbour_render(record)
 	await _detail()._render_skill_detail(false, -1, false, 1)
+	if not is_instance_valid(host) or not host.is_inside_tree():
+		return
 	if neighbour_render_active:
 		_leave_neighbour_render(record)
 	render_record = {}
@@ -443,6 +463,7 @@ func _build_page_skeleton(offset: int, skill_id: String) -> void:
 
 
 func _enter_neighbour_render(record: Dictionary) -> void:
+	last_build_process_frame = Engine.get_process_frames()
 	render_saved_context = capture_context()
 	render_saved_transients = _capture_transients()
 	render_saved_skill_id = host.selected_skill_id
@@ -476,7 +497,16 @@ func yield_neighbour_render() -> void:
 	_leave_neighbour_render(record)
 	while true:
 		await _get_tree().process_frame
+		if not is_instance_valid(host) or not host.is_inside_tree():
+			return
 		if token != build_token or render_record != record or not enabled():
+			_abort_neighbour_render(record)
+			return
+		# A quick reversal can arrive while the other side is only half built.
+		# Retire that unfinished, unseen page at this safe yield boundary so the
+		# single builder can prepare the direction the finger actually chose.
+		var swipe = _swipe()
+		if swipe.skill_swipe_tracking and swipe.skill_swipe_horizontal and int(record.get("offset",0)) != preferred_offset and not has_page(preferred_offset):
 			_abort_neighbour_render(record)
 			return
 		var frame: Control = _control(_swipe().skill_swipe_frame)
@@ -532,6 +562,29 @@ func layout_page(page: Control, offset: int) -> void:
 	page.modulate = Color.WHITE
 
 
+## The stride is one screen width, and a window can change its width (web and
+## desktop; a phone's does not). Pages that are already built keep the offsets
+## they were laid out with, and header shelves the bleed they were given, so
+## both are laid out again when the stride has moved: otherwise a window made
+## wider shows the edge of each neighbour, and of its shelf, at rest. Only the
+## places change: the pages, their scroll and their mounted cards are kept.
+func _sync_layout_to_stride() -> void:
+	var current := stride()
+	if absf(current - laid_out_stride) <= 0.5:
+		return
+	laid_out_stride = current
+	var column_width: float = host._skill_content_width()
+	for offset in OFFSETS:
+		var page := page_for_offset(offset)
+		if page == null:
+			continue
+		var left := float(offset) * current
+		page.offset_left = left
+		page.offset_right = left + column_width
+		clamp_shelf_bleed(page)
+	clamp_shelf_bleed(_control(_swipe().skill_swipe_page))
+
+
 func layout_current_page(page: Control) -> void:
 	if page == null or not is_instance_valid(page):
 		return
@@ -547,6 +600,7 @@ func layout_current_page(page: Control) -> void:
 
 
 func _advance_page(record: Dictionary) -> bool:
+	last_build_process_frame = Engine.get_process_frames()
 	var stage := str(record.get("stage", "layout"))
 	if bool(record.get("needs_landing", false)) and stage == "ready":
 		stage = "scroll"
@@ -834,6 +888,7 @@ func card_update_allowed(skill_id: String) -> bool:
 ## Swaps the neighbour at `offset` in as the current page. The frame keeps its
 ## on-screen position; returns the drag offset the frame now sits at.
 func swap_to(offset: int, current_drag_x: float) -> float:
+	preferred_offset = offset
 	var record := pages.get(offset, {}) as Dictionary
 	var incoming_page: Control = page_for_offset(offset)
 	var outgoing_skill_id: String = host.selected_skill_id

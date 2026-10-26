@@ -1,7 +1,9 @@
 # Idle Elite app-ads.txt Setup
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
-Idle Elite's AdMob publisher id is `pub-3570919669688101`, derived from the configured app id `ca-app-pub-3570919669688101~3616255490` and rewarded ad unit `ca-app-pub-3570919669688101/7376748559`.
+Idle Elite's current AdMob publisher is `pub-4125359195200512`, app ID `ca-app-pub-4125359195200512~1607281974`, rewarded unit `ca-app-pub-4125359195200512/8284370963`. Keep `pub-3570919669688101` authorized during migration; remove it only after verified rollout and explicit closure approval.
+
+Developer website: `https://idle-elite.web.app`. AdMob verification file: `https://idle-elite.web.app/app-ads.txt`. These are the configured hosting URLs; verify the live file before claiming AdMob ownership verification is complete.
 
 The repository's hosted file lives at:
 
@@ -13,6 +15,7 @@ Its authorized seller line is:
 
 ```text
 google.com, pub-3570919669688101, DIRECT, f08c47fec0942fa0
+google.com, pub-4125359195200512, DIRECT, f08c47fec0942fa0
 ```
 
 ## Why This File Exists

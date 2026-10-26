@@ -67,10 +67,10 @@ const GLOBAL_MEDAL_BUFFS := [
 ]
 static func medal_name(level: int) -> String:
 	return "Unranked" if level <= 0 else str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
-static func xp_reward(_action: Dictionary) -> float:
-	return 1.0
+static func xp_reward(action: Dictionary) -> float:
+	return maxf(1.0, float(action.get("mastery_xp_per_completion", 1.0)))
 static func action_has_mastery(host, action: Dictionary) -> bool:
-	return not action.is_empty() and not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
+	return not action.is_empty() and bool(action.get("mastery_enabled",true)) and not action.has("seasonal_event") and str((action.get("combat", {}) as Dictionary).get("arena_shape", "")).to_lower() != "diamond" and not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
 static func reward_for_action(host, skill_id: String, action_id: String, action: Dictionary) -> float:
 	if not action_has_mastery(host, action):
 		return 0.0
@@ -79,13 +79,26 @@ static func reward_for_action(host, skill_id: String, action_id: String, action:
 	return xp_reward(action)
 static func add_host_xp(host, skill_id: String, action_id: String, amount: float) -> void:
 	var key: String = host._action_key(skill_id, action_id)
-	if amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
+	if not action_has_mastery(host, host._action_data(skill_id, action_id)) or amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
 		return
 	_refresh_host_after_level_change(host, add_xp(host.mastery, key, amount, host.MASTERY_MAX_LEVEL))
 static func recalculate_host(host, key: String) -> void:
 	_refresh_host_after_level_change(host, recalculate_entry(host.mastery, key, host.MASTERY_MAX_LEVEL))
 
+# Thresholds never change, and every completion and every save walks them level
+# by level. Fill the table once instead of recomputing the curve on each lookup.
+static var _xp_for_level_table := PackedInt64Array()
+
 static func xp_for_level(level: int) -> int:
+	if level <= 0:
+		return 0
+	if level > 4096:
+		return _computed_xp_for_level(level)
+	while _xp_for_level_table.size() <= level:
+		_xp_for_level_table.append(_computed_xp_for_level(_xp_for_level_table.size()))
+	return _xp_for_level_table[level]
+
+static func _computed_xp_for_level(level: int) -> int:
 	if level <= 0:
 		return 0
 	if level <= 3:

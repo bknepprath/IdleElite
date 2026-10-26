@@ -1,38 +1,43 @@
-# Idle Elite Google Play App Content Notes
-<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+# Idle Elite Google Play app content
 
+Current implementation: 0.7.2, version code 43. These are implementation-backed answers for the Console; the saved Console form still needs verification after the public pages are deployed.
 
-These notes summarize the Play Console declarations that still need account-owner confirmation.
+## Accounts and deletion
 
-## Ads
+- Account creation/sign-in: anonymous Firebase identity and optional Google OAuth linking. No email/password credential creation in the game.
+- Google sign-in and cloud saves are implemented. Do not reuse the old statement that they are absent.
+- Account and data deletion: https://idle-elite.web.app/delete-account.html, linked from Settings → Privacy & chat → Delete account / data. Publish and verify this URL before marking deletion available in Console.
+- Privacy policy: https://idle-elite.web.app/privacy.html. Public source: `public/privacy.html`.
+- Developer/support: WeSkillNow, weskillnow@gmail.com.
+- Data in transit: HTTPS.
 
-- The app uses rewarded ads through Google AdMob.
-- In Play Console, answer that the app contains ads.
-- In Play Console, answer that the app uses the Android Advertising ID when AdMob is enabled.
-- The release manifest currently includes `com.google.android.gms.permission.AD_ID` through the AdMob dependency.
+## Data types and purposes
 
-## Data Safety Draft
+| Data | Collection | Sharing | Purpose and choice |
+| --- | --- | --- | --- |
+| Player name | Collected | Public profile/rankings/chat, selected by the player | App functionality and account management; player chooses a display name |
+| Email address | Collected by Firebase Authentication when Google is linked | Service-provider processing; no public email display | Account management, backup and recovery; optional Google linking |
+| User IDs | Collected | Public Firebase UID accompanies rankings/chat; SDK/account identifiers may also be processed by Google | Account management, app functionality and abuse prevention |
+| Other in-app messages | Public chat and reports collected | Chat is public; reports are private to authorized moderation | App functionality and abuse prevention; optional posting/reporting |
+| App interactions / gameplay | Rankings, progress and optional cloud saves; AdMob interactions | Public rankings and Google advertising/measurement | App functionality; ad delivery, analytics and fraud prevention for SDK data |
+| Approximate location | AdMob may infer it from IP address | Google advertising ecosystem | Advertising, analytics, fraud prevention |
+| Diagnostics | AdMob SDK diagnostics | Google advertising ecosystem | Advertising, analytics, fraud prevention |
+| Device or other IDs | AdMob advertising/app-set IDs; Firebase account identifiers | Google advertising ecosystem where applicable | Advertising, analytics, fraud prevention; account functionality |
 
-Because AdMob is included, use Google's AdMob data disclosure guidance when completing the Data Safety form. The app itself stores idle game progress locally in Godot `user://` storage. If Firebase features are enabled in a build, the app also uses Firebase Authentication and Firebase Realtime Database for public leaderboard ranking and global chat. The app does not currently implement email/password accounts, Google sign-in, cloud save, analytics, or purchases.
+Local crash logs are not automatically uploaded; the player can copy and share a report. The game does not request precise location, contacts, camera, microphone or health data. There are no in-app purchases. Public sharing initiated by the player and service-provider processing may qualify for Play’s disclosure exceptions; apply the current form definitions without omitting collection.
 
-Draft answers to verify in Play Console:
+Online data is retained rather than processed only ephemerally. Cloud-save and public-chat use are optional; Firebase identity is created for online functionality. Do not mark all identifiers optional merely because rewarded ads are optional. Google’s Mobile Ads SDK initializes only after UMP permits an ad request, and actual rewarded ad display requires a player action.
 
-- Data collected by the app itself: local on-device save data. If Firebase is enabled, online leaderboard display name, selected avatar index, leaderboard category scores, global chat messages, message/moderation timestamps, deletion tombstones, and Firebase user id.
-- Data shared/collected by SDK: AdMob may collect/share advertising-related identifiers and device data for ads, fraud prevention, analytics/diagnostics, and compliance, depending on SDK behavior and user settings.
-- Data deletion: local game data can be reset in the in-game Settings menu. If Firebase is enabled, remote leaderboard rows and chat data require a developer support deletion/moderation path; confirm the public contact address before launch.
-- Encryption in transit: yes for SDK/network traffic handled by Google SDKs.
-- Users can request data deletion: yes if Firebase is enabled. The privacy policy should explain local reset and how to request remote leaderboard/chat data deletion.
+## Ads and UGC
 
-## Privacy Policy
-
-Google Play requires a privacy policy for apps in Play Console, and ads/AdMob make this effectively mandatory for a launch-ready listing. The policy should name `Idle Elite`, mention rewarded ads via Google AdMob, explain local save data, describe Firebase Authentication and Realtime Database leaderboard/chat data if enabled, and identify the developer/entity name used on the store listing.
-
-A draft is available at `play-store/docs/privacy-policy-draft.md`. Replace the developer name/contact placeholders, host the policy on a public URL, then paste that URL into Play Console.
+- Contains ads: yes. Uses Advertising ID: yes; permission supplied by Google Mobile Ads SDK.
+- UMP 4.0.0 gates initialization and ad loading; required privacy choices are accessible from Settings.
+- Configure and publish European and US state messages in AdMob for app `ca-app-pub-4125359195200512~1607281974`.
+- Public chat requires acceptance of chat rules before posting. Players can report messages, block players and undo blocks. Reports require developer moderation; see `account-deletion-and-moderation.md`.
 
 ## Sources
 
-- Google Play Data safety form: https://support.google.com/googleplay/android-developer/answer/10787469
-- AdMob data disclosure guidance: https://developers.google.com/admob/android/privacy/play-data-disclosure
-- Google Play Developer Program Policy, privacy policy note: https://support.google.com/googleplay/android-developer/answer/16549787
-- Android App Bundle requirement: https://developer.android.com/guide/app-bundle
-- Google Play target API requirements: https://support.google.com/googleplay/android-developer/answer/11926878
+- https://developers.google.com/admob/android/privacy/play-data-disclosure
+- https://developer.android.com/privacy-and-security/declare-data-use
+- https://firebase.google.com/docs/android/play-data-disclosure
+- https://support.google.com/googleplay/android-developer/answer/10787469

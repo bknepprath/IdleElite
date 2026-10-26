@@ -57,6 +57,7 @@ $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && n
 # Total Level is five skills at level 99. Inside a child .validate, `data` is the
 # child value itself, so monotonic checks compare data.val() directly.
 $leaderboardTotalLevelCapRule = "`$category != 'total_level' || newData.val() <= 495"
+$leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.isNumber() && data.val() > 495 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.val()"
 $chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && auth != null && newData.child('sender_id').val() == auth.uid"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000"
 $chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('display_name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('name_key').val() == newData.child('name_key').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('avatar_index').val() == newData.child('avatar_index').val()"
@@ -88,7 +89,7 @@ $rulesObject = [ordered]@{
                             ".validate" = "newData.isString() && newData.val() == `$nameKey && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
                         }
                         avatar_index = [ordered]@{
-                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
                         }
                         created_at = [ordered]@{
                             ".validate" = "newData.isNumber() && ((!data.exists() && newData.val() >= now - 300000 && newData.val() <= now + 60000) || (data.exists() && newData.val() >= data.val()))"
@@ -119,7 +120,7 @@ $rulesObject = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
                         }
                         avatar_index = [ordered]@{
-                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
                         }
                         profile_claimed = [ordered]@{
                             ".validate" = "newData.isBoolean() && newData.val() == true"
@@ -174,6 +175,7 @@ $rulesObject = [ordered]@{
                         ".read" = "$categoryExpression && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50"
                         ".indexOn" = @("score")
                         '$playerId' = [ordered]@{
+                            ".read" = "$categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48"
                             ".write" = "newData.exists() && $leaderboardWriterRule && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && $leaderboardNameClaimRule && (($leaderboardFreshGateRule) || ($leaderboardLegacyRowCooldownRule) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"
                             ".validate" = "newData.hasChildren(['name', 'name_key', 'avatar_index', 'score', 'updated_at', 'submitted_at_unix'])"
                             name = [ordered]@{
@@ -183,10 +185,10 @@ $rulesObject = [ordered]@{
                                 ".validate" = "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
                             }
                             avatar_index = [ordered]@{
-                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
                             }
                             score = [ordered]@{
-                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($leaderboardTotalLevelCapRule) && (!data.exists() || newData.val() >= data.val())"
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && ($leaderboardTotalLevelCapRule) && (!data.exists() || newData.val() >= data.val() || ($leaderboardLegacyTotalLevelScoreRule))"
                             }
                             skill_level = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
@@ -340,7 +342,7 @@ $rulesObject = [ordered]@{
                             ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
                         }
                         avatar_index = [ordered]@{
-                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 22"
                         }
                         text = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
@@ -379,6 +381,28 @@ $rulesObject = [ordered]@{
                         '$other' = [ordered]@{
                             ".validate" = $false
                         }
+                    }
+                }
+                reports = [ordered]@{
+                    ".read" = "auth != null && auth.token.moderator == true"
+                    '$messageId' = [ordered]@{
+                        '$reporterId' = [ordered]@{
+                            ".write" = "auth != null && auth.uid == `$reporterId && newData.exists() && !data.exists() && root.child('global_chat/v1/messages').child(`$messageId).exists() && root.child('global_chat/v1/messages').child(`$messageId).child('sender_id').val() != auth.uid && newData.parent().parent().parent().child('report_gates').child(auth.uid).child('updated_at').val() == now && (!root.child('global_chat/v1/report_gates').child(auth.uid).exists() || now - root.child('global_chat/v1/report_gates').child(auth.uid).child('updated_at').val() >= 60000)"
+                            ".validate" = "newData.hasChildren(['reason', 'created_at'])"
+                            reason = [ordered]@{
+                                ".validate" = "newData.isString() && (newData.val() == 'Harassment or hate' || newData.val() == 'Sexual content' || newData.val() == 'Threats or private information' || newData.val() == 'Spam or scam' || newData.val() == 'Other')"
+                            }
+                            created_at = [ordered]@{ ".validate" = "newData.isNumber() && newData.val() == now" }
+                            '$other' = [ordered]@{ ".validate" = $false }
+                        }
+                    }
+                }
+                report_gates = [ordered]@{
+                    '$reporterId' = [ordered]@{
+                        ".write" = "auth != null && auth.uid == `$reporterId && newData.exists() && (!data.exists() || now - data.child('updated_at').val() >= 60000)"
+                        ".validate" = "newData.hasChildren(['updated_at'])"
+                        updated_at = [ordered]@{ ".validate" = "newData.isNumber() && newData.val() == now" }
+                        '$other' = [ordered]@{ ".validate" = $false }
                     }
                 }
                 moderation_logs = [ordered]@{

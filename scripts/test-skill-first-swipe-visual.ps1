@@ -185,7 +185,7 @@ func _select_skill_from_menu(scene: Node, skill_id: String) -> void:
 		await render
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-	scene.call("_select_skill", skill_id)
+	scene.call("_navigation_shell").call("_select_skill", skill_id)
 	for _i in range(SETTLE_FRAMES * 2):
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) == "skill" and str(scene.get("selected_skill_id")) == skill_id and _visible_real_module_count(scene) > 0:
@@ -305,7 +305,7 @@ func _wait_for_first_uncovered_skill_frame(scene: Node, skill_id: String) -> Dic
 		await _wait_test_frame()
 		if str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		if bool(scene.get("skill_swipe_animating")) or bool(scene.get("skill_swipe_tracking")):
+		if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")) or bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")):
 			continue
 		var stats := _visible_layout_stats(scene)
 		if not bool(stats.get("opaque_cover", false)):
@@ -323,9 +323,9 @@ func _wait_for_skill_settled(scene: Node, skill_id: String) -> int:
 		await _wait_test_frame()
 		if str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		if bool(scene.get("skill_swipe_animating")) or bool(scene.get("skill_swipe_tracking")) or bool(scene.get("skill_swipe_pending_full_finalize")):
+		if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")) or bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")) or bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")):
 			continue
-		var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+		var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 		if cover != null and cover.visible and cover.modulate.a > 0.08:
 			continue
 		if _visible_real_module_count(scene) > 0:
@@ -345,7 +345,7 @@ func _watch_skill_visibility(scene: Node, skill_id: String, frames: int) -> Dict
 		await _wait_test_frame()
 		if str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		if bool(scene.get("skill_swipe_animating")) or bool(scene.get("skill_swipe_tracking")):
+		if bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")) or bool(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")):
 			continue
 		var stats := _visible_layout_stats(scene)
 		if bool(stats.get("opaque_cover", false)):
@@ -418,7 +418,7 @@ func _visible_layout_stats(scene: Node) -> Dictionary:
 				visible_fishing_method_tiles += int(tile_counts.get("visible", 0))
 				if not _lazy_mount_frames_settled(child):
 					freshly_mounted_modules += 1
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	var opaque_cover := cover != null and cover.visible and cover.modulate.a > 0.08
 	return {
 		"scroll_rect": scroll_rect,
@@ -601,14 +601,14 @@ func _preview_page_count(scene: Node) -> int:
 
 func _state_summary(scene: Node) -> String:
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
-	var page := _valid_control(scene.get("skill_swipe_page"))
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var page := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_page"))
+	var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 	return "screen=%s selected=%s pending=%s anim=%s tracking=%s preview_pages=%s real_visible=%s page=%s page_visible=%s scroll=%s scroll_visible=%s cover=%s cover_alpha=%.3f" % [
 		str(scene.get("current_screen")),
 		str(scene.get("selected_skill_id")),
-		str(scene.get("skill_swipe_pending_full_finalize")),
-		str(scene.get("skill_swipe_animating")),
-		str(scene.get("skill_swipe_tracking")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_pending_full_finalize")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_animating")),
+		str(scene.call("_skill_swipe_activity_surface").get("skill_swipe_tracking")),
 		str(_preview_page_count(scene)),
 		str(_visible_real_module_count(scene)),
 		str(page != null),

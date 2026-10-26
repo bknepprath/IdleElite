@@ -23,6 +23,7 @@ const SECRET_SAVE_KEYS := {
 const IDENTITY_COMPARISON_KEYS := [
 	"leaderboard_player_id",
 	"leaderboard_display_name",
+	"leaderboard_avatar_index",
 	"leaderboard_name_key",
 	"leaderboard_profile_claimed",
 	"leaderboard_name_claim_verified",

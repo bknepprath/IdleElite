@@ -1,0 +1,28 @@
+# Ad bonus remaining-time tiers
+
+## Owner presentation follow-up
+
+The initial large labels inside the bar were rejected. The current presentation uses a slimmer, unlabelled bar with only two short external ticks and muted 36px labels at the 12% and 14% boundaries. All hour markers and the 10% bar label were removed. The reward row contains only the actual XP/time icons and signed percentages, such as +10% and -10%; redundant XP and “less time” text is gone. The underlying tier calculation is unchanged. These owner-requested fine-print markers are recorded in AGENTS.md.
+
+The revised production-main-scene run passed the existing tier, gameplay, reward, timer and five-proportion regressions. Inspected raw three-hour and dark-mode captures with the two ticks and compact icon row visible. UI boundary, hygiene and native-1080 contracts passed. Updated proof is in `outputs/verification/ad-bonus-subtle-tiers/`, including its dimensions/hash manifest. No phone build installed. The original large-label screenshots below remain historical.
+
+Button follow-up: removed the secondary amount label from the ad button, leaving the centered play icon and “Watch ad” (or its existing loading/stored status). The separate duration/cap fine print remains. The reused real-game regression passed all five proportions with `ad-bonus-page failures=[]`; visually inspected the raw 1080x1920 `outputs/verification/ad-bonus-clean-button/two-hours.png`. UI boundary and the required main-screen audit passed. No phone build installed.
+
+Latest owner follow-up: removed the duration/cap description entirely. Increased signed reward text from 52px to 68px and icons from 68px to 88px, with more space between the two reward groups. Updated the note to “Thanks for playing!” and put each existing sentence on its own line, keeping “Optional ads support development.” unbroken. The revised proof folder is `outputs/verification/ad-bonus-large-rewards/`. Inspected the raw main-page and short-screen footer captures; the larger reward row fits and each developer sentence stays together. The reused production-main-scene regression, UI boundary, hygiene and native-1080 checks passed. No phone build installed.
+
+Centered timer follow-up: removed the active/inactive status label and its row, centered the timer directly above the bar, applied white text with an 8px dark outline that scales with phone width, and increased the authored spacing above the countdown group from 24px to 48px. Inspected raw light/dark game captures. The reused production-main-scene regression verifies timer/bar centering at five proportions alongside the existing gameplay/reward checks. Updated proof and dimensions/hash manifest are under `outputs/verification/ad-bonus-centered-timer/`. UI boundary and native-1080 contracts passed. No phone build installed.
+
+Timer stroke/format follow-up: the outline is now pure black and uses the game's shared 12px button-text outline size, scaled with phone width. Both the main clock and next-ad clock omit unused leading fields and zero padding in the first field: `2:00:00`, `5:09`, `9s`, with `0s` at expiry. Nine format/boundary cases and the existing production-main-scene regression passed (`ad-bonus-page failures=[]`). Visually inspected the raw 1080x1920 two-hour capture in `outputs/verification/ad-bonus-timer-format/`; dimensions/hash manifest is in the same folder. UI boundary and the main-screen audit passed. The broader native-1080 contract currently fails on an unrelated tier reward heading typography assertion in `skill_detail_surface.gd`; neither that file nor its contract was edited for this timer change. No phone build installed.
+
+Removed the thin divider above the developer section. Both actual XP and time bonuses use the remaining-time tier: inactive at zero, 10% through 7200 seconds, 12% above 7200 through 14400 seconds, and 14% above 14400 seconds. Thresholds use strict greater-than comparisons as requested. The UI shows three percentage labels inside the bar and 0h/2h/4h/6h boundary markers below. Reward copy changes when the timer crosses a tier. No save keys changed, and the existing two-hour award and six-hour cap remain.
+
+The muted visible production-main-scene capture reached the page through actual Shop navigation. `ad-bonus-page failures=[]` covers eight exact-boundary cases, both gameplay multiplier getters, actual activity XP and duration calculations, live downward transitions, and saved-time restoration. Existing duplicate reward callback, press/release, expiry, timer drain, fullness, dark-mode and five-proportion checks also passed. Proof dimensions: 1080x1920, 1080x2160, 1080x2340, 1200x1920 and 1440x1920. Short screens retain touch scrolling.
+
+Inspected raw three-hour, five-hour and dark-mode game captures. The labels fit the bar, hour markers align with the bands, and the requested separator is absent. The original viewport files were not edited or transformed. Dimensions and SHA-256 values are in `outputs/verification/ad-bonus-tiers/capture-manifest.json`.
+
+UI boundary, generated-file hygiene, native-1080 migration and test-harness contracts passed. The required main-screen audit also passed. Audio used Dummy, save writes and online requests were disabled/isolated, and no live ad was requested. No display or renderer setting changed. No phone package was built or installed.
+
+- [Five hours / 14%](../../outputs/verification/ad-bonus-tiers/five-hours.png)
+- [Three hours / 12%](../../outputs/verification/ad-bonus-tiers/three-hours.png)
+- [Two hours / 10%](../../outputs/verification/ad-bonus-tiers/two-hours.png)
+- [Dark mode](../../outputs/verification/ad-bonus-tiers/dark.png)

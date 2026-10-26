@@ -1,5 +1,8 @@
 extends RefCounted
 
+signal berry_amount_changed
+signal item_collected(action_key: String, item_id: String, amount: float, harvest_count: int)
+
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const LOG_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/log-currency.png"
 const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood.png"
@@ -10,7 +13,7 @@ const BERRIES_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/berries.
 const MAT_COLLECTION_STONE_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-stone.png"
 const MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-wood.png"
 const BUILD_REQUIRED_PLANK_PIECE_TEXTURES := [
-	"res://assets/content/ui/build-required-wide-plank.png"
+	"res://assets/content/ui/build-required-plaque.png"
 ]
 const PLANK_ICON_TEXTURE := "res://assets/content/icons/resources/plank.png"
 const UPGRADE_ARROW_ICON_TEXTURE := "res://assets/content/icons/upgrades/upgrade-arrow.png"
@@ -55,6 +58,17 @@ const MAT_COLLECTION_DEFS := {
 }
 
 var wallet := {}
+var material_defs: Dictionary = MAT_COLLECTION_DEFS.duplicate(true)
+
+func configure_production(definitions: Dictionary) -> void:
+	material_defs = MAT_COLLECTION_DEFS.duplicate(true)
+	for id in definitions:
+		var definition: Dictionary = definitions[id].duplicate(true)
+		definition.icon = "res://" + str(definition.get("icon", "")).trim_prefix("res://")
+		definition.color = Color(str(definition.get("color", "#c8b58c")))
+		definition.background = "res://"+str(definition.get("background",MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE)).trim_prefix("res://")
+		material_defs[id] = definition
+var wisdom_by_skill: Dictionary = {}
 var legacy_softwood_amount := 0
 var berry_prep := {}
 
@@ -65,11 +79,11 @@ func normalize_id(mat_id: String) -> String:
 
 
 func has_definition(mat_id: String) -> bool:
-	return MAT_COLLECTION_DEFS.has(normalize_id(mat_id))
+	return material_defs.has(normalize_id(mat_id))
 
 
 func definition(mat_id: String) -> Dictionary:
-	return MAT_COLLECTION_DEFS.get(normalize_id(mat_id), {}) as Dictionary
+	return material_defs.get(normalize_id(mat_id), {}) as Dictionary
 
 
 func display_name(mat_id: String) -> String:
@@ -100,25 +114,39 @@ func amount(mat_id: String) -> float:
 
 func set_amount(mat_id: String, new_amount: float) -> void:
 	var normalized := normalize_id(mat_id)
-	if not MAT_COLLECTION_DEFS.has(normalized):
+	if not material_defs.has(normalized):
 		return
 	var safe_amount := rounded_amount(normalized, new_amount)
+	var changed := amount(normalized) != safe_amount
 	wallet[normalized] = safe_amount
+	if normalized == "berries" and changed:
+		berry_amount_changed.emit()
 	if normalized == "softwood":
 		legacy_softwood_amount = int(floor(safe_amount + 0.0001))
 
 func add_amount(mat_id: String, delta: float) -> float:
 	var normalized := normalize_id(mat_id)
-	if not MAT_COLLECTION_DEFS.has(normalized):
+	if not material_defs.has(normalized):
 		return 0.0
 	var gained := rounded_amount(normalized, delta)
 	set_amount(normalized, amount(normalized) + gained)
 	return gained
 
+# Activity rewards share one receipt regardless of the wallet storing the item.
+# Empty keys are used for offline grants, which must never replay UI effects.
+func collect_amount(mat_id: String, delta: float, action_key := "", harvest_count := 1) -> float:
+	var gained := add_amount(mat_id,delta)
+	report_collected_item(action_key,normalize_id(mat_id),gained,harvest_count)
+	return gained
+
+func report_collected_item(action_key: String,item_id: String,gained: float,harvest_count := 1) -> void:
+	if action_key.is_empty() or gained<=0.0001 or not is_finite(gained): return
+	item_collected.emit(action_key,item_id,gained,clampi(harvest_count,1,2))
+
 func spend_amount(mat_id: String, cost: float) -> bool:
 	var normalized := normalize_id(mat_id)
 	var safe_cost := maxf(0.0, cost)
-	if not MAT_COLLECTION_DEFS.has(normalized) or amount(normalized) + 0.0001 < safe_cost:
+	if not material_defs.has(normalized) or amount(normalized) + 0.0001 < safe_cost:
 		return false
 	set_amount(normalized, amount(normalized) - safe_cost)
 	return true
@@ -137,7 +165,7 @@ func amount_text_for_host(mat_id: String, amount_override: float = -1.0, _host =
 
 func save_wallet() -> Dictionary:
 	var saved := {}
-	for raw_mat_id in MAT_COLLECTION_DEFS.keys():
+	for raw_mat_id in material_defs.keys():
 		var mat_id := str(raw_mat_id)
 		var current_amount := amount(mat_id)
 		if current_amount > 0.0001:
@@ -145,6 +173,7 @@ func save_wallet() -> Dictionary:
 	return saved
 
 func restore_wallet(data: Dictionary) -> void:
+	wisdom_by_skill = preload("res://scripts/progression/wisdom_state.gd").normalize_balances(data.get("wisdom", {}))
 	wallet = {}
 	legacy_softwood_amount = 0
 	var loaded = data.get("mats", {})
@@ -152,6 +181,10 @@ func restore_wallet(data: Dictionary) -> void:
 		for raw_mat_id in (loaded as Dictionary).keys():
 			var mat_id := normalize_id(str(raw_mat_id))
 			set_amount(mat_id, float((loaded as Dictionary).get(raw_mat_id, 0.0)))
+		# A prototype tube represented the same timber as two shared parts.
+		var old_tubes := maxf(0.0, float(loaded.get("spyglass-tube", 0.0)))
+		if is_finite(old_tubes) and old_tubes > 0.0:
+			set_amount("wooden-parts", amount("wooden-parts") + old_tubes * 2.0)
 	var legacy_logs := maxi(0, int(data.get("log_currency", 0)))
 	if legacy_logs > 0 and amount("softwood") <= 0.0001:
 		set_amount("softwood", float(legacy_logs))
@@ -171,7 +204,7 @@ func woodcutting_log_collection_multiplier(woodcutting_level: int) -> float:
 	return 1.0 + maxf(0.0, float(woodcutting_level)) / 100.0
 
 func buffed_log_collection_amount_for_host(mat_id: String, amount: float, host) -> float:
-	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(SkillState.host_skill_level(host, "woodcutting")))
+	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(SkillState.host_skill_level(host, "woodcutting")) * host._hub_runtime().wood_collection_multiplier())
 
 func berry_prep_target_key(skill_id: String, action_id: String, action_lookup: Callable, action_key: Callable) -> String:
 	if skill_id.is_empty() or action_id.is_empty():
@@ -209,8 +242,12 @@ func restore_berry_prep(value: Variant, action_lookup: Callable, action_key: Cal
 
 
 func berry_prep_matches(skill_id: String, action_id: String, action_lookup: Callable, action_key: Callable) -> bool:
+	# Asked on every completion; with no berry targets chosen nothing can match.
+	var targets := berry_prep.get("targets", {}) as Dictionary
+	if targets.is_empty():
+		return false
 	var key := berry_prep_target_key(skill_id, action_id, action_lookup, action_key)
-	return not key.is_empty() and bool((berry_prep.get("targets", {}) as Dictionary).get(key, false))
+	return not key.is_empty() and bool(targets.get(key, false))
 
 
 func toggle_berry_prep_target(skill_id: String, action_id: String, action_lookup: Callable, action_key: Callable) -> bool:

@@ -97,6 +97,15 @@ func _battery_governor_visual_work_active() -> bool:
 	return _skill_detail_has_fishing_camera_returning()
 
 func _skill_detail_needs_high_frequency_ui_update() -> bool:
+	# All visible desktop columns share the same animation clock. Stopped bars
+	# must also finish draining before returning to the idle half-second refresh.
+	if host.current_screen in ["skill", "pinned", "queue"]:
+		if not host.canceled_action_progress_by_key.is_empty(): return true
+		if host.desktop_layout.enabled() and not host.running_action_id.is_empty(): return true
+		for raw_card in host.action_cards.values():
+			if bool(raw_card.get("progress_draining", false)):
+				var root = host._app_lifecycle_runtime().valid_control_ref(raw_card.get("root"))
+				if root != null and root.is_visible_in_tree(): return true
 	var temporary_events = host._temporary_event_runtime()
 	if host.current_screen == "menu":
 		return not host.running_action_id.is_empty() or not temporary_events.event_running_action_id.is_empty()
@@ -149,6 +158,10 @@ func _skill_detail_has_fishing_camera_returning() -> bool:
 		):
 			return true
 	return false
+
+func request_ui_static_refresh() -> void:
+	ui_static_refresh_elapsed = maxf(ui_static_refresh_elapsed, host.UI_STATIC_REFRESH_INTERVAL_SECONDS)
+
 
 func _consume_ui_static_refresh(delta: float, instant: bool) -> bool:
 	if instant or delta <= 0.0:

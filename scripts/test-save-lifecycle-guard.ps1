@@ -28,12 +28,23 @@ class FakeHost:
 	var save_writes_blocked := false
 	var save_result := true
 	var save_calls := 0
+	var background_save_calls := 0
+	var flush_calls := 0
 
 	func _save_runtime():
 		return self
 
-	func save_game() -> bool:
+	# Lifecycle events need the file on disk when they return, so they wait for a
+	# background save in flight and then use the blocking save.
+	func flush_background_save() -> void:
+		flush_calls += 1
+
+	func save_game_now() -> bool:
 		save_calls += 1
+		return save_result
+
+	func save_game() -> bool:
+		background_save_calls += 1
 		return save_result
 
 
@@ -69,6 +80,8 @@ func _init() -> void:
 	_expect(host.save_calls == 3, "Failed lifecycle saves must not be debounced.")
 	_expect(lifecycle._persist_for_lifecycle() == 1, "A successful retry should then debounce the paired notification.")
 	_expect(host.save_calls == 3, "A successful retry should rotate backups only once.")
+	_expect(host.background_save_calls == 0, "Lifecycle saves must be blocking saves, never background ones.")
+	_expect(host.flush_calls == 7, "Every lifecycle event must first wait for a background save in flight, even one it then debounces.")
 
 	if failures.is_empty():
 		print("save-lifecycle-guard-ok")

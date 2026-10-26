@@ -23,6 +23,9 @@ $pollSeconds = 10
 if ($env:GODOT_MAX_PROCESSES) {
     $maxGodots = [int]$env:GODOT_MAX_PROCESSES
 }
+if ($maxGodots -lt 1 -or $maxGodots -gt 4) {
+    throw "GODOT_MAX_PROCESSES must be between 1 and 4."
+}
 if ($env:GODOT_SLOT_WAIT_SECONDS) {
     $waitSeconds = [int]$env:GODOT_SLOT_WAIT_SECONDS
 }
@@ -56,6 +59,11 @@ function Get-GodotProcessSnapshot {
 function Get-ChildProcessIds {
     param([Parameter(Mandatory = $true)][int]$ParentProcessId)
 
+    # No Godot can be left behind when the process inventory is empty. Avoid
+    # requiring WMI/CIM permissions just to prove this common successful case.
+    if (@(Get-Process godot* -ErrorAction SilentlyContinue).Count -eq 0) {
+        return @()
+    }
     $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentProcessId" -ErrorAction SilentlyContinue)
     $ids = @()
     foreach ($child in $children) {
@@ -76,6 +84,19 @@ $visibleGame = $false
 if ($godotArgs -contains "--visible-game") {
     $visibleGame = $true
     $godotArgs = @($godotArgs | Where-Object { $_ -ne "--visible-game" })
+}
+$previewAudio = $godotArgs -contains "--preview-audio"
+$godotArgs = @($godotArgs | Where-Object { $_ -ne "--preview-audio" })
+if ($visibleGame -and -not $previewAudio) {
+    # Bus mute can be overwritten by a loaded save or AudioDirector startup.
+    # Dummy discards preview output even if the game changes its bus volumes.
+    $mutedPreviewArgs = @()
+    for ($i = 0; $i -lt $godotArgs.Count; $i++) {
+        if ($godotArgs[$i] -eq "--audio-driver") { $i++; continue }
+        if ($godotArgs[$i] -like "--audio-driver=*") { continue }
+        $mutedPreviewArgs += $godotArgs[$i]
+    }
+    $godotArgs = $mutedPreviewArgs + @("--audio-driver", "Dummy")
 }
 if ($allow4kReferenceCapture -and -not $visibleGame) {
     throw "--allow-4k-reference-capture requires --visible-game."

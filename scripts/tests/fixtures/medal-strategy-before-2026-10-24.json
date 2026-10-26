@@ -1,0 +1,1435 @@
+{
+  "rates": [
+    {
+      "skill": "fight",
+      "action": "push-ups",
+      "before": 97.3,
+      "after": 98.5
+    },
+    {
+      "skill": "fight",
+      "action": "kick-mud-off-boot",
+      "before": 96.9,
+      "after": 97.0
+    },
+    {
+      "skill": "fight",
+      "action": "wrestle-stuck-gate-latch",
+      "before": 95.4,
+      "after": 96.2
+    },
+    {
+      "skill": "fight",
+      "action": "box-suspicious-feed-sack",
+      "before": 94.2,
+      "after": 94.8
+    },
+    {
+      "skill": "fight",
+      "action": "fight-chickens",
+      "before": 97,
+      "after": 95.5
+    },
+    {
+      "skill": "fight",
+      "action": "duel-fence-post",
+      "before": 94,
+      "after": 94.0
+    },
+    {
+      "skill": "fight",
+      "action": "outmuscle-angry-wheelbarrow",
+      "before": 93.8,
+      "after": 93.1
+    },
+    {
+      "skill": "fight",
+      "action": "brawl-with-milk-pail",
+      "before": 91.8,
+      "after": 91.8
+    },
+    {
+      "skill": "thieving",
+      "action": "borrow-cookie-permanently",
+      "before": 96.3,
+      "after": 98.6
+    },
+    {
+      "skill": "thieving",
+      "action": "sneak-past-tip-jar",
+      "before": 95.9,
+      "after": 97.05
+    },
+    {
+      "skill": "thieving",
+      "action": "pocket-couch-coins",
+      "before": 94.4,
+      "after": 96.0
+    },
+    {
+      "skill": "thieving",
+      "action": "chameleon-camouflage",
+      "before": 93.6,
+      "after": 95.1
+    },
+    {
+      "skill": "thieving",
+      "action": "steal-a-penny",
+      "before": 92.8,
+      "after": 94.2
+    },
+    {
+      "skill": "thieving",
+      "action": "jazz-hands-diversion",
+      "before": 92.6,
+      "after": 92.6
+    },
+    {
+      "skill": "thieving",
+      "action": "pick-friendly-lock",
+      "before": 92.4,
+      "after": 92.4
+    },
+    {
+      "skill": "build",
+      "action": "stack-bricks",
+      "before": 98,
+      "after": 98.7
+    },
+    {
+      "skill": "build",
+      "action": "hammer-nails",
+      "before": 98,
+      "after": 97.15
+    },
+    {
+      "skill": "build",
+      "action": "patch-fence",
+      "before": 97.7,
+      "after": 96.1
+    },
+    {
+      "skill": "build",
+      "action": "saw-planks",
+      "before": 97.5,
+      "after": 95.8
+    },
+    {
+      "skill": "build",
+      "action": "study-blueprint",
+      "before": 96.5,
+      "after": 95.2
+    },
+    {
+      "skill": "build",
+      "action": "repair-small-shack",
+      "before": 95.5,
+      "after": 94.6
+    },
+    {
+      "skill": "build",
+      "action": "install-door-that-mostly-opens",
+      "before": 95.4,
+      "after": 93.9
+    },
+    {
+      "skill": "woodcutting",
+      "action": "gather-fallen-branches",
+      "before": 98,
+      "after": 98.8
+    },
+    {
+      "skill": "woodcutting",
+      "action": "snap-a-twig-with-purpose",
+      "before": 98,
+      "after": 97.2
+    },
+    {
+      "skill": "woodcutting",
+      "action": "split-firewood",
+      "before": 97,
+      "after": 95.9
+    },
+    {
+      "skill": "woodcutting",
+      "action": "trim-overconfident-shrub",
+      "before": 95.4,
+      "after": 95.0
+    },
+    {
+      "skill": "woodcutting",
+      "action": "chop-softwood-tree",
+      "before": 95.2,
+      "after": 94.1
+    }
+  ],
+  "building_before": [
+    {
+      "id": "stack-bricks",
+      "tier": 1,
+      "name": "Stack Bricks",
+      "unlock": 1,
+      "stamina": 1,
+      "seconds": 1.49,
+      "xp": 1,
+      "success": 98,
+      "rewards": {
+        "xp": 1
+      },
+      "costs": {
+        "stamina": 1
+      },
+      "art": "assets/content/build/actions/01-stack-bricks.png",
+      "art_framing": {
+        "zoom": 1.4,
+        "focus": [
+          0.5,
+          0.49
+        ]
+      },
+      "background": "assets/content/build/backgrounds/01-early.png"
+    },
+    {
+      "id": "hammer-nails",
+      "tier": 2,
+      "name": "Hammer Nails",
+      "unlock": 2,
+      "stamina": 1,
+      "seconds": 1.71,
+      "xp": 3,
+      "success": 98,
+      "rewards": {
+        "xp": 3
+      },
+      "costs": {
+        "stamina": 1
+      },
+      "art": "assets/content/build/actions/03-hammer-one-suspicious-nail.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.46,
+          0.485
+        ]
+      },
+      "background": "assets/content/build/backgrounds/workbench.png",
+      "unlock_drop": {
+        "id": "rivets",
+        "name": "Rivets",
+        "amount": 1,
+        "icon": "assets/content/ui/unlock-rivets.png"
+      },
+      "seasonal_unlock_drop": {
+        "id": "halloween-lantern-parts",
+        "name": "Lantern parts",
+        "amount": 1,
+        "icon": "assets/content/events/halloween/lantern-parts.tres"
+      }
+    },
+    {
+      "id": "patch-fence",
+      "tier": 2,
+      "name": "Patch Fence",
+      "unlock": 3,
+      "stamina": 1,
+      "seconds": 1.82,
+      "xp": 4,
+      "success": 97.7,
+      "rewards": {
+        "xp": 4
+      },
+      "costs": {
+        "stamina": 1
+      },
+      "art": "assets/content/build/actions/02-patch-fence-with-confidence.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.46,
+          0.46
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 1,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "saw-planks",
+      "tier": 3,
+      "name": "Saw Planks",
+      "unlock": 4,
+      "sort_unlock": 4,
+      "stamina": 1,
+      "seconds": 1.86,
+      "xp": 4,
+      "success": 97.5,
+      "rewards": {
+        "xp": 4
+      },
+      "costs": {
+        "stamina": 1
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 4
+        },
+        {
+          "skill": "woodcutting",
+          "level": 2
+        }
+      ],
+      "xp_rewards": {
+        "build": 4,
+        "woodcutting": 2
+      },
+      "combo_tags": [
+        "user_requested",
+        "two_skill",
+        "resource_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/woodcutting/actions/build-saw-planks.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.46,
+          0.44
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 2,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "study-blueprint",
+      "tier": 3,
+      "name": "Study Blueprint",
+      "unlock": 5,
+      "sort_unlock": 5,
+      "stamina": 1,
+      "seconds": 2.04,
+      "xp": 2,
+      "success": 96.5,
+      "rewards": {
+        "xp": 2
+      },
+      "costs": {
+        "stamina": 1
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 5
+        },
+        {
+          "skill": "thieving",
+          "level": 4
+        }
+      ],
+      "xp_rewards": {
+        "build": 2,
+        "thieving": 1
+      },
+      "combo_tags": [
+        "user_requested",
+        "two_skill",
+        "planning_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/build/actions/03-study-blueprint.png",
+      "art_framing": {
+        "zoom": 1.05,
+        "focus": [
+          0.5,
+          0.46
+        ]
+      },
+      "background": "assets/content/build/backgrounds/workbench.png",
+      "wisdom_reward": 1,
+      "wisdom_skill": "build"
+    },
+    {
+      "id": "repair-small-shack",
+      "tier": 4,
+      "name": "Repair Small Shack",
+      "unlock": 6,
+      "stamina": 1,
+      "seconds": 2.3,
+      "xp": 6,
+      "success": 95.5,
+      "rewards": {
+        "xp": 6
+      },
+      "costs": {
+        "stamina": 2
+      },
+      "art": "assets/content/build/actions/04-repair-small-shack.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.46,
+          0.47
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "xp_rewards": {
+        "build": 5,
+        "woodcutting": 1
+      },
+      "display_tags": [
+        "Combo"
+      ],
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-repair-small-shack",
+        "title": "Repair the frame",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "patch-fence",
+            "event": "success",
+            "label": "Plans",
+            "target": 8,
+            "resource": "plans"
+          }
+        ],
+        "material": "timber"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 2,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "install-door-that-mostly-opens",
+      "tier": 5,
+      "name": "Install Door That Mostly Opens",
+      "unlock": 8,
+      "stamina": 1,
+      "seconds": 2.45,
+      "xp": 9,
+      "success": 95.4,
+      "rewards": {
+        "xp": 9
+      },
+      "costs": {
+        "stamina": 2
+      },
+      "art": "assets/content/build/actions/05-install-door-that-mostly-opens.png",
+      "art_framing": {
+        "zoom": 1.25,
+        "focus": [
+          0.47,
+          0.47
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-install-door-that-mostly-opens",
+        "title": "Fit the doorway",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "repair-small-shack",
+            "event": "success",
+            "label": "Rivets",
+            "target": 18,
+            "resource": "rivets"
+          }
+        ],
+        "material": "stone"
+      },
+      "unlock_drop": {
+        "id": "rivets",
+        "name": "Rivets",
+        "amount": 3,
+        "icon": "assets/content/ui/unlock-rivets.png"
+      }
+    },
+    {
+      "id": "build-bridge-over-tiny-puddle",
+      "tier": 6,
+      "name": "Build Bridge Over Tiny Puddle",
+      "unlock": 11,
+      "stamina": 3,
+      "seconds": 3.03,
+      "xp": 15,
+      "success": 90,
+      "rewards": {
+        "xp": 15
+      },
+      "costs": {
+        "stamina": 2
+      },
+      "art": "assets/content/build/actions/16-build-bridge-over-tiny-puddle.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.45,
+          0.44
+        ]
+      },
+      "background": "assets/content/build/backgrounds/02-rising.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-build-bridge-over-tiny-puddle",
+        "title": "Assemble the bridge",
+        "visual": "bridge",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "install-door-that-mostly-opens",
+            "event": "success",
+            "label": "Rivets",
+            "target": 32,
+            "resource": "rivets"
+          }
+        ],
+        "material": "stone"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 3,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "roof-the-roofless",
+      "tier": 7,
+      "name": "Roof The Roofless",
+      "unlock": 14,
+      "stamina": 3,
+      "seconds": 3.28,
+      "xp": 19,
+      "success": 84,
+      "rewards": {
+        "xp": 19
+      },
+      "costs": {
+        "stamina": 3
+      },
+      "art": "assets/content/build/actions/07-add-roof-to-something-roofless.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.44,
+          0.47
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-roof-the-roofless",
+        "title": "Raise the roof",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "build-bridge-over-tiny-puddle",
+            "event": "success",
+            "label": "Plans",
+            "target": 48,
+            "resource": "plans"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "woodcutting",
+            "source_action": "chop-softwood-tree",
+            "event": "success",
+            "label": "Resin",
+            "target": 12,
+            "resource": "trail-marks"
+          }
+        ],
+        "material": "stone"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 4,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "frame-a-treehouse-platform",
+      "tier": 7,
+      "name": "Frame A Treehouse Platform",
+      "unlock": 16,
+      "sort_unlock": 16,
+      "stamina": 3,
+      "seconds": 3.5,
+      "xp": 24,
+      "success": 82,
+      "rewards": {
+        "xp": 24
+      },
+      "costs": {
+        "stamina": 3
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 16
+        },
+        {
+          "skill": "woodcutting",
+          "level": 12
+        }
+      ],
+      "xp_rewards": {
+        "build": 24,
+        "woodcutting": 6
+      },
+      "combo_tags": [
+        "first_wave",
+        "two_skill",
+        "resource_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/build/actions/07-frame-a-treehouse-platform.png",
+      "art_framing": {
+        "zoom": 1.5,
+        "focus": [
+          0.39,
+          0.47
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "wisdom_required": 25,
+      "wisdom_skill": "build",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 5,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "pour-questionable-foundation",
+      "tier": 8,
+      "name": "Pour Questionable Foundation",
+      "unlock": 17,
+      "stamina": 3,
+      "seconds": 3.78,
+      "xp": 29,
+      "success": 72,
+      "rewards": {
+        "xp": 29
+      },
+      "costs": {
+        "stamina": 3
+      },
+      "art": "assets/content/build/actions/08-pour-questionable-foundation.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.46,
+          0.44
+        ]
+      },
+      "background": "assets/content/build/backgrounds/02-rising.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 5,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "upgrade-training-yard",
+      "tier": 9,
+      "name": "Upgrade Training Yard",
+      "unlock": 21,
+      "stamina": 3,
+      "seconds": 4.47,
+      "xp": 37,
+      "success": 84,
+      "rewards": {
+        "xp": 37
+      },
+      "costs": {
+        "stamina": 3
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 21
+        },
+        {
+          "skill": "fight",
+          "level": 19
+        }
+      ],
+      "xp_rewards": {
+        "build": 37,
+        "fight": 10
+      },
+      "combo_tags": [
+        "user_requested",
+        "two_skill",
+        "training_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/build/actions/09-upgrade-training-yard.png",
+      "art_framing": {
+        "zoom": 1.4,
+        "focus": [
+          0.46,
+          0.48
+        ]
+      },
+      "background": "assets/content/build/backgrounds/02-rising.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 6,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-a-decoy-vault",
+      "tier": 10,
+      "name": "Build A Decoy Vault",
+      "unlock": 22,
+      "sort_unlock": 22,
+      "stamina": 3,
+      "seconds": 4.72,
+      "xp": 41,
+      "success": 76,
+      "rewards": {
+        "xp": 41
+      },
+      "costs": {
+        "stamina": 4
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 22
+        },
+        {
+          "skill": "thieving",
+          "level": 18
+        }
+      ],
+      "xp_rewards": {
+        "build": 41,
+        "thieving": 10
+      },
+      "combo_tags": [
+        "user_requested",
+        "two_skill",
+        "heist_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/thieving/actions/build-build-a-decoy-vault.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.46,
+          0.46
+        ]
+      },
+      "background": "assets/content/build/backgrounds/02-rising.png",
+      "wisdom_required": 60,
+      "wisdom_skill": "build",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 6,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "construct-fishing-pier",
+      "tier": 11,
+      "name": "Construct Fishing Pier",
+      "unlock": 25,
+      "stamina": 3,
+      "seconds": 5.18,
+      "xp": 49,
+      "success": 82,
+      "rewards": {
+        "xp": 49
+      },
+      "costs": {
+        "stamina": 4
+      },
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 25
+        },
+        {
+          "skill": "fishing",
+          "level": 18
+        }
+      ],
+      "xp_rewards": {
+        "build": 49,
+        "fishing": 12
+      },
+      "combo_tags": [
+        "user_requested",
+        "two_skill",
+        "fishing_combo"
+      ],
+      "display_tags": [
+        "Combo"
+      ],
+      "art": "assets/content/build/actions/10-construct-fishing-pier.png",
+      "art_framing": {
+        "zoom": 1.25,
+        "focus": [
+          0.46,
+          0.44
+        ]
+      },
+      "background": "assets/content/build/backgrounds/02-rising.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-construct-fishing-pier",
+        "title": "Build the pier",
+        "visual": "bridge",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "pour-questionable-foundation",
+            "event": "success",
+            "label": "Plans",
+            "target": 75,
+            "resource": "plans"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "fishing",
+            "source_action": "dock-edge",
+            "event": "success",
+            "label": "Lures",
+            "target": 25,
+            "resource": "lures"
+          }
+        ],
+        "material": "bronze"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 7,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "raise-a-two-story-barn",
+      "tier": 12,
+      "name": "Raise A Two Story Barn",
+      "unlock": 29,
+      "stamina": 3,
+      "seconds": 5.61,
+      "xp": 64,
+      "success": 80,
+      "rewards": {
+        "xp": 64
+      },
+      "costs": {
+        "stamina": 4
+      },
+      "art": "assets/content/build/actions/11-raise-a-two-story-barn.png",
+      "art_framing": {
+        "zoom": 1.5,
+        "focus": [
+          0.44,
+          0.54
+        ]
+      },
+      "background": "assets/content/build/backgrounds/timber-yard.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 8,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-town-notice-board",
+      "tier": 13,
+      "name": "Build Town Notice Board",
+      "unlock": 34,
+      "stamina": 5,
+      "seconds": 6.46,
+      "xp": 83,
+      "success": 82,
+      "rewards": {
+        "xp": 83
+      },
+      "costs": {
+        "stamina": 4
+      },
+      "art": "assets/content/build/actions/12-build-town-notice-board.png",
+      "art_framing": {
+        "zoom": 1.4,
+        "focus": [
+          0.47,
+          0.49
+        ]
+      },
+      "background": "assets/content/build/backgrounds/03-mid.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 9,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "assemble-windmill",
+      "tier": 14,
+      "name": "Assemble Windmill",
+      "unlock": 39,
+      "stamina": 7,
+      "seconds": 6.99,
+      "xp": 106,
+      "success": 66,
+      "rewards": {
+        "xp": 106
+      },
+      "costs": {
+        "stamina": 5
+      },
+      "art": "assets/content/build/actions/13-assemble-windmill-that-judges-you.png",
+      "art_framing": {
+        "zoom": 1.55,
+        "focus": [
+          0.5,
+          0.6
+        ]
+      },
+      "background": "assets/content/build/backgrounds/03-mid.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-assemble-windmill",
+        "title": "Assemble the sails",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "raise-a-two-story-barn",
+            "event": "success",
+            "label": "Rivets",
+            "target": 120,
+            "resource": "rivets"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "woodcutting",
+            "source_action": "fell-oak-tree",
+            "event": "success",
+            "label": "Resin",
+            "target": 40,
+            "resource": "trail-marks"
+          }
+        ],
+        "material": "silver"
+      },
+      "unlock_drop": {
+        "id": "rivets",
+        "name": "Rivets",
+        "amount": 10,
+        "icon": "assets/content/ui/unlock-rivets.png"
+      }
+    },
+    {
+      "id": "dig-emergency-basement",
+      "tier": 15,
+      "name": "Dig Emergency Basement",
+      "unlock": 44,
+      "stamina": 7,
+      "seconds": 8.02,
+      "xp": 132,
+      "success": 72,
+      "rewards": {
+        "xp": 132
+      },
+      "costs": {
+        "stamina": 5
+      },
+      "art": "assets/content/build/actions/14-dig-emergency-basement.png",
+      "art_framing": {
+        "zoom": 1.35,
+        "focus": [
+          0.44,
+          0.46
+        ]
+      },
+      "background": "assets/content/build/backgrounds/03-mid.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 12,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "raise-guild-hall",
+      "tier": 16,
+      "name": "Raise Guild Hall",
+      "unlock": 49,
+      "stamina": 7,
+      "seconds": 8.59,
+      "xp": 159,
+      "success": 65,
+      "rewards": {
+        "xp": 159
+      },
+      "costs": {
+        "stamina": 5
+      },
+      "art": "assets/content/build/actions/15-raise-guild-hall.png",
+      "art_framing": {
+        "zoom": 1.5,
+        "focus": [
+          0.44,
+          0.54
+        ]
+      },
+      "background": "assets/content/build/backgrounds/03-mid.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-raise-guild-hall",
+        "title": "Raise the guild hall",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "dig-emergency-basement",
+            "event": "success",
+            "label": "Plans",
+            "target": 180,
+            "resource": "plans"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "woodcutting",
+            "source_action": "chop-ancient-tree",
+            "event": "success",
+            "label": "Resin",
+            "target": 65,
+            "resource": "trail-marks"
+          }
+        ],
+        "material": "gold"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 13,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-market-stall",
+      "tier": 17,
+      "name": "Build Market Stall",
+      "unlock": 55,
+      "stamina": 8,
+      "seconds": 9.58,
+      "xp": 191,
+      "success": 70,
+      "rewards": {
+        "xp": 191
+      },
+      "costs": {
+        "stamina": 6
+      },
+      "art": "assets/content/build/actions/06-build-market-stall.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.45,
+          0.47
+        ]
+      },
+      "background": "assets/content/build/backgrounds/04-late.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 14,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-tall-silo",
+      "tier": 18,
+      "name": "Build Tall Silo",
+      "unlock": 60,
+      "stamina": 9,
+      "seconds": 10.41,
+      "xp": 229,
+      "success": 62,
+      "rewards": {
+        "xp": 229
+      },
+      "costs": {
+        "stamina": 6
+      },
+      "art": "assets/content/build/actions/17-construct-suspiciously-tall-silo.png",
+      "art_framing": {
+        "zoom": 1.8,
+        "focus": [
+          0.49,
+          0.7
+        ]
+      },
+      "background": "assets/content/build/backgrounds/04-late.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 16,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "install-elevator",
+      "tier": 19,
+      "name": "Install Elevator",
+      "unlock": 65,
+      "stamina": 9,
+      "seconds": 11.26,
+      "xp": 266,
+      "success": 56,
+      "rewards": {
+        "xp": 266
+      },
+      "costs": {
+        "stamina": 6
+      },
+      "art": "assets/content/build/actions/18-install-elevator-in-the-shack.png",
+      "art_framing": {
+        "zoom": 1.65,
+        "focus": [
+          0.49,
+          0.6
+        ]
+      },
+      "background": "assets/content/build/backgrounds/04-late.png",
+      "unlock_drop": {
+        "id": "rivets",
+        "name": "Rivets",
+        "amount": 17,
+        "icon": "assets/content/ui/unlock-rivets.png"
+      }
+    },
+    {
+      "id": "build-elite-tower",
+      "tier": 20,
+      "name": "Build Elite Tower",
+      "unlock": 70,
+      "stamina": 11,
+      "seconds": 11.79,
+      "xp": 312,
+      "success": 52,
+      "rewards": {
+        "xp": 312
+      },
+      "costs": {
+        "stamina": 7
+      },
+      "art": "assets/content/build/actions/19-build-elite-tower.png",
+      "art_framing": {
+        "zoom": 1.6,
+        "focus": [
+          0.5,
+          0.63
+        ]
+      },
+      "background": "assets/content/build/backgrounds/04-late.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-build-elite-tower",
+        "title": "Raise the tower",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "install-elevator",
+            "event": "success",
+            "label": "Rivets",
+            "target": 260,
+            "resource": "rivets"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "woodcutting",
+            "source_action": "fell-tree-that-remembers-you",
+            "event": "success",
+            "label": "Resin",
+            "target": 100,
+            "resource": "trail-marks"
+          }
+        ],
+        "material": "platinum"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 18,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "add-second-elite-tower-on-top",
+      "tier": 21,
+      "name": "Add Second Elite Tower On Top",
+      "unlock": 73,
+      "stamina": 12,
+      "seconds": 12.28,
+      "xp": 349,
+      "success": 47,
+      "rewards": {
+        "xp": 349
+      },
+      "costs": {
+        "stamina": 7
+      },
+      "art": "assets/content/build/actions/20-add-second-elite-tower-on-top.png",
+      "art_framing": {
+        "zoom": 1.6,
+        "focus": [
+          0.5,
+          0.565
+        ]
+      },
+      "background": "assets/content/build/backgrounds/04-late.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 19,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "construct-underground-town",
+      "tier": 22,
+      "name": "Construct Underground Town",
+      "unlock": 75,
+      "stamina": 12,
+      "seconds": 12.7,
+      "xp": 376,
+      "success": 55,
+      "rewards": {
+        "xp": 376
+      },
+      "costs": {
+        "stamina": 7
+      },
+      "art": "assets/content/build/actions/21-construct-underground-town.png",
+      "art_framing": {
+        "zoom": 1.55,
+        "focus": [
+          0.5,
+          0.57
+        ]
+      },
+      "background": "assets/content/build/backgrounds/05-finale.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 19,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-weatherproof-weather",
+      "tier": 23,
+      "name": "Build a Storm Shelter",
+      "unlock": 77,
+      "stamina": 12,
+      "seconds": 13.14,
+      "xp": 398,
+      "success": 48,
+      "rewards": {
+        "xp": 398
+      },
+      "costs": {
+        "stamina": 8
+      },
+      "art": "assets/content/build/actions/22-build-weatherproof-weather.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.48,
+          0.48
+        ]
+      },
+      "background": "assets/content/build/backgrounds/05-finale.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 20,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "renovate-the-horizon",
+      "tier": 24,
+      "name": "Renovate The Horizon",
+      "unlock": 78,
+      "stamina": 12,
+      "seconds": 13.15,
+      "xp": 411,
+      "success": 44,
+      "rewards": {
+        "xp": 411
+      },
+      "costs": {
+        "stamina": 8
+      },
+      "art": "assets/content/build/actions/23-renovate-the-horizon.png",
+      "art_framing": {
+        "zoom": 1.3,
+        "focus": [
+          0.46,
+          0.48
+        ]
+      },
+      "background": "assets/content/build/backgrounds/05-finale.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 20,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "permit-mega-structure",
+      "tier": 25,
+      "name": "Permit Mega Structure",
+      "unlock": 79,
+      "stamina": 12,
+      "seconds": 13.45,
+      "xp": 427,
+      "success": 57,
+      "rewards": {
+        "xp": 427
+      },
+      "costs": {
+        "stamina": 8
+      },
+      "art": "assets/content/build/actions/24-permit-the-impossible-megastructure.png",
+      "art_framing": {
+        "zoom": 1.4,
+        "focus": [
+          0.51,
+          0.56
+        ]
+      },
+      "background": "assets/content/build/backgrounds/05-finale.png",
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 20,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    },
+    {
+      "id": "build-builder-building",
+      "tier": 26,
+      "name": "Build Builder Building",
+      "unlock": 80,
+      "stamina": 12,
+      "seconds": 13.45,
+      "xp": 449,
+      "success": 43,
+      "rewards": {
+        "xp": 449
+      },
+      "costs": {
+        "stamina": 9
+      },
+      "art": "assets/content/build/actions/25-build-the-building-that-builds-you.png",
+      "art_framing": {
+        "zoom": 1.5,
+        "focus": [
+          0.43,
+          0.55
+        ]
+      },
+      "background": "assets/content/build/backgrounds/05-finale.png",
+      "unlock_project": {
+        "schema_version": 2,
+        "id": "build-build-builder-building",
+        "title": "Complete the master work",
+        "visual": "build",
+        "steps": [
+          {
+            "id": "step-1",
+            "source_skill": "build",
+            "source_action": "permit-mega-structure",
+            "event": "success",
+            "label": "Plans",
+            "target": 360,
+            "resource": "plans"
+          },
+          {
+            "id": "step-2",
+            "source_skill": "thieving",
+            "source_action": "forge-a-receipt-for-the-moon",
+            "event": "success",
+            "label": "Thieving",
+            "target": 120,
+            "resource": "clues"
+          },
+          {
+            "id": "step-3",
+            "source_skill": "woodcutting",
+            "source_action": "harvest-moonlit-silverwood",
+            "event": "success",
+            "label": "Resin",
+            "target": 140,
+            "resource": "trail-marks"
+          }
+        ],
+        "material": "obsidian"
+      },
+      "unlock_drop": {
+        "id": "plans",
+        "name": "Plans",
+        "amount": 21,
+        "icon": "assets/content/ui/unlock-plans.png"
+      }
+    }
+  ]
+}

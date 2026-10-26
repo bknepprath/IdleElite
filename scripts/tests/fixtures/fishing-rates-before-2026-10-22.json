@@ -1,0 +1,1290 @@
+[
+  {
+    "action": "shallows",
+    "chance": 0.82,
+    "food_per_min": 3.69,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 36.9
+  },
+  {
+    "action": "shallows",
+    "chance": 0.23,
+    "food_per_min": 12.075,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 11.5
+  },
+  {
+    "action": "shallows",
+    "chance": 0.918035015181419,
+    "food_per_min": 3.30492605465311,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 66.0985210930622
+  },
+  {
+    "action": "shallows",
+    "chance": 0.949530817611433,
+    "food_per_min": 3.56074056604287,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 94.9530817611433
+  },
+  {
+    "action": "shallows",
+    "chance": 0.961843283261525,
+    "food_per_min": 3.93481343152442,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 118.044402945733
+  },
+  {
+    "action": "shallows",
+    "chance": 0.918035015181419,
+    "food_per_min": 64.032942308904,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 41.3115756831639
+  },
+  {
+    "action": "shallows",
+    "chance": 0.918035015181419,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 165.246302732655
+  },
+  {
+    "action": "rocks",
+    "chance": 0.74,
+    "food_per_min": 11.1,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 55.5
+  },
+  {
+    "action": "rocks",
+    "chance": 0.21,
+    "food_per_min": 36.75,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 10.5
+  },
+  {
+    "action": "rocks",
+    "chance": 0.05,
+    "food_per_min": 0.6,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 6.0
+  },
+  {
+    "action": "rocks",
+    "chance": 0.05,
+    "food_per_min": 0.625,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 8.125
+  },
+  {
+    "action": "rocks",
+    "chance": 0.05,
+    "food_per_min": 0.681818181818182,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 10.2272727272727
+  },
+  {
+    "action": "rocks",
+    "chance": 0.05,
+    "food_per_min": 0.75,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 3.75
+  },
+  {
+    "action": "rocks",
+    "chance": 0.84,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 252.0
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.6,
+    "food_per_min": 9.0,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 36.0
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.225,
+    "food_per_min": 39.375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 11.25
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.9,
+    "food_per_min": 10.8,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 86.4
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.938876136179383,
+    "food_per_min": 11.7359517022423,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 117.359517022423
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.961843283261525,
+    "food_per_min": 13.1160447717481,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 157.392537260977
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.9,
+    "food_per_min": 209.25,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 54.0
+  },
+  {
+    "action": "dock-edge",
+    "chance": 0.9,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 216.0
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.42,
+    "food_per_min": 6.3,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 25.2
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.22,
+    "food_per_min": 38.5,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 11.0
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.88,
+    "food_per_min": 10.56,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 84.48
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.925724769510103,
+    "food_per_min": 11.5715596188763,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 115.715596188763
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.954073751556244,
+    "food_per_min": 13.0100966121306,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 156.121159345567
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.88,
+    "food_per_min": 204.6,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 52.8
+  },
+  {
+    "action": "piling-line",
+    "chance": 0.88,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 211.2
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.15,
+    "food_per_min": 2.25,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 11.25
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.2145,
+    "food_per_min": 37.5375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 21.45
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.858,
+    "food_per_min": 10.296,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 102.96
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.907672417360576,
+    "food_per_min": 11.3459052170072,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 147.496767821094
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.943408827833277,
+    "food_per_min": 12.8646658340901,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 192.969987511352
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.858,
+    "food_per_min": 199.485,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 64.35
+  },
+  {
+    "action": "river-bend",
+    "chance": 0.858,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 257.4
+  },
+  {
+    "action": "rapids",
+    "chance": 0.08,
+    "food_per_min": 1.2,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 22.8
+  },
+  {
+    "action": "rapids",
+    "chance": 0.199,
+    "food_per_min": 34.825,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 19.9
+  },
+  {
+    "action": "rapids",
+    "chance": 0.796,
+    "food_per_min": 9.552,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 362.976
+  },
+  {
+    "action": "rapids",
+    "chance": 0.846,
+    "food_per_min": 10.575,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 507.6
+  },
+  {
+    "action": "rapids",
+    "chance": 0.896,
+    "food_per_min": 12.2181818181818,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 696.436363636363
+  },
+  {
+    "action": "rapids",
+    "chance": 0.796,
+    "food_per_min": 185.07,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 226.86
+  },
+  {
+    "action": "rapids",
+    "chance": 0.796,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 907.44
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.52,
+    "food_per_min": 7.8,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 187.2
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.19375,
+    "food_per_min": 33.90625,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 29.0625
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.775,
+    "food_per_min": 9.3,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 446.4
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.825,
+    "food_per_min": 10.3125,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 618.75
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.875,
+    "food_per_min": 11.9318181818182,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 859.090909090909
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.775,
+    "food_per_min": 180.1875,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 279.0
+  },
+  {
+    "action": "drain-gate",
+    "chance": 0.775,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1116.0
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.2,
+    "food_per_min": 3.0,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 102.0
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.183,
+    "food_per_min": 32.025,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 27.45
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.732,
+    "food_per_min": 8.784,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 597.312
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.782,
+    "food_per_min": 9.775,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 830.875
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.832,
+    "food_per_min": 11.3454545454545,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1157.23636363636
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.732,
+    "food_per_min": 170.19,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 373.32
+  },
+  {
+    "action": "tunnel-pool",
+    "chance": 0.732,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1493.28
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 13.5
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.20275,
+    "food_per_min": 35.48125,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 30.4125
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.811,
+    "food_per_min": 9.732,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 291.96
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.861,
+    "food_per_min": 10.7625,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 408.975
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.910387042407458,
+    "food_per_min": 12.4143687601017,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 558.646594204576
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.811,
+    "food_per_min": 188.5575,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 182.475
+  },
+  {
+    "action": "reef-pot",
+    "chance": 0.811,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 729.9
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.05,
+    "food_per_min": 0.75,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 21.75
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.187,
+    "food_per_min": 32.725,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 28.05
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.748,
+    "food_per_min": 8.976,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 520.608
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.798,
+    "food_per_min": 9.975,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 728.175
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.848,
+    "food_per_min": 11.5636363636364,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1006.03636363636
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.748,
+    "food_per_min": 173.91,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 325.38
+  },
+  {
+    "action": "ice-hole",
+    "chance": 0.748,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1301.52
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.06,
+    "food_per_min": 1.125,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 40.5
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.1715,
+    "food_per_min": 37.515625,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 25.725
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.686,
+    "food_per_min": 10.29,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 740.88
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.736,
+    "food_per_min": 11.5,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1039.6
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.786,
+    "food_per_min": 13.3977272727273,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1446.95454545455
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.686,
+    "food_per_min": 199.36875,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 463.05
+  },
+  {
+    "action": "reef-cage",
+    "chance": 0.686,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1852.2
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 36.0
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.17625,
+    "food_per_min": 30.84375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 35.25
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.705,
+    "food_per_min": 8.46,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 676.8
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.755,
+    "food_per_min": 9.4375,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 943.75
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.805,
+    "food_per_min": 10.9772727272727,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1317.27272727273
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.705,
+    "food_per_min": 163.9125,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 423.0
+  },
+  {
+    "action": "rowboat",
+    "chance": 0.705,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1692.0
+  },
+  {
+    "action": "open-water",
+    "chance": 0.06,
+    "food_per_min": 1.35,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 45.0
+  },
+  {
+    "action": "open-water",
+    "chance": 0.166,
+    "food_per_min": 43.575,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 33.2
+  },
+  {
+    "action": "open-water",
+    "chance": 0.664,
+    "food_per_min": 11.952,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 796.8
+  },
+  {
+    "action": "open-water",
+    "chance": 0.714,
+    "food_per_min": 13.3875,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1115.625
+  },
+  {
+    "action": "open-water",
+    "chance": 0.764,
+    "food_per_min": 15.6272727272727,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1562.72727272727
+  },
+  {
+    "action": "open-water",
+    "chance": 0.664,
+    "food_per_min": 231.57,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 498.0
+  },
+  {
+    "action": "open-water",
+    "chance": 0.664,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 1992.0
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 50.4
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.16075,
+    "food_per_min": 28.13125,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 24.1125
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.643,
+    "food_per_min": 7.716,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 864.192
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.693,
+    "food_per_min": 8.6625,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1212.75
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.743,
+    "food_per_min": 10.1318181818182,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1702.14545454545
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.643,
+    "food_per_min": 149.4975,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 540.12
+  },
+  {
+    "action": "night-reef",
+    "chance": 0.643,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2160.48
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 55.8
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.15525,
+    "food_per_min": 27.16875,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 31.05
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.621,
+    "food_per_min": 7.452,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 924.048
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.671,
+    "food_per_min": 8.3875,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1300.0625
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.721,
+    "food_per_min": 9.83181818181818,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 1828.71818181818
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.621,
+    "food_per_min": 144.3825,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 577.53
+  },
+  {
+    "action": "storm-ripple",
+    "chance": 0.621,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2310.12
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 66.6
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.145,
+    "food_per_min": 25.375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 29.0
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.58,
+    "food_per_min": 6.96,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1030.08
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.63,
+    "food_per_min": 7.875,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1456.875
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.68,
+    "food_per_min": 9.27272727272727,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2058.54545454545
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.58,
+    "food_per_min": 134.85,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 643.8
+  },
+  {
+    "action": "chum-line",
+    "chance": 0.58,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2575.2
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 78.3
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.135,
+    "food_per_min": 23.625,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 20.25
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.54,
+    "food_per_min": 6.48,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1127.52
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.59,
+    "food_per_min": 7.375,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1607.75
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.64,
+    "food_per_min": 8.72727272727273,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2277.81818181818
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.54,
+    "food_per_min": 125.55,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 704.7
+  },
+  {
+    "action": "pearl-bed",
+    "chance": 0.54,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2818.8
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.06,
+    "food_per_min": 1.8,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 72.9
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.13975,
+    "food_per_min": 48.9125,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 27.95
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.559,
+    "food_per_min": 13.416,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1086.696
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.609,
+    "food_per_min": 15.225,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1545.3375
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.659,
+    "food_per_min": 17.9727272727273,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2183.68636363636
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.559,
+    "food_per_min": 259.935,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 679.185
+  },
+  {
+    "action": "storm-line",
+    "chance": 0.559,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2716.74
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 84.6
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.12975,
+    "food_per_min": 22.70625,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 32.4375
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.519,
+    "food_per_min": 6.228,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1170.864
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.569,
+    "food_per_min": 7.1125,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1671.4375
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.619,
+    "food_per_min": 8.44090909090909,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2380.33636363636
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.519,
+    "food_per_min": 120.6675,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 731.79
+  },
+  {
+    "action": "wreck-drop",
+    "chance": 0.519,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2927.16
+  },
+  {
+    "action": "abyss",
+    "chance": 0.06,
+    "food_per_min": 2.25,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 90.0
+  },
+  {
+    "action": "abyss",
+    "chance": 0.1245,
+    "food_per_min": 54.46875,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 31.125
+  },
+  {
+    "action": "abyss",
+    "chance": 0.498,
+    "food_per_min": 14.94,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1195.2
+  },
+  {
+    "action": "abyss",
+    "chance": 0.548,
+    "food_per_min": 17.125,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1712.5
+  },
+  {
+    "action": "abyss",
+    "chance": 0.598,
+    "food_per_min": 20.3863636363636,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2446.36363636364
+  },
+  {
+    "action": "abyss",
+    "chance": 0.498,
+    "food_per_min": 289.4625,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 747.0
+  },
+  {
+    "action": "abyss",
+    "chance": 0.498,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 2988.0
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.06,
+    "food_per_min": 1.8,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 96.3
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.1195,
+    "food_per_min": 41.825,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 29.875
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.478,
+    "food_per_min": 11.472,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1227.504
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.528,
+    "food_per_min": 13.2,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 1768.8
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.578,
+    "food_per_min": 15.7636363636364,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2530.06363636364
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.478,
+    "food_per_min": 222.27,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 767.19
+  },
+  {
+    "action": "deep-trench",
+    "chance": 0.478,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 3068.76
+  },
+  {
+    "action": "starlight",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 63.9
+  },
+  {
+    "action": "starlight",
+    "chance": 0.22425,
+    "food_per_min": 39.24375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 11.2125
+  },
+  {
+    "action": "starlight",
+    "chance": 0.897,
+    "food_per_min": 10.764,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1528.488
+  },
+  {
+    "action": "starlight",
+    "chance": 0.937075522528825,
+    "food_per_min": 11.7134440316103,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 2084.99303762664
+  },
+  {
+    "action": "starlight",
+    "chance": 0.960779521205551,
+    "food_per_min": 13.1015389255302,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 2790.62779113794
+  },
+  {
+    "action": "starlight",
+    "chance": 0.897,
+    "food_per_min": 208.5525,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 955.305
+  },
+  {
+    "action": "starlight",
+    "chance": 0.897,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 3821.22
+  },
+  {
+    "action": "reflection",
+    "chance": 0.06,
+    "food_per_min": 0.9,
+    "seconds": 4.0,
+    "tool": "hands",
+    "xp_per_min": 100.8
+  },
+  {
+    "action": "reflection",
+    "chance": 0.17425,
+    "food_per_min": 30.49375,
+    "seconds": 1.2,
+    "tool": "net",
+    "xp_per_min": 8.7125
+  },
+  {
+    "action": "reflection",
+    "chance": 0.697,
+    "food_per_min": 8.364,
+    "seconds": 5.0,
+    "tool": "line",
+    "xp_per_min": 1873.536
+  },
+  {
+    "action": "reflection",
+    "chance": 0.747,
+    "food_per_min": 9.3375,
+    "seconds": 4.8,
+    "tool": "reinforced_rod",
+    "xp_per_min": 2614.5
+  },
+  {
+    "action": "reflection",
+    "chance": 0.797,
+    "food_per_min": 10.8681818181818,
+    "seconds": 4.4,
+    "tool": "star_rod",
+    "xp_per_min": 3651.70909090909
+  },
+  {
+    "action": "reflection",
+    "chance": 0.697,
+    "food_per_min": 162.0525,
+    "seconds": 4.0,
+    "tool": "boat",
+    "xp_per_min": 1170.96
+  },
+  {
+    "action": "reflection",
+    "chance": 0.697,
+    "food_per_min": 0.0,
+    "seconds": 4.0,
+    "tool": "mirror",
+    "xp_per_min": 4683.84
+  }
+]

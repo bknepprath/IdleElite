@@ -16,6 +16,10 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 func _draw() -> void:
+	if bottom_shape == "production_v":
+		var points := preload("res://scripts/ui/production_building_shape.gd").outline(Rect2(Vector2.ZERO, size), border_width * 0.5)
+		draw_polyline(points, border_color, border_width, anti_aliasing)
+		return
 	if bottom_shape != "wide_u":
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color.TRANSPARENT

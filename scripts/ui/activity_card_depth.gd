@@ -86,6 +86,9 @@ func _draw_clean_prism_faces(face_size: Vector2, front: Vector2, back: Vector2) 
 	if travel.length_squared() <= 0.25:
 		return
 	var lift := travel.y
+	if segment_theme_colors.size() > 1:
+		_draw_fast_segmented_back_plate(Rect2(Vector2(back.x, back.y - lift), face_size))
+		return
 	var body_style := StyleBoxFlat.new()
 	body_style.bg_color = back_color
 	body_style.set_border_width_all(0)

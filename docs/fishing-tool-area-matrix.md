@@ -2,6 +2,12 @@
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
 
+## Current rules, October 22, 2026
+
+The May 2026 design below is historical. Current rules are in `global_rules.fishing` in `docs/activity-database.json`: ordinary locations use hands/net/rods; Rocks uses hands/net; Sea, Stormy Sea, and Deep Sea use boat; Space uses mirror. Net is the food option and rod is the XP option at shared locations. Locations show equipped-tool food/min and XP/min before starting. Combo and training activities ignore tool restrictions. See [current implementation and evidence](playtests/2026-10-22-fishing-tool-balance.md).
+
+## Historical May 2026 direction
+
 Design direction (2026-05): fishing is about **choosing your tool** and **choosing your spot**, not following a fixed route of “this activity art only works on this map tile.”
 
 **Hierarchy:** **region module** (Beach, Pier, …) → **locations** inside it (Shallows, Rocky ledge, …). Activity arts become **place thumbnails**, not tools.

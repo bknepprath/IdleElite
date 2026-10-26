@@ -1,0 +1,13 @@
+# Profile portrait asset contract
+
+Purpose: expressive profile, chat and leaderboard portraits that read at 72â€“155 logical pixels.
+Format: individual square PNG portraits, transparent background, no baked frame or text. Authored centered portrait composition with clear margin on all sides. Runtime uses one fixed square draw box; no per-image measured scaling.
+Target: 256 x 256 runtime texture; retain generated masters for review.
+Style anchors: assets/content/ui/shop-icon.png and assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png from the approved anchor list. Existing avatar sheets are subject/catalog references only.
+Shape: rounded forms, strong silhouette, consistent black outer and internal lines, soft painted shading, saturated earthy colors. Avoid glossy 3D treatment, fine detail and tiny accessories.
+Layer: avatar artwork only. Godot supplies background, rounded frame and selection state.
+Initial subjects: shark wearing an oversized fishing bucket; suspicious cookie jar wearing a thief hood; angry wheelbarrow wearing a winner medal; overconfident shrub wearing oversized sunglasses; blue adventurer wearing a crooked brick helmet. These are individual portraits, not new activities or gameplay rewards.
+Compatibility: IDs 0 and 18 replace the generic starter and scroll-obscured adventurer outright, including existing owners. The other three portraits append as IDs 20–22. No retired-art ownership or grandfathering. Unchanged IDs retain their meanings. The picker puts all five fresh portraits first. Firebase avatar validators must accept 0–22 before release; old clients need an update to show the expanded collection.
+Generation: built-in image_gen, one call per portrait. Prompts are in prompts.txt. Original generated masters are retained in .codex-tmp/profile-portraits-v070/masters; runtime PNGs are in assets/content/ui/profile-portraits. Images are resized using the complete authored square canvas; no alpha-bound scaling or cropping.
+
+Revision 2 direction (owner correction, 2026-10-11): the first batch is rejected. Its thin outlines, fine accessories, textured bucket and many small leaves do not honor the game's bold stroke. Replace all five with chunky simplified drawings. Black outer stroke approximately 8 px at 256 px; internal separation approximately 5 px. Uniform rounded lines, no white rim, no edge highlights, no hatching, no weathering, no speckles. Few large color regions and one broad soft shadow per main form. One subject and one readable prop, with large negative-space gaps. Preserve a fixed centered square composition. Judge at 125 px picker size and the smaller desktop rendering, not only the generated master size.

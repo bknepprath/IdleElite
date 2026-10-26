@@ -101,6 +101,10 @@ func set_lock_state(next_state: String) -> void:
 	_update_shared_chain_path()
 
 
+func set_requirement_progress(requirement_states: Array) -> void:
+	for index in range(mini(rigs.size(), requirement_states.size())):
+		rigs[index].set_unlock_progress(float(requirement_states[index].get("xp_progress", 0.0)))
+
 func set_requirement_states(requirement_states: Array) -> void:
 	var all_ready := not requirement_states.is_empty()
 	for index in range(rigs.size()):
@@ -110,6 +114,7 @@ func set_requirement_states(requirement_states: Array) -> void:
 			var state := requirement_states[index] as Dictionary
 			met = bool(state.get("met", false))
 			dismissed = bool(state.get("dismissed", false))
+			rigs[index].set_unlock_progress(float(state.get("xp_progress", 0.0)))
 		if rigs[index].lock_state == ActivityLockRig.LOCK_STATE_DROPPING:
 			continue
 		if dismissed:

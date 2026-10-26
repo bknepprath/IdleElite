@@ -40,6 +40,25 @@ func click(point: Vector2, touch := false) -> void:
 		await settle(0.06)
 	await settle()
 
+# Two taps in quick succession. A locked frame's requirement explains itself on
+# one tap and goes to its source on the second.
+func double_click(point: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	root.push_input(motion, true)
+	await process_frame
+	for press in range(2):
+		for down in [true, false]:
+			var event := InputEventMouseButton.new()
+			event.position = point
+			event.global_position = point
+			event.button_index = MOUSE_BUTTON_LEFT
+			event.pressed = down
+			root.push_input(event, true)
+			await settle(0.06)
+	await settle()
+
 func capture(label: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		return

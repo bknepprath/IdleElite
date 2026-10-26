@@ -430,9 +430,9 @@ try {
     } "" $silent)
     Assert-Case "write_other_users_profile" deny (Invoke-Db PUT "$lb/profiles_by_uid/$($B.Uid)" (New-ProfilePayload $B.Uid $bName $bKey 5) $A.Token $silent)
     Assert-Case "profile_without_matching_name_claim" deny (Invoke-Db PUT "$lb/profiles_by_uid/$($C.Uid)" (New-ProfilePayload $C.Uid "Nobody Here" "nobody_here" 0) $C.Token $silent)
-    Assert-Case "profile_avatar_index_above_19" deny (Invoke-Db PATCH $lb @{
-        "name_claims/cap_test_c" = (New-NameClaimPayload $C.Uid "Cap Test C" "cap_test_c" 20)
-        "profiles_by_uid/$($C.Uid)" = (New-ProfilePayload $C.Uid "Cap Test C" "cap_test_c" 20)
+    Assert-Case "profile_avatar_index_above_22" deny (Invoke-Db PATCH $lb @{
+        "name_claims/cap_test_c" = (New-NameClaimPayload $C.Uid "Cap Test C" "cap_test_c" 23)
+        "profiles_by_uid/$($C.Uid)" = (New-ProfilePayload $C.Uid "Cap Test C" "cap_test_c" 23)
     } $C.Token $silent)
     Assert-Case "profile_auth_provider_not_allowed" deny (Invoke-Db PATCH $lb @{
         "name_claims/cap_test_c" = (New-NameClaimPayload $C.Uid "Cap Test C" "cap_test_c" 1)
@@ -523,6 +523,12 @@ try {
     foreach ($category in $categories) {
         Assert-Case "client_read_leaderboard_$category" allow (Invoke-Db GET "$lb/scores/$category" $null "" 'orderBy=%22score%22&limitToLast=50')
     }
+    foreach ($category in $categories) {
+        Assert-Case "public_player_stat_$category" allow (Invoke-Db GET "$lb/scores/$category/$($A.Uid)")
+    }
+    Assert-Case "public_player_stat_retired_category" deny (Invoke-Db GET "$lb/scores/total_xp/$($A.Uid)")
+    Assert-Case "public_player_stat_unknown_category" deny (Invoke-Db GET "$lb/scores/private/$($A.Uid)")
+    Assert-Case "public_profile_stays_private" deny (Invoke-Db GET "$lb/profiles_by_uid/$($A.Uid)" $null $B.Token)
     $top = Invoke-Db GET "$lb/scores/total_level" $null "" 'orderBy=%22score%22&limitToLast=50'
     $topRows = $top.Body | ConvertFrom-Json
     if (-not ($topRows.PSObject.Properties.Name -contains $A.Uid) -or [long]$topRows.($A.Uid).score -ne 142 -or [long]$topRows.($A.Uid).updated_at -le 0) {
@@ -595,6 +601,43 @@ try {
     $hijack = [ordered]@{ sender_id = $B.Uid; name = $bName; name_key = $bKey; total_level = 88; avatar_index = $bAvatar; text = [string]$stored.text; created_at = [long]$stored.created_at; created_at_unix = [long]$stored.created_at_unix; deleted = $false }
     Assert-Case "chat_other_user_rewrites_message" deny (Invoke-Db PUT "$chat/messages/$($aMessages[0])" $hijack $B.Token $silent)
     Assert-Case "chat_moderation_log_by_player" deny (Invoke-Db PUT "$chat/moderation_logs/log_$(New-RandomHex 8)" ([ordered]@{ message_id = $aMessages[0]; moderator_id = $A.Uid; reason = "x"; created_at = (New-ServerTimestamp); created_at_unix = (Get-NowUnix) }) $A.Token $silent)
+
+    # Reports are private, immutable, linked to a real message and rate limited.
+    $reportPath = "reports/$($aMessages[0])/$($B.Uid)"
+    $reportUpdates = @{
+        $reportPath = @{ reason = "Harassment or hate"; created_at = (New-ServerTimestamp) }
+        "report_gates/$($B.Uid)" = @{ updated_at = (New-ServerTimestamp) }
+    }
+    Assert-Case "chat_report_unauthenticated" deny (Invoke-Db PATCH $chat $reportUpdates "" $silent)
+    Assert-Case "chat_report_spoof_reporter" deny (Invoke-Db PATCH $chat $reportUpdates $A.Token $silent)
+    Assert-Case "chat_report_valid" allow (Invoke-Db PATCH $chat $reportUpdates $B.Token $silent)
+    Assert-Case "chat_report_duplicate" deny (Invoke-Db PATCH $chat $reportUpdates $B.Token $silent)
+    Assert-Case "chat_reports_private" deny (Invoke-Db GET "$chat/reports" $null $B.Token)
+    Assert-Case "chat_report_private_to_reporter" deny (Invoke-Db GET "$chat/$reportPath" $null $B.Token)
+    Assert-Case "chat_report_delete_denied" deny (Invoke-Db DELETE "$chat/$reportPath" $null $B.Token $silent)
+    $invalidReport = @{
+        "reports/m0000000000_missing/$($D.Uid)" = @{ reason = "Other"; created_at = (New-ServerTimestamp) }
+        "report_gates/$($D.Uid)" = @{ updated_at = (New-ServerTimestamp) }
+    }
+    Assert-Case "chat_report_unknown_message" deny (Invoke-Db PATCH $chat $invalidReport $D.Token $silent)
+    $ownReport = @{
+        "reports/$($aMessages[0])/$($A.Uid)" = @{ reason = "Other"; created_at = (New-ServerTimestamp) }
+        "report_gates/$($A.Uid)" = @{ updated_at = (New-ServerTimestamp) }
+    }
+    Assert-Case "chat_report_own_message" deny (Invoke-Db PATCH $chat $ownReport $A.Token $silent)
+    $badReason = @{
+        "reports/$($aMessages[0])/$($D.Uid)" = @{ reason = "invalid"; created_at = (New-ServerTimestamp) }
+        "report_gates/$($D.Uid)" = @{ updated_at = (New-ServerTimestamp) }
+    }
+    Assert-Case "chat_report_invalid_reason" deny (Invoke-Db PATCH $chat $badReason $D.Token $silent)
+    $badReason["reports/$($aMessages[0])/$($D.Uid)"]["reason"] = "Other"
+    $badReason["reports/$($aMessages[0])/$($D.Uid)"]["extra"] = "forbidden"
+    Assert-Case "chat_report_extra_field" deny (Invoke-Db PATCH $chat $badReason $D.Token $silent)
+    $rateLimited = @{
+        "reports/$($aMessages[1])/$($B.Uid)" = @{ reason = "Other"; created_at = (New-ServerTimestamp) }
+        "report_gates/$($B.Uid)" = @{ updated_at = (New-ServerTimestamp) }
+    }
+    Assert-Case "chat_report_rate_limit" deny (Invoke-Db PATCH $chat $rateLimited $B.Token $silent)
 
     # ---------------------------------------------------------------- cloud saves (A)
     $savedAt = Get-NowUnix

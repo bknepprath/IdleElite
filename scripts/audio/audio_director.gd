@@ -65,12 +65,17 @@ const FIGHT_PUNCH_SFX_VOLUME_DB := -17.0
 const FIGHT_PUNCH_SFX_PITCH_MIN := 0.94
 const FIGHT_PUNCH_SFX_PITCH_MAX := 1.08
 const FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB := 1.8
+const GROVE_HIT_SFX_PATHS := [
+	"res://assets/sfx/grove-axe-thud-1.wav",
+	"res://assets/sfx/grove-axe-thud-2.wav",
+]
+const GROVE_HIT_SFX_VOLUME_DB := -14.0
+const GROVE_COLLECT_SFX_PATH := "res://assets/sfx/xp_spark.wav"
+const GROVE_COLLECT_SFX_VOLUME_DB := -16.0
 const ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB := -18.0
 const ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB := -15.0
 const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick.wav"
 const MODULE_PIN_EXIT_SFX_PATH := "res://assets/sfx/pin-candidates/pin_entry_thwick_01_tight.wav"
-const ACTIVITY_START_SFX_PATH := DEFAULT_BUTTON_SFX_PATH
-const ACTIVITY_START_SFX_PLAYER_COUNT := 3
 const ACTIVITY_START_SFX_VOLUME_DB := -1.0
 const ACTIVITY_SUCCESS_SFX_VOLUME_DB := -7.0
 const ACTIVITY_SUCCESS_DUCKED_SFX_VOLUME_DB := -15.0
@@ -144,9 +149,6 @@ var music_quiet_fade_start_gains := [0.0, 0.0, 0.0]
 var music_base_only_seconds := 0.0
 var last_default_button_sfx_msec := -100000
 var click_player: AudioStreamPlayer
-var activity_start_player: AudioStreamPlayer
-var activity_start_players: Array[AudioStreamPlayer] = []
-var activity_start_player_index := 0
 var success_players: Array[AudioStreamPlayer] = []
 var crit_success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
@@ -155,6 +157,9 @@ var chicken_death_player: AudioStreamPlayer
 var goblin_shield_drop_player: AudioStreamPlayer
 var fight_punch_players: Array[AudioStreamPlayer] = []
 var fight_punch_player_index := 0
+var grove_hit_player: AudioStreamPlayer
+var grove_collect_player: AudioStreamPlayer
+var grove_hit_index := 0
 var opportunity_success_player: AudioStreamPlayer
 var opportunity_miss_player: AudioStreamPlayer
 var level_player: AudioStreamPlayer
@@ -204,15 +209,6 @@ func reset_runtime_caches() -> void:
 	chain_move_audio_ready = false
 	audio_stream_cache.clear()
 	music_stream_cache.clear()
-
-
-func _dispose_players(players) -> void:
-	for raw_player in players:
-		var player := raw_player as AudioStreamPlayer
-		if player != null and is_instance_valid(player):
-			player.stop()
-			player.queue_free()
-	players.clear()
 
 
 func _append_path_players(players, paths: Array, make_player: Callable, volume_db: float) -> void:
@@ -272,6 +268,21 @@ func restore_music_flow_state(data: Dictionary) -> void:
 	flow_heat = clampf(float(data.get("flow_heat", flow_heat)), 0.0, 36.0)
 	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
 
+
+# Reset Data starts a new game, so the music starts over too: silent, as on a new
+# install, until enough activities have been completed. Anything playing fades out.
+func reset_music_flow_state() -> void:
+	flow_actions_taken = 0
+	music_start_chance_unlocked = false
+	flow_heat = 0.0
+	flow_active_action_seconds = 0.0
+	flow_failure_drag = 0.0
+	if music_cycle_active or not _music_layers_are_silent():
+		_trigger_music_quiet_break()
+	else:
+		music_ultimate_boost_seconds = 0.0
+		flow_idle_seconds = MUSIC_FLOW_DEAD_SECONDS
+
 func _host_running_action_id() -> String:
 	return str(host.get("running_action_id")) if host != null else ""
 
@@ -289,7 +300,7 @@ func _host_control(property_name: String) -> Control:
 	return (host.get(property_name) if host != null else null) as Control
 
 func _host_valid_control_ref(value: Variant) -> Control:
-	return host.call("_valid_control_ref", value) as Control if host != null else null
+	return host._app_lifecycle_runtime().valid_control_ref(value) if host != null else null
 
 func _kill_meta_tween(node: Node, meta_name: String) -> void:
 	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
@@ -317,35 +328,6 @@ func _ensure_audio_unlock_ping_player() -> void:
 	_ensure_audio_buses()
 	audio_unlock_ping_player = _sfx("res://assets/sfx/click.wav")
 	audio_unlock_ping_player.volume_db = -16.0
-
-
-func _ensure_activity_start_players() -> void:
-	if activity_start_players.size() >= ACTIVITY_START_SFX_PLAYER_COUNT:
-		var all_valid := true
-		for raw_player in activity_start_players:
-			var player := raw_player as AudioStreamPlayer
-			if player == null or not is_instance_valid(player) or player.stream != _load_sfx_stream(ACTIVITY_START_SFX_PATH):
-				all_valid = false
-				break
-		if all_valid:
-			return
-	for raw_player in activity_start_players:
-		var player := raw_player as AudioStreamPlayer
-		if player != null and is_instance_valid(player):
-			player.stop()
-			player.queue_free()
-	activity_start_players.clear()
-	activity_start_player_index = 0
-	_ensure_audio_buses()
-	var activity_start_stream := _load_sfx_stream(ACTIVITY_START_SFX_PATH)
-	for i in range(ACTIVITY_START_SFX_PLAYER_COUNT):
-		var player := AudioStreamPlayer.new()
-		player.stream = activity_start_stream
-		player.bus = SFX_BUS_NAME
-		player.volume_db = ACTIVITY_START_SFX_VOLUME_DB
-		add_child(player)
-		activity_start_players.append(player)
-	activity_start_player = activity_start_players[0] if not activity_start_players.is_empty() else null
 
 
 func _ensure_music_players_ready() -> void:
@@ -715,6 +697,43 @@ func _fight_punch_player_for_hit() -> AudioStreamPlayer:
 	var fallback := fight_punch_players[fight_punch_player_index % count] as AudioStreamPlayer
 	fight_punch_player_index = (fight_punch_player_index + 1) % count
 	return fallback
+
+
+func _grove_sfx_is_visible(action_id: String) -> bool:
+	if not _can_play_audio() or sfx_muted or sfx_volume <= 0.0:
+		return false
+	if _host_string("running_skill_id") != "woodcutting" or _host_running_action_id() != action_id:
+		return false
+	var card := _host_dict("action_cards").get("woodcutting:" + action_id, {}) as Dictionary
+	var stage := _host_valid_control_ref(card.get("grove_stage"))
+	if stage == null or not stage.is_visible_in_tree():
+		return false
+	var visible_rect := stage.get_global_rect().intersection(get_viewport().get_visible_rect())
+	var ancestor := stage.get_parent()
+	while ancestor != null:
+		if ancestor is Control and (ancestor as Control).clip_contents:
+			visible_rect = visible_rect.intersection((ancestor as Control).get_global_rect())
+		ancestor = ancestor.get_parent()
+	return visible_rect.has_area()
+
+
+func _play_grove_hit_sfx(action_id: String) -> void:
+	if not _grove_sfx_is_visible(action_id):
+		return
+	var path: String = GROVE_HIT_SFX_PATHS[grove_hit_index % GROVE_HIT_SFX_PATHS.size()]
+	grove_hit_index += 1
+	grove_hit_player = _ensure_path_player(grove_hit_player, path, Callable(self, "_sfx"), GROVE_HIT_SFX_VOLUME_DB)
+	grove_hit_player.stop()
+	grove_hit_player.stream = _load_sfx_stream(path)
+	_play_sfx_with_pitch_and_volume(grove_hit_player, randf_range(.94, 1.06), GROVE_HIT_SFX_VOLUME_DB + randf_range(-1.0, 1.0))
+
+
+func _play_grove_collect_sfx(action_id: String) -> void:
+	if not _grove_sfx_is_visible(action_id):
+		return
+	grove_collect_player = _ensure_path_player(grove_collect_player, GROVE_COLLECT_SFX_PATH, Callable(self, "_sfx"), GROVE_COLLECT_SFX_VOLUME_DB)
+	var volume_db := GROVE_COLLECT_SFX_VOLUME_DB - (6.0 if _reward_sfx_window_active() else 0.0)
+	_play_sfx_with_pitch_and_volume(grove_collect_player, randf_range(.98, 1.04), volume_db)
 
 
 func _play_action_opportunity_sfx(success: bool) -> void:

@@ -47,7 +47,7 @@ class FakeHost:
 		var detail_scroll_visual_work_this_frame := false
 		var detail_lazy_mounted_this_frame := false
 		var action_card_press_key := ""
-	func _detail_jump_arrows_need_processing() -> bool:
+		func _detail_jump_arrows_need_processing() -> bool:
 			return false
 	var boot_detail_render_in_progress := false
 	var module_ui_animating_collapse_key := ""

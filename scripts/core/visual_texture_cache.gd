@@ -235,10 +235,12 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		var headless_fallback := _visual_fallback_texture()
 		texture_cache[normalized] = headless_fallback
 		return headless_fallback
+	var load_started_usec := Time.get_ticks_usec()
 	if ResourceLoader.exists(normalized):
 		var loaded = load(normalized)
 		if loaded is Texture2D:
 			texture_cache[normalized] = loaded
+			_note_main_thread_load(load_started_usec)
 			return loaded
 	var image := Image.new()
 	if image.load(normalized) != OK:
@@ -246,7 +248,27 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		texture_cache[normalized] = fallback
 		return fallback
 	var texture := _texture_from_image(normalized, image)
+	_note_main_thread_load(load_started_usec)
 	return texture
+
+
+# Texture loads that ran on the main thread since the last reading. Headless
+# runs skip every load above, so only a device or a visible game can show how
+# much time goes here; debug builds print it (main.gd).
+var main_thread_load_count := 0
+var main_thread_load_usec := 0
+
+
+func _note_main_thread_load(started_usec: int) -> void:
+	main_thread_load_count += 1
+	main_thread_load_usec += Time.get_ticks_usec() - started_usec
+
+
+func take_main_thread_load_stats() -> Dictionary:
+	var stats := {"count": main_thread_load_count, "usec": main_thread_load_usec}
+	main_thread_load_count = 0
+	main_thread_load_usec = 0
+	return stats
 
 
 func _path_is_fishing_visual(normalized_path: String) -> bool:

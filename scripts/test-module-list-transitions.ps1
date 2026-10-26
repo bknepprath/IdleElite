@@ -918,219 +918,41 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 func _check_two_stage_collapse_input_flow(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	_set_module_ui_sort_mode(scene, "level")
 	_set_module_ui_pinned_order(scene, [])
 	_set_module_ui_collapsed(scene, {})
-	scene.set("running_skill_id", "")
-	scene.set("running_action_id", "")
-	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
-	if render_result != null:
-		await render_result
+	var rendered = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
+	if rendered != null:
+		await rendered
 	for _i in range(8):
 		await process_frame
 	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var first_key := _first_action_module_key(scene, skill_id)
-	if first_key.is_empty():
-		_record("two-stage collapse smoke could not find an action module key")
+	var card := (scene.get("action_cards") as Dictionary).get(first_key.substr("action:".length()), {}) as Dictionary
+	if card.is_empty():
+		_record("minimization removal smoke could not find action card")
 		return
-	var lookup := _registered_action_card_for_module(scene, first_key)
-	var card := lookup.get("card", {}) as Dictionary
-	var action_id := str(lookup.get("action_id", ""))
-	if card.is_empty() or action_id.is_empty():
-		_record("two-stage collapse smoke could not find registered action card")
-		return
-	var collapse_zone := (card.get("module_action_zones", {}) as Dictionary).get("collapse", null) as Control
-	if collapse_zone == null or not is_instance_valid(collapse_zone):
-		_record("two-stage collapse smoke could not find collapse action zone")
-		return
-	var collapse_corner := collapse_zone.get_global_rect().position
-	var collapse_corner_hit := scene.call("_skill_detail_surface").call("_module_action_circle_at_position", collapse_corner) as Dictionary
-	if not collapse_corner_hit.is_empty():
-		_record("collapse action zone rectangular corner should not route as a circular action hit: %s" % collapse_corner_hit)
-	var collapse_center := collapse_zone.get_global_rect().get_center()
-	var card_pop := card.get("pop", null) as Control
-	if card_pop == null or not is_instance_valid(card_pop):
-		_record("two-stage collapse smoke could not find card pop for direct gui_input coverage")
-		return
-	var zone_local_center := collapse_zone.get_global_rect().get_center() - collapse_zone.get_global_rect().position
-	scene.call("_navigation_shell").call("_show_module_sort_menu")
-	for _i in range(2):
-		await process_frame
-	var sort_menu := _ui_owned_node(scene, "module_sort_menu") as Control
-	if sort_menu != null and is_instance_valid(sort_menu):
-		sort_menu.position = collapse_center - sort_menu.size * 0.5
-		sort_menu.visible = true
-		scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
-		for _i in range(2):
-			await process_frame
-		var blocked_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
-		if blocked_badge != null and is_instance_valid(blocked_badge) and blocked_badge.visible:
-			_record("direct collapse-zone gui_input ignored protected sort menu coverage")
-			blocked_badge.visible = false
-			blocked_badge.disabled = true
-		scene.call("_navigation_shell").call("_hide_module_sort_menu")
-	scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
-	scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _mouse_button_event(collapse_center, false), first_key, card_pop.get_instance_id())
-	for _i in range(2):
-		await process_frame
-	var direct_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
-	if direct_badge == null or not is_instance_valid(direct_badge) or not direct_badge.visible:
-		_record("direct collapse-zone gui_input did not show confirm from local zone coordinates")
-	else:
-		direct_badge.visible = false
-		direct_badge.disabled = true
-	scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
-	scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _mouse_motion_event(collapse_center + Vector2(0, 96)), first_key, card_pop.get_instance_id())
-	scene.call("_skill_detail_surface").call("_on_module_collapse_zone_gui_input", _mouse_button_event(collapse_center + Vector2(0, 96), false), first_key, card_pop.get_instance_id())
-	for _i in range(2):
-		await process_frame
-	var dragged_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
-	if dragged_badge != null and is_instance_valid(dragged_badge) and dragged_badge.visible:
-		_record("dragged collapse-zone press showed confirm while scrolling")
-		dragged_badge.visible = false
-		dragged_badge.disabled = true
-	if bool(_module_ui_collapsed(scene).get(first_key, false)):
-		_record("dragged collapse-zone press collapsed the module while scrolling")
-	scene.call("_input", _mouse_button_event(collapse_center, true))
-	scene.call("_input", _mouse_motion_event(collapse_center + Vector2(0, 96)))
-	scene.call("_input", _mouse_button_event(collapse_center + Vector2(0, 96), false))
-	for _i in range(2):
-		await process_frame
-	var routed_dragged_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
-	if routed_dragged_badge != null and is_instance_valid(routed_dragged_badge) and routed_dragged_badge.visible:
-		_record("routed dragged collapse-zone press showed confirm while scrolling")
-		routed_dragged_badge.visible = false
-		routed_dragged_badge.disabled = true
-	if bool(_module_ui_collapsed(scene).get(first_key, false)):
-		_record("routed dragged collapse-zone press collapsed the module while scrolling")
-	scene.call("_input", _mouse_button_event(collapse_center, true))
-	scene.call("_input", _mouse_button_event(collapse_center, false))
-	for _i in range(4):
-		await process_frame
-	if bool(_module_ui_collapsed(scene).get(first_key, false)):
-		_record("first collapse-zone tap should show confirm without collapsing")
-	if str(scene.get("running_action_id")) == action_id:
-		_record("first collapse-zone tap clicked through and started the activity")
-	if int(_module_ui_pin_preview_tokens(scene).get(first_key, 0)) > 0:
-		_record("first collapse-zone tap armed a pin preview token")
-	if not str(scene.call("_skill_detail_surface").get("action_card_press_key")).is_empty():
-		_record("first collapse-zone tap left an action card press stuck: %s" % str(scene.call("_skill_detail_surface").get("action_card_press_key")))
-		scene.call("_skill_detail_surface").set("action_card_press_key", "")
-	var badge := _find_named_descendant(card.get("pop", null) as Node, "ModuleCollapseConfirmBadge") as Control
-	if badge == null or not is_instance_valid(badge) or not badge.visible:
-		_record("first collapse-zone tap did not show the collapse confirm badge")
-	var confirm_point := collapse_center if badge == null or not is_instance_valid(badge) else badge.get_global_rect().get_center()
-	var confirm_hit := scene.call("_skill_detail_surface").call("_module_action_circle_at_position", confirm_point) as Dictionary
-	if confirm_hit.is_empty() or str(confirm_hit.get("kind", "")) != "collapse":
-		_record("visible collapse confirm badge center did not route as a collapse action: %s" % confirm_hit)
-	scene.call("_input", _mouse_button_event(confirm_point, true))
-	scene.call("_input", _mouse_button_event(confirm_point, false))
-	for _i in range(8):
-		await process_frame
-	if not bool(_module_ui_collapsed(scene).get(first_key, false)):
-		_record("second collapse-zone tap did not collapse the module")
-	if str(scene.get("running_action_id")) == action_id:
-		_record("second collapse-zone tap clicked through and started the activity")
-	if int(_module_ui_pin_preview_tokens(scene).get(first_key, 0)) > 0:
-		_record("second collapse-zone tap armed a pin preview token")
-	if not str(scene.call("_skill_detail_surface").get("action_card_press_key")).is_empty():
-		_record("second collapse-zone tap left an action card press stuck: %s" % str(scene.call("_skill_detail_surface").get("action_card_press_key")))
-		scene.call("_skill_detail_surface").set("action_card_press_key", "")
-
+	if (card.get("module_action_zones", {}) as Dictionary).has("collapse"):
+		_record("activity still exposes a minimization tap zone")
+	var runtime := _module_ui_runtime(scene)
+	if not str(runtime.collapse_key(first_key, Callable(scene.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse"))).is_empty():
+		_record("removed minimize command still changes state")
 
 func _check_collapse_refresh_transition(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	_set_module_ui_sort_mode(scene, "level")
 	_set_module_ui_pinned_order(scene, [])
-	_set_module_ui_collapsed(scene, {})
-	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
-	if render_result != null:
-		await render_result
+	var first_key := _first_action_module_key(scene, skill_id)
+	_set_module_ui_collapsed(scene, {first_key: true})
+	var rendered = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
+	if rendered != null:
+		await rendered
 	for _i in range(8):
 		await process_frame
 	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
-	var first_key := _first_action_module_key(scene, skill_id)
-	if first_key.is_empty():
-		_record("could not find an action module key for collapse transition smoke")
-		return
-	var collapsed := _module_ui_collapsed(scene)
-	collapsed[first_key] = true
-	_set_module_ui_collapsed(scene, collapsed)
-	var refresh_result = scene.call("_skill_detail_surface").call("_refresh_visible_skill_detail_action_list", -1, skill_id, true)
-	if refresh_result != null:
-		await refresh_result
-	for _i in range(4):
-		await process_frame
 	var stack := scene.call("_skill_detail_surface").get("detail_lazy_stack") as VBoxContainer
-	var collapse_created_transition := _module_transition_tween_count(stack) > 0
-	var collapsed_row := _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true)
-	if collapsed_row == null:
-		collapsed_row = _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
-	if collapsed_row == null:
-		_record("collapse refresh did not render a squeezed collapsed module")
-	else:
-		var height_settled := false
-		for _wait_i in range(28):
-			var expected_wait_height := float(scene.call("_skill_detail_surface").call("_module_collapsed_squeeze_height"))
-			if absf(collapsed_row.custom_minimum_size.y - expected_wait_height) <= 0.5:
-				height_settled = true
-				break
-			await process_frame
-		var expected_height := float(scene.call("_skill_detail_surface").call("_module_collapsed_squeeze_height"))
-		if not height_settled and absf(collapsed_row.custom_minimum_size.y - expected_height) > 0.5:
-			_record("squeezed collapsed module height mismatch. expected=%s actual=%s" % [expected_height, collapsed_row.custom_minimum_size.y])
-		if collapsed_row.custom_minimum_size.y >= 260.0:
-			_record("squeezed collapsed module should be significantly shorter than a full module: %s" % collapsed_row.custom_minimum_size.y)
-		if not bool(collapsed_row.get_meta("module_ui_collapsed_squeeze", false)):
-			_record("squeezed collapsed module should keep collapsed squeeze metadata")
-		if _find_named_descendant(collapsed_row, "CollapsedModuleTitle") != null:
-			_record("squeezed collapsed module should not rebuild a separate collapsed title label")
-		var action_title := _first_nonempty_label(collapsed_row)
-		if action_title == null or not is_instance_valid(action_title):
-			_record("squeezed collapsed module did not keep the original title label")
-		elif action_title.text.strip_edges().is_empty():
-			_record("squeezed collapsed module title label was empty")
-		var row_center := collapsed_row.get_global_rect().get_center()
-		scene.call("_navigation_shell").call("_show_module_sort_menu")
-		for _i in range(2):
-			await process_frame
-		var sort_menu := _ui_owned_node(scene, "module_sort_menu") as Control
-		if sort_menu != null and is_instance_valid(sort_menu):
-			var row_local_blocked_point := row_center - collapsed_row.get_global_rect().position
-			sort_menu.position = row_center - sort_menu.size * 0.5
-			sort_menu.visible = true
-			if not bool(scene.call("_input_routing_shell").call("_event_points_inside_bottom_interactive_ui", _mouse_button_event(row_center, true))):
-				_record("collapsed row protected-input smoke did not cover the row center")
-			scene.call("_skill_detail_surface").call("_on_collapsed_module_row_gui_input", _local_mouse_button_event(row_local_blocked_point, true), first_key, collapsed_row.get_instance_id())
-			for _i in range(2):
-				await process_frame
-			if not bool(_module_ui_collapsed(scene).get(first_key, false)):
-				_record("direct collapsed-row gui_input expanded while covered by protected sort menu")
-				var recollapsed := _module_ui_collapsed(scene)
-				recollapsed[first_key] = true
-				_set_module_ui_collapsed(scene, recollapsed)
-			scene.call("_input", _mouse_button_event(row_center, true))
-			scene.call("_input", _mouse_button_event(row_center, false))
-			for _i in range(4):
-				await process_frame
-			if not bool(_module_ui_collapsed(scene).get(first_key, false)):
-				_record("collapsed module expanded while covered by protected sort menu")
-			scene.call("_navigation_shell").call("_hide_module_sort_menu")
-		scene.call("_input", _mouse_button_event(row_center, true))
-		scene.call("_input", _mouse_button_event(row_center, false))
-		for _i in range(32):
-			await process_frame
-		if bool(_module_ui_collapsed(scene).get(first_key, false)):
-			var force_expand := _module_ui_collapsed(scene)
-			force_expand.erase(first_key)
-			_set_module_ui_collapsed(scene, force_expand)
-		var refreshed_stack := scene.call("_skill_detail_surface").get("detail_lazy_stack") as VBoxContainer
-		if bool(_module_ui_collapsed(scene).get(first_key, false)) and (_find_control_with_meta(refreshed_stack, "module_ui_collapsed_squeeze", true) != null or _find_named_descendant(refreshed_stack, "CollapsedModuleSqueeze") != null):
-			_record("direct collapsed-row gui_input did not refresh back to an expanded module")
-	if not collapse_created_transition:
-		_record("collapse refresh did not create module-list transition tweens")
-
+	if _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true) != null:
+		_record("obsolete collapse flag still squeezes an activity")
+	_set_module_ui_collapsed(scene, {})
 
 func _check_pinned_page_action_card_registration(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
@@ -1383,8 +1205,8 @@ func _check_restored_module_ui_preferences_render(scene: Node, skill_id: String)
 	}, ModuleUiRuntime.MODULE_PIN_COLOR_TEXTURES, ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE, Callable(scene.call("_skill_detail_surface"), "_module_ui_key_allows_pin_or_collapse"))
 	if _module_ui_pinned_order(scene) != [first_key]:
 		_record("restore-render smoke did not restore pinned order")
-	if not bool(_module_ui_collapsed(scene).get(first_key, false)):
-		_record("restore-render smoke did not restore collapsed state")
+	if not _module_ui_collapsed(scene).is_empty():
+		_record("restore-render smoke retained removed minimization flags")
 	if _module_ui_sort_mode(scene) != "level":
 		_record("restore-render smoke did not restore sort mode")
 	var restored_render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
@@ -1403,8 +1225,8 @@ func _check_restored_module_ui_preferences_render(scene: Node, skill_id: String)
 	var collapsed_row := _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true)
 	if collapsed_row == null:
 		collapsed_row = _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
-	if collapsed_row == null or str(collapsed_row.get_meta("module_ui_key", "")) != first_key:
-		_record("restore-render smoke did not render the restored normal module as collapsed")
+	if collapsed_row != null:
+		_record("restore-render smoke rendered an obsolete minimized activity")
 	scene.set("current_screen", "pinned")
 	var pinned_render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if pinned_render_result != null:
@@ -3087,21 +2909,24 @@ func _assert_no_tooltips_in_roots(roots: Array[Node], context: String) -> void:
 		_assert_no_tooltips_in_tree(root_node, context)
 
 
-func _assert_action_bonus_panel_filled(card: Dictionary, context: String) -> void:
-	var bonus := card.get("bonus_panel", {}) as Dictionary
+func _assert_action_information_filled(scene: Node, context: String) -> void:
+	await create_timer(0.3).timeout
+	var detail = scene.call("_skill_detail_surface")
+	var card: Dictionary = (scene.get("action_cards") as Dictionary).get(str(detail.expanded_activity_stat_key), {})
+	var bonus: Dictionary = card.get("bonus_panel", {})
 	if bonus.is_empty():
-		_record("%s did not create a bonus panel" % context)
+		_record("%s did not expand module details" % context)
 		return
-	var root := bonus.get("root", null) as Control
-	if root == null or not is_instance_valid(root) or not root.visible:
-		_record("%s bonus panel is not visible" % context)
-	for label_key in ["title", "original", "current", "bonuses"]:
-		var label := bonus.get(label_key, null) as Label
-		if label == null or not is_instance_valid(label):
-			_record("%s bonus panel is missing %s label" % [context, label_key])
-			continue
-		if label.text.strip_edges().is_empty():
-			_record("%s bonus panel left %s label empty" % [context, label_key])
+	var panel: Control = bonus.root
+	if not panel.is_visible_in_tree():
+		_record("%s details are hidden" % context)
+	for key in ["title", "original", "current", "bonuses"]:
+		if str(bonus[key].text).strip_edges().is_empty():
+			_record("%s has empty %s" % [context, key])
+	if panel.get_global_rect().end.y > (card.root as Control).get_global_rect().end.y:
+		_record("%s details overflow the module" % context)
+	detail.call("_clear_activity_stat_popup")
+	scene.call("_update_ui", 0.0, true)
 
 
 func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: String) -> void:
@@ -3138,7 +2963,8 @@ func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: Stri
 			_record("%s %s tap left an action card press stuck: %s" % [context, stat_kind, str(scene.call("_skill_detail_surface").get("action_card_press_key"))])
 			scene.call("_skill_detail_surface").set("action_card_press_key", "")
 		scene.call("_update_ui", 0.0, true)
-		_assert_action_bonus_panel_filled(card, "%s %s" % [context, stat_kind])
+		await _assert_action_information_filled(scene, "%s %s" % [context, stat_kind])
+		await process_frame
 	scene.call("_skill_swipe_activity_surface").call("_collapse_expanded_activity_modules")
 	scene.call("_update_ui", 0.0, true)
 

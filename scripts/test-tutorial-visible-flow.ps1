@@ -7,8 +7,11 @@ $testDir = Join-Path $projectRoot ".codex-tmp\tutorial-visible-flow"
 $testScript = Join-Path $testDir "tutorial_visible_flow_test.gd"
 $startCapturePath = Join-Path $projectRoot ".codex-tmp\tutorial-visible-start.png"
 $afterClickCapturePath = Join-Path $projectRoot ".codex-tmp\tutorial-visible-after-click.png"
-$savePath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.json"
-$backupPath = Join-Path $testDir "idle_elite_save.backup.json"
+# A visible game run uses the real desktop profile unless it is given its own user
+# data folder. This test starts a new game and plays the tutorial, so it gets one:
+# the real save is never read, copied, restored or deleted.
+$testUserData = Join-Path ([System.IO.Path]::GetTempPath()) ("idle-elite-tutorial-visible-flow-" + $PID)
+$previousTestUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -16,11 +19,6 @@ if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
-$hadSave = Test-Path -LiteralPath $savePath
-if ($hadSave) {
-    Copy-Item -LiteralPath $savePath -Destination $backupPath -Force
-}
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $headlessDebug = $env:IDLE_ELITE_VISIBLE_FLOW_HEADLESS_DEBUG -eq "1"
@@ -606,6 +604,7 @@ func _fail(message: String) -> void:
 
     $env:IDLE_ELITE_VISIBLE_TUTORIAL_START_CAPTURE = $startCapturePath
     $env:IDLE_ELITE_VISIBLE_TUTORIAL_CLICK_CAPTURE = $afterClickCapturePath
+    $env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserData
     if ($headlessDebug) {
         $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     } else {
@@ -628,10 +627,9 @@ func _fail(message: String) -> void:
         throw "A headless Godot process is still running after the visible tutorial flow test."
     }
 } finally {
-    if ($hadSave) {
-        Copy-Item -LiteralPath $backupPath -Destination $savePath -Force -ErrorAction SilentlyContinue
-    } else {
-        Remove-Item -LiteralPath $savePath -Force -ErrorAction SilentlyContinue
+    $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserData
+    if (Test-Path -LiteralPath $testUserData) {
+        Remove-Item -LiteralPath $testUserData -Recurse -Force -ErrorAction SilentlyContinue
     }
     if ($null -eq $previousTimeout) {
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue

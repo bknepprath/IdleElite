@@ -1,7 +1,5 @@
 extends Button
 
-signal wallet_pressed
-
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(228, 228)
 const FISH_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/fish-currency-icon.png"
@@ -101,6 +99,8 @@ func set_wallet_open_visual(open: bool) -> void:
 	queue_redraw()
 
 func set_theme_color(next_color: Color) -> void:
+	if theme_color == next_color:
+		return
 	theme_color = next_color
 	queue_redraw()
 

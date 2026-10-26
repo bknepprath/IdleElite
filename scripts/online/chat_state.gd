@@ -9,6 +9,8 @@ static func next_connect_unix_for_save(retry_unix: int, next_connect_unix: int, 
 
 static func metadata_for_save(runtime, now_unix: int, retry_interval_seconds: int) -> Dictionary:
 	return {
+		"chat_blocked_players": runtime.chat_blocked_players.duplicate(),
+		"chat_rules_version": runtime.chat_rules_version,
 		"chat_last_send_unix": maxi(0, int(runtime.chat_last_send_unix)),
 		"chat_stream_retry_unix": retry_unix_for_save(runtime.chat_stream_retry_unix, now_unix, retry_interval_seconds),
 		"chat_stream_next_connect_unix": next_connect_unix_for_save(runtime.chat_stream_retry_unix, runtime.chat_stream_next_connect_unix, now_unix, retry_interval_seconds),
@@ -26,6 +28,8 @@ static func restored_retry_metadata(data: Dictionary, now_unix: int, retry_inter
 
 
 static func restore_metadata_to_runtime(runtime, data: Dictionary, now_unix: int, retry_interval_seconds: int) -> void:
+	runtime.chat_blocked_players = normalized_blocked_players(data.get("chat_blocked_players", {}))
+	runtime.chat_rules_version = clampi(int(data.get("chat_rules_version", 0)), 0, 1)
 	runtime.chat_last_send_unix = maxi(0, int(data.get("chat_last_send_unix", 0)))
 	var restored_retry: Dictionary = restored_retry_metadata(data, now_unix, retry_interval_seconds)
 	runtime.chat_stream_retry_unix = int(restored_retry.get("retry_unix", 0))
@@ -37,6 +41,16 @@ static func restore_metadata_to_runtime(runtime, data: Dictionary, now_unix: int
 static func normalized_message_id(raw_message_id: Variant) -> String:
 	var message_id := str(raw_message_id).strip_edges()
 	return message_id.substr(0, 64) if message_id.length() > 64 else message_id
+
+static func normalized_blocked_players(value: Variant) -> Dictionary:
+	var blocked := {}
+	if not value is Dictionary: return blocked
+	for key in value:
+		var uid := str(key)
+		if uid.length() < 8 or uid.length() > 48 or uid.contains("/"): continue
+		blocked[uid] = str(value[key]).substr(0, 16)
+		if blocked.size() >= 1000: break
+	return blocked
 
 
 static func sanitize_message(raw_text: String, max_chars: int, censored_words: Array) -> String:

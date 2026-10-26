@@ -17,6 +17,8 @@ Keep `version/code` monotonically increasing for Google Play.
 
 For a release that changes account or save migration behavior, complete `docs/firebase-leaderboard-setup.md` first. The build requires a fresh version-bound receipt at ignored `release/firebase-migration-readiness.json`; local config syntax alone is not release evidence. The receipt is an operator attestation bound to fresh snapshots, the configured target, the exact final rules, the verified all-writes-disabled migration-freeze rules, and the release version. It does not query Firebase, Google Cloud, or Play Console by itself.
 
+For a compatible update to the already deployed account system, pass `-ExistingReleaseBaselineAab <path-to-published-aab>` to `build-android-release.ps1`. Review the identity/save changes first. This mode compares the Firebase configuration with the published bundle, requires a higher version code, and reads the live database rules on every build to verify an exact JSON match with the candidate rules. It records the evidence under ignored `release/existing-release-readiness/`. It does not authorize an account migration, database freeze, rule deployment, or player-data reset. A changed configuration or account system must use the migration workflow instead.
+
 ## Files To Update
 
 Update `export_presets.cfg`:
@@ -124,7 +126,7 @@ Confirm:
 - `android:versionName` matches the requested version
 - `android:minSdkVersion="24"`
 - `android:targetSdkVersion="36"`
-- AdMob app ID is present: `ca-app-pub-3570919669688101~3616255490`
+- AdMob app ID is present: `ca-app-pub-4125359195200512~1607281974`
 
 Check that local release/build payloads were not packed into the AAB:
 
